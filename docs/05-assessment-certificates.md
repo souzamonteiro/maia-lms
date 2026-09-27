@@ -1,0 +1,9 @@
+# Assessment and certificates
+
+Multiple-choice single/multi-select questions with server-held answer keys, deterministic scoring, configurable pass percent and attempt cap. Version question text, choices and grading keys; submitted attempts remain immutable. Random question order is optional and must be reproducible per attempt. Limit abuse through rate limiting and submission deadlines. Clearly state that an unproctored quiz certifies course completion under published rules, not independently verified professional competence.
+
+Completion eligibility: active enrollment and entitlement, required lessons completed, final quiz passed if configured, learner verified email, certificate name confirmed, no unresolved payment reversal. Workload is publisher-defined and disclosed on course page; do not equate playback seconds with academic credit. Issue once per completion record; reissue creates a new certificate and revokes old one with audit trail.
+
+Public verification endpoint `/certificates/verify/{code}` displays minimum approved fields: learner name, course, workload, issuer, issue date and status. Learner sees exactly what will be public and confirms before issuance. QR points to canonical HTTPS URL. Use random nonsequential code with sufficient entropy, store opaque ID, and use rate limiting/noindex to reduce enumeration. A content hash binds the certificate snapshot but a hash alone does not prove institutional accreditation. PDF generated server-side includes code, QR, logo, completion facts and accessibility-friendly text. Revocation pages reveal status and minimal metadata; reason visible only to authorized user/admin.
+
+Tests: anonymous verification; invalid and revoked codes; replay issue job; policy revision; failed quiz; unverified email; refund before/after issuance; PDF text/QR round trip. PDF generation is asynchronous and retryable.

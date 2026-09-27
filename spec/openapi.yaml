@@ -1,0 +1,141 @@
+openapi: 3.1.0
+info:
+  title: Maia LMS API
+  version: 0.1.0
+  description: Design contract; responses are representative and require refinement during implementation.
+servers:
+  - url: https://lms.maiaplatform.org/api/v1
+paths:
+  /courses:
+    get:
+      summary: Search published courses
+      parameters:
+        - {name: q, in: query, schema: {type: string}}
+        - {name: category, in: query, schema: {type: string}}
+        - {name: accessMode, in: query, schema: {type: string, enum: [OPEN_FREE, ENROLLED_FREE, PAID]}}
+        - {name: cursor, in: query, schema: {type: string}}
+      responses:
+        '200': {description: Paginated course cards}
+  /courses/{slug}:
+    get:
+      summary: Published course detail and syllabus, without protected content
+      parameters: [{name: slug, in: path, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: Public course detail}
+        '404': {description: No published course}
+  /courses/{courseId}/enrollments:
+    post:
+      summary: Enroll authenticated learner in free enrolled course
+      security: [{cookieAuth: []}]
+      parameters: [{name: courseId, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses:
+        '201': {description: Enrollment created}
+        '200': {description: Existing enrollment returned}
+        '403': {description: Unverified user or invalid access mode}
+  /courses/{courseId}/checkout:
+    post:
+      summary: Create or recover an idempotent paid checkout
+      security: [{cookieAuth: []}]
+      parameters: [{name: courseId, in: path, required: true, schema: {type: string, format: uuid}}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idempotencyKey, provider]
+              properties:
+                idempotencyKey: {type: string, format: uuid}
+                provider: {type: string, enum: [mercado_pago]}
+      responses:
+        '200': {description: Order ID and provider-hosted checkout URL}
+        '409': {description: Already entitled or stale price}
+  /webhooks/mercado-pago:
+    post:
+      summary: Verify and queue provider event using raw request body
+      responses:
+        '200': {description: Event accepted or previously processed}
+        '401': {description: Signature rejected}
+  /me/enrollments:
+    get:
+      summary: My learning dashboard
+      security: [{cookieAuth: []}]
+      responses:
+        '200': {description: Enrollments and progress}
+  /lessons/{lessonId}/playback:
+    post:
+      summary: Issue short-lived authorized media grant
+      security: [{cookieAuth: []}]
+      parameters: [{name: lessonId, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses:
+        '200': {description: Scoped playback grant}
+        '403': {description: No access; public lessons use separate public path}
+  /lessons/{lessonId}/progress:
+    put:
+      summary: Save position or mark completed after server policy validation
+      security: [{cookieAuth: []}]
+      parameters: [{name: lessonId, in: path, required: true, schema: {type: string, format: uuid}}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                positionSeconds: {type: integer, minimum: 0}
+                complete: {type: boolean}
+      responses:
+        '200': {description: Current progress}
+        '403': {description: No enrollment/entitlement}
+  /quizzes/{quizId}/attempts:
+    post:
+      summary: Start attempt within configured limits
+      security: [{cookieAuth: []}]
+      parameters: [{name: quizId, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses:
+        '201': {description: Attempt with questions excluding answer keys}
+        '403': {description: Not eligible}
+  /attempts/{attemptId}/submit:
+    post:
+      summary: Submit answers for one server-scored attempt
+      security: [{cookieAuth: []}]
+      parameters: [{name: attemptId, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses:
+        '200': {description: Score and pass status}
+        '409': {description: Already submitted}
+  /enrollments/{enrollmentId}/certificates:
+    post:
+      summary: Confirm public name/disclosure and request eligible certificate
+      security: [{cookieAuth: []}]
+      parameters: [{name: enrollmentId, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses:
+        '202': {description: Issuance queued or existing certificate returned}
+        '403': {description: Completion or disclosure requirement unmet}
+  /certificates/verify/{code}:
+    get:
+      summary: Public certificate status and approved verification fields
+      parameters: [{name: code, in: path, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: Active or revoked verification view}
+        '404': {description: Invalid code}
+  /admin/courses:
+    post:
+      summary: Create course draft
+      security: [{cookieAuth: []}]
+      responses:
+        '201': {description: Draft created}
+        '403': {description: Author or admin role required}
+  /admin/courses/{courseId}/publish:
+    post:
+      summary: Validate and publish immutable revision
+      security: [{cookieAuth: []}]
+      parameters: [{name: courseId, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses:
+        '200': {description: Revision published}
+        '422': {description: Publication requirements unmet}
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: maia_session
