@@ -1,5 +1,7 @@
 # Payments and entitlement
 
+> **Estado desta versão:** este documento registra requisitos do produto completo. O MVP atual entrega cursos gratuitos em texto, identidade, matrícula e progresso. Vídeo, comércio, quizzes, certificados, MFA e solicitações de privacidade ainda exigem implementação. Consulte [o roadmap](09-roadmap.md).
+
 ## Initial implementation
 
 Implement Mercado Pago hosted Checkout Pro first, with Pix availability verified for the merchant account and checkout configuration. Add PayPal through the same PaymentProvider contract after first release; PagBank/PagSeguro is a later adapter. Provider support, country, fees and settlement terms must be confirmed against the account before launch. Hosted checkout reduces payment-data exposure. Never process card numbers in Maia LMS.

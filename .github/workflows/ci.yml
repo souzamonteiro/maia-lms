@@ -1,0 +1,36 @@
+name: CI
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ['22.x', '24.x']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run lint
+      - run: npm test
+      - run: npm run migrate
+        env:
+          NODE_ENV: test
+          DATABASE_URL: ./data/ci-test.db
+          SESSION_SECRET: test-session-secret-at-least-32-chars
+          PUBLIC_BASE_URL: http://localhost:3000
+          MEDIA_SIGNING_KEY: test-media-signing-key-at-least-32-chars
+      - run: bash -n install.sh scripts/install-host.sh scripts/install-vps.sh
+      - run: ./install.sh host --host-ip 10.77.0.2 --proxy-ip 10.77.0.1 --dry-run
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - run: docker compose --env-file .env.example -f infra/docker-compose.yml config --quiet
+      - run: docker build -f apps/api/Dockerfile -t maia-lms:ci .
+        if: matrix.node-version == '22.x'

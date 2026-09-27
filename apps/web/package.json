@@ -1,0 +1,23 @@
+{
+  "name": "@maia/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@maia/domain": "*",
+    "express": "^4.21.0",
+    "nunjucks": "^3.2.4"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.0",
+    "@types/node": "^22.0.0",
+    "@types/nunjucks": "^3.2.0",
+    "tsx": "*",
+    "typescript": "*"
+  },
+  "main": "./dist/app.js",
+  "types": "./dist/app.d.ts"
+}

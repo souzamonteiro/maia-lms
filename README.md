@@ -1,68 +1,118 @@
-# Maia LMS
+# Maia Learn / Maia LMS
 
-**Learn from real software, built in the open.**
+Plataforma de cursos em `https://learn.maiaplatform.org`, com Node.js, TypeScript, Express e **SQLite**. Aplicação e banco ficam na máquina hospedeira; a VPS com **Maia Edge** publica HTTPS e encaminha as requisições pela VPN WireGuard.
 
-Maia LMS is a focused, video-first course publishing platform for Maia Platform. It offers public lessons, enrolled free courses, and paid courses with progress tracking, quizzes, and publicly verifiable certificates. It is initially a single publisher platform, with invited instructors as a later option.
+## Estado da implementação
 
-## Access modes
+Esta versão entrega o **MVP de cursos gratuitos com aulas em texto**:
 
-| Mode | Anonymous viewing | Account | Enrollment | Certificate |
-|---|---:|---:|---:|---:|
-| OPEN_FREE | Yes | No | No | No |
-| ENROLLED_FREE | Preview only | Yes | Yes | If eligible |
-| PAID | Preview only | Yes | After confirmed payment | If eligible |
+- Interface em português: catálogo, busca, curso, aula, cadastro, login, recuperação de senha e área do aluno.
+- Autoria de cursos, módulos e aulas; publicação e arquivamento por administrador.
+- Revisões preservadas para alunos já matriculados; prévias públicas e controle de acesso.
+- Matrícula idempotente, progresso por aula e painel de aprendizado.
+- Sessões persistentes em SQLite; e-mails em outbox com tentativas de entrega pelo worker.
+- Instaladores da hospedeira e da VPS, backup verificável e testes HTTP e de navegador.
 
-A public preview is a separately marked lesson. All courses have public catalog pages. OPEN_FREE can offer an optional account enrollment later, but anonymous views never generate an identity-linked certificate.
+**Ainda não implementados:** upload/transcodificação e player de vídeo, quizzes, checkout/webhooks/reembolsos, certificados, MFA e exportação/exclusão de conta. As tabelas e alguns adaptadores herdados preparam essas etapas, mas não são funcionalidades disponíveis. Os documentos de produto registram a visão completa; [o roadmap](docs/09-roadmap.md) distingue o estado atual.
 
-## Product scope
+## Desenvolvimento
 
-Course catalog, search, categories, promotions, landing pages, video/text/attachments, lesson progress, objective quizzes, checkout, certificate verification, author/admin tools, and basic analytics. Maia Chat/RAG course assistant, subtitles/transcripts, coupons, cohorts, multiple authors, and advanced marketing automation are staged extensions. See [scope](docs/01-product.md) and [roadmap](docs/09-roadmap.md).
+Requisitos: Node.js **22.12+** (22 ou 24), npm, Python 3, make e compilador C++ caso os módulos nativos precisem de compilação.
 
-## Architecture
-
-A server-rendered or progressively enhanced HTML/CSS/JavaScript frontend talks to a Node.js API, PostgreSQL, a media worker, and a file storage adapter. Nginx fronts the application. The deployment can run with Maia Edge, keeping video assets on premises, but must be measured against uplink and concurrent audience capacity. See [architecture](docs/02-architecture.md), [data model](docs/03-data-model.md), [API](spec/openapi.yaml), and [operations](docs/08-operations.md).
-
-## Repository layout (implementation target)
-
-```text
-apps/web/               catalog, learner UI, author studio
-apps/api/               HTTP API and domain modules
-apps/worker/            video, mail and certificate jobs
-packages/domain/        types, policies, validation
-packages/providers/     payment, storage and email ports/adapters
-packages/ui/            reusable components
-migrations/             reviewed SQL migrations
-infra/                  compose and Nginx configuration
-docs/                   decisions and runbooks
-spec/openapi.yaml       contract starting point
+```bash
+npm ci
+cp .env.example .env
+# Substitua SESSION_SECRET e MEDIA_SIGNING_KEY por valores de: openssl rand -hex 32
+npm run build
+npm run migrate
+npm run dev:api
 ```
 
-This repository currently contains the implementation specification and issue templates. Create application directories in milestone order; do not treat the API contract as a deployed server.
+Abra `http://localhost:3000`. Em outro terminal:
 
-## First implementation slice
+```bash
+npm run dev:worker
+```
 
-1. Bootstrap API/web/worker, PostgreSQL migrations, configuration validation, health probes and CI.
-2. Publish a public catalog and one OPEN_FREE course with accessible video and text.
-3. Add accounts, enrollment, lesson progress and quiz attempts.
-4. Add Mercado Pago checkout, verified webhook, entitlement and refunds.
-5. Add certificate issuance and public verification; complete the release gate.
+Configure um SMTP em `MAIL_TRANSPORT`. Para capturar e-mails localmente com Docker:
 
-Each step has testable acceptance criteria in [roadmap](docs/09-roadmap.md). Deployment requires production secrets, actual business/payment credentials, media capacity, and a privacy/legal review.
+```bash
+docker compose --env-file .env -f infra/docker-compose.yml --profile dev up -d mailpit
+```
 
-## Documentation
+Abra `http://localhost:8025`. Sem SMTP, a aplicação funciona, mas verificação e recuperação de senha permanecem na fila, com até cinco tentativas de entrega.
 
-- [Product and flows](docs/01-product.md)
-- [Architecture and media](docs/02-architecture.md)
-- [Data model and invariants](docs/03-data-model.md)
-- [Payments](docs/04-payments.md)
-- [Certificates and assessment](docs/05-assessment-certificates.md)
-- [Security and privacy](docs/06-security-privacy.md)
-- [UI and accessibility](docs/07-experience.md)
-- [Operations and deployment](docs/08-operations.md)
-- [Roadmap and acceptance](docs/09-roadmap.md)
-- [Decisions and open questions](docs/10-decisions.md)
-- [API contract](spec/openapi.yaml)
+Crie o primeiro administrador sem colocar a senha no histórico:
 
-## License
+```bash
+read -rsp 'Senha do administrador (12–128 caracteres): ' ADMIN_PASSWORD
+export ADMIN_PASSWORD
+npm run admin -- admin@example.com
+unset ADMIN_PASSWORD
+```
 
-Apache License 2.0 for code and original documentation in this repository. Course content, logos, videos, and third-party media require separate rights and are not covered by the code license. See [LICENSE](LICENSE).
+Entre com essa conta e acesse `/admin`. O comando recusa sobrescrever uma conta existente. Novos usuários pelo site recebem o papel de aluno.
+
+## Hospedeira + VPS
+
+Primeiro configure o túnel usando o [Maia Edge](../maia-edge/README.md). Os IPs abaixo são exemplos: use os endereços reais do túnel existente.
+
+Na hospedeira:
+
+```bash
+./install.sh host --host-ip 10.77.0.2 --proxy-ip 10.77.0.1 --dry-run
+sudo ./install.sh host --host-ip 10.77.0.2 --proxy-ip 10.77.0.1
+```
+
+Na VPS, com certificado TLS já emitido e o Maia Edge instalado:
+
+```bash
+./install.sh vps --edge-dir /opt/maia-edge --upstream 10.77.0.2:3200 --dry-run
+sudo ./install.sh vps --edge-dir /opt/maia-edge --upstream 10.77.0.2:3200
+```
+
+O instalador da hospedeira cria serviços systemd, segredos aleatórios, diretórios persistentes e backup antes de atualizar. O da VPS usa o CLI do Maia Edge para registrar a rota HTTPS, validar e aplicar a configuração. Nenhum instalador redefine a VPN. O `apply` do Maia Edge pode reiniciar a interface que ele gerencia.
+
+Consulte [o guia de operações](docs/08-operations.md) para SMTP, DNS, TLS, firewall, administrador em produção, atualização, backup e restauração. Os instaladores fornecem `--help` e `--dry-run`.
+
+## Docker opcional
+
+```bash
+# Em .env: PUBLIC_BASE_URL=http://localhost:3200
+# MAIL_TRANSPORT=smtp://mailpit:1025
+# NODE_ENV=development para HTTP local
+
+docker compose --env-file .env -f infra/docker-compose.yml --profile dev up -d --build
+```
+
+O volume `maia_data` contém SQLite e armazenamento. Não use `down -v` para atualizações. Para produção, configure `NODE_ENV=production`, a URL HTTPS, `BIND_IP` com o IP da VPN e `TRUST_PROXY` com o IP da VPS; use SMTP real. Não há outro Nginx nem portas públicas 80/443 no Compose.
+
+## Validação
+
+```bash
+npm run build
+npm run lint
+npm test
+npx playwright install chromium
+npm run test:e2e
+npm audit
+```
+
+A suíte usa bancos temporários. Para usar um Chrome já instalado, informe `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome` ao teste de navegador.
+
+## Estrutura
+
+| Diretório | Responsabilidade |
+|---|---|
+| `apps/api` | HTTP, autenticação, cursos, matrículas e progresso |
+| `apps/web` | HTML, CSS e JavaScript, servidos pelo mesmo processo da API |
+| `apps/worker` | Fila persistente de e-mails |
+| `packages/domain` | Tipos, validação e políticas |
+| `packages/providers` | SMTP e adaptadores reservados para pagamentos/armazenamento |
+| `migrations` | Migrações SQLite sequenciais e transacionais |
+| `scripts` | Instalação, administrador e backup |
+| `spec/openapi.yaml` | Contrato da API implementada |
+
+`/healthz` informa vida do processo; `/readyz` verifica o banco. SQLite opera com WAL, foreign keys e busy timeout, em disco local. Não é necessário servidor PostgreSQL.
+
+Licença: [Apache 2.0](LICENSE).

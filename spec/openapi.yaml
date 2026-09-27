@@ -1,80 +1,140 @@
 openapi: 3.1.0
 info:
-  title: Maia LMS API
+  title: Maia Learn API — implemented MVP
   version: 0.1.0
-  description: Design contract; responses are representative and require refinement during implementation.
+  description: Free text courses, identity, enrollment and progress. Mutations require application/json and same-origin browser requests. See planned-openapi.yaml for future endpoints.
 servers:
-  - url: https://lms.maiaplatform.org/api/v1
+  - url: https://learn.maiaplatform.org/api/v1
+  - url: http://localhost:3000/api/v1
 paths:
-  /courses:
-    get:
-      summary: Search published courses
-      parameters:
-        - {name: q, in: query, schema: {type: string}}
-        - {name: category, in: query, schema: {type: string}}
-        - {name: accessMode, in: query, schema: {type: string, enum: [OPEN_FREE, ENROLLED_FREE, PAID]}}
-        - {name: cursor, in: query, schema: {type: string}}
-      responses:
-        '200': {description: Paginated course cards}
-  /courses/{slug}:
-    get:
-      summary: Published course detail and syllabus, without protected content
-      parameters: [{name: slug, in: path, required: true, schema: {type: string}}]
-      responses:
-        '200': {description: Public course detail}
-        '404': {description: No published course}
-  /courses/{courseId}/enrollments:
+  /auth/register:
     post:
-      summary: Enroll authenticated learner in free enrolled course
-      security: [{cookieAuth: []}]
-      parameters: [{name: courseId, in: path, required: true, schema: {type: string, format: uuid}}]
-      responses:
-        '201': {description: Enrollment created}
-        '200': {description: Existing enrollment returned}
-        '403': {description: Unverified user or invalid access mode}
-  /courses/{courseId}/checkout:
-    post:
-      summary: Create or recover an idempotent paid checkout
-      security: [{cookieAuth: []}]
-      parameters: [{name: courseId, in: path, required: true, schema: {type: string, format: uuid}}]
+      summary: Create a learner and queue verification email
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [idempotencyKey, provider]
+              required: [email, password]
               properties:
-                idempotencyKey: {type: string, format: uuid}
-                provider: {type: string, enum: [mercado_pago]}
+                email: {type: string, format: email}
+                password: {type: string, minLength: 8, maxLength: 128}
+                locale: {type: string, default: pt-BR}
       responses:
-        '200': {description: Order ID and provider-hosted checkout URL}
-        '409': {description: Already entitled or stale price}
-  /webhooks/mercado-pago:
+        '201': {description: Account created}
+        '409': {description: Email exists}
+        '422': {description: Invalid fields}
+  /auth/login:
     post:
-      summary: Verify and queue provider event using raw request body
+      summary: Rotate session and sign in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: {type: string, format: email}
+                password: {type: string}
       responses:
-        '200': {description: Event accepted or previously processed}
-        '401': {description: Signature rejected}
+        '200': {description: User and session cookie}
+        '401': {description: Invalid credentials}
+  /auth/logout:
+    post:
+      summary: Destroy current session
+      security: [{cookieAuth: []}]
+      responses:
+        '204': {description: Logged out}
+  /auth/me:
+    get:
+      summary: Current user
+      security: [{cookieAuth: []}]
+      responses:
+        '200': {description: User profile}
+        '401': {description: Session missing or invalid}
+  /auth/verify-email:
+    get:
+      summary: Consume email verification token
+      parameters:
+        - {name: token, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Verified}
+        '400': {description: Invalid or expired token}
+  /auth/forgot-password:
+    post:
+      summary: Queue reset email if account exists
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: {type: string, format: email}
+      responses:
+        '204': {description: Accepted without disclosing account existence}
+  /auth/reset-password:
+    post:
+      summary: Consume reset token and invalidate existing sessions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token: {type: string}
+                password: {type: string, minLength: 8, maxLength: 128}
+      responses:
+        '200': {description: Password updated}
+        '400': {description: Invalid token}
+  /courses:
+    get:
+      summary: Search published courses (maximum 100)
+      parameters:
+        - {name: q, in: query, schema: {type: string}}
+      responses:
+        '200': {description: Array of published courses}
+  /courses/{id}:
+    parameters:
+      - {$ref: '#/components/parameters/courseId'}
+    get:
+      summary: Course and syllabus; enrolled learners see their assigned revision
+      responses:
+        '200': {description: Course with modules, lesson metadata and optional enrollment}
+        '404': {description: Missing or inaccessible draft}
+  /courses/{id}/enroll:
+    parameters:
+      - {$ref: '#/components/parameters/courseId'}
+    post:
+      summary: Idempotent free enrollment
+      security: [{cookieAuth: []}]
+      responses:
+        '200': {description: Existing or new enrollment}
+        '403': {description: Paid course or revoked access}
+        '409': {description: Course not published}
   /me/enrollments:
     get:
-      summary: My learning dashboard
+      summary: My enrollments with required/completed lesson counts
       security: [{cookieAuth: []}]
       responses:
-        '200': {description: Enrollments and progress}
-  /lessons/{lessonId}/playback:
-    post:
-      summary: Issue short-lived authorized media grant
-      security: [{cookieAuth: []}]
-      parameters: [{name: lessonId, in: path, required: true, schema: {type: string, format: uuid}}]
+        '200': {description: Enrollment array}
+  /lessons/{id}:
+    parameters:
+      - {$ref: '#/components/parameters/lessonId'}
+    get:
+      summary: Authorized lesson body and saved progress
       responses:
-        '200': {description: Scoped playback grant}
-        '403': {description: No access; public lessons use separate public path}
-  /lessons/{lessonId}/progress:
+        '200': {description: Lesson}
+        '403': {description: Enrollment required or wrong revision}
+  /lessons/{id}/progress:
+    parameters:
+      - {$ref: '#/components/parameters/lessonId'}
     put:
-      summary: Save position or mark completed after server policy validation
+      summary: Save position or mark lesson complete
       security: [{cookieAuth: []}]
-      parameters: [{name: lessonId, in: path, required: true, schema: {type: string, format: uuid}}]
       requestBody:
         required: true
         content:
@@ -85,57 +145,95 @@ paths:
                 positionSeconds: {type: integer, minimum: 0}
                 complete: {type: boolean}
       responses:
-        '200': {description: Current progress}
-        '403': {description: No enrollment/entitlement}
-  /quizzes/{quizId}/attempts:
-    post:
-      summary: Start attempt within configured limits
-      security: [{cookieAuth: []}]
-      parameters: [{name: quizId, in: path, required: true, schema: {type: string, format: uuid}}]
-      responses:
-        '201': {description: Attempt with questions excluding answer keys}
-        '403': {description: Not eligible}
-  /attempts/{attemptId}/submit:
-    post:
-      summary: Submit answers for one server-scored attempt
-      security: [{cookieAuth: []}]
-      parameters: [{name: attemptId, in: path, required: true, schema: {type: string, format: uuid}}]
-      responses:
-        '200': {description: Score and pass status}
-        '409': {description: Already submitted}
-  /enrollments/{enrollmentId}/certificates:
-    post:
-      summary: Confirm public name/disclosure and request eligible certificate
-      security: [{cookieAuth: []}]
-      parameters: [{name: enrollmentId, in: path, required: true, schema: {type: string, format: uuid}}]
-      responses:
-        '202': {description: Issuance queued or existing certificate returned}
-        '403': {description: Completion or disclosure requirement unmet}
-  /certificates/verify/{code}:
-    get:
-      summary: Public certificate status and approved verification fields
-      parameters: [{name: code, in: path, required: true, schema: {type: string}}]
-      responses:
-        '200': {description: Active or revoked verification view}
-        '404': {description: Invalid code}
+        '200': {description: Saved progress; completion is not undone by false}
+        '403': {description: No active entitlement or cross-course/revision lesson}
   /admin/courses:
-    post:
-      summary: Create course draft
+    get:
+      summary: List owned courses (admin sees all)
       security: [{cookieAuth: []}]
+      responses:
+        '200': {description: Course array}
+        '403': {description: Author/admin required}
+    post:
+      summary: Create a free-course draft with modules and lessons
+      security: [{cookieAuth: []}]
+      requestBody:
+        {$ref: '#/components/requestBodies/course'}
       responses:
         '201': {description: Draft created}
-        '403': {description: Author or admin role required}
-  /admin/courses/{courseId}/publish:
-    post:
-      summary: Validate and publish immutable revision
+        '409': {description: Slug exists}
+        '422': {description: Invalid course}
+  /admin/courses/{id}:
+    parameters:
+      - {$ref: '#/components/parameters/courseId'}
+    put:
+      summary: Create a new draft revision (owner or admin)
       security: [{cookieAuth: []}]
-      parameters: [{name: courseId, in: path, required: true, schema: {type: string, format: uuid}}]
+      requestBody:
+        {$ref: '#/components/requestBodies/course'}
       responses:
-        '200': {description: Revision published}
-        '422': {description: Publication requirements unmet}
+        '200': {description: Draft updated; enrolled revisions unchanged}
+        '403': {description: Not owner/admin}
+  /admin/courses/{id}/publish:
+    parameters:
+      - {$ref: '#/components/parameters/courseId'}
+    post:
+      summary: Publish current revision (admin only)
+      security: [{cookieAuth: []}]
+      responses:
+        '200': {description: Published}
+        '403': {description: Admin required}
+  /admin/courses/{id}/archive:
+    parameters:
+      - {$ref: '#/components/parameters/courseId'}
+    post:
+      summary: Archive, keeping enrolled access (admin only)
+      security: [{cookieAuth: []}]
+      responses:
+        '200': {description: Archived}
+        '403': {description: Admin required}
 components:
   securitySchemes:
     cookieAuth:
       type: apiKey
       in: cookie
-      name: maia_session
+      name: __Host-sid
+      description: Production HTTPS cookie; local HTTP development uses sid.
+  parameters:
+    courseId: {name: id, in: path, required: true, schema: {type: string}, description: Course UUID or slug}
+    lessonId: {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+  requestBodies:
+    course:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [slug, title, summary, accessMode, modules]
+            properties:
+              slug: {type: string, minLength: 3, maxLength: 100, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'}
+              title: {type: string, minLength: 3, maxLength: 255}
+              summary: {type: string, minLength: 10, maxLength: 1000}
+              locale: {type: string, default: pt-BR}
+              accessMode: {type: string, enum: [OPEN_FREE, ENROLLED_FREE]}
+              modules:
+                type: array
+                minItems: 1
+                maxItems: 100
+                items:
+                  type: object
+                  required: [title, lessons]
+                  properties:
+                    title: {type: string, minLength: 1, maxLength: 200}
+                    lessons:
+                      type: array
+                      minItems: 1
+                      maxItems: 100
+                      items:
+                        type: object
+                        required: [title, body]
+                        properties:
+                          title: {type: string, minLength: 1, maxLength: 200}
+                          body: {type: string, minLength: 1, maxLength: 100000}
+                          required: {type: boolean, default: true}
+                          preview: {type: boolean, default: false}

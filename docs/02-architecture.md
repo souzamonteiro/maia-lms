@@ -7,16 +7,18 @@ flowchart TD
   Browser[Browser] --> Nginx[Nginx TLS gateway]
   Nginx --> Web[Web application]
   Nginx --> API[Node.js API]
-  API --> PG[(PostgreSQL)]
+  API --> DB[(SQLite)]
   API --> Store[Storage adapter]
   API --> Queue[Jobs/outbox]
   Queue --> Worker[Media and document worker]
   Worker --> Store
-  Worker --> PG
+  Worker --> DB
   Provider[Payment provider] --> API
 ```
 
-Use modular monolith boundaries: identity; catalog/content; enrollment/entitlements; learning/progress; assessments; billing; certificates; media; analytics. PostgreSQL transactions enforce key invariants. Start with PostgreSQL-backed jobs/outbox and a dedicated worker; introduce a separate queue if measured throughput warrants it. Avoid distributed transactions between database and provider.
+The implemented MVP serves API and web in one Node.js process, plus an email outbox worker. Video, billing and certificate flows below are planned extensions.
+
+Use modular monolith boundaries: identity; catalog/content; enrollment/entitlements; learning/progress; assessments; billing; certificates; media; analytics. SQLite transactions enforce key invariants. Start with SQLite-backed jobs/outbox and a dedicated worker; introduce a separate queue if measured throughput warrants it. Avoid distributed transactions between database and provider.
 
 Use Node.js LTS/Express or a minimal equivalent, SQL migrations, runtime schema validation, and explicit service interfaces. Prefer plain HTML/CSS/JS and progressive enhancement. Code identifiers/comments in English and JavaScript camelCase. Lock dependency versions and document supported versions when implementation begins.
 
@@ -35,3 +37,13 @@ PaymentProvider: createCheckout, getPayment, verifyWebhook, refund, normalizeEve
 ## Reliability
 
 Health endpoints distinguish liveness and readiness. Timeouts/retries with backoff around external calls; idempotent workers and webhook consumers; transactional outbox for notifications and certificate jobs. Structured logs include correlation IDs but redact tokens and personal/payment data. Backups and restore drills cover database and media together. See operations.
+
+## SQLite implementation
+
+`better-sqlite3` opens a local filesystem path from `DATABASE_URL`; this is not a server connection URL. Connections enable WAL, foreign keys, a 5-second busy timeout and synchronous NORMAL. UUIDs and JSON are TEXT, booleans INTEGER (0/1), and timestamps UTC TEXT. Existing migration defaults use SQLite `datetime('now')`; application timestamps may use ISO 8601, so interval comparisons use `julianday` instead of comparing mixed text formats.
+
+SQLite serializes writers. Use short synchronous transactions and `BEGIN IMMEDIATE` for job claims/enrollment decisions. Do not hold transactions across SMTP or other network calls. There is no `SELECT FOR UPDATE` or `SKIP LOCKED`; the worker claims leases under the database write lock. API and worker must share local disk, not a network filesystem. Backups use the SQLite backup API.
+
+Sessions use `http_sessions` in the application database; the original `sessions` schema table is reserved and unused. Role/status/session-version are rechecked on authenticated requests. The web package is mounted by the API, so it has no separate listening port.
+
+Production topology: `learn.maiaplatform.org` → VPS Nginx/Maia Edge (TLS) → WireGuard → host API on 3200. Bind to the host VPN IP and trust only the VPS VPN IP. Installation does not change the tunnel; see [operations](08-operations.md).

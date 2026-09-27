@@ -5,7 +5,7 @@
 - Single Maia publisher, no marketplace in v1.
 - Brazil-first, BRL payment and pt-BR interface; multilingual course metadata supported structurally.
 - Mercado Pago hosted checkout first; PayPal second; Pix availability validated with account.
-- Node.js API + PostgreSQL + worker + Nginx; plain web frontend with progressive enhancement.
+- Node.js API + SQLite + worker + Nginx; plain web frontend with progressive enhancement.
 - Local private media storage initially, with object/CDN adapter; transcode to HLS.
 - Public certificates only for identity-linked enrolled learners who explicitly confirm displayed name and disclosure.
 - Apache-2.0 software license; course content under separate terms.
@@ -20,3 +20,12 @@
 6. Whether multiple authors need delegated publishing in v1.
 
 Defaults permit implementation to start. Production commerce and public certificate policy require explicit owner review.
+
+## Implementation decisions — 2026-09-27
+
+- SQLite replaces the originally proposed server database in development and this single-host deployment. WAL and short transactions support API and worker; no shared database over WireGuard.
+- `learn.maiaplatform.org` is the production hostname. Maia Edge owns TLS on the VPS; systemd owns API/worker on the host.
+- Native Node.js compilation and workspace exports are built in dependency order. The lockfile is committed.
+- Sessions live in the same SQLite database, using better-sqlite3; no second SQLite driver/store is required.
+- Initial usable slice: free text courses, authoring, enrollment and progress. No simulated payment grants or fake successful media/certificate jobs are exposed.
+- Email delivery is durable through the outbox, with bounded retries and leases.

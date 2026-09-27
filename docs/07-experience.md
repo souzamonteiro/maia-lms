@@ -1,5 +1,7 @@
 # Experience and accessibility
 
+> **Estado desta versão:** este documento registra requisitos do produto completo. O MVP atual entrega cursos gratuitos em texto, identidade, matrícula e progresso. Vídeo, comércio, quizzes, certificados, MFA e solicitações de privacidade ainda exigem implementação. Consulte [o roadmap](09-roadmap.md).
+
 Public home: hero promotion, searchable catalog, free courses, recently published, categories, Maia projects and instructor credibility. Course cards distinguish Free, Free with enrollment and Paid. No misleading scarcity or fabricated ratings. Responsive course page presents outcomes, syllabus, prerequisites, duration, level, language, preview, instructor bio, certificate policy and support/refund information.
 
 Learner player: module navigation, resume, adjustable playback speed, captions, transcript, keyboard controls, readable text, downloadable authorized files and progress. Quizzes explain result and remaining attempts without exposing answer keys prematurely. Account area shows courses, receipts, progress, certificates and privacy controls.

@@ -1,5 +1,7 @@
 # Security and privacy
 
+> **Estado desta versão:** este documento registra requisitos do produto completo. O MVP atual entrega cursos gratuitos em texto, identidade, matrícula e progresso. Vídeo, comércio, quizzes, certificados, MFA e solicitações de privacidade ainda exigem implementação. Consulte [o roadmap](09-roadmap.md).
+
 ## Controls
 
 - HTTPS throughout; secure HttpOnly SameSite cookies; CSRF protection for state-changing cookie-authenticated requests; origin checks; server-side session revocation.

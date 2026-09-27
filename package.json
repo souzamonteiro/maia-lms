@@ -1,0 +1,42 @@
+{
+  "name": "maia-lms",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @maia/domain && npm run build -w @maia/providers && npm run build -w @maia/web && npm run build -w @maia/api && npm run build -w @maia/worker",
+    "test": "vitest run --config vitest.config.ts",
+    "test:watch": "vitest --config vitest.config.ts",
+    "lint": "eslint . --ext .ts,.js",
+    "migrate": "tsx apps/api/src/db/migrate.ts",
+    "dev:api": "tsx watch apps/api/src/server.ts",
+    "dev:worker": "tsx watch apps/worker/src/worker.ts",
+    "start": "node apps/api/dist/server.js",
+    "admin": "node scripts/admin.mjs",
+    "backup": "node scripts/backup.mjs",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.3.0",
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^4.1.11"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "type": "module",
+  "allowScripts": {
+    "better-sqlite3@11.10.0": true,
+    "argon2@0.41.1": true,
+    "esbuild@0.28.2": true
+  }
+}

@@ -1,0 +1,45 @@
+# Run from the repository root with --env-file .env.
+# The VPS Maia Edge gateway owns public ports 80/443; no second Nginx is started.
+services:
+  api:
+    image: maia-lms:local
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    environment: &app-env
+      NODE_ENV: ${NODE_ENV:-development}
+      HOST: 0.0.0.0
+      PORT: 3000
+      DATABASE_URL: /data/maia-lms.db
+      STORAGE_ROOT: /data/storage
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET}
+      MEDIA_SIGNING_KEY: ${MEDIA_SIGNING_KEY:?Set MEDIA_SIGNING_KEY}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:3200}
+      TRUST_PROXY: ${TRUST_PROXY:-loopback}
+      MAIL_TRANSPORT: ${MAIL_TRANSPORT:-smtp://mailpit:1025}
+      MAIL_FROM: ${MAIL_FROM:-noreply@maiaplatform.org}
+    ports:
+      - '${BIND_IP:-127.0.0.1}:${HOST_PORT:-3200}:3000'
+    volumes:
+      - maia_data:/data
+    restart: unless-stopped
+  worker:
+    image: maia-lms:local
+    command: [node, apps/worker/dist/worker.js]
+    environment: *app-env
+    volumes:
+      - maia_data:/data
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+  mailpit:
+    image: axllent/mailpit:v1.29
+    profiles: [dev]
+    ports:
+      - '127.0.0.1:8025:8025'
+      - '127.0.0.1:1025:1025'
+volumes:
+  maia_data:

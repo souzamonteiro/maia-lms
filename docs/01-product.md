@@ -1,5 +1,7 @@
 # Product specification
 
+> **Estado desta versão:** este documento registra requisitos do produto completo. O MVP atual entrega cursos gratuitos em texto, identidade, matrícula e progresso. Vídeo, comércio, quizzes, certificados, MFA e solicitações de privacidade ainda exigem implementação. Consulte [o roadmap](09-roadmap.md).
+
 ## Audience and promise
 
 Learners discover practical courses built around working Maia software. The publisher records with Maia capture tools, edits in Maia Reel, publishes in Maia LMS, and may attach a Maia Chat/RAG assistant grounded in that course's approved materials. Course pages also link to relevant Maia projects and consulting contact points with clear labeling.
