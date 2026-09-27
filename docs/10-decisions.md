@@ -3,7 +3,7 @@
 ## Proposed defaults
 
 - Single Maia publisher, no marketplace in v1.
-- Brazil-first, BRL payment and pt-BR interface; multilingual course metadata supported structurally.
+- Brazil-first, BRL payment; internationalized interface (en default, pt-BR available) with multilingual course metadata supported structurally.
 - Mercado Pago hosted checkout first; PayPal second; Pix availability validated with account.
 - Node.js API + SQLite + worker + Nginx; plain web frontend with progressive enhancement.
 - Local private media storage initially, with object/CDN adapter; transcode to HLS.

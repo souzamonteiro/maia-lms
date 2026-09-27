@@ -1,6 +1,6 @@
 {% extends "base.njk" %}
 {% block content %}
 <div id="message" role="status" aria-live="polite"></div>
-<div id="app"><h1>Aprenda com a Maia</h1><p>Carregando cursos…</p></div>
-<noscript>Ative JavaScript para consultar os cursos e acompanhar seu aprendizado.</noscript>
+<div id="app"><h1 data-i18n="welcomeHeading">Learn with Maia</h1><p data-i18n="loadingCourses">Loading courses…</p></div>
+<noscript data-i18n="noscriptText">Enable JavaScript to browse courses and track your learning.</noscript>
 {% endblock %}

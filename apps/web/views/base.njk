@@ -1,16 +1,28 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ title }} — Maia Learn</title>
   <link rel="stylesheet" href="/static/app.css">
-  <script src="/static/app.js" defer></script>
+  <script type="module" src="/static/app.js"></script>
 </head>
 <body>
-  <a class="skip" href="#content">Ir para o conteúdo</a>
-  <header><a class="logo" href="/">maia <span>learn</span></a><nav aria-label="Principal"><a href="/courses">Cursos</a><a href="/my-learning">Meu aprendizado</a><span id="account"><a href="/auth/login">Entrar</a></span></nav></header>
+  <a class="skip" href="#content" data-i18n="skipToContent">Skip to content</a>
+  <header>
+    <a class="logo" href="/">maia <span>learn</span></a>
+    <nav aria-label="Main" data-i18n-aria-label="mainNav">
+      <a href="/courses" data-i18n="navCourses">Courses</a>
+      <a href="/my-learning" data-i18n="navMyLearning">My learning</a>
+      <select id="languageSelect" aria-label="Language" data-i18n-aria-label="languageLabel">
+        <option value="en">English</option>
+        <option value="pt-BR">Português</option>
+        <option value="es">Español</option>
+      </select>
+      <span id="account"><a href="/auth/login" data-i18n="navLogin">Log in</a></span>
+    </nav>
+  </header>
   <main id="content">{% block content %}{% endblock %}</main>
-  <footer>Maia Learn · Conhecimento para criar.<br><a href="https://maiaplatform.org">Conheça a plataforma Maia</a></footer>
+  <footer><span data-i18n="footerTagline">Maia Learn · Knowledge to create.</span><br><a href="https://maiaplatform.org" data-i18n="footerLink">Discover the Maia platform</a></footer>
 </body>
 </html>

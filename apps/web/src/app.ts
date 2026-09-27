@@ -21,7 +21,7 @@ export function createWebApp(): express.Application {
     '/my-learning',
     '/admin',
   ]) {
-    app.get(route, (_req, res) => res.render('home.njk', { title: 'Aprenda com a Maia' }));
+    app.get(route, (_req, res) => res.render('home.njk', { title: 'Learn with Maia' }));
   }
   return app;
 }

@@ -50,18 +50,25 @@ sudo systemctl status maia-lms maia-lms-worker
 sudo journalctl -u maia-lms -u maia-lms-worker -n 100
 ```
 
-Para criar o administrador em produção:
+Para criar o administrador em produção, execute na hospedeira a partir do checkout atualizado:
 
 ```bash
-read -rsp 'Senha do administrador (12–128 caracteres): ' ADMIN_PASSWORD
-export ADMIN_PASSWORD
-sudo --preserve-env=ADMIN_PASSWORD -u maia-lms node \
-  --env-file=/etc/maia-lms/app.env \
-  /opt/maia-lms/current/scripts/admin.mjs admin@example.com
-unset ADMIN_PASSWORD
+sudo ./scripts/create-admin.sh seu-email@dominio.com
 ```
 
-O comando não substitui contas existentes. Não há senha padrão. Cadastre autores pelo procedimento administrativo controlado do banco; a interface atual cria alunos e cursos, não gerencia papéis de usuários.
+O script pede a senha duas vezes, sem exibi-la, após a autenticação do sudo.
+Ele cria a conta como usuário de serviço `maia-lms`, usando a instalação em
+`/opt/maia-lms/current` e `/etc/maia-lms/app.env`. A senha deve ter 12–128
+caracteres. Não é necessário exportar variáveis nem usar `sudo --preserve-env`.
+
+Por padrão, o comando não substitui contas existentes. Para redefinir a senha
+de uma conta admin já cadastrada, use:
+
+```bash
+sudo ./scripts/create-admin.sh seu-email@dominio.com --reset
+```
+
+Não há senha padrão. Cadastre autores pelo procedimento administrativo controlado do banco; a interface atual cria alunos e cursos, não gerencia papéis de usuários.
 
 ## VPS e TLS — padrão maia-chat
 
