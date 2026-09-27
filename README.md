@@ -4,10 +4,14 @@ Plataforma de cursos em `https://learn.maiaplatform.org`, com Node.js, TypeScrip
 
 ## Estado da implementação
 
-Esta versão entrega o **MVP de cursos gratuitos com aulas em texto**:
+O plano do produto completo está em [TODO.md](TODO.md), com auditoria do estado atual, prioridades, dependências e critérios de conclusão.
 
-- Interface em português: catálogo, busca, curso, aula, cadastro, login, recuperação de senha e área do aluno.
-- Autoria de cursos, módulos e aulas; publicação e arquivamento por administrador.
+Esta versão entrega o **cursos gratuitos com aulas em texto e Markdown**:
+
+- Interface com internacionalização em inglês, português e espanhol: catálogo, busca, curso, aula, cadastro, login, recuperação de senha e área do aluno.
+- [Editor Markdown](docs/12-authoring.md) com ferramentas, prévia, recuperação de rascunhos, autosave e detecção de conflitos.
+- Autoria de cursos, módulos e aulas; rascunho independente da publicação e arquivamento por administrador.
+- Seleção, ordem e agendamento dos cursos da página inicial em `/admin/home`.
 - Revisões preservadas para alunos já matriculados; prévias públicas e controle de acesso.
 - Matrícula idempotente, progresso por aula e painel de aprendizado.
 - Sessões persistentes em SQLite; e-mails em outbox com tentativas de entrega pelo worker.

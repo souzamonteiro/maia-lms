@@ -15,3 +15,20 @@ Validação local da entrega MVP, em Node.js 24.18.1:
 Não executados neste ambiente: instalação real de systemd na hospedeira/VPS, build Docker (Docker indisponível), emissão/renovação TLS, DNS público, SMTP externo, testes de carga e auditoria completa de acessibilidade. CI configura Node.js 22/24, browser e build Docker, mas sua execução remota não faz parte deste registro.
 
 Estes resultados cobrem o MVP documentado no README. Não validam funcionalidades futuras de vídeo, comércio, quizzes ou certificados.
+
+## Autoria e home — 27/09/2026
+
+Validação da primeira implementação E1 no checkout local: `npm run build`,
+`npm run lint`, `npm test` (38 testes, 8 arquivos) e
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome npm run test:e2e`
+(3 testes) passaram. `npm audit` não reportou vulnerabilidades.
+
+Cobertura acrescentada: migração 004 sobre fixture legada, publicação independente
+do rascunho, revisão da matrícula, conflitos, permissões, sanitização Markdown,
+seleção/agendamento da home, recuperação local e troca de idioma sem perda de
+conteúdo. O teste móvel verifica largura de 390px no Chrome; não representa
+homologação em dispositivos reais. Sessões consultadas pela navegação deixam de
+consumir a quota de tentativas de login; o limite de credenciais continua testado.
+
+Não houve implantação nem acesso ao banco de produção. Vídeo e demais etapas do
+[TODO](../TODO.md) permanecem pendentes; veja o [guia de autoria](12-authoring.md).

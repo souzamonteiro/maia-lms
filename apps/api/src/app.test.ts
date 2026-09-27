@@ -154,9 +154,9 @@ describe('HTTP learning workflow', () => {
     const changed = draft('revisions');
     changed.title = 'New revision';
     expect(
-      (await request(`/api/v1/admin/courses/${c.id}`, 'PUT', changed, admin.cookie)).status,
+      (await request(`/api/v1/admin/courses/${c.id}`, 'PUT', {...changed, expectedRevisionId: (await request(`/api/v1/admin/courses/${c.id}`, 'GET', undefined, admin.cookie)).data.current_revision_id}, admin.cookie)).status,
     ).toBe(200);
-    expect((await request('/api/v1/courses/revisions')).status).toBe(404);
+    expect((await request('/api/v1/courses/revisions')).data.title).toBe('Curso de teste');
     expect(
       (await request('/api/v1/courses/revisions', 'GET', undefined, learner.cookie)).data.title,
     ).toBe('Curso de teste');
@@ -244,4 +244,91 @@ describe('HTTP learning workflow', () => {
     expect(result.response.headers.get('set-cookie')).toContain('Secure');
     expect(learner.id).toBeTruthy();
   });
+});
+
+describe('authoring and homepage', () => {
+  it('keeps published metadata and enrollment intact while a draft is edited, and rejects stale writes', async () => {
+    const admin = await account('admin@example.com', 'admin');
+    const learner = await account('learner@example.com');
+    const c = await publish(admin.cookie, 'stable-course', 'ENROLLED_FREE');
+    const editor = (await request(`/api/v1/admin/courses/${c.id}`, 'GET', undefined, admin.cookie)).data;
+    const change = {...draft('future-address','OPEN_FREE'),title:'Draft only',expectedRevisionId:editor.current_revision_id};
+    const saved = await request(`/api/v1/admin/courses/${c.id}`,'PUT',change,admin.cookie);
+    expect(saved.status).toBe(200);
+    const publicView = (await request('/api/v1/courses/stable-course')).data;
+    expect(publicView.title).toBe('Curso de teste');
+    expect(publicView.access_mode).toBe('ENROLLED_FREE');
+    expect((await request('/api/v1/courses/future-address')).status).toBe(404);
+    const newDraft = (await request(`/api/v1/admin/courses/${c.id}`,'GET',undefined,admin.cookie)).data;
+    expect(newDraft.slug).toBe('future-address');
+    const newLesson = newDraft.modules[0].lessons[0].id;
+    expect((await request(`/api/v1/lessons/${newLesson}`)).status).toBe(403);
+    const enrolled = await request(`/api/v1/courses/${c.id}/enroll`,'POST',{},learner.cookie);
+    expect(enrolled.data.revision_id).toBe(editor.current_revision_id);
+    expect((await request(`/api/v1/admin/courses/${c.id}`,'PUT',change,admin.cookie)).status).toBe(409);
+    expect((await request(`/api/v1/admin/courses/${c.id}/publish`,'POST',{expectedRevisionId:editor.current_revision_id},admin.cookie)).status).toBe(409);
+    expect((await request(`/api/v1/admin/courses/${c.id}/publish`,'POST',{expectedRevisionId:saved.data.current_revision_id},admin.cookie)).status).toBe(200);
+    expect((await request('/api/v1/courses/future-address')).data.title).toBe('Draft only');
+    expect((await request(`/api/v1/lessons/${newLesson}`)).status).toBe(200);
+    expect((await request(`/api/v1/courses/${c.id}`,'GET',undefined,learner.cookie)).data.title).toBe('Curso de teste');
+  });
+  it('restricts draft reading, writes and previews to the owner or administrator',async()=>{
+    const admin=await account('admin@example.com','admin');
+    const author=await account('author@example.com','author');
+    const learner=await account('learner@example.com');
+    const c=await publish(admin.cookie,'owned-course');
+    expect((await request(`/api/v1/admin/courses/${c.id}`,'GET',undefined,author.cookie)).status).toBe(403);
+    expect((await request('/api/v1/admin/content/preview','POST',{body:'**bold**',contentFormat:'markdown'},learner.cookie)).status).toBe(403);
+    const preview=await request('/api/v1/admin/content/preview','POST',{body:'**bold**',contentFormat:'markdown'},author.cookie);
+    expect(preview.data.html).toContain('<strong>bold</strong>');
+    const revision=(await request(`/api/v1/admin/courses/${c.id}`,'GET',undefined,admin.cookie)).data.current_revision_id;
+    expect((await request(`/api/v1/admin/courses/${c.id}`,'PUT',{...draft('owned-course'),expectedRevisionId:revision},author.cookie)).status).toBe(403);
+  });
+  it('serves the same safe Markdown in the preview and a published lesson',async()=>{
+    const admin=await account('admin@example.com','admin');
+    const data=draft('markdown-course','OPEN_FREE');
+    const lesson={...data.modules[0].lessons[0],body:'# Title\n\n**Text**\n\n<script>alert(1)</script>',contentFormat:'markdown'};
+    const created=await request('/api/v1/admin/courses','POST',{...data,modules:[{title:'Module',lessons:[lesson]}]},admin.cookie);
+    await request(`/api/v1/admin/courses/${created.data.id}/publish`,'POST',{},admin.cookie);
+    const detail=(await request('/api/v1/courses/markdown-course')).data;
+    const result=await request(`/api/v1/lessons/${detail.modules[0].lessons[0].id}`);
+    const preview=await request('/api/v1/admin/content/preview','POST',lesson,admin.cookie);
+    expect(result.data.body_html).toBe(preview.data.html);
+    expect(result.data.body_html).toContain('<h1>Title</h1>');
+    expect(result.data.body_html).not.toContain('<script>');
+  });
+  it('curates home independently from the catalog, with scheduling and optimistic concurrency',async()=>{
+    const admin=await account('admin@example.com','admin');
+    const author=await account('author@example.com','author');
+    const first=await publish(admin.cookie,'first-home');
+    const second=await publish(admin.cookie,'second-home');
+    const third=await publish(admin.cookie,'third-home');
+    const date=offset=>new Date(Date.now()+offset).toISOString();
+    const placement=(courseId:string,priority:number,slot='featured',startsAt=date(-3600000),endsAt:string|null=null)=>({courseId,priority,slot,startsAt,endsAt});
+    const data={expectedVersion:0,items:[placement(first.id,5),placement(second.id,1),placement(third.id,0,'hero',date(3600000)),placement(third.id,0,'recommended',date(-7200000),date(-3600000))]};
+    expect((await request('/api/v1/admin/home','PUT',data,author.cookie)).status).toBe(403);
+    expect((await request('/api/v1/admin/home','PUT',data,admin.cookie)).status).toBe(200);
+    const selected=(await request('/api/v1/home')).data;
+    expect(selected.featured.map(c=>c.id)).toEqual([second.id,first.id]);
+    expect(selected.hero).toEqual([]);expect(selected.recommended).toEqual([]);
+    expect((await request('/api/v1/admin/home','PUT',data,admin.cookie)).status).toBe(409);
+    const draftOnly=(await request('/api/v1/admin/courses','POST',draft('draft-only'),admin.cookie)).data;
+    expect((await request('/api/v1/admin/home','PUT',{expectedVersion:1,items:[placement(draftOnly.id,0)]},admin.cookie)).status).toBe(422);
+    expect((await request('/api/v1/admin/home','GET',undefined,admin.cookie)).data.version).toBe(1);
+    await request(`/api/v1/admin/courses/${second.id}/archive`,'POST',{},admin.cookie);
+    expect((await request('/api/v1/home')).data.featured.map(c=>c.id)).toEqual([first.id]);
+    await request('/api/v1/admin/home','PUT',{expectedVersion:1,items:[]},admin.cookie);
+    expect((await request('/api/v1/home')).data.featured).toEqual([]);
+    expect((await request('/api/v1/courses')).data.map(c=>c.id)).toContain(first.id);
+  });
+});
+
+it('does not spend the credential-attempt limit on normal page session lookups',async()=>{
+  const learner=await account('reader@example.com');
+  for(let i=0;i<22;i++)expect((await request('/api/v1/auth/me','GET',undefined,learner.cookie)).status).toBe(200);
+  expect((await request('/api/v1/auth/login','POST',{email:'reader@example.com',password})).status).toBe(200);
+});
+it('still limits repeated credential attempts',async()=>{
+  for(let i=0;i<20;i++)expect((await request('/api/v1/auth/login','POST',{})).status).toBe(422);
+  expect((await request('/api/v1/auth/login','POST',{})).status).toBe(429);
 });

@@ -47,3 +47,7 @@ SQLite serializes writers. Use short synchronous transactions and `BEGIN IMMEDIA
 Sessions use `http_sessions` in the application database; the original `sessions` schema table is reserved and unused. Role/status/session-version are rechecked on authenticated requests. The web package is mounted by the API, so it has no separate listening port.
 
 Production topology: `learn.maiaplatform.org` → VPS Nginx/Maia Edge (TLS) → WireGuard → host API on 3200. Bind to the host VPN IP and trust only the VPS VPN IP. Installation does not change the tunnel; see [operations](08-operations.md).
+
+## Implemented authoring and home
+
+The browser studio saves revision snapshots with optimistic concurrency; published and editable pointers are independent. New drafts are explicitly created before server autosave starts. Local recovery is scoped to the signed-in account. Markdown preview and lesson rendering share the server-side parser and HTML allowlist; raw HTML remains literal. The editorial home uses promotions and a versioned singleton updated in a short immediate transaction. See [authoring](12-authoring.md) for limits and migration details.

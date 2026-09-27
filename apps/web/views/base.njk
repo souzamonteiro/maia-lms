@@ -14,12 +14,12 @@
     <nav aria-label="Main" data-i18n-aria-label="mainNav">
       <a href="/courses" data-i18n="navCourses">Courses</a>
       <a href="/my-learning" data-i18n="navMyLearning">My learning</a>
+      <span id="account"><a href="/auth/login" data-i18n="navLogin">Log in</a></span>
       <select id="languageSelect" aria-label="Language" data-i18n-aria-label="languageLabel">
         <option value="en">English</option>
         <option value="pt-BR">Português</option>
         <option value="es">Español</option>
       </select>
-      <span id="account"><a href="/auth/login" data-i18n="navLogin">Log in</a></span>
     </nav>
   </header>
   <main id="content">{% block content %}{% endblock %}</main>

@@ -17,8 +17,9 @@ test('administrator publishes; a learner enrolls and completes an article', asyn
     .getByLabel('Content (text)')
     .fill('Your first project starts here. <script>alert("xss")</script>');
   await page.getByRole('button', { name: 'Save draft' }).click();
-  await page.getByRole('button', { name: 'Publish', exact: true }).click();
-  await expect(page.getByText('PUBLISHED', { exact: true })).toBeVisible();
+  const courseCard = page.locator('#admin-list .card').filter({has:page.getByRole('heading',{name:'First steps with Maia',exact:true})});
+  await courseCard.getByRole('button', { name: 'Publish', exact: true }).click();
+  await expect(courseCard.getByText('PUBLISHED', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await page.goto('/auth/register');
   await page.getByLabel('Email', { exact: true }).fill('learner@example.com');
@@ -39,7 +40,7 @@ test('administrator publishes; a learner enrolls and completes an article', asyn
   await expect(page.getByRole('button', { name: 'Lesson completed ✓' })).toBeVisible();
   await page.getByRole('link', { name: 'My learning', exact: true }).click();
   await expect(page.getByText('1 of 1 required lessons completed.')).toBeVisible();
-  await page.goto('/');
+  await page.goto('/courses');
   await expect(page.getByRole('link', { name: 'First steps with Maia' })).toBeVisible();
   await page.screenshot({ path: 'test-results/catalog.png', fullPage: true });
 });

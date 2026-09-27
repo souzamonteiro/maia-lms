@@ -1,3 +1,6 @@
+import { icon } from './icons.js';
+import { mountStudio, studioDirty } from './studio.js';
+import { mountHomeEditor, homeDirty } from './home-editor.js';
 import { applyTranslations, detectLocale, storeLocale, translate } from './i18n.js';
 const app = document.querySelector('#app');
 const message = document.querySelector('#message');
@@ -24,7 +27,18 @@ async function api(path, method = 'GET', data) {
     ...(method !== 'GET' ? { body: JSON.stringify(data ?? {}) } : {}),
   });
   const result = response.status === 204 ? null : await response.json();
-  if (!response.ok) throw new Error(result.error || t('genericError'));
+  if (!response.ok) {
+    const error = new Error(
+      result.code
+        ? t(result.code)
+        : response.status === 422
+          ? t('invalidInput')
+          : result.error || t('genericError'),
+    );
+    error.code = result.code;
+    error.status = response.status;
+    throw error;
+  }
   return result;
 }
 function notify(error) {
@@ -96,7 +110,7 @@ async function detail(slug) {
 }
 async function lesson(id) {
   const l = await api(`/lessons/${encodeURIComponent(id)}`);
-  app.innerHTML = `<a href="/courses/${e(l.course_id)}">${t('backToCourse')}</a><article class="lesson"><h1>${e(l.title)}</h1><div class="lesson-body">${e(l.body)}</div></article>${me ? `<button id="complete">${l.progress?.completed_at ? t('lessonCompleted') : t('markComplete')}</button>` : `<p>${t('signInToTrackProgress')}</p>`}`;
+  app.innerHTML = `<a href="/courses/${e(l.course_id)}">${t('backToCourse')}</a><article class="lesson"><h1>${e(l.title)}</h1><div class="lesson-body prose">${l.body_html}</div></article>${me ? `<button id="complete">${l.progress?.completed_at ? t('lessonCompleted') : t('markComplete')}</button>` : `<p>${t('signInToTrackProgress')}</p>`}`;
   button('#complete', async () => {
     await api(`/lessons/${id}/progress`, 'PUT', { complete: true });
     await lesson(id);
@@ -110,75 +124,28 @@ async function learning() {
   const courses = await api('/me/enrollments');
   app.innerHTML = `<h1>${t('myLearningTitle')}</h1>${courses.length ? courses.map(c => `<article class="card"><h2><a href="/courses/${e(c.slug)}">${e(c.title)}</a></h2><p>${t('lessonsProgress', { completed: c.completed_lessons, required: c.required_lessons })}${c.state === 'revoked' ? t('revokedAccess') : ''}.</p><progress value="${c.completed_lessons}" max="${Math.max(1, c.required_lessons)}" aria-label="${t('courseProgressAria')}"></progress></article>`).join('') : `<p>${t('nextLearningPrefix')}<a href="/courses">${t('coursesCatalog')}</a>.</p>`}`;
 }
-function addLesson(module, lesson = {}) {
-  const field = document.createElement('fieldset');
-  field.className = 'lesson-editor';
-  field.innerHTML = `<legend>${t('lessonLegend')}</legend><label>${t('lessonTitleLabel')}<input class="lesson-title" required maxlength="200" value="${e(lesson.title)}"></label><label>${t('lessonContentLabel')}<textarea class="lesson-content" required maxlength="100000">${e(lesson.body)}</textarea></label><label><input class="lesson-required" type="checkbox" ${lesson.is_required !== 0 ? 'checked' : ''}>${t('requiredLabel')}</label><label><input class="lesson-preview" type="checkbox" ${lesson.is_preview ? 'checked' : ''}>${t('previewLabel')}</label><button type="button" class="remove secondary">${t('removeLesson')}</button>`;
-  field.querySelector('.remove').onclick = () => field.remove();
-  module.querySelector('.lessons').append(field);
-}
-function addModule(data = {}) {
-  const field = document.createElement('fieldset');
-  field.className = 'module-editor';
-  field.innerHTML = `<legend>${t('moduleLegend')}</legend><label>${t('moduleTitleLabel')}<input class="module-title" required maxlength="200" value="${e(data.title)}"></label><div class="lessons"></div><div class="actions"><button type="button" class="add-lesson secondary">${t('addLesson')}</button><button type="button" class="remove secondary">${t('removeModule')}</button></div>`;
-  field.querySelector('.add-lesson').onclick = () => addLesson(field);
-  field.querySelector('.remove').onclick = () => field.remove();
-  document.querySelector('#modules').append(field);
-  for (const lesson of data.lessons || [{}]) addLesson(field, lesson);
-}
 async function admin() {
   if (!me || !['admin', 'author'].includes(me.role)) throw new Error(t('adminAccessRestricted'));
-  const courses = await api('/admin/courses');
-  app.innerHTML = `<h1>${t('adminPublishTitle')}</h1><p>${t('adminPublishDesc')}</p><div id="admin-list">${courses.map(c => `<article class="card"><h2>${e(c.title)}</h2><p>${e(c.status)}</p><div class="actions"><button data-edit="${c.id}">${t('edit')}</button>${me.role === 'admin' ? `<button data-publish="${c.id}">${t('publish')}</button><button data-archive="${c.id}" class="secondary">${t('archive')}</button>` : ''}<a href="/courses/${e(c.slug)}">${t('view')}</a></div></article>`).join('')}</div><h2 id="editor-title">${t('newCourseTitle')}</h2><form id="editor"><label>${t('title')}<input name="title" required minlength="3" maxlength="255"></label><label>${t('courseSlugLabel')}<input name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" minlength="3" maxlength="100" placeholder="${t('courseSlugPlaceholder')}"></label><label>${t('summary')}<textarea name="summary" required minlength="10" maxlength="1000"></textarea></label><label>${t('access')}<select name="accessMode" aria-label="${t('access')}"><option value="OPEN_FREE">${t('accessOpenOption')}</option><option value="ENROLLED_FREE">${t('accessEnrolledOption')}</option></select></label><div id="modules"></div><div class="actions"><button type="button" id="add-module" class="secondary">${t('addModule')}</button><button type="submit">${t('saveDraft')}</button></div></form>`;
-  let editingId;
-  addModule();
-  button('#add-module', () => addModule());
-  bindForm('#editor', async data => {
-    const modules = [...document.querySelectorAll('.module-editor')].map(m => ({
-      title: m.querySelector('.module-title').value,
-      lessons: [...m.querySelectorAll('.lesson-editor')].map(l => ({
-        title: l.querySelector('.lesson-title').value,
-        body: l.querySelector('.lesson-content').value,
-        required: l.querySelector('.lesson-required').checked,
-        preview: l.querySelector('.lesson-preview').checked,
-      })),
-    }));
-    await api(`/admin/courses${editingId ? `/${editingId}` : ''}`, editingId ? 'PUT' : 'POST', {
-      ...Object.fromEntries(data),
-      modules,
-    });
-    await admin();
-    notify(t('draftSaved'));
-  });
-  document.querySelector('#admin-list').addEventListener('click', async event => {
-    const target = event.target;
-    try {
-      if (target.dataset.publish || target.dataset.archive) {
-        await api(
-          `/admin/courses/${target.dataset.publish || target.dataset.archive}/${target.dataset.publish ? 'publish' : 'archive'}`,
-          'POST',
-        );
-        await admin();
-      }
-      if (target.dataset.edit) {
-        const c = await api(`/courses/${target.dataset.edit}`);
-        editingId = c.id;
-        const form = document.querySelector('#editor');
-        for (const key of ['title', 'slug', 'summary']) form.elements[key].value = c[key];
-        form.elements.accessMode.value = c.access_mode;
-        document.querySelector('#modules').innerHTML = '';
-        for (const m of c.modules) {
-          const lessons = await Promise.all(m.lessons.map(l => api(`/lessons/${l.id}`)));
-          addModule({ ...m, lessons });
-        }
-        document.querySelector('#editor-title').textContent = t('editCourseTitle');
-        form.scrollIntoView();
-      }
-    } catch (error) {
-      notify(error);
-    }
-  });
+  const context = { app, api, t, e, notify, me };
+  if (location.pathname === '/admin/home') {
+    if (me.role !== 'admin') throw new Error(t('adminAccessRestricted'));
+    await mountHomeEditor(context);
+  } else await mountStudio(context);
 }
+async function home() {
+  const selection = await api('/home');
+  const hero = selection.hero[0];
+  app.innerHTML = `<section class="hero"><p class="eyebrow">Maia Learn</p><h1>${hero ? e(hero.title) : t('heroTitle')}</h1><p>${hero ? e(hero.summary) : t('heroText')}</p>${hero ? `<a class="button" href="/courses/${e(hero.slug)}">${t('viewCourse')}</a>` : ''}</section>${['featured', 'recommended'].map(slot => (selection[slot].length ? `<section><h2>${t(slot === 'featured' ? 'homeFeatured' : 'homeRecommended')}</h2>${cards(selection[slot])}</section>` : '')).join('')}<a class="button" href="/courses">${t('allCourses')}</a>`;
+}
+window.addEventListener('beforeunload', event => {
+  if (
+    (location.pathname === '/admin' && studioDirty()) ||
+    (location.pathname === '/admin/home' && homeDirty())
+  ) {
+    event.preventDefault();
+    event.returnValue = '';
+  }
+});
 async function main() {
   applyLocale();
   try {
@@ -188,7 +155,7 @@ async function main() {
   }
   if (me) {
     document.querySelector('#account').innerHTML =
-      `${['admin', 'author'].includes(me.role) ? `<a href="/admin">${t('administer')}</a> · ` : ''}<button id="logout" class="secondary">${t('signOut')}</button>`;
+      `${['admin', 'author'].includes(me.role) ? `<a href="/admin">${t('administer')}</a>` : ''}<button id="logout" class="secondary">${icon('signOut')}${t('signOut')}</button>`;
     button('#logout', async () => {
       await api('/auth/logout', 'POST');
       location.href = '/';
@@ -200,6 +167,7 @@ async function main() {
   else if (parts[0] === 'lessons') await lesson(parts[1]);
   else if (parts[0] === 'my-learning') await learning();
   else if (parts[0] === 'admin') await admin();
+  else if (!parts.length) await home();
   else await catalog();
 }
 languageSelect.addEventListener('change', () => {

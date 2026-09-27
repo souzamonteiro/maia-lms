@@ -2,7 +2,9 @@ openapi: 3.1.0
 info:
   title: Maia Learn API — implemented MVP
   version: 0.1.0
-  description: Free text courses, identity, enrollment and progress. Mutations require application/json and same-origin browser requests. See planned-openapi.yaml for future endpoints.
+  description: Free text/Markdown courses, draft publication, curated home, identity,
+    enrollment and progress. Mutations require application/json and same-origin browser
+    requests. Video remains planned.
 servers:
   - url: https://learn.maiaplatform.org/api/v1
   - url: http://localhost:3000/api/v1
@@ -16,15 +18,27 @@ paths:
           application/json:
             schema:
               type: object
-              required: [email, password]
+              required:
+                - email
+                - password
               properties:
-                email: {type: string, format: email}
-                password: {type: string, minLength: 8, maxLength: 128}
-                locale: {type: string, default: pt-BR}
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                locale:
+                  type: string
+                  default: pt-BR
       responses:
-        '201': {description: Account created}
-        '409': {description: Email exists}
-        '422': {description: Invalid fields}
+        '201':
+          description: Account created
+        '409':
+          description: Email exists
+        '422':
+          description: Invalid fields
   /auth/login:
     post:
       summary: Rotate session and sign in
@@ -34,34 +48,52 @@ paths:
           application/json:
             schema:
               type: object
-              required: [email, password]
+              required:
+                - email
+                - password
               properties:
-                email: {type: string, format: email}
-                password: {type: string}
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
       responses:
-        '200': {description: User and session cookie}
-        '401': {description: Invalid credentials}
+        '200':
+          description: User and session cookie
+        '401':
+          description: Invalid credentials
   /auth/logout:
     post:
       summary: Destroy current session
-      security: [{cookieAuth: []}]
+      security:
+        - cookieAuth: []
       responses:
-        '204': {description: Logged out}
+        '204':
+          description: Logged out
   /auth/me:
     get:
       summary: Current user
-      security: [{cookieAuth: []}]
+      security:
+        - cookieAuth: []
       responses:
-        '200': {description: User profile}
-        '401': {description: Session missing or invalid}
+        '200':
+          description: User profile
+        '401':
+          description: Session missing or invalid
   /auth/verify-email:
     get:
       summary: Consume email verification token
       parameters:
-        - {name: token, in: query, required: true, schema: {type: string}}
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
       responses:
-        '200': {description: Verified}
-        '400': {description: Invalid or expired token}
+        '200':
+          description: Verified
+        '400':
+          description: Invalid or expired token
   /auth/forgot-password:
     post:
       summary: Queue reset email if account exists
@@ -71,9 +103,12 @@ paths:
             schema:
               type: object
               properties:
-                email: {type: string, format: email}
+                email:
+                  type: string
+                  format: email
       responses:
-        '204': {description: Accepted without disclosing account existence}
+        '204':
+          description: Accepted without disclosing account existence
   /auth/reset-password:
     post:
       summary: Consume reset token and invalidate existing sessions
@@ -83,58 +118,83 @@ paths:
           application/json:
             schema:
               type: object
-              required: [token, password]
+              required:
+                - token
+                - password
               properties:
-                token: {type: string}
-                password: {type: string, minLength: 8, maxLength: 128}
+                token:
+                  type: string
+                password:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
       responses:
-        '200': {description: Password updated}
-        '400': {description: Invalid token}
+        '200':
+          description: Password updated
+        '400':
+          description: Invalid token
   /courses:
     get:
       summary: Search published courses (maximum 100)
       parameters:
-        - {name: q, in: query, schema: {type: string}}
+        - name: q
+          in: query
+          schema:
+            type: string
       responses:
-        '200': {description: Array of published courses}
+        '200':
+          description: Array of published courses
   /courses/{id}:
     parameters:
-      - {$ref: '#/components/parameters/courseId'}
+      - $ref: '#/components/parameters/courseId'
     get:
       summary: Course and syllabus; enrolled learners see their assigned revision
       responses:
-        '200': {description: Course with modules, lesson metadata and optional enrollment}
-        '404': {description: Missing or inaccessible draft}
+        '200':
+          description: Course with modules
+          lesson metadata and optional enrollment: null
+        '404':
+          description: Missing or inaccessible draft
   /courses/{id}/enroll:
     parameters:
-      - {$ref: '#/components/parameters/courseId'}
+      - $ref: '#/components/parameters/courseId'
     post:
       summary: Idempotent free enrollment
-      security: [{cookieAuth: []}]
+      security:
+        - cookieAuth: []
       responses:
-        '200': {description: Existing or new enrollment}
-        '403': {description: Paid course or revoked access}
-        '409': {description: Course not published}
+        '200':
+          description: Existing or new enrollment
+        '403':
+          description: Paid course or revoked access
+        '409':
+          description: Course not published
   /me/enrollments:
     get:
       summary: My enrollments with required/completed lesson counts
-      security: [{cookieAuth: []}]
+      security:
+        - cookieAuth: []
       responses:
-        '200': {description: Enrollment array}
+        '200':
+          description: Enrollment array
   /lessons/{id}:
     parameters:
-      - {$ref: '#/components/parameters/lessonId'}
+      - $ref: '#/components/parameters/lessonId'
     get:
       summary: Authorized lesson body and saved progress
       responses:
-        '200': {description: Lesson}
-        '403': {description: Enrollment required or wrong revision}
+        '200':
+          description: Lesson with original body, content_format, sanitized body_html
+            and saved progress
+        '403':
+          description: Enrollment required or wrong revision
   /lessons/{id}/progress:
     parameters:
-      - {$ref: '#/components/parameters/lessonId'}
+      - $ref: '#/components/parameters/lessonId'
     put:
       summary: Save position or mark lesson complete
-      security: [{cookieAuth: []}]
+      security:
+        - cookieAuth: []
       requestBody:
         required: true
         content:
@@ -142,56 +202,269 @@ paths:
             schema:
               type: object
               properties:
-                positionSeconds: {type: integer, minimum: 0}
-                complete: {type: boolean}
+                positionSeconds:
+                  type: integer
+                  minimum: 0
+                complete:
+                  type: boolean
       responses:
-        '200': {description: Saved progress; completion is not undone by false}
-        '403': {description: No active entitlement or cross-course/revision lesson}
+        '200':
+          description: Saved progress; completion is not undone by false
+        '403':
+          description: No active entitlement or cross-course/revision lesson
   /admin/courses:
     get:
       summary: List owned courses (admin sees all)
-      security: [{cookieAuth: []}]
+      security:
+        - cookieAuth: []
       responses:
-        '200': {description: Course array}
-        '403': {description: Author/admin required}
+        '200':
+          description: Course array
+        '403':
+          description: Author/admin required
     post:
       summary: Create a free-course draft with modules and lessons
-      security: [{cookieAuth: []}]
+      security:
+        - cookieAuth: []
       requestBody:
-        {$ref: '#/components/requestBodies/course'}
+        $ref: '#/components/requestBodies/course'
       responses:
-        '201': {description: Draft created}
-        '409': {description: Slug exists}
-        '422': {description: Invalid course}
+        '201':
+          description: Draft created
+        '409':
+          description: Slug exists or CREATION_EXISTS
+        '422':
+          description: Invalid course
   /admin/courses/{id}:
     parameters:
-      - {$ref: '#/components/parameters/courseId'}
+      - $ref: '#/components/parameters/courseId'
     put:
       summary: Create a new draft revision (owner or admin)
-      security: [{cookieAuth: []}]
+      security:
+        - cookieAuth: []
       requestBody:
-        {$ref: '#/components/requestBodies/course'}
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - slug
+                - title
+                - summary
+                - accessMode
+                - modules
+                - expectedRevisionId
+              properties:
+                slug:
+                  type: string
+                  minLength: 3
+                  maxLength: 100
+                  pattern: ^[a-z0-9]+(?:-[a-z0-9]+)*$
+                title:
+                  type: string
+                  minLength: 3
+                  maxLength: 255
+                summary:
+                  type: string
+                  minLength: 10
+                  maxLength: 1000
+                locale:
+                  type: string
+                  default: pt-BR
+                  enum:
+                    - en
+                    - pt-BR
+                    - es
+                accessMode:
+                  type: string
+                  enum:
+                    - OPEN_FREE
+                    - ENROLLED_FREE
+                modules:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items:
+                    type: object
+                    required:
+                      - title
+                      - lessons
+                    properties:
+                      title:
+                        type: string
+                        minLength: 1
+                        maxLength: 200
+                      lessons:
+                        type: array
+                        minItems: 1
+                        maxItems: 100
+                        items:
+                          type: object
+                          required:
+                            - title
+                            - body
+                          properties:
+                            title:
+                              type: string
+                              minLength: 1
+                              maxLength: 200
+                            body:
+                              type: string
+                              minLength: 1
+                              maxLength: 100000
+                            required:
+                              type: boolean
+                              default: true
+                            preview:
+                              type: boolean
+                              default: false
+                            contentFormat:
+                              type: string
+                              enum:
+                                - plain
+                                - markdown
+                              default: plain
+                creationId:
+                  type: string
+                  format: uuid
+                  description: Optional stable client ID to detect repeated draft
+                    creation (409 CREATION_EXISTS).
+                expectedRevisionId:
+                  type: string
+                  format: uuid
       responses:
-        '200': {description: Draft updated; enrolled revisions unchanged}
-        '403': {description: Not owner/admin}
+        '200':
+          description: New draft revision; publication and enrolled revisions unchanged
+        '403':
+          description: Not owner/admin
+        '409':
+          description: 'DRAFT_CONFLICT: reload before retrying'
+    get:
+      summary: Read editable revision including lesson bodies (owner or admin)
+      security: &id001
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Editable course snapshot, revision_id and current_revision_id
+        '403':
+          description: Not owner/admin
   /admin/courses/{id}/publish:
     parameters:
-      - {$ref: '#/components/parameters/courseId'}
+      - $ref: '#/components/parameters/courseId'
     post:
       summary: Publish current revision (admin only)
-      security: [{cookieAuth: []}]
+      security:
+        - cookieAuth: []
       responses:
-        '200': {description: Published}
-        '403': {description: Admin required}
+        '200':
+          description: Published
+        '403':
+          description: Admin required
+        '409':
+          description: Stale expected revision or slug conflict
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                expectedRevisionId:
+                  type: string
+                  format: uuid
+                  description: Recommended concurrency guard; optional for legacy
+                    clients
   /admin/courses/{id}/archive:
     parameters:
-      - {$ref: '#/components/parameters/courseId'}
+      - $ref: '#/components/parameters/courseId'
     post:
       summary: Archive, keeping enrolled access (admin only)
-      security: [{cookieAuth: []}]
+      security:
+        - cookieAuth: []
       responses:
-        '200': {description: Archived}
-        '403': {description: Admin required}
+        '200':
+          description: Archived
+        '403':
+          description: Admin required
+  /admin/content/preview:
+    post:
+      summary: Render content using the same sanitization as lesson delivery (author/admin)
+      security: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - body
+                - contentFormat
+              properties:
+                body:
+                  type: string
+                  maxLength: 100000
+                contentFormat:
+                  type: string
+                  enum:
+                    - plain
+                    - markdown
+      responses:
+        '200':
+          description: Object with sanitized html string
+        '403':
+          description: Author/admin required
+        '422':
+          description: Invalid content
+  /home:
+    get:
+      summary: Active editorial selections; published courses only, ordered by ascending
+        priority
+      responses:
+        '200':
+          description: Object with hero, featured, recommended arrays of public course
+            metadata. Start inclusive, end exclusive.
+  /admin/home:
+    get:
+      summary: Read editorial selection and concurrency version (admin only)
+      security: *id001
+      responses:
+        '200':
+          description: Object with version integer and items (HomePlacement array)
+        '403':
+          description: Admin required
+    put:
+      summary: Replace editorial selection atomically (admin only)
+      description: At most one hero and one placement per course/slot. End must follow
+        start. Only published courses are accepted. UTC timestamps.
+      security: *id001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - expectedVersion
+                - items
+              properties:
+                expectedVersion:
+                  type: integer
+                  minimum: 0
+                items:
+                  type: array
+                  maxItems: 50
+                  items:
+                    $ref: '#/components/schemas/HomePlacement'
+      responses:
+        '200':
+          description: Updated version and items
+        '403':
+          description: Admin required
+        '409':
+          description: HOME_CONFLICT
+        '422':
+          description: Invalid input, HOME_DUPLICATE or HOME_UNPUBLISHED
 components:
   securitySchemes:
     cookieAuth:
@@ -200,8 +473,20 @@ components:
       name: __Host-sid
       description: Production HTTPS cookie; local HTTP development uses sid.
   parameters:
-    courseId: {name: id, in: path, required: true, schema: {type: string}, description: Course UUID or slug}
-    lessonId: {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    courseId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Course UUID or slug
+    lessonId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
   requestBodies:
     course:
       required: true
@@ -209,31 +494,115 @@ components:
         application/json:
           schema:
             type: object
-            required: [slug, title, summary, accessMode, modules]
+            required:
+              - slug
+              - title
+              - summary
+              - accessMode
+              - modules
             properties:
-              slug: {type: string, minLength: 3, maxLength: 100, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'}
-              title: {type: string, minLength: 3, maxLength: 255}
-              summary: {type: string, minLength: 10, maxLength: 1000}
-              locale: {type: string, default: pt-BR}
-              accessMode: {type: string, enum: [OPEN_FREE, ENROLLED_FREE]}
+              slug:
+                type: string
+                minLength: 3
+                maxLength: 100
+                pattern: ^[a-z0-9]+(?:-[a-z0-9]+)*$
+              title:
+                type: string
+                minLength: 3
+                maxLength: 255
+              summary:
+                type: string
+                minLength: 10
+                maxLength: 1000
+              locale:
+                type: string
+                default: pt-BR
+                enum:
+                  - en
+                  - pt-BR
+                  - es
+              accessMode:
+                type: string
+                enum:
+                  - OPEN_FREE
+                  - ENROLLED_FREE
               modules:
                 type: array
                 minItems: 1
                 maxItems: 100
                 items:
                   type: object
-                  required: [title, lessons]
+                  required:
+                    - title
+                    - lessons
                   properties:
-                    title: {type: string, minLength: 1, maxLength: 200}
+                    title:
+                      type: string
+                      minLength: 1
+                      maxLength: 200
                     lessons:
                       type: array
                       minItems: 1
                       maxItems: 100
                       items:
                         type: object
-                        required: [title, body]
+                        required:
+                          - title
+                          - body
                         properties:
-                          title: {type: string, minLength: 1, maxLength: 200}
-                          body: {type: string, minLength: 1, maxLength: 100000}
-                          required: {type: boolean, default: true}
-                          preview: {type: boolean, default: false}
+                          title:
+                            type: string
+                            minLength: 1
+                            maxLength: 200
+                          body:
+                            type: string
+                            minLength: 1
+                            maxLength: 100000
+                          required:
+                            type: boolean
+                            default: true
+                          preview:
+                            type: boolean
+                            default: false
+                          contentFormat:
+                            type: string
+                            enum:
+                              - plain
+                              - markdown
+                            default: plain
+              creationId:
+                type: string
+                format: uuid
+                description: Optional stable client ID to detect repeated draft creation
+                  (409 CREATION_EXISTS).
+  schemas:
+    HomePlacement:
+      type: object
+      required:
+        - courseId
+        - slot
+        - priority
+        - startsAt
+        - endsAt
+      properties:
+        courseId:
+          type: string
+          format: uuid
+        slot:
+          type: string
+          enum:
+            - hero
+            - featured
+            - recommended
+        priority:
+          type: integer
+          minimum: 0
+          maximum: 1000
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type:
+            - string
+            - 'null'
+          format: date-time

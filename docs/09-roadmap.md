@@ -1,5 +1,19 @@
 # Roadmap and work packages
 
+> **Plano de implementação atualizado:** [TODO — plataforma completa de cursos em vídeo](../TODO.md).
+> A auditoria de 27/09/2026 detalha lacunas verificadas no código, prioridades P0/P1,
+> dependências e critérios de aceite. O protótipo já está publicado e recebeu
+> internacionalização (`en`, `pt-BR`, `es`); essas alterações devem ser preservadas.
+> Os marcos abaixo são a visão histórica; tarefas executáveis e estado pendente
+> passam a ser acompanhados no TODO.
+
+## E1 iniciada — entrega local de 27/09/2026
+
+Editor Markdown, prévia sanitizada, rascunho separado da publicação, autosave e
+recuperação local, conflitos entre abas e home editorial implementados. Guia e
+limites: [autoria](12-authoring.md). E1 permanece parcial conforme o TODO; vídeo
+ainda depende de E2. Esta entrega não foi implantada no protótipo.
+
 ## Implemented delivery
 
 - M0: SQLite migrations, runnable API/web/worker, workspace build, lockfile, CI, backup tool, Docker packaging and host/VPS installers.
@@ -9,7 +23,7 @@
 
 ## Pending before the full product is complete
 
-M2 video upload/inspection/transcoding/HLS/captions; quizzes and completion policies from M3; M4 commerce including real provider verification and refunds; M5 credentials; MFA, privacy requests, richer catalog/editor, production performance/accessibility checks and deployment on the actual machines. Provider adapters and database tables alone do not complete these milestones. SMTP, VPN, DNS and certificates require the destination environment.
+M2 video upload/inspection/transcoding/HLS/captions; quizzes and completion policies from M3; M4 commerce including real provider verification and refunds; M5 credentials; MFA, privacy requests, richer catalog/editor, production performance/accessibility checks and validation of the complete video workflows on the deployed prototype. Provider adapters and database tables alone do not complete these milestones. SMTP, VPN, DNS and certificates require the destination environment.
 
 The table below remains the complete product roadmap, not a claim that every milestone is shipped.
 

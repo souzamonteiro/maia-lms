@@ -7,10 +7,10 @@ SQLite stores UUIDs as TEXT, UTC timestamps as TEXT (ISO 8601 or SQLite datetime
 | users | id, email, password_hash, verified_at, status, locale, session_version | unique normalized email; no plaintext credentials |
 | http_sessions | sid, data, expires_at | SQLite session store; expires_at in Unix milliseconds; signed cookie rotated on login |
 | sessions | original reserved schema | not used by the runtime |
-| courses | id, slug, access_mode, status, locale, author_id, current_revision_id | unique slug; controlled transitions |
-| course_revisions | id, course_id, title, summary, learning_outcomes, policy_json, published_at | immutable once published |
+| courses | id, slug, access_mode, status, locale, author_id, current_revision_id, published_revision_id | unique slug; controlled transitions |
+| course_revisions | id, course_id, title, summary, slug, access_mode, locale, learning_outcomes, policy_json, published_at | immutable once published |
 | modules | id, revision_id, sort_order, title | unique revision/order |
-| lessons | id, module_id, title, sort_order, kind, media_id, body, is_required, is_preview | unique module/order; preview explicit |
+| lessons | id, module_id, title, sort_order, kind, media_id, body, content_format, is_required, is_preview | unique module/order; preview explicit |
 | assets | id, owner_id, kind, storage_key, status, metadata_json | private key; controlled processing |
 | prices | id, course_id, currency, amount_minor, active_from, active_to | order snapshots price; historical rows retained |
 | enrollments | id, user_id, course_id, revision_id, state, enrolled_at | unique user/course; entitlement not inferred from row alone |
@@ -26,6 +26,7 @@ SQLite stores UUIDs as TEXT, UTC timestamps as TEXT (ISO 8601 or SQLite datetime
 | refunds | id, order_id, provider_ref, amount_minor, status | audit partial/full outcomes |
 | certificates | id, enrollment_id, public_code, payload_hash, issued_at, revoked_at, reason | unique code; one active per completion policy |
 | promotions | id, slot, course_id, starts_at, ends_at, priority | bounded placement, audited |
+| home_settings | id=1, version | optimistic concurrency for editorial changes |
 | audit_events | id, actor_id, action, subject_type, subject_id, occurred_at, metadata | append-only privileged actions |
 | outbox | id, event_type, payload, available_at, processed_at, attempts, lease_token | retryable async work |
 
@@ -43,6 +44,6 @@ Use SQL constraints plus domain checks; reject inconsistent cross-course lesson 
 
 ## Implementation boundary
 
-The runtime currently uses users, http_sessions, email_tokens, courses, course_revisions, modules, lessons, enrollments, entitlements, lesson_progress, audit_events and outbox. Other tables reserve the planned product model; their presence is not evidence of implemented payment, quiz or certificate flows. The invariants for those extensions above must be implemented and tested before exposing their endpoints. SQLite does not support row-level `FOR UPDATE`; use short `IMMEDIATE` transactions and database constraints.
+The runtime currently uses users, http_sessions, email_tokens, courses, course_revisions, modules, lessons, enrollments, entitlements, lesson_progress, promotions, home_settings, audit_events and outbox. Other tables reserve the planned product model; their presence is not evidence of implemented payment, quiz or certificate flows. The invariants for those extensions above must be implemented and tested before exposing their endpoints. SQLite does not support row-level `FOR UPDATE`; use short `IMMEDIATE` transactions and database constraints.
 
-Migration 002 adds lesson titles, session versioning and the actual session store; migration 003 adds worker lease tokens. Never modify an applied migration to upgrade an existing database. Course edits create a new revision and mark the course DRAFT; existing enrollments keep their revision and entitlement. Archiving closes public discovery/enrollment while preserving existing access.
+Migration 002 adds lesson titles, session versioning and the actual session store; migration 003 adds worker lease tokens. Never modify an applied migration to upgrade an existing database. Migration 004 adds separate editable/public revision pointers, revision metadata snapshots, plain/markdown content format and home concurrency state. Course edits create a new editable revision without changing published status or metadata; publication atomically promotes that revision. Existing enrollments keep their revision and entitlement. Legacy content defaults to plain and is never implicitly interpreted as Markdown. Archiving closes public discovery/enrollment while preserving existing access.

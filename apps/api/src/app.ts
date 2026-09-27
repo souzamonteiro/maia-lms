@@ -9,6 +9,7 @@ import rateLimit from 'express-rate-limit';
 import { SQLiteSessionStore } from './db/session-store.js';
 import type Database from 'better-sqlite3';
 import type { Config } from './config.js';
+import { homeRouter } from './routes/home.js';
 import { coursesRouter } from './routes/courses.js';
 import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
@@ -97,6 +98,8 @@ export function createApp(db: Database.Database, config: Config): express.Applic
   const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 20,
+    // Session lookup happens on every page; it is covered by the global limiter.
+    skip: req => req.method === 'GET' && req.path === '/me',
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: 'Too many requests, please try again later.' },
@@ -126,6 +129,7 @@ export function createApp(db: Database.Database, config: Config): express.Applic
   app.use('/api/v1/auth', authLimiter, authRouter(db, config.PUBLIC_BASE_URL));
 
   app.use('/api/v1', coursesRouter(db));
+  app.use('/api/v1', homeRouter(db));
   app.use(createWebApp());
 
   // ── 404 handler ───────────────────────────────────────────────

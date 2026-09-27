@@ -4,20 +4,23 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { slugSchema, UpdateLessonProgressSchema } from '@maia/domain';
 import { requireAuth, requireRole } from '../middleware/auth.js';
+import { renderContent } from '../services/content.js';
 import { AppError } from '../middleware/error-handler.js';
 
 const lessonSchema = z.object({
   title: z.string().min(1).max(200),
   body: z.string().min(1).max(100000),
+  contentFormat: z.enum(['plain', 'markdown']).default('plain'),
   required: z.boolean().default(true),
   preview: z.boolean().default(false),
 });
 const courseSchema = z.object({
+  creationId: z.string().uuid().optional(),
   slug: slugSchema,
   title: z.string().min(3).max(255),
   summary: z.string().min(10).max(1000),
   accessMode: z.enum(['OPEN_FREE', 'ENROLLED_FREE']),
-  locale: z.string().default('pt-BR'),
+  locale: z.enum(['en', 'pt-BR', 'es']).default('pt-BR'),
   modules: z
     .array(
       z.object({
@@ -35,10 +38,12 @@ type Course = {
   status: string;
   access_mode: string;
   current_revision_id: string;
+  published_revision_id: string | null;
   title: string;
   summary: string;
 };
 type Enrollment = { id: string; revision_id: string; state: string };
+const publicCourse = `SELECT c.*, r.title, r.summary FROM courses c JOIN course_revisions r ON r.id = c.published_revision_id`;
 const selectCourse = `SELECT c.*, r.title, r.summary FROM courses c JOIN course_revisions r ON r.id = c.current_revision_id`;
 
 export function coursesRouter(db: Database.Database): Router {
@@ -65,8 +70,8 @@ export function coursesRouter(db: Database.Database): Router {
   function writeRevision(courseId: string, data: z.infer<typeof courseSchema>): string {
     const revisionId = randomUUID();
     db.prepare(
-      'INSERT INTO course_revisions (id, course_id, title, summary) VALUES (?, ?, ?, ?)',
-    ).run(revisionId, courseId, data.title, data.summary);
+      'INSERT INTO course_revisions (id, course_id, title, summary, slug, access_mode, locale) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    ).run(revisionId, courseId, data.title, data.summary, data.slug, data.accessMode, data.locale);
     data.modules.forEach((module, mi) => {
       const moduleId = randomUUID();
       db.prepare(
@@ -75,7 +80,7 @@ export function coursesRouter(db: Database.Database): Router {
       module.lessons.forEach((lesson, li) =>
         db
           .prepare(
-            `INSERT INTO lessons (id, module_id, sort_order, title, body, is_required, is_preview) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO lessons (id, module_id, sort_order, title, body, is_required, is_preview, content_format) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
           )
           .run(
             randomUUID(),
@@ -85,6 +90,7 @@ export function coursesRouter(db: Database.Database): Router {
             lesson.body,
             Number(lesson.required),
             Number(lesson.preview),
+            lesson.contentFormat,
           ),
       );
     });
@@ -95,7 +101,7 @@ export function coursesRouter(db: Database.Database): Router {
     res.json(
       db
         .prepare(
-          `${selectCourse} WHERE c.status = 'PUBLISHED' AND (r.title LIKE ? OR r.summary LIKE ?) ORDER BY c.created_at DESC LIMIT 100`,
+          `${publicCourse} WHERE c.status = 'PUBLISHED' AND (r.title LIKE ? OR r.summary LIKE ?) ORDER BY c.created_at DESC LIMIT 100`,
         )
         .all(`%${search}%`, `%${search}%`),
     );
@@ -109,8 +115,14 @@ export function coursesRouter(db: Database.Database): Router {
   });
   router.post('/admin/courses', requireRole('admin', 'author'), (req, res) => {
     const data = courseSchema.parse(req.body);
-    const id = randomUUID();
+    const id = data.creationId ?? randomUUID();
     db.transaction(() => {
+      if (db.prepare('SELECT id FROM courses WHERE id = ?').get(id))
+        throw new AppError(
+          409,
+          'Course already created. Recover it before saving.',
+          'CREATION_EXISTS',
+        );
       if (db.prepare('SELECT id FROM courses WHERE slug = ?').get(data.slug))
         throw new AppError(409, 'Slug already exists');
       db.prepare(
@@ -121,34 +133,62 @@ export function coursesRouter(db: Database.Database): Router {
     })();
     res.status(201).json(course(id));
   });
-  router.put('/admin/courses/:id', requireRole('admin', 'author'), (req, res) => {
+  router.get('/admin/courses/:id', requireRole('admin', 'author'), (req, res) => {
     const c = course(req.params.id);
     assertOwner(c, req.session.userId, req.session.role);
-    const data = courseSchema.parse(req.body);
-    db.transaction(() => {
-      if (db.prepare('SELECT id FROM courses WHERE slug = ? AND id != ?').get(data.slug, c.id))
-        throw new AppError(409, 'Slug already exists');
-      const revisionId = writeRevision(c.id, data);
-      db.prepare(
-        `UPDATE courses SET current_revision_id = ?, slug = ?, access_mode = ?, locale = ?, status = 'DRAFT', updated_at = datetime('now') WHERE id = ?`,
-      ).run(revisionId, data.slug, data.accessMode, data.locale, c.id);
-    })();
-    res.json(course(c.id));
+    res.json(detail(c, c.current_revision_id, true));
+  });
+  router.post('/admin/content/preview', requireRole('admin', 'author'), (req, res) => {
+    const data = z
+      .object({ body: z.string().max(100000), contentFormat: z.enum(['plain', 'markdown']) })
+      .parse(req.body);
+    res.json({ html: renderContent(data.body, data.contentFormat) });
+  });
+  router.put('/admin/courses/:id', requireRole('admin', 'author'), (req, res) => {
+    const data = courseSchema.extend({ expectedRevisionId: z.string().uuid() }).parse(req.body);
+    const saved = db
+      .transaction(() => {
+        const c = course(req.params.id);
+        assertOwner(c, req.session.userId, req.session.role);
+        if (data.expectedRevisionId !== c.current_revision_id)
+          throw new AppError(409, 'Draft changed. Reload before saving.', 'DRAFT_CONFLICT');
+        if (db.prepare('SELECT id FROM courses WHERE slug = ? AND id != ?').get(data.slug, c.id))
+          throw new AppError(409, 'Slug already exists', 'SLUG_EXISTS');
+        const revisionId = writeRevision(c.id, data);
+        db.prepare(
+          "UPDATE courses SET current_revision_id = ?, updated_at = datetime('now') WHERE id = ?",
+        ).run(revisionId, c.id);
+        return course(c.id);
+      })
+      .immediate();
+    res.json(saved);
   });
   router.post('/admin/courses/:id/publish', requireRole('admin'), (req, res) => {
-    const c = course(req.params.id);
-    db.transaction(() => {
-      db.prepare(
-        `UPDATE courses SET status = 'PUBLISHED', updated_at = datetime('now') WHERE id = ?`,
-      ).run(c.id);
-      db.prepare(
-        `UPDATE course_revisions SET published_at = COALESCE(published_at, datetime('now')) WHERE id = ?`,
-      ).run(c.current_revision_id);
-      db.prepare(
-        `INSERT INTO audit_events (id, actor_id, action, subject_type, subject_id) VALUES (?, ?, 'course.publish', 'course', ?)`,
-      ).run(randomUUID(), req.session.userId, c.id);
-    })();
-    res.json(course(c.id));
+    const saved = db
+      .transaction(() => {
+        const c = course(req.params.id);
+        if (req.body.expectedRevisionId && req.body.expectedRevisionId !== c.current_revision_id)
+          throw new AppError(409, 'Draft changed. Reload before publishing.', 'DRAFT_CONFLICT');
+        const revision = db
+          .prepare('SELECT slug, access_mode, locale FROM course_revisions WHERE id = ?')
+          .get(c.current_revision_id) as { slug: string; access_mode: string; locale: string };
+        if (
+          db.prepare('SELECT id FROM courses WHERE slug = ? AND id != ?').get(revision.slug, c.id)
+        )
+          throw new AppError(409, 'Slug already exists', 'SLUG_EXISTS');
+        db.prepare(
+          `UPDATE courses SET status = 'PUBLISHED', published_revision_id = current_revision_id, slug = ?, access_mode = ?, locale = ?, updated_at = datetime('now') WHERE id = ?`,
+        ).run(revision.slug, revision.access_mode, revision.locale, c.id);
+        db.prepare(
+          `UPDATE course_revisions SET published_at = COALESCE(published_at, datetime('now')) WHERE id = ?`,
+        ).run(c.current_revision_id);
+        db.prepare(
+          `INSERT INTO audit_events (id, actor_id, action, subject_type, subject_id) VALUES (?, ?, 'course.publish', 'course', ?)`,
+        ).run(randomUUID(), req.session.userId, c.id);
+        return course(c.id);
+      })
+      .immediate();
+    res.json(saved);
   });
   router.post('/admin/courses/:id/archive', requireRole('admin'), (req, res) => {
     const c = course(req.params.id);
@@ -157,35 +197,45 @@ export function coursesRouter(db: Database.Database): Router {
     ).run(c.id);
     res.json(course(c.id));
   });
-  router.get('/courses/:id', (req, res) => {
-    const c = course(req.params.id);
-    const e = enrollment(req.session.userId, c.id);
-    const owner = req.session.role === 'admin' || req.session.userId === c.author_id;
-    if (c.status !== 'PUBLISHED' && !e && !owner) throw new AppError(404, 'Course not found');
-    const revisionId = owner ? c.current_revision_id : (e?.revision_id ?? c.current_revision_id);
+  function detail(c: Course, revisionId: string, editing = false, e?: Enrollment) {
     const revision = db
-      .prepare('SELECT title, summary FROM course_revisions WHERE id = ?')
-      .get(revisionId) as object;
+      .prepare(
+        'SELECT title, summary, slug, access_mode, locale FROM course_revisions WHERE id = ?',
+      )
+      .get(revisionId) as Record<string, unknown>;
     const modules = db
       .prepare('SELECT id, title FROM modules WHERE revision_id = ? ORDER BY sort_order')
       .all(revisionId) as { id: string; title: string }[];
-    res.json({
+    return {
       ...c,
       ...revision,
+      slug: editing ? revision.slug : c.slug,
+      revision_id: revisionId,
       enrollment: e ?? null,
       modules: modules.map(m => ({
         ...m,
         lessons: db
           .prepare(
-            'SELECT id, title, kind, is_required, is_preview FROM lessons WHERE module_id = ? ORDER BY sort_order',
+            `SELECT id, title, kind, is_required, is_preview, content_format${editing ? ', body' : ''} FROM lessons WHERE module_id = ? ORDER BY sort_order`,
           )
           .all(m.id),
       })),
-    });
+    };
+  }
+  router.get('/courses/:id', (req, res) => {
+    const c = course(req.params.id);
+    const e = enrollment(req.session.userId, c.id);
+    const owner = req.session.role === 'admin' || req.session.userId === c.author_id;
+    if (c.status !== 'PUBLISHED' && !e && !owner) throw new AppError(404, 'Course not found');
+    const revisionId =
+      e?.revision_id ?? c.published_revision_id ?? (owner ? c.current_revision_id : null);
+    if (!revisionId) throw new AppError(404, 'Course not found');
+    res.json(detail(c, revisionId, false, e));
   });
   router.post('/courses/:id/enroll', requireAuth, (req, res) => {
     const c = course(req.params.id);
-    if (c.status !== 'PUBLISHED') throw new AppError(409, 'Course is not accepting enrollments');
+    if (c.status !== 'PUBLISHED' || !c.published_revision_id)
+      throw new AppError(409, 'Course is not accepting enrollments');
     if (c.access_mode === 'PAID') throw new AppError(403, 'Verified payment required');
     const result = db
       .transaction(() => {
@@ -200,7 +250,7 @@ export function coursesRouter(db: Database.Database): Router {
         const id = randomUUID();
         db.prepare(
           'INSERT INTO enrollments (id, user_id, course_id, revision_id) VALUES (?, ?, ?, ?)',
-        ).run(id, req.session.userId, c.id, c.current_revision_id);
+        ).run(id, req.session.userId, c.id, c.published_revision_id);
         db.prepare(
           `INSERT INTO entitlements (id, enrollment_id, source_type, starts_at) VALUES (?, ?, 'free', ?)`,
         ).run(randomUUID(), id, new Date().toISOString());
@@ -224,7 +274,7 @@ export function coursesRouter(db: Database.Database): Router {
   router.get('/lessons/:id', (req, res) => {
     const lesson = db
       .prepare(
-        `SELECT l.*, m.revision_id, c.id AS course_id, c.access_mode, c.status, c.author_id, c.current_revision_id FROM lessons l JOIN modules m ON m.id = l.module_id JOIN course_revisions r ON r.id = m.revision_id JOIN courses c ON c.id = r.course_id WHERE l.id = ?`,
+        `SELECT l.*, m.revision_id, c.id AS course_id, c.access_mode, c.status, c.author_id, c.published_revision_id FROM lessons l JOIN modules m ON m.id = l.module_id JOIN course_revisions r ON r.id = m.revision_id JOIN courses c ON c.id = r.course_id WHERE l.id = ?`,
       )
       .get(req.params.id) as
       | {
@@ -233,7 +283,9 @@ export function coursesRouter(db: Database.Database): Router {
           access_mode: string;
           status: string;
           author_id: string;
-          current_revision_id: string;
+          published_revision_id: string | null;
+          body: string;
+          content_format: 'plain' | 'markdown';
           is_preview: number;
         }
       | undefined;
@@ -241,13 +293,14 @@ export function coursesRouter(db: Database.Database): Router {
     const e = enrollment(req.session.userId, lesson.course_id);
     const publicAccess =
       lesson.status === 'PUBLISHED' &&
-      lesson.current_revision_id === lesson.revision_id &&
+      lesson.published_revision_id === lesson.revision_id &&
       (lesson.access_mode === 'OPEN_FREE' || lesson.is_preview === 1);
     const owner = req.session.role === 'admin' || req.session.userId === lesson.author_id;
     if (!publicAccess && !owner && (!e || e.revision_id !== lesson.revision_id))
       throw new AppError(403, 'Enrollment required');
     res.json({
       ...lesson,
+      body_html: renderContent(lesson.body ?? '', lesson.content_format),
       progress: e
         ? (db
             .prepare('SELECT * FROM lesson_progress WHERE enrollment_id = ? AND lesson_id = ?')
