@@ -27,7 +27,8 @@ jobs:
           SESSION_SECRET: test-session-secret-at-least-32-chars
           PUBLIC_BASE_URL: http://localhost:3000
           MEDIA_SIGNING_KEY: test-media-signing-key-at-least-32-chars
-      - run: bash -n install.sh scripts/install-host.sh scripts/install-vps.sh
+      - run: python3 tests/test_deploy.py
+      - run: bash -n install.sh scripts/install-host.sh scripts/install-vps.sh scripts/install-vps-edge.sh
       - run: ./install.sh host --host-ip 10.77.0.2 --proxy-ip 10.77.0.1 --dry-run
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e

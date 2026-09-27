@@ -63,29 +63,71 @@ unset ADMIN_PASSWORD
 
 O comando não substitui contas existentes. Não há senha padrão. Cadastre autores pelo procedimento administrativo controlado do banco; a interface atual cria alunos e cursos, não gerencia papéis de usuários.
 
-## VPS e TLS
+## VPS e TLS — padrão maia-chat
 
-O Maia Edge deve estar instalado e configurado na VPS. Emita previamente um certificado para `learn.maiaplatform.org`. O padrão do instalador usa:
+Como no maia-chat, o Nginx público encaminha pela VPN diretamente para o Node
+em `10.77.0.2:3200`. O maia-rag usa uma variante com Nginx adicional na
+hospedeira (4311 → localhost:4310); essa camada não é necessária para o LMS já
+escutando no endereço WireGuard.
 
-```text
-/etc/letsencrypt/live/learn.maiaplatform.org/fullchain.pem
-/etc/letsencrypt/live/learn.maiaplatform.org/privkey.pem
-```
+O instalador VPS padrão instala somente o vhost do LMS em `sites-available` e
+`sites-enabled`, testa Nginx e recarrega o serviço. Não executa `maia-edge apply`
+nem reinicia a VPN. Exige Nginx, Python 3, curl e util-linux já instalados. Os
+modelos ficam em `deploy/nginx/learn-{acme,vps}.conf.template`.
 
-Use o procedimento Certbot/DNS do seu provedor para emissão e renovação automática. Uma emissão DNS manual é possível, mas requer intervenção na renovação; não equivale a automação. Não use `certbot --nginx` nos arquivos gerenciados pelo Maia Edge, pois isso cria alterações fora do controle do CLI.
-
-Com o checkout do maia-lms na VPS:
+Aponte o DNS A de `learn.maiaplatform.org` para a VPS e permita HTTP 80 e HTTPS
+443 no firewall da VPS/provedor. Para a primeira emissão do certificado, execute
+**na VPS**, a partir do checkout atualizado:
 
 ```bash
-./install.sh vps --edge-dir /opt/maia-edge --upstream 10.77.0.2:3200 --dry-run
-sudo ./install.sh vps --edge-dir /opt/maia-edge --upstream 10.77.0.2:3200
+sudo ./install.sh vps --upstream 10.77.0.2:3200 --acme-only
+sudo certbot certonly --webroot -w /var/www/html -d learn.maiaplatform.org
+sudo ./install.sh vps --upstream 10.77.0.2:3200
 ```
 
-É possível informar `--cert` e `--key`. O instalador verifica a aplicação pela VPN, registra `service add DOMAIN proxy UPSTREAM 443 CERT KEY`, executa `plan` e `apply`. O Maia Edge verifica conflitos, testa Nginx e mantém seu mecanismo de rollback. Ele pode reiniciar a VPN gerenciada durante `apply`; planeje a janela de manutenção. Não são criados peers, túneis ou credenciais de VPN pelo instalador LMS.
+O primeiro comando publica somente o desafio ACME em HTTP; outras URLs retornam
+404 até a configuração HTTPS ser instalada. Se o certificado já existe, execute
+apenas o último comando. Use `--dry-run` para visualizar, e `--cert`/`--key` para
+certificados fora de `/etc/letsencrypt/live/learn.maiaplatform.org/`.
 
-Configure o hook de renovação TLS para `nginx -t && systemctl reload nginx`. A rota gerada atende HTTPS; o Maia Edge não cria automaticamente redirecionamento HTTP. Se desejar redirecionamento de 80 para 443, administre um vhost separado e sem conflito com seus desafios ACME.
+A configuração final redireciona HTTP para HTTPS e mantém o desafio ACME para
+renovação. Configure o hook de renovação para `nginx -t && systemctl reload nginx`
+e confira o agendamento do Certbot. O instalador preserva backup do vhost anterior
+e restaura o arquivo se a validação ou recarga falhar. Recusa substituir sites de
+outro gerenciador ou criar outro vhost para um domínio já encontrado nos diretórios
+padrão de sites ativos.
 
-Confira `https://learn.maiaplatform.org/readyz`, login, inscrição e recebimento de e-mail. `TRUST_PROXY` deve conter somente o endereço da VPS. A configuração foi alinhada ao [comportamento de proxy do Express](https://expressjs.com/en/guide/behind-proxies/); não use confiança global em todos os endereços.
+Caso já tenha registrado o LMS pelo CLI do Maia Edge, mantenha esse método ou
+planeje a migração explicitamente; não instale dois vhosts para o mesmo domínio.
+Por compatibilidade, passar `--edge-dir /opt/maia-edge` seleciona o instalador
+antigo, que exige certificado e usa `service add`, `plan`, `apply`. Esse modo pode
+reiniciar a interface VPN gerenciada e não é o padrão dos exemplos maia-chat/RAG.
+
+### Verificação da conexão entre VPS e hospedeira
+
+Execute **na VPS**, antes de ativar o proxy HTTPS:
+
+```bash
+curl --connect-timeout 5 --fail http://10.77.0.2:3200/readyz
+```
+
+Uma resposta local na hospedeira não comprova acesso pela VPN. Em caso de timeout,
+confira rota/túnel e firewall. O exemplo maia-chat libera a porta pela interface
+WireGuard; para o LMS na **hospedeira**, se UFW estiver ativo e a VPS usar
+`10.77.0.1`, a regra restrita equivalente é:
+
+```bash
+sudo ufw status verbose
+sudo ufw allow in on wg0 proto tcp from 10.77.0.1 to 10.77.0.2 port 3200
+```
+
+Não habilite ou redefina UFW se a máquina usa outro gerenciador de firewall. Não
+é necessário encaminhamento no roteador doméstico. O instalador não presume qual
+firewall administra sua infraestrutura.
+
+Depois confira `https://learn.maiaplatform.org/readyz`, login e matrícula.
+`TRUST_PROXY` continua sendo o IP WireGuard da VPS, conforme o
+[comportamento de proxy do Express](https://expressjs.com/en/guide/behind-proxies/).
 
 ## Atualização e rollback
 

@@ -64,14 +64,16 @@ Na hospedeira:
 sudo ./install.sh host --host-ip 10.77.0.2 --proxy-ip 10.77.0.1
 ```
 
-Na VPS, com certificado TLS já emitido e o Maia Edge instalado:
+Na VPS, com Nginx e a VPN Maia Edge funcionando (mesmo padrão do maia-chat):
 
 ```bash
-./install.sh vps --edge-dir /opt/maia-edge --upstream 10.77.0.2:3200 --dry-run
-sudo ./install.sh vps --edge-dir /opt/maia-edge --upstream 10.77.0.2:3200
+./install.sh vps --upstream 10.77.0.2:3200 --dry-run
+sudo ./install.sh vps --upstream 10.77.0.2:3200 --acme-only
+sudo certbot certonly --webroot -w /var/www/html -d learn.maiaplatform.org
+sudo ./install.sh vps --upstream 10.77.0.2:3200
 ```
 
-O instalador da hospedeira cria serviços systemd, segredos aleatórios, diretórios persistentes e backup antes de atualizar. O da VPS usa o CLI do Maia Edge para registrar a rota HTTPS, validar e aplicar a configuração. Nenhum instalador redefine a VPN. O `apply` do Maia Edge pode reiniciar a interface que ele gerencia.
+O instalador da hospedeira cria serviços systemd, segredos aleatórios, diretórios persistentes e backup antes de atualizar. O da VPS instala o vhost HTTP/HTTPS, testa e recarrega Nginx, preservando a VPN existente. Se o certificado já existe, pule os passos de emissão. O modo antigo via CLI permanece disponível explicitamente com `--edge-dir`; ele pode reiniciar a VPN gerenciada.
 
 Consulte [o guia de operações](docs/08-operations.md) para SMTP, DNS, TLS, firewall, administrador em produção, atualização, backup e restauração. Os instaladores fornecem `--help` e `--dry-run`.
 

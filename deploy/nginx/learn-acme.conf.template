@@ -1,0 +1,7 @@
+# Managed by maia-lms install-vps.sh
+server {
+    listen 80;
+    server_name __DOMAIN__;
+    location /.well-known/acme-challenge/ { root /var/www/html; }
+    location / { return 404; }
+}
