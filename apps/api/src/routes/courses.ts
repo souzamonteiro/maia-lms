@@ -4,11 +4,18 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { slugSchema, UpdateLessonProgressSchema } from '@maia/domain';
 import { requireAuth, requireRole } from '../middleware/auth.js';
+import { attachmentList } from './attachments.js';
 import { renderContent } from '../services/content.js';
 import { AppError } from '../middleware/error-handler.js';
 
+const attachmentSchema = z.object({
+  fileId: z.string().uuid(),
+  title: z.string().min(1).max(200),
+  description: z.string().max(2000).default(''),
+});
 const lessonSchema = z.object({
   title: z.string().min(1).max(200),
+  attachments: z.array(attachmentSchema).max(30).default([]),
   body: z.string().max(100000),
   videoId: z.string().uuid().nullable().optional(),
   contentFormat: z.enum(['plain', 'markdown']).default('plain'),
@@ -16,6 +23,7 @@ const lessonSchema = z.object({
   preview: z.boolean().default(false),
 });
 const courseSchema = z.object({
+  attachments: z.array(attachmentSchema).max(30).default([]),
   creationId: z.string().uuid().optional(),
   slug: slugSchema,
   title: z.string().min(3).max(255),
@@ -75,7 +83,7 @@ export function coursesRouter(db: Database.Database): Router {
           lesson.videoId &&
           !db
             .prepare(
-              "SELECT id FROM video_uploads WHERE id=? AND course_id=? AND status != 'CANCELLED'",
+              "SELECT id FROM video_uploads WHERE id=? AND course_id=? AND media_kind='video' AND status != 'CANCELLED'",
             )
             .get(lesson.videoId, courseId)
         )
@@ -85,29 +93,45 @@ export function coursesRouter(db: Database.Database): Router {
     db.prepare(
       'INSERT INTO course_revisions (id, course_id, title, summary, slug, access_mode, locale) VALUES (?, ?, ?, ?, ?, ?, ?)',
     ).run(revisionId, courseId, data.title, data.summary, data.slug, data.accessMode, data.locale);
+    function writeAttachments(items: z.infer<typeof attachmentSchema>[], lessonId: string | null) {
+      for (const [index, item] of items.entries()) {
+        if (
+          !db
+            .prepare(
+              "SELECT id FROM video_uploads WHERE id=? AND course_id=? AND media_kind='attachment' AND status!='CANCELLED'",
+            )
+            .get(item.fileId, courseId)
+        )
+          throw new AppError(422, 'Invalid attachment', 'FILE_INVALID');
+        db.prepare(
+          'INSERT INTO course_attachments(id,revision_id,lesson_id,upload_id,title,description,sort_order) VALUES(?,?,?,?,?,?,?)',
+        ).run(randomUUID(), revisionId, lessonId, item.fileId, item.title, item.description, index);
+      }
+    }
+    writeAttachments(data.attachments, null);
     data.modules.forEach((module, mi) => {
       const moduleId = randomUUID();
       db.prepare(
         'INSERT INTO modules (id, revision_id, sort_order, title) VALUES (?, ?, ?, ?)',
       ).run(moduleId, revisionId, mi, module.title);
-      module.lessons.forEach((lesson, li) =>
-        db
-          .prepare(
-            `INSERT INTO lessons (id, module_id, sort_order, title, body, is_required, is_preview, content_format, video_id, kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          )
-          .run(
-            randomUUID(),
-            moduleId,
-            li,
-            lesson.title,
-            lesson.body,
-            Number(lesson.required),
-            Number(lesson.preview),
-            lesson.contentFormat,
-            lesson.videoId ?? null,
-            lesson.videoId ? (lesson.body.trim() ? 'mixed' : 'video') : 'article',
-          ),
-      );
+      module.lessons.forEach((lesson, li) => {
+        const lessonId = randomUUID();
+        db.prepare(
+          `INSERT INTO lessons (id, module_id, sort_order, title, body, is_required, is_preview, content_format, video_id, kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ).run(
+          lessonId,
+          moduleId,
+          li,
+          lesson.title,
+          lesson.body,
+          Number(lesson.required),
+          Number(lesson.preview),
+          lesson.contentFormat,
+          lesson.videoId ?? null,
+          lesson.videoId ? (lesson.body.trim() ? 'mixed' : 'video') : 'article',
+        );
+        writeAttachments(lesson.attachments, lessonId);
+      });
     });
     return revisionId;
   }
@@ -190,6 +214,14 @@ export function coursesRouter(db: Database.Database): Router {
             .get(c.current_revision_id)
         )
           throw new AppError(422, 'Lesson needs text or video', 'VIDEO_INVALID');
+        if (
+          db
+            .prepare(
+              "SELECT a.id FROM course_attachments a JOIN video_uploads v ON v.id=a.upload_id WHERE a.revision_id=? AND v.status!='READY' LIMIT 1",
+            )
+            .get(c.current_revision_id)
+        )
+          throw new AppError(422, 'Attachment is not ready', 'FILE_NOT_READY');
         if (req.body.expectedRevisionId && req.body.expectedRevisionId !== c.current_revision_id)
           throw new AppError(409, 'Draft changed. Reload before publishing.', 'DRAFT_CONFLICT');
         if (
@@ -242,6 +274,7 @@ export function coursesRouter(db: Database.Database): Router {
       ...revision,
       slug: editing ? revision.slug : c.slug,
       revision_id: revisionId,
+      attachments: attachmentList(db, revisionId, null),
       enrollment: e ?? null,
       modules: modules.map(m => ({
         ...m,
@@ -249,7 +282,11 @@ export function coursesRouter(db: Database.Database): Router {
           .prepare(
             `SELECT id, title, kind, video_id, is_required, is_preview, content_format${editing ? ', body' : ''} FROM lessons WHERE module_id = ? ORDER BY sort_order`,
           )
-          .all(m.id),
+          .all(m.id)
+          .map(row => ({
+            ...(row as object),
+            attachments: attachmentList(db, revisionId, (row as { id: string }).id),
+          })),
       })),
     };
   }
@@ -332,6 +369,7 @@ export function coursesRouter(db: Database.Database): Router {
     res.json({
       ...lesson,
       body_html: renderContent(lesson.body ?? '', lesson.content_format),
+      attachments: attachmentList(db, lesson.revision_id, req.params.id),
       can_track_progress: Boolean(e && e.revision_id === lesson.revision_id),
       progress: e
         ? (db

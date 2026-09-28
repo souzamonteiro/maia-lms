@@ -1,7 +1,20 @@
 import { icon } from './icons.js';
 // Uploads resume from server offsets; completed chunks are checked against the selected file.
-export function mountVideoEditor(root, { courseId, videoId, api, t, e, notify, onChange }) {
-  root.innerHTML = `<h3>${t('videoLesson')}</h3>${!courseId ? `<p>${t('saveCourseVideo')}</p>` : `<label>${t('selectVideo')}<select class="video-choice"><option value="">${t('noVideo')}</option></select></label><div class="actions"><button type="button" class="refresh-videos secondary">${icon('reloadDraft')}${t('refreshVideos')}</button><button type="button" class="retry-video secondary">${t('retryVideo')}</button></div><label>${t('videoFile')}<input type="file" class="video-file" accept="video/mp4,video/webm,video/quicktime,.mkv"></label><div class="actions"><button type="button" class="upload-video">${icon('publish')}${t('uploadVideo')}</button><button type="button" class="pause-video secondary" disabled>${t('pauseVideo')}</button><button type="button" class="cancel-video secondary">${icon('remove')}${t('cancelUpload')}</button></div><progress class="upload-progress" max="100" value="0" aria-label="${t('uploadProgress')}"></progress><p class="video-status" role="status"></p><p class="muted">${t('videoLimits')}</p>`}`;
+export function mountVideoEditor(
+  root,
+  {
+    courseId,
+    videoId,
+    api,
+    t,
+    e,
+    notify,
+    onChange,
+    endpoint = '/admin/videos',
+    accept = 'video/mp4,video/webm,video/quicktime,.mkv',
+  },
+) {
+  root.innerHTML = `<h3>${t('videoLesson')}</h3>${!courseId ? `<p>${t('saveCourseVideo')}</p>` : `<label>${t('selectVideo')}<select class="video-choice"><option value="">${t('noVideo')}</option></select></label><div class="actions"><button type="button" class="refresh-videos secondary">${icon('reloadDraft')}${t('refreshVideos')}</button><button type="button" class="retry-video secondary">${t('retryVideo')}</button></div><label>${t('videoFile')}<input type="file" class="video-file" accept="${e(accept)}"></label><div class="actions"><button type="button" class="upload-video">${icon('publish')}${t('uploadVideo')}</button><button type="button" class="pause-video secondary" disabled>${t('pauseVideo')}</button><button type="button" class="cancel-video secondary">${icon('remove')}${t('cancelUpload')}</button></div><progress class="upload-progress" max="100" value="0" aria-label="${t('uploadProgress')}"></progress><p class="video-status" role="status"></p><p class="muted">${t('videoLimits')}</p>`}`;
   if (!courseId) return;
   const choice = root.querySelector('.video-choice'),
     status = root.querySelector('.video-status'),
@@ -9,7 +22,7 @@ export function mountVideoEditor(root, { courseId, videoId, api, t, e, notify, o
   let paused = false,
     busy = false;
   async function refresh() {
-    const rows = await api(`/admin/videos?courseId=${courseId}`);
+    const rows = await api(`${endpoint}?courseId=${courseId}`);
     choice.innerHTML =
       `<option value="">${t('noVideo')}</option>` +
       rows
@@ -25,7 +38,7 @@ export function mountVideoEditor(root, { courseId, videoId, api, t, e, notify, o
   root.querySelector('.refresh-videos').onclick = () => refresh().catch(notify);
   root.querySelector('.retry-video').onclick = async () => {
     try {
-      if (videoId) await api(`/admin/videos/${videoId}/retry`, 'POST');
+      if (videoId) await api(`${endpoint}/${videoId}/retry`, 'POST');
       await refresh();
     } catch (error) {
       notify(error);
@@ -41,7 +54,7 @@ export function mountVideoEditor(root, { courseId, videoId, api, t, e, notify, o
     }
     try {
       if (videoId) {
-        await api(`/admin/videos/${videoId}/cancel`, 'POST');
+        await api(`${endpoint}/${videoId}/cancel`, 'POST');
         videoId = null;
         onChange(null);
         await refresh();
@@ -59,10 +72,10 @@ export function mountVideoEditor(root, { courseId, videoId, api, t, e, notify, o
     root.querySelector('.pause-video').disabled = false;
     choice.disabled = true;
     try {
-      let upload = videoId ? await api(`/admin/videos/${videoId}`) : null;
+      let upload = videoId ? await api(`${endpoint}/${videoId}`) : null;
       if (upload && upload.status !== 'UPLOADING') upload = null;
       if (!upload) {
-        upload = await api('/admin/videos', 'POST', {
+        upload = await api(endpoint, 'POST', {
           courseId,
           filename: file.name,
           size: file.size,
@@ -83,7 +96,7 @@ export function mountVideoEditor(root, { courseId, videoId, api, t, e, notify, o
       }
       let offset = upload.offset;
       while (offset < file.size && !paused && root.isConnected) {
-        const response = await fetch(`/api/v1/admin/videos/${videoId}/chunks`, {
+        const response = await fetch(`/api/v1${endpoint}/${videoId}/chunks`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/octet-stream', 'Upload-Offset': String(offset) },
           body: file.slice(offset, offset + 512 * 1024),
@@ -96,7 +109,7 @@ export function mountVideoEditor(root, { courseId, videoId, api, t, e, notify, o
         await new Promise(resolve => setTimeout(resolve, 250));
       }
       if (offset === file.size) {
-        await api(`/admin/videos/${videoId}/complete`, 'POST');
+        await api(`${endpoint}/${videoId}/complete`, 'POST');
         status.textContent = t('videoQUEUED');
       } else status.textContent = t('uploadPaused');
       await refresh();

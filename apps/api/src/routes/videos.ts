@@ -2,7 +2,7 @@ import { Router, raw } from 'express';
 import rateLimit from 'express-rate-limit';
 import type Database from 'better-sqlite3';
 import { randomUUID, createHash } from 'node:crypto';
-import { LocalStorageProvider } from '@maia/providers';
+import { LocalStorageProvider, allowedAttachment } from '@maia/providers';
 import { z } from 'zod';
 import type { Config } from '../config.js';
 import { requireRole } from '../middleware/auth.js';
@@ -17,37 +17,49 @@ type Upload = {
   status: string;
   output_key: string | null;
 };
-export function videosRouter(db: Database.Database, config: Config): Router {
+export function videosRouter(
+  db: Database.Database,
+  config: Config,
+  mediaKind: 'video' | 'attachment' = 'video',
+): Router {
   const router = Router();
+  const endpoint = mediaKind === 'video' ? '/admin/videos' : '/admin/files';
   const store = new LocalStorageProvider(
     config.STORAGE_ROOT,
     config.MEDIA_SIGNING_KEY,
     config.PUBLIC_BASE_URL,
   );
   function owned(id: string, user: string | undefined, role: string | undefined): Upload {
-    const row = db.prepare('SELECT * FROM video_uploads WHERE id = ?').get(id) as
-      Upload | undefined;
+    const row = db
+      .prepare('SELECT * FROM video_uploads WHERE id = ? AND media_kind = ?')
+      .get(id, mediaKind) as Upload | undefined;
     if (!row) throw new AppError(404, 'Video not found');
     if (row.owner_id !== user && role !== 'admin') throw new AppError(403, 'Video access denied');
     return row;
   }
-  router.get('/admin/videos', requireRole('author', 'admin'), (req, res) => {
+  router.get(`${endpoint}`, requireRole('author', 'admin'), (req, res) => {
     res.json(
       db
         .prepare(
-          "SELECT id, course_id, filename, size, offset, status, duration, error FROM video_uploads WHERE (owner_id = ? OR ? = 'admin') AND course_id = ? ORDER BY created_at DESC",
+          "SELECT id, course_id, filename, size, offset, status, duration, error FROM video_uploads WHERE (owner_id = ? OR ? = 'admin') AND course_id = ? AND media_kind = ? ORDER BY created_at DESC",
         )
-        .all(req.session.userId, req.session.role, String(req.query.courseId ?? '')),
+        .all(req.session.userId, req.session.role, String(req.query.courseId ?? ''), mediaKind),
     );
   });
-  router.post('/admin/videos', requireRole('author', 'admin'), (req, res) => {
+  router.post(`${endpoint}`, requireRole('author', 'admin'), (req, res) => {
     const v = z
       .object({
         courseId: z.string().uuid(),
         filename: z.string().min(1).max(255),
-        size: z.number().int().min(1).max(2147483648),
+        size: z
+          .number()
+          .int()
+          .min(1)
+          .max(mediaKind === 'video' ? 2147483648 : 128 * 1024 * 1024),
       })
       .parse(req.body);
+    if (mediaKind === 'attachment' && !allowedAttachment(v.filename))
+      throw new AppError(422, 'Unsupported file type', 'FILE_INVALID');
     const id = randomUUID();
     db.transaction(() => {
       const course = db.prepare('SELECT author_id FROM courses WHERE id=?').get(v.courseId) as
@@ -62,12 +74,12 @@ export function videosRouter(db: Database.Database, config: Config): Router {
       if (usage.bytes + v.size > 20 * 1024 ** 3)
         throw new AppError(422, 'Video quota exceeded', 'VIDEO_QUOTA');
       db.prepare(
-        'INSERT INTO video_uploads(id,owner_id,course_id,filename,size) VALUES(?,?,?,?,?)',
-      ).run(id, req.session.userId, v.courseId, v.filename, v.size);
+        'INSERT INTO video_uploads(id,owner_id,course_id,filename,size,media_kind) VALUES(?,?,?,?,?,?)',
+      ).run(id, req.session.userId, v.courseId, v.filename, v.size, mediaKind);
     }).immediate();
     res.status(201).json({ id, offset: 0, chunkSize: CHUNK_SIZE });
   });
-  router.get('/admin/videos/:id', requireRole('author', 'admin'), (req, res) => {
+  router.get(`${endpoint}/:id`, requireRole('author', 'admin'), (req, res) => {
     const v = owned(req.params.id, req.session.userId, req.session.role);
     res.json({
       ...v,
@@ -80,7 +92,7 @@ export function videosRouter(db: Database.Database, config: Config): Router {
     });
   });
   router.put(
-    '/admin/videos/:id/chunks',
+    `${endpoint}/:id/chunks`,
     requireRole('author', 'admin'),
     rateLimit({
       windowMs: 60000,
@@ -128,7 +140,7 @@ export function videosRouter(db: Database.Database, config: Config): Router {
       })().catch(next);
     },
   );
-  router.post('/admin/videos/:id/complete', requireRole('author', 'admin'), (req, res) => {
+  router.post(`${endpoint}/:id/complete`, requireRole('author', 'admin'), (req, res) => {
     const v = owned(req.params.id, req.session.userId, req.session.role);
     if (v.offset !== v.size || !['UPLOADING', 'QUEUED', 'PROCESSING', 'READY'].includes(v.status))
       throw new AppError(409, 'Upload incomplete');
@@ -137,13 +149,13 @@ export function videosRouter(db: Database.Database, config: Config): Router {
     );
     res.json({ status: owned(v.id, req.session.userId, req.session.role).status });
   });
-  router.post('/admin/videos/:id/retry', requireRole('author', 'admin'), (req, res) => {
+  router.post(`${endpoint}/:id/retry`, requireRole('author', 'admin'), (req, res) => {
     const v = owned(req.params.id, req.session.userId, req.session.role);
     if (v.status !== 'FAILED') throw new AppError(409, 'Video is not failed');
     db.prepare("UPDATE video_uploads SET status='QUEUED',error=NULL WHERE id=?").run(v.id);
     res.json({ status: 'QUEUED' });
   });
-  router.post('/admin/videos/:id/cancel', requireRole('author', 'admin'), (req, res, next) => {
+  router.post(`${endpoint}/:id/cancel`, requireRole('author', 'admin'), (req, res, next) => {
     void (async () => {
       const v = owned(req.params.id, req.session.userId, req.session.role);
       if (!['UPLOADING', 'CANCELLED'].includes(v.status))

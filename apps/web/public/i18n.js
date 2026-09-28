@@ -590,3 +590,60 @@ Object.assign(translations['pt-BR'], {
 Object.assign(translations.es, {
   RATE_LIMITED: 'Demasiadas solicitudes. Espera un minuto y vuelve a intentar.',
 });
+
+Object.assign(translations['en'], {
+  attachments: 'Materials',
+  attachment: 'Material',
+  addAttachment: 'Add material',
+  removeAttachment: 'Remove material',
+  attachmentDescription: 'Description',
+  attachmentFile: 'File',
+  selectFile: 'Select file / upload to resume',
+  noFile: 'No file',
+  uploadFile: 'Upload / resume file',
+  saveCourseFile: 'Save the course, then reopen Edit to upload files.',
+  fileLimits:
+    'PDF/ZIP up to 128 MiB; UTF-8 source/text up to 2 MiB. Shared quota: 20 GiB of originals per author.',
+  wrongFile: 'The selected file differs from the uploaded data.',
+  retryFile: 'Retry validation',
+  FILE_INVALID: 'Unsupported or invalid file. Check format and size.',
+  FILE_NOT_READY: 'Wait for all materials to be ready before publishing.',
+});
+
+Object.assign(translations['pt-BR'], {
+  attachments: 'Materiais complementares',
+  attachment: 'Material',
+  addAttachment: 'Adicionar material',
+  removeAttachment: 'Remover material',
+  attachmentDescription: 'Descrição',
+  attachmentFile: 'Arquivo',
+  selectFile: 'Selecionar arquivo / envio para retomar',
+  noFile: 'Sem arquivo',
+  uploadFile: 'Enviar / retomar arquivo',
+  saveCourseFile: 'Salve o curso e reabra Editar para enviar arquivos.',
+  fileLimits:
+    'PDF/ZIP até 128 MiB; código-fonte/texto UTF-8 até 2 MiB. Quota compartilhada: 20 GiB de originais por autor.',
+  wrongFile: 'O arquivo selecionado difere dos dados enviados.',
+  retryFile: 'Repetir validação',
+  FILE_INVALID: 'Arquivo inválido ou não permitido. Confira formato e tamanho.',
+  FILE_NOT_READY: 'Aguarde todos os materiais ficarem prontos antes de publicar.',
+});
+
+Object.assign(translations['es'], {
+  attachments: 'Materiales complementarios',
+  attachment: 'Material',
+  addAttachment: 'Añadir material',
+  removeAttachment: 'Eliminar material',
+  attachmentDescription: 'Descripción',
+  attachmentFile: 'Archivo',
+  selectFile: 'Seleccionar archivo / carga a reanudar',
+  noFile: 'Sin archivo',
+  uploadFile: 'Subir / reanudar archivo',
+  saveCourseFile: 'Guarda el curso y vuelve a Editar para subir archivos.',
+  fileLimits:
+    'PDF/ZIP hasta 128 MiB; código/texto UTF-8 hasta 2 MiB. Cuota compartida: 20 GiB de originales por autor.',
+  wrongFile: 'El archivo seleccionado difiere de los datos subidos.',
+  retryFile: 'Reintentar validación',
+  FILE_INVALID: 'Archivo inválido o no permitido. Comprueba formato y tamaño.',
+  FILE_NOT_READY: 'Espera a que todos los materiales estén listos antes de publicar.',
+});

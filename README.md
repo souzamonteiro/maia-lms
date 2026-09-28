@@ -14,6 +14,7 @@ Esta versão entrega o **cursos gratuitos com aulas em texto, Markdown e vídeo 
 - Seleção, ordem e agendamento dos cursos da página inicial em `/admin/home`.
 - Revisões preservadas para alunos já matriculados; prévias públicas e controle de acesso.
 - [Videoaulas](docs/13-video.md): upload retomável, processamento FFmpeg, capa, player e posição salva.
+- [Materiais complementares](docs/14-materials.md): PDF, ZIP e código-fonte com título, descrição e download autorizado por revisão.
 - Matrícula idempotente, progresso por aula e painel de aprendizado.
 - Sessões persistentes em SQLite; e-mails em outbox com tentativas de entrega pelo worker.
 - Instaladores da hospedeira e da VPS, backup verificável e testes HTTP e de navegador.

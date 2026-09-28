@@ -8,3 +8,5 @@ export { MercadoPagoProvider } from './payment/mercado-pago.js';
 export { FakePaymentProvider } from './payment/fake.js';
 export { LocalStorageProvider } from './storage/local.js';
 export { NodemailerEmailProvider } from './email/nodemailer.js';
+
+export { allowedAttachment, validateAttachment } from './storage/attachment.js';

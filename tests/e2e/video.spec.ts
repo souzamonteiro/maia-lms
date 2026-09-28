@@ -77,3 +77,63 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     fs.rmSync(directory, { recursive: true, force: true });
   }
 });
+test('author attaches PDF, ZIP and source with descriptions and downloads the published material', async ({
+  page,
+}) => {
+  test.skip(process.env.VIDEO_TEST_REAL !== '1', 'Requires the media worker in the test server');
+  await page.goto('/auth/login');
+  await page.getByLabel('Email', { exact: true }).fill('admin@example.com');
+  await page.getByLabel('Password', { exact: true }).fill('Admin-test-password-123');
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.getByRole('link', { name: 'Administer', exact: true }).click();
+  await page.locator('[name=title]').fill('Course materials');
+  await page.locator('[name=slug]').fill('course-materials');
+  await page.locator('[name=summary]').fill('Download the examples and course guide.');
+  await page.locator('[name=accessMode]').selectOption('OPEN_FREE');
+  await page.locator('.module-title').fill('Examples');
+  await page.locator('.lesson-title').fill('Exercise');
+  await page.locator('.lesson-content').fill('Use the supplied source code.');
+  await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+  const card = page
+    .locator('#admin-list .card')
+    .filter({ has: page.getByRole('heading', { name: 'Course materials', exact: true }) });
+  await card.getByRole('button', { name: 'Edit', exact: true }).click();
+  const materials = page.locator('#course-attachments');
+  const zip = Buffer.alloc(22);
+  zip.writeUInt32LE(0x06054b50);
+  for (const [name, bytes] of [
+    ['guide.pdf', Buffer.from('%PDF-1.7\n%%EOF')],
+    ['sources.zip', zip],
+    ['example.py', Buffer.from('print("hello")')],
+  ] as [string, Buffer][]) {
+    await materials.getByRole('button', { name: 'Add material', exact: true }).click();
+    const row = materials.locator('.attachment-row').last();
+    await row.locator('.attachment-title').fill(name);
+    await row.locator('.attachment-description').fill(`Description of ${name}`);
+    await row
+      .locator('.video-file')
+      .setInputFiles({ name, mimeType: 'application/octet-stream', buffer: bytes });
+    await row.getByRole('button', { name: 'Upload / resume file', exact: true }).click();
+    await expect(row.locator('.video-status')).toHaveText('Queued for processing');
+    await expect
+      .poll(
+        async () => {
+          await row.getByRole('button', { name: 'Refresh status', exact: true }).click();
+          return row.locator('.video-choice option:checked').textContent();
+        },
+        { timeout: 15000 },
+      )
+      .toContain('Ready');
+  }
+  await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+  await expect(page.locator('#save-status')).toContainText('Draft saved');
+  await card.getByRole('button', { name: 'Publish', exact: true }).click();
+  await expect(card).toContainText('PUBLISHED');
+  await card.getByRole('link', { name: 'View', exact: true }).click();
+  await expect(page.locator('.attachments')).toContainText('Description of sources.zip');
+  const downloaded = page.waitForEvent('download');
+  await page.getByRole('link', { name: 'example.py', exact: true }).click();
+  const file = await downloaded;
+  expect(file.suggestedFilename()).toBe('example.py');
+  expect(fs.readFileSync((await file.path())!, 'utf8')).toBe('print("hello")');
+});

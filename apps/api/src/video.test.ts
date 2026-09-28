@@ -227,3 +227,119 @@ it.runIf(process.env.VIDEO_TEST_REAL === '1')(
   },
   30000,
 );
+it('materials preserve revisions and authorize downloads, including preview and revocation', async () => {
+  const author = await account('materials@tests.test', 'admin');
+  const learner = await account('reader@tests.test');
+  const course = (await request('/api/v1/admin/courses', 'POST', draft('materials'), author.cookie))
+    .data;
+  const source = Buffer.from('export const answer = 42;\n');
+  const upload = (
+    await request(
+      '/api/v1/admin/files',
+      'POST',
+      { courseId: course.id, filename: 'example.ts', size: source.length },
+      author.cookie,
+    )
+  ).data;
+  expect(
+    (await request(`/api/v1/admin/videos/${upload.id}`, 'GET', undefined, author.cookie)).status,
+  ).toBe(404);
+  expect(
+    (
+      await fetch(`${base}/api/v1/admin/files/${upload.id}/chunks`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'Upload-Offset': '0',
+          Cookie: author.cookie,
+        },
+        body: source,
+      })
+    ).status,
+  ).toBe(200);
+  await request(`/api/v1/admin/files/${upload.id}/complete`, 'POST', {}, author.cookie);
+  const attachment = {
+    fileId: upload.id,
+    title: 'Source code',
+    description: 'Complete example for this lesson.',
+  };
+  const payload = {
+    ...draft('materials'),
+    expectedRevisionId: course.current_revision_id,
+    attachments: [attachment],
+    modules: [
+      {
+        title: 'Module',
+        lessons: [{ title: 'Lesson', body: 'Read the example', attachments: [attachment] }],
+      },
+    ],
+  };
+  expect(
+    (await request(`/api/v1/admin/courses/${course.id}`, 'PUT', payload, author.cookie)).status,
+  ).toBe(200);
+  expect(
+    (await request(`/api/v1/admin/courses/${course.id}/publish`, 'POST', {}, author.cookie)).data
+      .code,
+  ).toBe('FILE_NOT_READY');
+  await processVideo(db, directory);
+  expect(
+    (await request(`/api/v1/admin/files/${upload.id}`, 'GET', undefined, author.cookie)).data
+      .status,
+  ).toBe('READY');
+  expect(
+    (await request(`/api/v1/admin/courses/${course.id}/publish`, 'POST', {}, author.cookie)).status,
+  ).toBe(200);
+  const detail = (await request(`/api/v1/courses/${course.id}`)).data;
+  const courseFile = detail.attachments[0].id;
+  const lessonId = detail.modules[0].lessons[0].id;
+  const download = (id: string, cookie = '') =>
+    fetch(`${base}/api/v1/attachments/${id}/download`, { headers: { Cookie: cookie } });
+  expect((await download(courseFile)).status).toBe(403);
+  await request(`/api/v1/courses/${course.id}/enroll`, 'POST', {}, learner.cookie);
+  const lesson = (await request(`/api/v1/lessons/${lessonId}`, 'GET', undefined, learner.cookie))
+    .data;
+  const received = await download(lesson.attachments[0].id, learner.cookie);
+  expect(received.headers.get('content-disposition')).toContain('attachment;');
+  expect(received.headers.get('content-type')).toContain('application/octet-stream');
+  expect(await received.text()).toBe(source.toString());
+  const current = (
+    await request(`/api/v1/admin/courses/${course.id}`, 'GET', undefined, author.cookie)
+  ).data;
+  await request(
+    `/api/v1/admin/courses/${course.id}`,
+    'PUT',
+    { ...draft('materials'), expectedRevisionId: current.current_revision_id },
+    author.cookie,
+  );
+  await request(`/api/v1/admin/courses/${course.id}/publish`, 'POST', {}, author.cookie);
+  expect((await download(courseFile, learner.cookie)).status).toBe(200);
+  db.prepare("UPDATE entitlements SET revoked_at=datetime('now')").run();
+  expect((await download(courseFile, learner.cookie)).status).toBe(403);
+  const other = (
+    await request('/api/v1/admin/courses', 'POST', draft('other-materials'), author.cookie)
+  ).data;
+  expect(
+    (
+      await request(
+        `/api/v1/admin/courses/${other.id}`,
+        'PUT',
+        {
+          ...draft('other-materials'),
+          expectedRevisionId: other.current_revision_id,
+          attachments: [attachment],
+        },
+        author.cookie,
+      )
+    ).status,
+  ).toBe(422);
+  expect(
+    (
+      await request(
+        '/api/v1/admin/files',
+        'POST',
+        { courseId: course.id, filename: 'program.exe', size: 10 },
+        author.cookie,
+      )
+    ).status,
+  ).toBe(422);
+});

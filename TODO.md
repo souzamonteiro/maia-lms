@@ -39,6 +39,14 @@ abertos: falta concluir HLS, legendas, biblioteca completa, limpeza automática 
 órfãos/expiração, progresso de transcode, navegação do aluno e homologação no Maia
 Edge/dispositivos. E2 e a plataforma completa permanecem em andamento.
 
+## Materiais complementares — 28/09/2026
+
+MEDIA-05 implementado: múltiplos anexos no curso ou aula, título, descrição,
+ordenação, substituição/remoção por revisão e download autorizado. PDF/ZIP e
+código-fonte usam upload retomável e validação de assinatura/codificação no worker.
+Antimalware e coleta de órfãos permanecem em MEDIA-02/04; não são recursos desta
+entrega. [Guia de materiais](docs/14-materials.md). Ainda sem implantação.
+
 ## Evidências e limites da revisão original
 
 Revisados API, interface, internacionalização, esquema SQLite, worker, adaptadores,
@@ -151,7 +159,7 @@ Preservar as alterações locais de internacionalização e os dados do protóti
   imagem/capa/poster/anexo e exibir fila/erro. Dependências: MEDIA-02/03, EDIT-03.
   Aceite: autor acompanha todo o processo sem terminal; coleta de órfãos considera
   revisões antigas e só remove arquivos elegíveis após período definido.
-- [ ] **MEDIA-05 — Materiais complementares com descrição.**
+- [x] **MEDIA-05 — Materiais complementares com descrição.**
   Permitir anexar múltiplos arquivos ao curso ou a uma aula, incluindo PDF, ZIP,
   código-fonte e outros formatos permitidos. Cada anexo deve ter título e descrição
   editáveis; mostrar nome do arquivo, formato e tamanho ao aluno. Oferecer upload,

@@ -1,5 +1,5 @@
 import type Database from 'better-sqlite3';
-import { LocalStorageProvider } from '@maia/providers';
+import { LocalStorageProvider, validateAttachment } from '@maia/providers';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -15,9 +15,9 @@ export async function processVideo(db: Database.Database, root: string): Promise
     .transaction(() => {
       const row = db
         .prepare(
-          "SELECT id FROM video_uploads WHERE status='QUEUED' OR (status='PROCESSING' AND julianday(heartbeat)<julianday('now','-2 minutes')) ORDER BY created_at LIMIT 1",
+          "SELECT id, filename, media_kind FROM video_uploads WHERE status='QUEUED' OR (status='PROCESSING' AND julianday(heartbeat)<julianday('now','-2 minutes')) ORDER BY created_at LIMIT 1",
         )
-        .get() as { id: string } | undefined;
+        .get() as { id: string; filename: string; media_kind: string } | undefined;
       if (row)
         db.prepare(
           "UPDATE video_uploads SET status='PROCESSING',lease=?,heartbeat=datetime('now'),error=NULL WHERE id=?",
@@ -54,6 +54,17 @@ export async function processVideo(db: Database.Database, root: string): Promise
       Readable.from(source()),
       fs.createWriteStream(input, { flags: 'wx', mode: 0o600 }),
     );
+    if (job.media_kind === 'attachment') {
+      validateAttachment(job.filename, input);
+      await store.putPrivate(outputKey, fs.createReadStream(input), 'application/octet-stream');
+      const saved = db
+        .prepare(
+          "UPDATE video_uploads SET status='READY',output_key=?,lease=NULL,error=NULL WHERE id=? AND lease=? AND status='PROCESSING'",
+        )
+        .run(outputKey, job.id, lease);
+      if (!saved.changes) await store.delete(outputKey);
+      return true;
+    }
     const probe = await exec(
       'ffprobe',
       [
@@ -158,7 +169,15 @@ export async function processVideo(db: Database.Database, root: string): Promise
     const code = (error as NodeJS.ErrnoException).code;
     db.prepare(
       "UPDATE video_uploads SET status='FAILED',error=?,lease=NULL WHERE id=? AND lease=?",
-    ).run(code === 'ENOENT' ? 'VIDEO_TOOLS_MISSING' : 'VIDEO_PROCESSING_FAILED', job.id, lease);
+    ).run(
+      job.media_kind === 'attachment'
+        ? 'FILE_INVALID'
+        : code === 'ENOENT'
+          ? 'VIDEO_TOOLS_MISSING'
+          : 'VIDEO_PROCESSING_FAILED',
+      job.id,
+      lease,
+    );
   } finally {
     clearInterval(heartbeat);
     fs.rmSync(directory, { recursive: true, force: true });

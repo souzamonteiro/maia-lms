@@ -281,7 +281,7 @@ paths:
                   enum:
                     - OPEN_FREE
                     - ENROLLED_FREE
-                modules: &id006
+                modules: &id007
                   type: array
                   minItems: 1
                   maxItems: 100
@@ -332,6 +332,12 @@ paths:
                               format: uuid
                               description: Video in the same course. Only READY video
                                 can be published; drafts may have empty body.
+                            attachments:
+                              type: array
+                              maxItems: 30
+                              default: []
+                              items:
+                                $ref: '#/components/schemas/AttachmentInput'
                 creationId:
                   type: string
                   format: uuid
@@ -340,6 +346,12 @@ paths:
                 expectedRevisionId:
                   type: string
                   format: uuid
+                attachments:
+                  type: array
+                  maxItems: 30
+                  default: []
+                  items:
+                    $ref: '#/components/schemas/AttachmentInput'
       responses:
         '200':
           description: New draft revision; publication and enrolled revisions unchanged
@@ -676,6 +688,216 @@ paths:
     head:
       summary: Same authorization and headers as GET, without body
       responses: *id005
+  /admin/files:
+    get:
+      summary: List files in course (author owns files or admin)
+      security: &id006
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Array with id, course_id, filename, size, offset, status, duration
+            and error
+      parameters:
+        - name: courseId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+    post:
+      summary: Reserve private upload (author/admin)
+      security: *id006
+      responses:
+        '201':
+          description: id, offset=0, chunkSize=524288
+        '403':
+          description: Course access denied
+        '422':
+          description: Invalid metadata or VIDEO_QUOTA
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - courseId
+                - filename
+                - size
+              properties:
+                courseId:
+                  type: string
+                  format: uuid
+                filename:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                  description: 'Allowed extensions: PDF, ZIP or supported UTF-8 text/source
+                    formats; source/text limited to 2 MiB at validation.'
+                size:
+                  type: integer
+                  minimum: 1
+                  maximum: 134217728
+  /admin/files/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: Get owned upload and resumable chunk SHA-256 manifest
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Metadata and chunks (offset, size, sha256); storage keys omitted
+        '403':
+          description: Not owner/admin
+        '404':
+          description: Not found
+  /admin/files/{id}/chunks:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    put:
+      summary: Append chunk at confirmed offset (author/admin)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: New offset
+        '409':
+          description: UPLOAD_CONFLICT; reload upload metadata before retrying
+        '413':
+          description: Chunk exceeds 512 KiB
+        '422':
+          description: Empty chunk or exceeds reserved size
+      parameters:
+        - name: Upload-Offset
+          in: header
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+              maxLength: 524288
+  /admin/files/{id}/complete:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      summary: Queue fully received upload (idempotent)
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Current status
+        '403':
+          description: Not owner/admin
+        '409':
+          description: Incompatible state
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+  /admin/files/{id}/retry:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      summary: Retry a FAILED processing job
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Current status
+        '403':
+          description: Not owner/admin
+        '409':
+          description: Incompatible state
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+  /admin/files/{id}/cancel:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      summary: Cancel incomplete upload and remove its persisted chunks
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Current status
+        '403':
+          description: Not owner/admin
+        '409':
+          description: Incompatible state
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+  /attachments/{id}/download:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: Download a READY material with course/revision/lesson authorization
+      description: Course-level materials require OPEN_FREE publication or active
+        enrollment/ownership; lesson materials also honor public preview. Always application/octet-stream
+        with Content-Disposition attachment, nosniff and private no-store. Metadata
+        includes title, description, filename and byte size.
+      responses:
+        '200':
+          description: Streamed file
+        '403':
+          description: Enrollment/ownership required
+        '404':
+          description: Missing or not ready
+    head:
+      summary: Same authorization and headers as download, without a body
+      responses:
+        '200':
+          description: File headers
+        '403':
+          description: Access denied
+        '404':
+          description: Not found
 components:
   securitySchemes:
     cookieAuth:
@@ -737,12 +959,18 @@ components:
                 enum:
                   - OPEN_FREE
                   - ENROLLED_FREE
-              modules: *id006
+              modules: *id007
               creationId:
                 type: string
                 format: uuid
                 description: Optional stable client ID to detect repeated draft creation
                   (409 CREATION_EXISTS).
+              attachments:
+                type: array
+                maxItems: 30
+                default: []
+                items:
+                  $ref: '#/components/schemas/AttachmentInput'
   schemas:
     HomePlacement:
       type: object
@@ -774,3 +1002,20 @@ components:
             - string
             - 'null'
           format: date-time
+    AttachmentInput:
+      type: object
+      required:
+        - fileId
+        - title
+      properties:
+        fileId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+          default: ''

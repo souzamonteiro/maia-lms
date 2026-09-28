@@ -53,3 +53,8 @@ Create one issue per vertical slice, not one per layer. Start with: `M0 reposito
 ## Testing strategy
 
 Unit tests for policy and scoring; database integration tests for uniqueness and transactions; provider contract tests against sandbox fixtures; end-to-end browser tests for visitor/free/paid learner; media authorization tests for playlists/segments; load test for realistic concurrency; accessibility tests plus manual keyboard/screen reader pass; backup restoration drill. Revisit provider integration docs at implementation time.
+
+## Materiais complementares — 28/09/2026
+
+MEDIA-05 entregue localmente: anexos no curso/aula, metadados por revisão e download
+autorizado. [Guia](14-materials.md). As demais pendências de E2 continuam no TODO.

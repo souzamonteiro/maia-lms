@@ -56,3 +56,10 @@ chave privada e SHA-256; a combinação upload/offset é única. `lessons.video_
 associa cada revisão ao vídeo, sem reutilizar os registros reservados de `assets`.
 A API impede relações entre cursos e publicação sem vídeo READY. `kind` é derivado
 de texto/vídeo como article, mixed ou video. A fila de vídeo é independente da outbox.
+
+## Materiais — migração 006
+
+`video_uploads.media_kind` separa vídeo de anexo (legado recebe video).
+`course_attachments` relaciona arquivo, revisão e aula opcional, com título, descrição
+e ordem próprios. Metadados e relações são copiados para novas revisões; arquivos
+são imutáveis. A API verifica tipo e curso do upload e estado READY na publicação.

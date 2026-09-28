@@ -1,3 +1,4 @@
+import { mountAttachments, readAttachments } from './attachment-editor.js';
 import { mountVideoEditor } from './video-editor.js';
 import { icon, iconButton } from './icons.js';
 // Author studio. Draft recovery is scoped to the signed-in account.
@@ -49,12 +50,14 @@ function readForm() {
   if (!form) return;
   state.payload = {
     ...Object.fromEntries(new FormData(form)),
+    attachments: readAttachments(document.querySelector('#course-attachments')),
     modules: [...form.querySelectorAll('.module-editor')].map(m => ({
       title: m.querySelector('.module-title').value,
       lessons: [...m.querySelectorAll('.lesson-editor')].map(l => ({
         title: l.querySelector('.lesson-title').value,
         body: l.querySelector('.lesson-content').value,
         videoId: l.dataset.videoId || null,
+        attachments: readAttachments(l.querySelector(':scope > .lesson-attachments')),
         contentFormat: l.querySelector('.lesson-format').value,
         required: l.querySelector('.lesson-required').checked,
         preview: l.querySelector('.lesson-preview').checked,
@@ -252,6 +255,17 @@ function lessonField(lesson) {
       button.disabled = false;
     }
   };
+  const attachmentRoot = document.createElement('section');
+  attachmentRoot.className = 'lesson-attachments';
+  field.querySelector(':scope > .row-controls').before(attachmentRoot);
+  mountAttachments(attachmentRoot, lesson.attachments || [], {
+    ...context,
+    courseId: state.id,
+    onChange: () => {
+      readForm();
+      changed();
+    },
+  });
   controls(field, 'lesson');
   return field;
 }
@@ -305,12 +319,14 @@ function fromCourse(c) {
       summary: c.summary,
       accessMode: c.access_mode,
       locale: c.locale,
+      attachments: c.attachments || [],
       modules: c.modules.map(m => ({
         title: m.title,
         lessons: m.lessons.map(l => ({
           title: l.title,
           body: l.body,
           videoId: l.video_id,
+          attachments: l.attachments || [],
           contentFormat: l.content_format,
           required: Boolean(l.is_required),
           preview: Boolean(l.is_preview),
@@ -333,12 +349,20 @@ export async function mountStudio(ctx) {
       /* Invalid local data is ignored. */
     }
   }
-  app.innerHTML = `<h1>${t('adminPublishTitle')}</h1><p>${t('studioDescription')}</p>${me.role === 'admin' ? `<a href="/admin/home">${t('editHome')}</a>` : ''}<div id="admin-list"></div><h2 id="editor-title">${state.id ? t('editCourseTitle') : t('newCourseTitle')}</h2><div class="actions"><button type="button" id="new-course" class="secondary">${icon('add')}${t('newCourseTitle')}</button><button type="button" id="reload-course" class="secondary" ${state.id ? '' : 'hidden'}>${icon('reloadDraft')}${t('reloadDraft')}</button></div><form id="editor"><label>${t('title')}<input name="title" required minlength="3" maxlength="255"></label><label>${t('courseSlugLabel')}<input name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" minlength="3" maxlength="100"></label><label>${t('summary')}<textarea name="summary" required minlength="10" maxlength="1000"></textarea></label><label>${t('access')}<select name="accessMode" aria-label="${t('access')}"><option value="OPEN_FREE">${t('accessOpenOption')}</option><option value="ENROLLED_FREE">${t('accessEnrolledOption')}</option></select></label><label>${t('courseLanguage')}<select name="locale"><option value="en">English</option><option value="pt-BR">Português</option><option value="es">Español</option></select></label><div id="modules"></div><div class="actions"><button type="button" id="add-module" class="secondary">${icon('add')}${t('addModule')}</button><button type="submit">${icon('saveDraft')}${t('saveDraft')}</button></div><p id="save-status" role="status" aria-live="polite"></p></form>`;
+  app.innerHTML = `<h1>${t('adminPublishTitle')}</h1><p>${t('studioDescription')}</p>${me.role === 'admin' ? `<a href="/admin/home">${t('editHome')}</a>` : ''}<div id="admin-list"></div><h2 id="editor-title">${state.id ? t('editCourseTitle') : t('newCourseTitle')}</h2><div class="actions"><button type="button" id="new-course" class="secondary">${icon('add')}${t('newCourseTitle')}</button><button type="button" id="reload-course" class="secondary" ${state.id ? '' : 'hidden'}>${icon('reloadDraft')}${t('reloadDraft')}</button></div><form id="editor"><label>${t('title')}<input name="title" required minlength="3" maxlength="255"></label><label>${t('courseSlugLabel')}<input name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" minlength="3" maxlength="100"></label><label>${t('summary')}<textarea name="summary" required minlength="10" maxlength="1000"></textarea></label><label>${t('access')}<select name="accessMode" aria-label="${t('access')}"><option value="OPEN_FREE">${t('accessOpenOption')}</option><option value="ENROLLED_FREE">${t('accessEnrolledOption')}</option></select></label><label>${t('courseLanguage')}<select name="locale"><option value="en">English</option><option value="pt-BR">Português</option><option value="es">Español</option></select></label><section id="course-attachments"></section><div id="modules"></div><div class="actions"><button type="button" id="add-module" class="secondary">${icon('add')}${t('addModule')}</button><button type="submit">${icon('saveDraft')}${t('saveDraft')}</button></div><p id="save-status" role="status" aria-live="polite"></p></form>`;
   const form = document.querySelector('#editor');
   for (const name of ['title', 'slug', 'summary', 'accessMode', 'locale'])
     form.elements[name].value = state.payload[name];
   for (const module of state.payload.modules)
     document.querySelector('#modules').append(moduleField(module));
+  mountAttachments(document.querySelector('#course-attachments'), state.payload.attachments || [], {
+    ...ctx,
+    courseId: state.id,
+    onChange: () => {
+      readForm();
+      changed();
+    },
+  });
   form.oninput = () => {
     readForm();
     changed();

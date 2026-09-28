@@ -49,3 +49,12 @@ limite agora cobre a API e uploads têm limite próprio por usuário.
 
 Não foram executados implantação, Docker build, Safari/Android, carga ou teste
 HTTPS pela VPS nesta entrega. HLS e legendas ainda não estão disponíveis.
+
+## Materiais complementares — 28/09/2026
+
+Build/lint, 43 testes automatizados com vídeo real e cinco fluxos no Chrome passaram.
+O fluxo novo envia PDF, ZIP e código-fonte pelo editor, preenche descrições, publica
+e verifica o conteúdo do download. Os testes HTTP conferem autorização, revogação,
+revisão antiga preservada, relação entre cursos e bloqueio de publicação antes de
+READY. Validação de tipos inclui assinatura PDF/ZIP e rejeição de binário disfarçado
+de código-fonte. Isso não é validação antimalware. Sem implantação nesta entrega.

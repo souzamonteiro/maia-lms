@@ -65,3 +65,8 @@ legada, permissões, revisão pública/matrícula, sanitização, agenda da home
 concorrência, recuperação local, troca entre três idiomas e largura móvel de 390px.
 Essa verificação não equivale a homologação Safari/Android ou auditoria completa de
 acessibilidade. A política de renderização ainda não tem versão persistida por aula.
+
+## Materiais complementares
+
+O curso e cada aula têm uma seção para anexar arquivos com título, descrição e ordem.
+Veja [materiais complementares](14-materials.md) para envio, substituição e acesso.
