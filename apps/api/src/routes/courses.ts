@@ -9,7 +9,8 @@ import { AppError } from '../middleware/error-handler.js';
 
 const lessonSchema = z.object({
   title: z.string().min(1).max(200),
-  body: z.string().min(1).max(100000),
+  body: z.string().max(100000),
+  videoId: z.string().uuid().nullable().optional(),
   contentFormat: z.enum(['plain', 'markdown']).default('plain'),
   required: z.boolean().default(true),
   preview: z.boolean().default(false),
@@ -68,6 +69,18 @@ export function coursesRouter(db: Database.Database): Router {
       throw new AppError(403, 'Insufficient permissions');
   }
   function writeRevision(courseId: string, data: z.infer<typeof courseSchema>): string {
+    for (const module of data.modules)
+      for (const lesson of module.lessons) {
+        if (
+          lesson.videoId &&
+          !db
+            .prepare(
+              "SELECT id FROM video_uploads WHERE id=? AND course_id=? AND status != 'CANCELLED'",
+            )
+            .get(lesson.videoId, courseId)
+        )
+          throw new AppError(422, 'Video belongs to another course', 'VIDEO_INVALID');
+      }
     const revisionId = randomUUID();
     db.prepare(
       'INSERT INTO course_revisions (id, course_id, title, summary, slug, access_mode, locale) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -80,7 +93,7 @@ export function coursesRouter(db: Database.Database): Router {
       module.lessons.forEach((lesson, li) =>
         db
           .prepare(
-            `INSERT INTO lessons (id, module_id, sort_order, title, body, is_required, is_preview, content_format) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO lessons (id, module_id, sort_order, title, body, is_required, is_preview, content_format, video_id, kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           )
           .run(
             randomUUID(),
@@ -91,6 +104,8 @@ export function coursesRouter(db: Database.Database): Router {
             Number(lesson.required),
             Number(lesson.preview),
             lesson.contentFormat,
+            lesson.videoId ?? null,
+            lesson.videoId ? (lesson.body.trim() ? 'mixed' : 'video') : 'article',
           ),
       );
     });
@@ -167,8 +182,24 @@ export function coursesRouter(db: Database.Database): Router {
     const saved = db
       .transaction(() => {
         const c = course(req.params.id);
+        if (
+          db
+            .prepare(
+              "SELECT l.id FROM lessons l JOIN modules m ON m.id=l.module_id WHERE m.revision_id=? AND trim(l.body)='' AND l.video_id IS NULL LIMIT 1",
+            )
+            .get(c.current_revision_id)
+        )
+          throw new AppError(422, 'Lesson needs text or video', 'VIDEO_INVALID');
         if (req.body.expectedRevisionId && req.body.expectedRevisionId !== c.current_revision_id)
           throw new AppError(409, 'Draft changed. Reload before publishing.', 'DRAFT_CONFLICT');
+        if (
+          db
+            .prepare(
+              "SELECT l.id FROM lessons l JOIN modules m ON m.id=l.module_id LEFT JOIN video_uploads v ON v.id=l.video_id WHERE m.revision_id=? AND l.video_id IS NOT NULL AND (v.status != 'READY' OR v.id IS NULL) LIMIT 1",
+            )
+            .get(c.current_revision_id)
+        )
+          throw new AppError(422, 'Video is not ready', 'VIDEO_NOT_READY');
         const revision = db
           .prepare('SELECT slug, access_mode, locale FROM course_revisions WHERE id = ?')
           .get(c.current_revision_id) as { slug: string; access_mode: string; locale: string };
@@ -216,7 +247,7 @@ export function coursesRouter(db: Database.Database): Router {
         ...m,
         lessons: db
           .prepare(
-            `SELECT id, title, kind, is_required, is_preview, content_format${editing ? ', body' : ''} FROM lessons WHERE module_id = ? ORDER BY sort_order`,
+            `SELECT id, title, kind, video_id, is_required, is_preview, content_format${editing ? ', body' : ''} FROM lessons WHERE module_id = ? ORDER BY sort_order`,
           )
           .all(m.id),
       })),
@@ -301,6 +332,7 @@ export function coursesRouter(db: Database.Database): Router {
     res.json({
       ...lesson,
       body_html: renderContent(lesson.body ?? '', lesson.content_format),
+      can_track_progress: Boolean(e && e.revision_id === lesson.revision_id),
       progress: e
         ? (db
             .prepare('SELECT * FROM lesson_progress WHERE enrollment_id = ? AND lesson_id = ?')

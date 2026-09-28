@@ -16,7 +16,7 @@ flowchart TD
   Provider[Payment provider] --> API
 ```
 
-The implemented MVP serves API and web in one Node.js process, plus an email outbox worker. Video, billing and certificate flows below are planned extensions.
+The implemented MVP serves API and web in one Node.js process, plus a worker with independent email and MP4 processing loops. The first video flow is described in [video operations](13-video.md); HLS, captions, billing and certificate flows below remain planned extensions.
 
 Use modular monolith boundaries: identity; catalog/content; enrollment/entitlements; learning/progress; assessments; billing; certificates; media; analytics. SQLite transactions enforce key invariants. Start with SQLite-backed jobs/outbox and a dedicated worker; introduce a separate queue if measured throughput warrants it. Avoid distributed transactions between database and provider.
 

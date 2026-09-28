@@ -495,3 +495,98 @@ export function storeLocale(locale) {
 }
 
 export const supportedLocales = Object.keys(translations);
+
+Object.assign(translations['en'], {
+  videoLesson: 'Video lesson',
+  saveCourseVideo: 'Save the course first, then reopen Edit to upload video.',
+  selectVideo: 'Lesson video / upload to resume',
+  noVideo: 'No video',
+  refreshVideos: 'Refresh status',
+  retryVideo: 'Retry processing',
+  videoFile: 'Video file',
+  uploadVideo: 'Upload / resume',
+  pauseVideo: 'Pause',
+  cancelUpload: 'Cancel incomplete upload',
+  uploadProgress: 'Upload progress',
+  videoLimits:
+    'MP4, MOV, WebM or MKV. Up to 2 GiB / 4 hours; 20 GiB of originals per author. Reselect the same file to resume.',
+  videoUPLOADING: 'Uploading',
+  videoQUEUED: 'Queued for processing',
+  videoPROCESSING: 'Processing',
+  videoREADY: 'Ready',
+  videoFAILED: 'Failed',
+  videoCANCELLED: 'Cancelled',
+  wrongVideoFile: 'This file differs from the uploaded chunks.',
+  uploadInterrupted: 'Upload interrupted. Select the same file and resume.',
+  uploadPaused: 'Paused. Select the same file to resume.',
+  playbackSpeed: 'Playback speed',
+  videoPlaybackError: 'Video unavailable. Check your connection and access, then reload.',
+});
+Object.assign(translations['pt-BR'], {
+  videoLesson: 'Videoaula',
+  saveCourseVideo: 'Salve o curso primeiro e reabra Editar para enviar o vídeo.',
+  selectVideo: 'Vídeo da aula / envio para retomar',
+  noVideo: 'Sem vídeo',
+  refreshVideos: 'Atualizar estado',
+  retryVideo: 'Repetir processamento',
+  videoFile: 'Arquivo de vídeo',
+  uploadVideo: 'Enviar / retomar',
+  pauseVideo: 'Pausar',
+  cancelUpload: 'Cancelar envio incompleto',
+  uploadProgress: 'Progresso do envio',
+  videoLimits:
+    'MP4, MOV, WebM ou MKV. Até 2 GiB / 4 horas; 20 GiB de originais por autor. Selecione o mesmo arquivo para retomar.',
+  videoUPLOADING: 'Enviando',
+  videoQUEUED: 'Na fila de processamento',
+  videoPROCESSING: 'Processando',
+  videoREADY: 'Pronto',
+  videoFAILED: 'Falhou',
+  videoCANCELLED: 'Cancelado',
+  wrongVideoFile: 'Este arquivo difere dos blocos enviados.',
+  uploadInterrupted: 'Envio interrompido. Selecione o mesmo arquivo e retome.',
+  uploadPaused: 'Pausado. Selecione o mesmo arquivo para retomar.',
+  playbackSpeed: 'Velocidade de reprodução',
+  videoPlaybackError: 'Vídeo indisponível. Confira a conexão e o acesso e recarregue.',
+});
+Object.assign(translations['es'], {
+  videoLesson: 'Videoclase',
+  saveCourseVideo: 'Guarda el curso y vuelve a Editar para subir el vídeo.',
+  selectVideo: 'Vídeo de la clase / carga a reanudar',
+  noVideo: 'Sin vídeo',
+  refreshVideos: 'Actualizar estado',
+  retryVideo: 'Reintentar procesamiento',
+  videoFile: 'Archivo de vídeo',
+  uploadVideo: 'Subir / reanudar',
+  pauseVideo: 'Pausar',
+  cancelUpload: 'Cancelar carga incompleta',
+  uploadProgress: 'Progreso de carga',
+  videoLimits:
+    'MP4, MOV, WebM o MKV. Hasta 2 GiB / 4 horas; 20 GiB de originales por autor. Selecciona el mismo archivo para reanudar.',
+  videoUPLOADING: 'Subiendo',
+  videoQUEUED: 'En cola',
+  videoPROCESSING: 'Procesando',
+  videoREADY: 'Listo',
+  videoFAILED: 'Error',
+  videoCANCELLED: 'Cancelado',
+  wrongVideoFile: 'Este archivo difiere de los bloques enviados.',
+  uploadInterrupted: 'Carga interrumpida. Selecciona el mismo archivo y reanuda.',
+  uploadPaused: 'En pausa. Selecciona el mismo archivo para reanudar.',
+  playbackSpeed: 'Velocidad de reproducción',
+  videoPlaybackError: 'Vídeo no disponible. Comprueba conexión y acceso y recarga.',
+});
+
+for (const lang of Object.keys(translations)) {
+  Object.assign(translations[lang], {
+    VIDEO_NOT_READY: translations[lang].videoPROCESSING,
+    VIDEO_INVALID: translations[lang].videoPlaybackError,
+    VIDEO_QUOTA: translations[lang].videoLimits,
+  });
+}
+
+Object.assign(translations.en, { RATE_LIMITED: 'Too many requests. Wait a minute and try again.' });
+Object.assign(translations['pt-BR'], {
+  RATE_LIMITED: 'Muitas requisições. Aguarde um minuto e tente novamente.',
+});
+Object.assign(translations.es, {
+  RATE_LIMITED: 'Demasiadas solicitudes. Espera un minuto y vuelve a intentar.',
+});

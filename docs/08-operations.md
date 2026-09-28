@@ -196,3 +196,10 @@ sudo ./scripts/repair-permissions.sh
 
 O reparo ajusta apenas a leitura do código da release ativa e das unidades systemd,
 preserva as permissões dos segredos/dados e reinicia API e worker.
+
+## Atualização para videoaulas (migração 005)
+
+Instale `ffmpeg` na hospedeira (`sudo apt-get install -y ffmpeg`) antes de executar
+o instalador host. Ele verifica FFmpeg e FFprobe antes de parar os serviços. Não há
+nova porta na VPS: blocos de 512 KiB cabem no limite atual de 1 MiB. Confira o
+[guia de vídeo](13-video.md) para limites, uso de disco, backup e testes pelo domínio.

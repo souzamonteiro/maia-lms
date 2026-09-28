@@ -32,7 +32,7 @@ printf 'Application: https://%s → %s:%s; trusted proxy: %s\n' "$DOMAIN" "$HOST
 printf '%s\n' 'Plan: build an isolated release, back up SQLite, apply migrations, install/restart API and email worker systemd units, check /readyz.'
 ((DRY_RUN)) && exit 0
 ((EUID == 0)) || { echo 'Run with sudo, or use --dry-run.' >&2; exit 1; }
-for tool in node npm rsync curl openssl systemctl runuser python3 make g++ ip flock; do command -v "$tool" >/dev/null || { echo "Missing prerequisite: $tool" >&2; exit 1; }; done
+for tool in node npm rsync curl openssl systemctl runuser python3 make g++ ip flock ffmpeg ffprobe; do command -v "$tool" >/dev/null || { echo "Missing prerequisite: $tool" >&2; exit 1; }; done
 case "$(readlink -f "$(command -v node)")" in /home/*|/root/*) echo 'Install Node.js in a system path; the service has ProtectHome enabled.' >&2; exit 1 ;; esac
 node -e 'const [a,b]=process.versions.node.split(".").map(Number); if(a<22 || (a===22 && b<12)) process.exit(1)' || { echo 'Node.js >=22.12 required.' >&2; exit 1; }
 [[ "$(ip -4 addr show)" == *"inet $HOST_IP/"* ]] || { echo 'The host IP must already be assigned to this machine.' >&2; exit 1; }
@@ -85,8 +85,8 @@ ln -sfnT "$release" /opt/maia-lms/current.new
 mv -Tf /opt/maia-lms/current.new /opt/maia-lms/current
 node_path="$(command -v node)"
 for service in api worker; do
-  unit=maia-lms; entry=apps/api/dist/server.js; after='network-online.target'; requires=''
-  if [[ "$service" == worker ]]; then unit=maia-lms-worker; entry=apps/worker/dist/worker.js; after='maia-lms.service'; requires='Requires=maia-lms.service'; fi
+  unit=maia-lms; entry=apps/api/dist/server.js; after='network-online.target'; requires=''; resource_limits=''
+  if [[ "$service" == worker ]]; then unit=maia-lms-worker; entry=apps/worker/dist/worker.js; after='maia-lms.service'; requires='Requires=maia-lms.service'; resource_limits=$'MemoryMax=2G\nCPUQuota=200%\nTasksMax=128'; fi
   cat > "/etc/systemd/system/$unit.service" <<UNIT
 [Unit]
 Description=Maia LMS $service
@@ -107,6 +107,7 @@ PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
 ReadWritePaths=/var/lib/maia-lms
+$resource_limits
 [Install]
 WantedBy=multi-user.target
 UNIT

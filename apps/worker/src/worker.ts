@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import { NodemailerEmailProvider } from '@maia/providers';
+import { processVideo } from './video-jobs.js';
 import { pollOnce } from './jobs.js';
 
 if (process.env.NODE_ENV !== 'production' && fs.existsSync('.env')) process.loadEnvFile('.env');
@@ -23,7 +24,14 @@ process.on('SIGTERM', () => {
 process.on('SIGINT', () => {
   running = false;
 });
+let mediaJob: Promise<unknown> | undefined;
 while (running) {
+  if (!mediaJob)
+    mediaJob = processVideo(db, process.env.STORAGE_ROOT ?? './data/storage')
+      .catch(error => console.error('Video worker failed', error.message))
+      .finally(() => {
+        mediaJob = undefined;
+      });
   try {
     await pollOnce(db, email, concurrency);
   } catch (error) {
@@ -31,4 +39,5 @@ while (running) {
   }
   await new Promise(resolve => setTimeout(resolve, 2000));
 }
+await mediaJob;
 db.close();

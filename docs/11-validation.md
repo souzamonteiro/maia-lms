@@ -32,3 +32,20 @@ consumir a quota de tentativas de login; o limite de credenciais continua testad
 
 Não houve implantação nem acesso ao banco de produção. Vídeo e demais etapas do
 [TODO](../TODO.md) permanecem pendentes; veja o [guia de autoria](12-authoring.md).
+
+## Vídeo MP4 — 28/09/2026
+
+Build, lint, 41 testes automatizados (com `VIDEO_TEST_REAL=1`), quatro testes
+no Chrome e três testes do instalador/proxy passaram. FFmpeg e FFprobe foram
+disponibilizados em uma pasta temporária para os testes locais, sem instalar
+pacotes no sistema da hospedeira. O teste de navegador enviou um MP4 real,
+aguardou processamento, publicou a aula e verificou avanço do tempo de reprodução.
+
+Cobertura nova inclui confinamento/symlinks, falha de stream, original imutável,
+chunks concorrentes, SHA-256, origem, permissões, limite de tamanho, cancelamento,
+claim exclusivo, conversão/capa, arquivo inválido, Range/HEAD/416 e revogação.
+O teste completo identificou quota HTTP consumida por arquivos estáticos: o
+limite agora cobre a API e uploads têm limite próprio por usuário.
+
+Não foram executados implantação, Docker build, Safari/Android, carga ou teste
+HTTPS pela VPS nesta entrega. HLS e legendas ainda não estão disponíveis.

@@ -6,22 +6,23 @@ Plataforma de cursos em `https://learn.maiaplatform.org`, com Node.js, TypeScrip
 
 O plano do produto completo está em [TODO.md](TODO.md), com auditoria do estado atual, prioridades, dependências e critérios de conclusão.
 
-Esta versão entrega o **cursos gratuitos com aulas em texto e Markdown**:
+Esta versão entrega o **cursos gratuitos com aulas em texto, Markdown e vídeo MP4**:
 
 - Interface com internacionalização em inglês, português e espanhol: catálogo, busca, curso, aula, cadastro, login, recuperação de senha e área do aluno.
 - [Editor Markdown](docs/12-authoring.md) com ferramentas, prévia, recuperação de rascunhos, autosave e detecção de conflitos.
 - Autoria de cursos, módulos e aulas; rascunho independente da publicação e arquivamento por administrador.
 - Seleção, ordem e agendamento dos cursos da página inicial em `/admin/home`.
 - Revisões preservadas para alunos já matriculados; prévias públicas e controle de acesso.
+- [Videoaulas](docs/13-video.md): upload retomável, processamento FFmpeg, capa, player e posição salva.
 - Matrícula idempotente, progresso por aula e painel de aprendizado.
 - Sessões persistentes em SQLite; e-mails em outbox com tentativas de entrega pelo worker.
 - Instaladores da hospedeira e da VPS, backup verificável e testes HTTP e de navegador.
 
-**Ainda não implementados:** upload/transcodificação e player de vídeo, quizzes, checkout/webhooks/reembolsos, certificados, MFA e exportação/exclusão de conta. As tabelas e alguns adaptadores herdados preparam essas etapas, mas não são funcionalidades disponíveis. Os documentos de produto registram a visão completa; [o roadmap](docs/09-roadmap.md) distingue o estado atual.
+**Ainda não implementados:** HLS adaptativo, legendas e biblioteca completa de mídia, quizzes, checkout/webhooks/reembolsos, certificados, MFA e exportação/exclusão de conta. As tabelas e alguns adaptadores herdados preparam essas etapas, mas não são funcionalidades disponíveis. Os documentos de produto registram a visão completa; [o roadmap](docs/09-roadmap.md) distingue o estado atual.
 
 ## Desenvolvimento
 
-Requisitos: Node.js **22.12+** (22 ou 24), npm, Python 3, make e compilador C++ caso os módulos nativos precisem de compilação.
+Requisitos: Node.js **22.12+** (22 ou 24), npm, Python 3, make e compilador C++ caso os módulos nativos precisem de compilação. Para processar vídeos, instale também FFmpeg/FFprobe (`sudo apt-get install -y ffmpeg` em Debian/Ubuntu).
 
 ```bash
 npm ci
@@ -112,7 +113,7 @@ A suíte usa bancos temporários. Para usar um Chrome já instalado, informe `PL
 |---|---|
 | `apps/api` | HTTP, autenticação, cursos, matrículas e progresso |
 | `apps/web` | HTML, CSS e JavaScript, servidos pelo mesmo processo da API |
-| `apps/worker` | Fila persistente de e-mails |
+| `apps/worker` | Filas independentes de e-mails e processamento de vídeo |
 | `packages/domain` | Tipos, validação e políticas |
 | `packages/providers` | SMTP e adaptadores reservados para pagamentos/armazenamento |
 | `migrations` | Migrações SQLite sequenciais e transacionais |

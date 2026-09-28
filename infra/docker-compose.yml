@@ -24,6 +24,9 @@ services:
       - maia_data:/data
     restart: unless-stopped
   worker:
+    mem_limit: 2g
+    cpus: 2
+    pids_limit: 128
     image: maia-lms:local
     command: [node, apps/worker/dist/worker.js]
     environment: *app-env

@@ -1,3 +1,4 @@
+import { mountVideoEditor } from './video-editor.js';
 import { icon, iconButton } from './icons.js';
 // Author studio. Draft recovery is scoped to the signed-in account.
 let state;
@@ -53,6 +54,7 @@ function readForm() {
       lessons: [...m.querySelectorAll('.lesson-editor')].map(l => ({
         title: l.querySelector('.lesson-title').value,
         body: l.querySelector('.lesson-content').value,
+        videoId: l.dataset.videoId || null,
         contentFormat: l.querySelector('.lesson-format').value,
         required: l.querySelector('.lesson-required').checked,
         preview: l.querySelector('.lesson-preview').checked,
@@ -103,8 +105,8 @@ async function save(manual) {
       if (title) title.textContent = context.t('editCourseTitle');
       state.dirty = JSON.stringify(state.payload) !== sent;
       persist();
-      status(state.dirty ? 'savedLocally' : 'draftSaved');
       await refreshList();
+      status(state.dirty ? 'savedLocally' : 'draftSaved');
     } catch (error) {
       if (error.code === 'CREATION_EXISTS') {
         const existing = await context.api(`/admin/courses/${state.creationId}`);
@@ -184,10 +186,24 @@ function lessonField(lesson) {
   const { t, e, api, notify } = context;
   const field = document.createElement('fieldset');
   field.className = 'lesson-editor';
-  field.innerHTML = `<legend>${t('lessonLegend')}</legend><label>${t('lessonTitleLabel')}<input class="lesson-title" required maxlength="200" value="${e(lesson.title)}"></label><label>${t('contentFormat')}<select class="lesson-format"><option value="markdown">Markdown</option><option value="plain">${t('plainText')}</option></select></label><div class="markdown-toolbar actions" role="group" aria-label="${t('formatting')}"></div><label>${t('lessonContentLabel')}<textarea class="lesson-content" required maxlength="100000">${e(lesson.body)}</textarea></label><p class="muted">${t('markdownHelp')}</p><button type="button" class="preview-button secondary">${icon('previewContent')}${t('previewContent')}</button><div class="content-preview prose" aria-live="polite" hidden></div><label><input class="lesson-required" type="checkbox" ${lesson.required ? 'checked' : ''}>${t('requiredLabel')}</label><label><input class="lesson-preview" type="checkbox" ${lesson.preview ? 'checked' : ''}>${t('previewLabel')}</label><div class="row-controls actions"></div>`;
+  field.innerHTML = `<legend>${t('lessonLegend')}</legend><label>${t('lessonTitleLabel')}<input class="lesson-title" required maxlength="200" value="${e(lesson.title)}"></label><label>${t('contentFormat')}<select class="lesson-format"><option value="markdown">Markdown</option><option value="plain">${t('plainText')}</option></select></label><div class="markdown-toolbar actions" role="group" aria-label="${t('formatting')}"></div><label>${t('lessonContentLabel')}<textarea class="lesson-content" maxlength="100000">${e(lesson.body)}</textarea></label><p class="muted">${t('markdownHelp')}</p><button type="button" class="preview-button secondary">${icon('previewContent')}${t('previewContent')}</button><div class="content-preview prose" aria-live="polite" hidden></div><label><input class="lesson-required" type="checkbox" ${lesson.required ? 'checked' : ''}>${t('requiredLabel')}</label><label><input class="lesson-preview" type="checkbox" ${lesson.preview ? 'checked' : ''}>${t('previewLabel')}</label><div class="row-controls actions"></div>`;
   const area = field.querySelector('textarea'),
     format = field.querySelector('.lesson-format');
   format.value = lesson.contentFormat;
+  field.dataset.videoId = lesson.videoId || '';
+  const videoRoot = document.createElement('section');
+  videoRoot.className = 'video-editor';
+  field.querySelector('.row-controls').before(videoRoot);
+  mountVideoEditor(videoRoot, {
+    ...context,
+    courseId: state.id,
+    videoId: lesson.videoId,
+    onChange: id => {
+      field.dataset.videoId = id || '';
+      readForm();
+      changed();
+    },
+  });
   const tools = [
     ['heading', '## ', ''],
     ['bold', '**', '**'],
@@ -294,6 +310,7 @@ function fromCourse(c) {
         lessons: m.lessons.map(l => ({
           title: l.title,
           body: l.body,
+          videoId: l.video_id,
           contentFormat: l.content_format,
           required: Boolean(l.is_required),
           preview: Boolean(l.is_preview),
@@ -327,8 +344,9 @@ export async function mountStudio(ctx) {
     changed();
   };
   form.onchange = () => {
+    const previous = JSON.stringify(state.payload);
     readForm();
-    changed();
+    if (JSON.stringify(state.payload) !== previous) changed();
   };
   form.onsubmit = event => {
     event.preventDefault();
@@ -362,7 +380,8 @@ export async function mountStudio(ctx) {
       }
     };
   document.querySelector('#admin-list').onclick = async event => {
-    const target = event.target;
+    const target = event.target.closest('button');
+    if (!target) return;
     try {
       if (pending) await pending;
       if (target.dataset.edit) {
@@ -381,7 +400,7 @@ export async function mountStudio(ctx) {
         await api(
           `/admin/courses/${id}/${target.dataset.publish ? 'publish' : 'archive'}`,
           'POST',
-          { expectedRevisionId: target.dataset.revision },
+          { expectedRevisionId: state.id === id ? state.revisionId : target.dataset.revision },
         );
         await refreshList();
       }

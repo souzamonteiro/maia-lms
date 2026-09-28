@@ -9,6 +9,8 @@ import rateLimit from 'express-rate-limit';
 import { SQLiteSessionStore } from './db/session-store.js';
 import type Database from 'better-sqlite3';
 import type { Config } from './config.js';
+import { playbackRouter } from './routes/playback.js';
+import { videosRouter } from './routes/videos.js';
 import { homeRouter } from './routes/home.js';
 import { coursesRouter } from './routes/courses.js';
 import { healthRouter } from './routes/health.js';
@@ -86,7 +88,11 @@ export function createApp(db: Database.Database, config: Config): express.Applic
         res.status(403).json({ error: 'Invalid origin' });
         return;
       }
-      if (!req.is('application/json')) {
+      const videoChunk =
+        req.method === 'PUT' &&
+        /^\/api\/v1\/admin\/videos\/[a-f0-9-]+\/chunks$/.test(req.path) &&
+        req.is('application/octet-stream');
+      if (!req.is('application/json') && !videoChunk) {
         res.status(415).json({ error: 'Use application/json' });
         return;
       }
@@ -108,11 +114,13 @@ export function createApp(db: Database.Database, config: Config): express.Applic
   const globalLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
     max: 300,
+    skip: req => req.method === 'PUT' && /^\/admin\/videos\/[a-f0-9-]+\/chunks$/.test(req.path),
+    message: { error: 'Too many requests', code: 'RATE_LIMITED' },
     standardHeaders: true,
     legacyHeaders: false,
   });
 
-  app.use(globalLimiter);
+  app.use('/api/v1', globalLimiter);
 
   // ── Request correlation ID ────────────────────────────────────
   app.use((req, _res, next) => {
@@ -130,6 +138,8 @@ export function createApp(db: Database.Database, config: Config): express.Applic
 
   app.use('/api/v1', coursesRouter(db));
   app.use('/api/v1', homeRouter(db));
+  app.use('/api/v1', videosRouter(db, config));
+  app.use('/api/v1', playbackRouter(db, config));
   app.use(createWebApp());
 
   // ── 404 handler ───────────────────────────────────────────────

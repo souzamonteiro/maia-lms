@@ -26,7 +26,12 @@ async function api(path, method = 'GET', data) {
     headers: { 'Content-Type': 'application/json' },
     ...(method !== 'GET' ? { body: JSON.stringify(data ?? {}) } : {}),
   });
-  const result = response.status === 204 ? null : await response.json();
+  const result =
+    response.status === 204
+      ? null
+      : response.headers.get('content-type')?.includes('application/json')
+        ? await response.json()
+        : { error: t(response.status === 429 ? 'RATE_LIMITED' : 'genericError') };
   if (!response.ok) {
     const error = new Error(
       result.code
@@ -110,7 +115,42 @@ async function detail(slug) {
 }
 async function lesson(id) {
   const l = await api(`/lessons/${encodeURIComponent(id)}`);
-  app.innerHTML = `<a href="/courses/${e(l.course_id)}">${t('backToCourse')}</a><article class="lesson"><h1>${e(l.title)}</h1><div class="lesson-body prose">${l.body_html}</div></article>${me ? `<button id="complete">${l.progress?.completed_at ? t('lessonCompleted') : t('markComplete')}</button>` : `<p>${t('signInToTrackProgress')}</p>`}`;
+  app.innerHTML = `<a href="/courses/${e(l.course_id)}">${t('backToCourse')}</a><article class="lesson"><h1>${e(l.title)}</h1><div class="lesson-body prose">${l.video_id ? `<video id="lesson-video" controls playsinline preload="metadata" poster="/api/v1/lessons/${e(id)}/poster" src="/api/v1/lessons/${e(id)}/video"></video><label>${t('playbackSpeed')}<select id="playback-speed"><option>0.75</option><option selected>1</option><option>1.25</option><option>1.5</option><option>2</option></select></label><p id="video-error" role="status"></p>` : ''}${l.body_html}</div></article>${me ? `<button id="complete">${l.progress?.completed_at ? t('lessonCompleted') : t('markComplete')}</button>` : `<p>${t('signInToTrackProgress')}</p>`}`;
+  const video = document.querySelector('#lesson-video');
+  if (video) {
+    video.addEventListener('loadedmetadata', () => {
+      if (l.progress?.position_seconds && l.progress.position_seconds < video.duration)
+        video.currentTime = l.progress.position_seconds;
+    });
+    video.addEventListener('error', () => {
+      document.querySelector('#video-error').textContent = t('videoPlaybackError');
+    });
+    document.querySelector('#playback-speed').onchange = event => {
+      video.playbackRate = Number(event.target.value);
+    };
+    let lastSave = 0,
+      saving = false;
+    const savePosition = async () => {
+      if (!l.can_track_progress || saving || !Number.isFinite(video.currentTime)) return;
+      saving = true;
+      lastSave = Date.now();
+      try {
+        await api(`/lessons/${id}/progress`, 'PUT', {
+          positionSeconds: Math.floor(video.currentTime),
+        });
+      } catch {
+        /* Public preview viewers may have no enrollment. */
+      } finally {
+        saving = false;
+      }
+    };
+    video.addEventListener('timeupdate', () => {
+      if (Date.now() - lastSave > 15000) void savePosition();
+    });
+    video.addEventListener('pause', () => {
+      void savePosition();
+    });
+  }
   button('#complete', async () => {
     await api(`/lessons/${id}/progress`, 'PUT', { complete: true });
     await lesson(id);

@@ -10,8 +10,7 @@ Novas aulas usam Markdown. A barra usa ícones com dicas traduzidas e nomes aces
 citação, código, link, imagem e tabela. Use **Prévia** para conferir o resultado
 renderizado pelo servidor. HTML escrito na aula é exibido literalmente; scripts,
 URLs perigosas e embeds não são executados. Imagens aceitam somente caminhos
-locais do site; o botão insere marcação, não faz upload. Upload de mídia e vídeo
-continuam pendentes.
+locais do site; o botão insere marcação, não faz upload. Upload de imagens continua pendente. Para videoaulas, veja o [guia de vídeo](13-video.md).
 
 Aulas antigas mantêm texto simples. Escolher Markdown explicitamente converte a
 interpretação do conteúdo; confira a prévia antes de publicar.

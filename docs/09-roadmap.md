@@ -14,6 +14,12 @@ recuperação local, conflitos entre abas e home editorial implementados. Guia e
 limites: [autoria](12-authoring.md). E1 permanece parcial conforme o TODO; vídeo
 ainda depende de E2. Esta entrega não foi implantada no protótipo.
 
+## E2 iniciada — 28/09/2026
+
+Upload retomável, processamento MP4/capa, associação à aula, publicação e player
+com autorização/retomada implementados localmente. Veja [vídeo](13-video.md). HLS,
+legendas, biblioteca completa e homologação na VPS permanecem pendentes.
+
 ## Implemented delivery
 
 - M0: SQLite migrations, runnable API/web/worker, workspace build, lockfile, CI, backup tool, Docker packaging and host/VPS installers.
@@ -23,7 +29,7 @@ ainda depende de E2. Esta entrega não foi implantada no protótipo.
 
 ## Pending before the full product is complete
 
-M2 video upload/inspection/transcoding/HLS/captions; quizzes and completion policies from M3; M4 commerce including real provider verification and refunds; M5 credentials; MFA, privacy requests, richer catalog/editor, production performance/accessibility checks and validation of the complete video workflows on the deployed prototype. Provider adapters and database tables alone do not complete these milestones. SMTP, VPN, DNS and certificates require the destination environment.
+M2 adaptive HLS, captions, full media library and deployed validation; quizzes and completion policies from M3; M4 commerce including real provider verification and refunds; M5 credentials; MFA, privacy requests, richer catalog/editor, production performance/accessibility checks and validation of the complete video workflows on the deployed prototype. Provider adapters and database tables alone do not complete these milestones. SMTP, VPN, DNS and certificates require the destination environment.
 
 The table below remains the complete product roadmap, not a claim that every milestone is shipped.
 

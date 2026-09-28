@@ -2,9 +2,9 @@ openapi: 3.1.0
 info:
   title: Maia Learn API — implemented MVP
   version: 0.1.0
-  description: Free text/Markdown courses, draft publication, curated home, identity,
-    enrollment and progress. Mutations require application/json and same-origin browser
-    requests. Video remains planned.
+  description: Free article/Markdown/MP4 courses, resumable upload, private playback,
+    curated home, identity and progress. HLS remains planned. Mutations require application/json
+    except the authenticated octet-stream chunk route.
 servers:
   - url: https://learn.maiaplatform.org/api/v1
   - url: http://localhost:3000/api/v1
@@ -281,7 +281,7 @@ paths:
                   enum:
                     - OPEN_FREE
                     - ENROLLED_FREE
-                modules:
+                modules: &id006
                   type: array
                   minItems: 1
                   maxItems: 100
@@ -311,7 +311,7 @@ paths:
                               maxLength: 200
                             body:
                               type: string
-                              minLength: 1
+                              minLength: 0
                               maxLength: 100000
                             required:
                               type: boolean
@@ -325,6 +325,13 @@ paths:
                                 - plain
                                 - markdown
                               default: plain
+                            videoId:
+                              type:
+                                - string
+                                - 'null'
+                              format: uuid
+                              description: Video in the same course. Only READY video
+                                can be published; drafts may have empty body.
                 creationId:
                   type: string
                   format: uuid
@@ -465,6 +472,210 @@ paths:
           description: HOME_CONFLICT
         '422':
           description: Invalid input, HOME_DUPLICATE or HOME_UNPUBLISHED
+  /admin/videos:
+    get:
+      summary: List videos in course (author owns videos or admin)
+      security: &id002
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Array with id, course_id, filename, size, offset, status, duration
+            and error
+      parameters:
+        - name: courseId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+    post:
+      summary: Reserve private upload (author/admin)
+      security: *id002
+      responses:
+        '201':
+          description: id, offset=0, chunkSize=524288
+        '403':
+          description: Course access denied
+        '422':
+          description: Invalid metadata or VIDEO_QUOTA
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - courseId
+                - filename
+                - size
+              properties:
+                courseId:
+                  type: string
+                  format: uuid
+                filename:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                size:
+                  type: integer
+                  minimum: 1
+                  maximum: 2147483648
+  /admin/videos/{id}:
+    parameters:
+      - &id003
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: Get owned upload and resumable chunk SHA-256 manifest
+      security: *id002
+      responses:
+        '200':
+          description: Metadata and chunks (offset, size, sha256); storage keys omitted
+        '403':
+          description: Not owner/admin
+        '404':
+          description: Not found
+  /admin/videos/{id}/chunks:
+    parameters:
+      - *id003
+    put:
+      summary: Append chunk at confirmed offset (author/admin)
+      security: *id002
+      responses:
+        '200':
+          description: New offset
+        '409':
+          description: UPLOAD_CONFLICT; reload upload metadata before retrying
+        '413':
+          description: Chunk exceeds 512 KiB
+        '422':
+          description: Empty chunk or exceeds reserved size
+      parameters:
+        - name: Upload-Offset
+          in: header
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+              maxLength: 524288
+  /admin/videos/{id}/complete:
+    parameters:
+      - *id003
+    post:
+      summary: Queue fully received upload (idempotent)
+      security: *id002
+      responses:
+        '200':
+          description: Current status
+        '403':
+          description: Not owner/admin
+        '409':
+          description: Incompatible state
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+  /admin/videos/{id}/retry:
+    parameters:
+      - *id003
+    post:
+      summary: Retry a FAILED processing job
+      security: *id002
+      responses:
+        '200':
+          description: Current status
+        '403':
+          description: Not owner/admin
+        '409':
+          description: Incompatible state
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+  /admin/videos/{id}/cancel:
+    parameters:
+      - *id003
+    post:
+      summary: Cancel incomplete upload and remove its persisted chunks
+      security: *id002
+      responses:
+        '200':
+          description: Current status
+        '403':
+          description: Not owner/admin
+        '409':
+          description: Incompatible state
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+  /lessons/{id}/video:
+    parameters:
+      - *id003
+    get:
+      summary: Stream authorized lesson video
+      responses: &id004
+        '200':
+          description: MP4 or JPEG; Cache-Control private, no-store
+        '206':
+          description: Single byte range
+        '403':
+          description: No published preview, ownership or active enrollment for revision
+        '404':
+          description: Media not READY or absent
+        '416':
+          description: Unsatisfiable/unsupported Range
+      parameters:
+        - name: Range
+          in: header
+          schema:
+            type: string
+          description: One bytes=start-end or suffix range
+    head:
+      summary: Same authorization and headers as GET, without body
+      responses: *id004
+  /lessons/{id}/poster:
+    parameters:
+      - *id003
+    get:
+      summary: Stream authorized lesson poster
+      responses: &id005
+        '200':
+          description: MP4 or JPEG; Cache-Control private, no-store
+        '206':
+          description: Single byte range
+        '403':
+          description: No published preview, ownership or active enrollment for revision
+        '404':
+          description: Media not READY or absent
+        '416':
+          description: Unsatisfiable/unsupported Range
+      parameters:
+        - name: Range
+          in: header
+          schema:
+            type: string
+          description: One bytes=start-end or suffix range
+    head:
+      summary: Same authorization and headers as GET, without body
+      responses: *id005
 components:
   securitySchemes:
     cookieAuth:
@@ -526,50 +737,7 @@ components:
                 enum:
                   - OPEN_FREE
                   - ENROLLED_FREE
-              modules:
-                type: array
-                minItems: 1
-                maxItems: 100
-                items:
-                  type: object
-                  required:
-                    - title
-                    - lessons
-                  properties:
-                    title:
-                      type: string
-                      minLength: 1
-                      maxLength: 200
-                    lessons:
-                      type: array
-                      minItems: 1
-                      maxItems: 100
-                      items:
-                        type: object
-                        required:
-                          - title
-                          - body
-                        properties:
-                          title:
-                            type: string
-                            minLength: 1
-                            maxLength: 200
-                          body:
-                            type: string
-                            minLength: 1
-                            maxLength: 100000
-                          required:
-                            type: boolean
-                            default: true
-                          preview:
-                            type: boolean
-                            default: false
-                          contentFormat:
-                            type: string
-                            enum:
-                              - plain
-                              - markdown
-                            default: plain
+              modules: *id006
               creationId:
                 type: string
                 format: uuid

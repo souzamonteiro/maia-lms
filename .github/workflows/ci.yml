@@ -16,10 +16,11 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: npm ci
       - run: npm run build
       - run: npm run lint
-      - run: npm test
+      - run: VIDEO_TEST_REAL=1 npm test
       - run: npm run migrate
         env:
           NODE_ENV: test
@@ -31,7 +32,7 @@ jobs:
       - run: bash -n install.sh scripts/install-host.sh scripts/install-vps.sh scripts/install-vps-edge.sh
       - run: ./install.sh host --host-ip 10.77.0.2 --proxy-ip 10.77.0.1 --dry-run
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
+      - run: VIDEO_TEST_REAL=1 npm run test:e2e
       - run: docker compose --env-file .env.example -f infra/docker-compose.yml config --quiet
       - run: docker build -f apps/api/Dockerfile -t maia-lms:ci .
         if: matrix.node-version == '22.x'

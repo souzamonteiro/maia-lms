@@ -25,6 +25,20 @@ Guia: [autoria e página inicial](docs/12-authoring.md).
 E1 ainda tem os complementos acima. Upload, processamento, legendas e player de
 vídeo continuam em E2; a plataforma completa não está concluída.
 
+## Primeira implementação de vídeo — 28/09/2026
+
+Fluxo MP4 entregue no checkout local: armazenamento privado, envio em blocos com
+retomada/verificação, associação à aula, fila separada, FFprobe/FFmpeg, capa,
+validação de publicação, player com Range/HEAD e retomada de posição. Instalação
+atualizada para FFmpeg e limites do worker. Validação: build/lint, 41 testes
+automatizados, quatro fluxos no Chrome e três testes de implantação. Não implantado.
+[Guia de vídeo](docs/13-video.md).
+
+MEDIA-01/02/03/04, JOB-01, PLAY-01/02/04, EDIT-05 e OPS-01 avançaram, mas ficam
+abertos: falta concluir HLS, legendas, biblioteca completa, limpeza automática de
+órfãos/expiração, progresso de transcode, navegação do aluno e homologação no Maia
+Edge/dispositivos. E2 e a plataforma completa permanecem em andamento.
+
 ## Evidências e limites da revisão original
 
 Revisados API, interface, internacionalização, esquema SQLite, worker, adaptadores,
@@ -137,6 +151,17 @@ Preservar as alterações locais de internacionalização e os dados do protóti
   imagem/capa/poster/anexo e exibir fila/erro. Dependências: MEDIA-02/03, EDIT-03.
   Aceite: autor acompanha todo o processo sem terminal; coleta de órfãos considera
   revisões antigas e só remove arquivos elegíveis após período definido.
+- [ ] **MEDIA-05 — Materiais complementares com descrição.**
+  Permitir anexar múltiplos arquivos ao curso ou a uma aula, incluindo PDF, ZIP,
+  código-fonte e outros formatos permitidos. Cada anexo deve ter título e descrição
+  editáveis; mostrar nome do arquivo, formato e tamanho ao aluno. Oferecer upload,
+  ordenação, substituição e remoção pelo editor, preservando arquivos referenciados
+  por revisões anteriores. Dependências: MEDIA-01/02/04, BASE-01, EDIT-03.
+  Aceite: autor adiciona um PDF, um ZIP e um arquivo de código-fonte com descrições;
+  aluno autorizado vê os materiais no contexto do curso/aula e consegue baixá-los.
+  Downloads respeitam matrícula, revisão, revogação e política de prévia; URLs
+  diretas não contornam autorização. Aplicar limites e validação de tipos; servir
+  como download, sem executar código nem extrair arquivos ZIP automaticamente.
 - [ ] **PLAY-01 — Entrega autorizada de MP4 e HLS.**
   Endpoints de playback vinculados à aula/revisão/entitlement, HTTP Range/206/416,
   Content-Type correto, HEAD, expiração/renovação de sessão de reprodução; verificar
@@ -366,7 +391,8 @@ utilizável para vídeo gratuito, mas não encerra o escopo completo P0/P1.
 
 - [ ] Administrador cria autor e configura a seleção editorial da home.
 - [ ] Autor cria curso com capa/objetivos, módulos reordenáveis, Markdown, vídeo,
-  legenda e anexo; interrompe e retoma upload; corrige um erro de processamento.
+  legenda e materiais complementares (PDF, ZIP e código-fonte) com descrição;
+  interrompe e retoma upload; corrige um erro de processamento.
 - [ ] Autor prepara nova revisão enquanto a publicação antiga continua acessível.
 - [ ] Visitante encontra curso por busca/filtro e assiste somente às prévias permitidas.
 - [ ] Aluno se cadastra, verifica e-mail, matricula-se ou paga, assiste em desktop/mobile,

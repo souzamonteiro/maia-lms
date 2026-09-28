@@ -47,3 +47,12 @@ Use SQL constraints plus domain checks; reject inconsistent cross-course lesson 
 The runtime currently uses users, http_sessions, email_tokens, courses, course_revisions, modules, lessons, enrollments, entitlements, lesson_progress, promotions, home_settings, audit_events and outbox. Other tables reserve the planned product model; their presence is not evidence of implemented payment, quiz or certificate flows. The invariants for those extensions above must be implemented and tested before exposing their endpoints. SQLite does not support row-level `FOR UPDATE`; use short `IMMEDIATE` transactions and database constraints.
 
 Migration 002 adds lesson titles, session versioning and the actual session store; migration 003 adds worker lease tokens. Never modify an applied migration to upgrade an existing database. Migration 004 adds separate editable/public revision pointers, revision metadata snapshots, plain/markdown content format and home concurrency state. Course edits create a new editable revision without changing published status or metadata; publication atomically promotes that revision. Existing enrollments keep their revision and entitlement. Legacy content defaults to plain and is never implicitly interpreted as Markdown. Archiving closes public discovery/enrollment while preserving existing access.
+
+## Vídeo MP4 — migração 005
+
+`video_uploads` registra dono/curso, tamanho reservado, offset, estado, saída/capa,
+duração e lease/heartbeat de processamento. `video_chunks` registra offset, tamanho,
+chave privada e SHA-256; a combinação upload/offset é única. `lessons.video_id`
+associa cada revisão ao vídeo, sem reutilizar os registros reservados de `assets`.
+A API impede relações entre cursos e publicação sem vídeo READY. `kind` é derivado
+de texto/vídeo como article, mixed ou video. A fila de vídeo é independente da outbox.
