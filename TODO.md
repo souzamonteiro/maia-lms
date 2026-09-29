@@ -55,6 +55,15 @@ Supports the plain-text subset documented in the [guide](docs/15-captions.md);
 CSS, positioning, SRT, and automatic generation are outside this delivery.
 Locally validated with real video and Chrome; no deployment performed.
 
+## Versioned content rendering — September 28, 2026
+
+EDIT-02 completed locally: migration 008 persists the rendering policy per lesson,
+preserving existing plain/Markdown content. New revisions and previews use the
+server-selected current policy; lesson delivery uses the stored policy. Unknown
+policies fail closed. Migration, API parity, multilingual content, and hostile
+markup are covered by automated tests. See [authoring](docs/12-authoring.md).
+Not deployed; other E1 tasks remain open.
+
 ## Evidence and limitations of the original review
 
 Reviewed the API, interface, internationalization, SQLite schema, worker, adapters,
@@ -115,7 +124,7 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Acceptance: authors format, save, and reopen content, and learners receive the same
   rendered structure. Markdown is the initial choice; a visual editor may be added
   without requiring unrestricted HTML to complete this delivery.
-- [ ] **EDIT-02 — Safe, versioned rendering.**
+- [x] **EDIT-02 — Safe, versioned rendering.**
   Define `content_format`, parser, and server-side allowlist sanitization; block
   scripts, handlers, dangerous URLs, arbitrary SVG/HTML, and unapproved embeds.
   Dependency: EDIT-01. Acceptance: preview and lessons use the same policy; XSS

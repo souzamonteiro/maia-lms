@@ -6,7 +6,7 @@ import { slugSchema, UpdateLessonProgressSchema } from '@maia/domain';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { attachmentList } from './attachments.js';
 import { captionsSchema, parseCaptions } from '../services/captions.js';
-import { renderContent } from '../services/content.js';
+import { CURRENT_RENDER_POLICY, renderContent } from '../services/content.js';
 import { AppError } from '../middleware/error-handler.js';
 
 const attachmentSchema = z.object({
@@ -119,7 +119,7 @@ export function coursesRouter(db: Database.Database): Router {
       module.lessons.forEach((lesson, li) => {
         const lessonId = randomUUID();
         db.prepare(
-          `INSERT INTO lessons (id, module_id, sort_order, title, body, is_required, is_preview, content_format, video_id, kind, captions_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO lessons (id, module_id, sort_order, title, body, is_required, is_preview, content_format, video_id, kind, captions_json, render_policy_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         ).run(
           lessonId,
           moduleId,
@@ -132,6 +132,7 @@ export function coursesRouter(db: Database.Database): Router {
           lesson.videoId ?? null,
           lesson.videoId ? (lesson.body.trim() ? 'mixed' : 'video') : 'article',
           JSON.stringify(lesson.captions),
+          CURRENT_RENDER_POLICY,
         );
         writeAttachments(lesson.attachments, lessonId);
       });
@@ -184,7 +185,10 @@ export function coursesRouter(db: Database.Database): Router {
     const data = z
       .object({ body: z.string().max(100000), contentFormat: z.enum(['plain', 'markdown']) })
       .parse(req.body);
-    res.json({ html: renderContent(data.body, data.contentFormat) });
+    res.json({
+      html: renderContent(data.body, data.contentFormat),
+      renderPolicyVersion: CURRENT_RENDER_POLICY,
+    });
   });
   router.put('/admin/courses/:id', requireRole('admin', 'author'), (req, res) => {
     const data = courseSchema.extend({ expectedRevisionId: z.string().uuid() }).parse(req.body);
@@ -283,7 +287,7 @@ export function coursesRouter(db: Database.Database): Router {
         ...m,
         lessons: db
           .prepare(
-            `SELECT id, title, kind, video_id, is_required, is_preview, content_format${editing ? ', body, captions_json' : ''} FROM lessons WHERE module_id = ? ORDER BY sort_order`,
+            `SELECT id, title, kind, video_id, is_required, is_preview, content_format, render_policy_version${editing ? ', body, captions_json' : ''} FROM lessons WHERE module_id = ? ORDER BY sort_order`,
           )
           .all(m.id)
           .map(row => ({
@@ -358,6 +362,7 @@ export function coursesRouter(db: Database.Database): Router {
           body: string;
           captions_json: string;
           content_format: 'plain' | 'markdown';
+          render_policy_version: number;
           is_preview: number;
         }
       | undefined;
@@ -380,7 +385,11 @@ export function coursesRouter(db: Database.Database): Router {
           transcript: parseCaptions(c.vtt).join('\n\n'),
         }),
       ),
-      body_html: renderContent(lesson.body ?? '', lesson.content_format),
+      body_html: renderContent(
+        lesson.body ?? '',
+        lesson.content_format,
+        lesson.render_policy_version,
+      ),
       attachments: attachmentList(db, lesson.revision_id, req.params.id),
       can_track_progress: Boolean(e && e.revision_id === lesson.revision_id),
       progress: e

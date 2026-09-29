@@ -67,10 +67,24 @@ Local validation: build, 38 automated tests and 3 Chrome tests. They cover legac
 migration, permissions, public/enrollment revisions, sanitization, homepage schedules,
 concurrency, local recovery, switching between three languages and a 390px mobile
 viewport. This does not equal Safari/Android qualification or a complete accessibility
-audit. The rendering policy still has no persisted version per lesson.
+audit. Rendering policy versioning was added subsequently, as described below.
 
 ## Supplementary materials
 
 The course and each lesson have a section for attaching files with a title,
 description and order. See [supplementary materials](14-materials.md) for uploading,
 replacement and access.
+
+## Versioned rendering — migration 008
+
+Every lesson stores `render_policy_version`. Migration 008 pins existing plain and
+Markdown lessons to policy 1 without changing their bodies, revisions, or enrollments.
+New revisions use the current server-selected policy; clients cannot override it.
+The preview returns `renderPolicyVersion` alongside `html`, using that same current
+policy. Lesson delivery renders using the stored version and exposes it as
+`render_policy_version`. Unknown policies fail closed instead of falling back.
+
+Future rendering changes must introduce an explicit policy version and retain
+support for historical versions. Security fixes apply to every supported policy;
+pinning a version must never preserve a known unsafe renderer. Policy 1 keeps raw
+HTML literal, sanitizes Markdown with an allowlist, and restricts images to local paths.

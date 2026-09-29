@@ -287,13 +287,16 @@ describe('authoring and homepage', () => {
   it('serves the same safe Markdown in the preview and a published lesson',async()=>{
     const admin=await account('admin@example.com','admin');
     const data=draft('markdown-course','OPEN_FREE');
-    const lesson={...data.modules[0].lessons[0],body:'# Title\n\n**Text**\n\n<script>alert(1)</script>',contentFormat:'markdown'};
+    const lesson={...data.modules[0].lessons[0],body:'# Title\n\n**Text**\n\n<script>alert(1)</script>',contentFormat:'markdown',renderPolicyVersion:999};
     const created=await request('/api/v1/admin/courses','POST',{...data,modules:[{title:'Module',lessons:[lesson]}]},admin.cookie);
     await request(`/api/v1/admin/courses/${created.data.id}/publish`,'POST',{},admin.cookie);
     const detail=(await request('/api/v1/courses/markdown-course')).data;
     const result=await request(`/api/v1/lessons/${detail.modules[0].lessons[0].id}`);
     const preview=await request('/api/v1/admin/content/preview','POST',lesson,admin.cookie);
     expect(result.data.body_html).toBe(preview.data.html);
+    expect(preview.data.renderPolicyVersion).toBe(1);
+    expect(result.data.render_policy_version).toBe(1);
+    expect(detail.modules[0].lessons[0].render_policy_version).toBe(1);
     expect(result.data.body_html).toContain('<h1>Title</h1>');
     expect(result.data.body_html).not.toContain('<script>');
   });

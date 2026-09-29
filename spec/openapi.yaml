@@ -184,7 +184,7 @@ paths:
       summary: Authorized lesson body and saved progress
       responses:
         '200':
-          description: Lesson with original body, content_format, sanitized body_html
+          description: Lesson with original body, content_format, render_policy_version, sanitized body_html
             and saved progress; captions array includes language, label and plain
             transcript. The admin course detail includes captions_json for editing.
         '403':
@@ -439,7 +439,18 @@ paths:
                     - markdown
       responses:
         '200':
-          description: Object with sanitized html string
+          description: Sanitized HTML using the current server-selected rendering policy, also used for newly saved lessons. Clients cannot select the policy.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [html, renderPolicyVersion]
+                properties:
+                  html:
+                    type: string
+                  renderPolicyVersion:
+                    type: integer
+                    enum: [1]
         '403':
           description: Author/admin required
         '422':

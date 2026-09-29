@@ -70,3 +70,10 @@ files are immutable. The API checks upload type and course, and READY status on 
 `lessons.captions_json` stores up to three tracks (language, label, vtt), defaulting to `[]`.
 The API validates format, size, and language uniqueness before creating a revision.
 Transcripts are derived from valid cue blocks and do not alter the original content.
+
+## Rendering policy — migration 008
+
+`lessons.render_policy_version` is a positive integer, defaulting to 1 for existing
+lessons. The server writes its current policy on new revisions and dispatches
+lesson rendering by the stored version. Bodies and enrollment revision references
+are unchanged. Unsupported versions fail closed; clients cannot choose a policy.

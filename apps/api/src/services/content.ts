@@ -13,7 +13,17 @@ const markdown = new Marked({
   async: false,
   renderer: { html: token => escapeText(token.text) },
 });
-export function renderContent(body: string, format: 'plain' | 'markdown'): string {
+export const CURRENT_RENDER_POLICY = 1;
+
+// Keep historical policy implementations when introducing a new version.
+// Security fixes must still be applied to every supported policy.
+export function renderContent(
+  body: string,
+  format: 'plain' | 'markdown',
+  policyVersion = CURRENT_RENDER_POLICY,
+): string {
+  if (policyVersion !== 1) throw new Error('Unsupported content rendering policy');
+  if (format !== 'plain' && format !== 'markdown') throw new Error('Unsupported content format');
   if (format === 'plain') return `<div class="plain-content">${escapeText(body)}</div>`;
   return sanitizeHtml(markdown.parse(body, { async: false }), {
     allowedTags: [

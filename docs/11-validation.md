@@ -72,3 +72,20 @@ the player and opens the transcript. The API rejects access without enrollment,
 from an unassigned revision or after enrollment revocation; older captions remain
 available after a new publication. Invalid format, markup, duplicate languages and
 oversized input are tested. No deployment or Safari/Android qualification was performed.
+
+## Rendering policy versioning — September 28, 2026
+
+EDIT-02 was completed locally with migration 008. Validation:
+
+- `npm run build` and `npm run lint` passed.
+- `npm test -- --reporter=dot`: 47 passed; the optional real-video processing test
+  was skipped because `VIDEO_TEST_REAL` was not enabled for this content-only change.
+- `npm run test:e2e -- tests/e2e/authoring.spec.ts`: both Chromium workflows passed,
+  covering safe preview, editing, language switching, autosave, conflicts, recovery,
+  reordering, and homepage curation.
+- Migration tests preserve existing plain/Markdown bodies and enrollment/progress;
+  HTTP tests check preview/lesson policy parity and reject client policy selection
+  by always assigning the server policy. Unknown stored policies fail closed.
+
+This validates local content rendering and authoring, not deployment or the complete
+video platform. No production migration or deployment was performed.
