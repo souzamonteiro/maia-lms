@@ -109,7 +109,9 @@ it('author upload is resumable, bounded, isolated and cancellable', async () => 
     403,
   );
   expect((await chunk(id, a.cookie, 0, Buffer.alloc(512 * 1024 + 1))).status).toBe(413);
+  db.prepare("UPDATE video_uploads SET last_activity_at=datetime('now','-8 days') WHERE id=?").run(id);
   expect((await chunk(id, a.cookie, 0, Buffer.from('abc'))).status).toBe(200);
+  expect((db.prepare("SELECT julianday(last_activity_at)>julianday('now','-1 minute') AS fresh FROM video_uploads WHERE id=?").get(id) as {fresh:number}).fresh).toBe(1);
   expect((await chunk(id, a.cookie, 0, Buffer.from('abc'))).status).toBe(409);
   const state = await request(`/api/v1/admin/videos/${id}`, 'GET', undefined, a.cookie);
   expect(state.data.offset).toBe(3);

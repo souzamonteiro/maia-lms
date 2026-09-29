@@ -1,3 +1,4 @@
+import { scanAttachment, AttachmentScanError } from './attachment-scan.js';
 import type Database from 'better-sqlite3';
 import { LocalStorageProvider, validateAttachment } from '@maia/providers';
 import { randomUUID } from 'node:crypto';
@@ -56,6 +57,7 @@ export async function processVideo(db: Database.Database, root: string): Promise
     );
     if (job.media_kind === 'attachment') {
       validateAttachment(job.filename, input);
+      await scanAttachment(input, controller.signal);
       await store.putPrivate(outputKey, fs.createReadStream(input), 'application/octet-stream');
       const saved = db
         .prepare(
@@ -170,11 +172,13 @@ export async function processVideo(db: Database.Database, root: string): Promise
     db.prepare(
       "UPDATE video_uploads SET status='FAILED',error=?,lease=NULL WHERE id=? AND lease=?",
     ).run(
-      job.media_kind === 'attachment'
-        ? 'FILE_INVALID'
-        : code === 'ENOENT'
-          ? 'VIDEO_TOOLS_MISSING'
-          : 'VIDEO_PROCESSING_FAILED',
+      error instanceof AttachmentScanError
+        ? error.code
+        : job.media_kind === 'attachment'
+          ? 'FILE_INVALID'
+          : code === 'ENOENT'
+            ? 'VIDEO_TOOLS_MISSING'
+            : 'VIDEO_PROCESSING_FAILED',
       job.id,
       lease,
     );

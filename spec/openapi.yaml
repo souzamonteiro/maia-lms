@@ -377,6 +377,109 @@ paths:
           description: Editable course snapshot, revision_id and current_revision_id
         '403':
           description: Not owner/admin
+    patch:
+      summary: Save changed editing units atomically as a new draft revision
+      description: Indexes refer to the exact expected revision. Course metadata, module titles and complete lesson values can be replaced. Structural additions/removals use PUT. Omitted units are read from the server; publication and enrollment snapshots remain unchanged.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedRevisionId, changes]
+              properties:
+                expectedRevisionId:
+                  type: string
+                  format: uuid
+                changes:
+                  type: array
+                  minItems: 1
+                  maxItems: 10101
+                  items:
+                    oneOf:
+                      - type: object
+                        required: [unit, value]
+                        properties:
+                          unit: {const: course}
+                          value:
+                            type: object
+                            required: [slug, title, summary, accessMode]
+                            description: Same metadata and attachment fields and limits as PUT, excluding modules and creationId.
+                      - type: object
+                        required: [unit, module, title]
+                        properties:
+                          unit: {const: module}
+                          module: {type: integer, minimum: 0, maximum: 99}
+                          title: {type: string, minLength: 1, maxLength: 200}
+                      - type: object
+                        required: [unit, module, lesson, value]
+                        properties:
+                          unit: {const: lesson}
+                          module: {type: integer, minimum: 0, maximum: 99}
+                          lesson: {type: integer, minimum: 0, maximum: 99}
+                          value:
+                            type: object
+                            required: [title, body]
+                            description: Complete lesson using the same fields, defaults and limits as PUT, including videoId, captions and attachments. Omitted optional fields receive their normal defaults.
+      responses:
+        '200':
+          description: Course metadata with the new current_revision_id
+        '401':
+          description: Authentication required
+        '403':
+          description: Owner or administrator required
+        '404':
+          description: Course not found
+        '409':
+          description: DRAFT_CONFLICT or SLUG_EXISTS; no changes applied
+        '422':
+          description: Invalid or duplicate editing unit, index, content or media relationship; no changes applied
+  /admin/courses/{id}/publication-check:
+    get:
+      summary: Check publication readiness of the exact current draft (owner/admin)
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/courseId'
+        - name: revisionId
+          in: query
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Private no-store result. Publication repeats validation inside its transaction.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [revisionId, ready, issues]
+                properties:
+                  revisionId: {type: string, format: uuid}
+                  ready: {type: boolean}
+                  issues:
+                    type: array
+                    items:
+                      type: object
+                      required: [code]
+                      properties:
+                        code:
+                          type: string
+                          enum: [PUBLICATION_EMPTY, PUBLICATION_CONTENT, PUBLICATION_ORDER, VIDEO_INVALID, VIDEO_NOT_READY, FILE_INVALID, FILE_NOT_READY]
+                        moduleTitle: {type: string}
+                        lessonTitle: {type: string}
+                        attachmentTitle: {type: string}
+        '401':
+          description: Authentication required
+        '403':
+          description: Course owner or administrator required
+        '404':
+          description: Course not found
+        '409':
+          description: DRAFT_CONFLICT; requested revision is no longer current
+        '422':
+          description: Invalid revision identifier
   /admin/courses/{id}/publish:
     parameters:
       - $ref: '#/components/parameters/courseId'
@@ -391,6 +494,8 @@ paths:
           description: Admin required
         '409':
           description: Stale expected revision or slug conflict
+        '422':
+          description: Publication blocked; issues contains the same structured checklist as publication-check. No publication changes are committed.
       requestBody:
         required: false
         content:
@@ -415,6 +520,37 @@ paths:
           description: Archived
         '403':
           description: Admin required
+  /admin/courses/{id}/preview:
+    get:
+      summary: Author-only saved draft simulation for learner or visitor access
+      description: Requires course ownership or administrator role. Never publishes, enrolls, or tracks progress. Visitor mode omits restricted lesson content. Media retains normal author authorization.
+      security: *id001
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: {type: string}
+        - name: audience
+          in: query
+          required: true
+          schema: {type: string, enum: [learner, visitor]}
+        - name: revisionId
+          in: query
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Private no-store snapshot with title, summary, revision_id, audience, course attachments and ordered modules/lessons. Locked lessons contain only id, title and locked. Accessible lessons include body_html, video_id, attachments and captions with language, label and transcript.
+        '401':
+          description: Sign-in required
+        '403':
+          description: Course owner or administrator required
+        '404':
+          description: Course not found
+        '409':
+          description: DRAFT_CONFLICT; requested revision is no longer current
+        '422':
+          description: Invalid audience or revision identifier
   /admin/content/preview:
     post:
       summary: Render content using the same sanitization as lesson delivery (author/admin)

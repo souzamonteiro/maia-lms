@@ -89,3 +89,109 @@ EDIT-02 was completed locally with migration 008. Validation:
 
 This validates local content rendering and authoring, not deployment or the complete
 video platform. No production migration or deployment was performed.
+
+## Focused studio and drag ordering — September 29, 2026
+
+Local validation for the EDIT-03 increment:
+
+- `npm run build` and `npm run lint` passed.
+- `VIDEO_TEST_REAL=1 npm run test:e2e`: all six Chromium workflows passed, including
+  real video upload/playback and PDF/ZIP/source attachment downloads.
+- The new browser scenario switches editing sections and all three interface
+  languages without losing content, reveals hidden invalid fields, drags lessons
+  and modules, checks persisted ordering/content, and checks mobile overflow.
+- Existing authoring tests still cover keyboard ordering, autosave, conflicts,
+  local recovery, sanitized previews, and preservation of published content.
+
+No database migration is required for this frontend delivery. No deployment was
+performed. Complete learner/visitor draft preview and incremental per-unit saves
+remain pending; the TODO retains EDIT-03 and EDIT-04 as open tasks.
+
+## Draft audience preview — September 29, 2026
+
+EDIT-03 now includes a saved-draft learner/visitor simulation. Local checks:
+
+- Build and lint passed.
+- Automated suite: 48 passed, one optional real-transcoding test skipped in this run.
+- `VIDEO_TEST_REAL=1 npm run test:e2e`: all seven Chromium workflows passed.
+- The two media browser workflows were then extended and rerun successfully to verify
+  video playback, captions, and attachment downloads inside the draft preview before publication.
+- HTTP tests cover unauthenticated access, another author, learner role, administrator
+  access, restricted visitor content, public sample content, no-store responses,
+  invalid audience, stale revisions, and absence of publication/enrollment side effects.
+- The preview browser test checks sanitized Markdown, audience switching, Escape,
+  focus restoration, preservation of editor content, and DRAFT status.
+
+No deployment performed. The preview uses author media credentials; it does not
+replace independent tests of real visitor/learner authorization or progress tracking.
+
+## Incremental editing-unit saves — September 29, 2026
+
+Local validation for EDIT-04:
+
+- Build and lint passed; automated suite: 49 passed, one optional real-transcoding
+  test skipped in that invocation.
+- Seven existing Chromium workflows passed with `VIDEO_TEST_REAL=1`, including
+  video, captions, attachments, draft preview, language switching, and conflicts.
+- The new incremental browser test initially expected the wrong error wording.
+  After correcting that assertion and adding reload recovery, its targeted rerun
+  passed. It verifies a failed PATCH preserves local text, restores after reload,
+  retries successfully, and never sends the unchanged lesson body.
+- HTTP tests cover owner isolation, atomic rejection of invalid units, preservation
+  of publication, stale revisions, and course/module/lesson updates without losing
+  omitted content.
+
+The server still writes complete immutable revisions. Structural edits use PUT;
+this delivery does not reduce revision storage or merge conflicting editors.
+No migration or deployment was performed.
+
+## Publication readiness checklist — September 29, 2026
+
+Build and lint passed. The automated suite passed 51 tests, with one optional
+real-transcoding test skipped. All nine Chromium workflows passed with
+`VIDEO_TEST_REAL=1`, including incremental recovery, draft preview, video/captions,
+attachments, and the new checklist correction/publication flow.
+
+New API tests verify owner isolation, all empty lessons reported together, failed
+publication leaving DRAFT intact, stale revision rejection, and successful correction.
+A database-backed validator test verifies cross-course READY media cannot pass,
+invalid ordering is detected, and processing media remains blocked until READY.
+No migration or deployment performed. Lesson duration presentation remains pending.
+
+## Video duration in the studio — September 29, 2026
+
+EDIT-05 completed locally. Build and lint passed; the automated suite passed 53
+tests with one optional real-transcoding test skipped. Duration unit tests cover
+fractional seconds, minute/hour boundaries, long videos, and invalid/missing values.
+
+Both media Chromium workflows passed with `VIDEO_TEST_REAL=1`. The real-video
+workflow verifies measured duration after processing, all three language labels,
+and clearing/reselecting the video. The attachment workflow verifies no video
+duration field appears in attachment controls. Publication, playback, captions,
+preview, and downloads continue to work in those workflows.
+
+No migration or deployment performed. Duration represents processed video playback
+time; reading-time estimates and certificate workload are separate concerns.
+
+## Private storage completion — September 29, 2026
+
+Build and lint passed. The automated suite passed 56 tests, with one optional real
+transcoding test skipped. New provider tests cover a 32 MiB streamed object, bounded
+read chunks, the buffered-read cap, traversal/symlink rejection across read/stat/
+delete/write, preservation of outside files, and replacement of the initialized
+root with a symlink. Existing tests verify immutable writes, failed-stream cleanup,
+and author isolation at the HTTP layer.
+
+No UI changes, migration, or deployment were performed in this delivery. The chunk
+size test is not an RSS benchmark or a production load test. The local storage
+root still requires trusted service/operator ownership.
+
+## Incomplete upload expiration — September 29, 2026
+
+Build and lint passed. `VIDEO_TEST_REAL=1 npm test -- --reporter=dot` passed all
+58 tests, including real FFmpeg processing. New cleanup tests verify the inactivity
+window, reference protection, preservation of recent/READY/PROCESSING uploads,
+canceled-upload cleanup, retry after a simulated deletion failure, idempotency,
+and quota release. The HTTP upload test verifies that a committed chunk refreshes
+activity. Existing migration tests apply migration 009 without altering enrollment
+or progress. No deployment performed; the worker requires migration 009 before restart.

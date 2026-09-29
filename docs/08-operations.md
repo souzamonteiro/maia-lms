@@ -162,3 +162,29 @@ The repair changes only the readability of active-release code and systemd units
 ## Upgrading for video lessons (migration 005)
 
 Install `ffmpeg` on the host (`sudo apt-get install -y ffmpeg`) before running the host installer. It checks FFmpeg and FFprobe before stopping services. There is no new VPS port: 512 KiB chunks fit the current 1 MiB limit. See the [video guide](13-video.md) for limits, disk usage, backup and testing through the domain.
+
+## Expired incomplete uploads
+
+After migration 009, the worker performs cleanup at startup and hourly. Each sweep
+expires up to 50 unreferenced uploads still UPLOADING after seven days without a
+committed chunk. Existing uploads receive a fresh seven-day window during migration.
+Any lesson or attachment reference, including an old draft, prevents expiration.
+READY, QUEUED, PROCESSING, and FAILED records are outside this expiration policy.
+
+Expired uploads become CANCELLED with UPLOAD_EXPIRED and stop reserving quota.
+Their registered chunks are deleted; canceled uploads with leftover chunks are
+also retried in batches of up to 50. Failed deletions remain recorded for the next
+sweep and produce an `Upload cleanup failed` worker log. Check storage permissions
+and disk health if that message recurs. No published output files are removed.
+Resume an expired upload by starting a new upload; the old offset is no longer usable.
+Unregistered orphan files, empty directories, failed transcodes, and referenced
+abandoned drafts require the future media lifecycle workflow, not this sweep.
+
+## Attachment scanner configuration
+
+`ATTACHMENT_SCAN_MODE` accepts `disabled` (default) or `clamav`. Configure it in
+`/etc/maia-lms/app.env` for systemd, or the worker environment for containers.
+Before enabling, install the scanner and current signatures in that same runtime
+and verify access as the service user. A missing or failing scanner blocks new
+attachments when enabled. Existing READY files are not rescanned automatically.
+Deployment steps and limits are in [materials](14-materials.md#optional-malware-inspection).

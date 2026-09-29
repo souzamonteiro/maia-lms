@@ -347,3 +347,16 @@ button.icon-only {
 .video-file {
   max-width: 100%;
 }
+
+/* Studio navigation keeps form sections mounted while focusing one editing unit. */
+.studio-view-bar { margin-block: 1rem; }
+.studio-outline { display: flex; flex-wrap: wrap; gap: .5rem; max-height: 16rem; overflow: auto; padding: .25rem; }
+.studio-outline button { max-width: 100%; overflow-wrap: anywhere; text-align: start; }
+.studio-outline [aria-current="true"] { outline: 2px solid currentColor; outline-offset: 1px; }
+.studio-outline[hidden], #course-settings[hidden], .module-editor[hidden], .lesson-editor[hidden] { display: none; }
+.drag-handle { cursor: grab; display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; user-select: none; border: 1px solid currentColor; border-radius: .4rem; }
+.dragging { opacity: .6; }
+
+.course-preview { width: min(900px, 92vw); max-height: 90vh; overflow: auto; padding: 1.5rem; }
+.course-preview::backdrop { background: #0008; }
+.course-preview video { width: 100%; }

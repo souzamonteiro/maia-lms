@@ -41,6 +41,7 @@ async function api(path, method = 'GET', data) {
           : result.error || t('genericError'),
     );
     error.code = result.code;
+    error.issues = result.issues;
     error.status = response.status;
     throw error;
   }

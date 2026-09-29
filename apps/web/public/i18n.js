@@ -677,3 +677,118 @@ Object.assign(translations['es'], {
   captionTooLarge: 'El archivo supera 100 KB.',
   transcript: 'Transcripción',
 });
+
+Object.assign(translations['en'], {
+  focusEditor: 'Edit one section at a time',
+  courseOutline: 'Course outline',
+  courseSettings: 'Course settings',
+  dragToReorder: 'Drag to reorder; use Move up or Move down with the keyboard',
+});
+
+Object.assign(translations['pt-BR'], {
+  focusEditor: 'Editar uma seção por vez',
+  courseOutline: 'Estrutura do curso',
+  courseSettings: 'Configurações do curso',
+  dragToReorder: 'Arraste para reordenar; use Mover para cima ou Mover para baixo com o teclado',
+});
+
+Object.assign(translations['es'], {
+  focusEditor: 'Editar una sección a la vez',
+  courseOutline: 'Estructura del curso',
+  courseSettings: 'Configuración del curso',
+  dragToReorder: 'Arrastra para reordenar; usa Mover arriba o Mover abajo con el teclado',
+});
+
+Object.assign(translations['en'], {
+  draftPreview: 'Preview draft',
+  draftPreviewHelp:
+    'This preview saves your draft. It simulates access after publication without enrolling or recording progress. Media uses your author access.',
+  previewAudience: 'Preview as',
+  previewLearner: 'Enrolled learner',
+  previewVisitor: 'Visitor',
+  closePreview: 'Close preview',
+  previewLocked: 'Enrollment required to view this lesson.',
+});
+
+Object.assign(translations['pt-BR'], {
+  draftPreview: 'Prévia do rascunho',
+  draftPreviewHelp:
+    'Esta prévia salva o rascunho. Simula o acesso após publicar, sem matricular ou registrar progresso. A mídia usa seu acesso de autor.',
+  previewAudience: 'Visualizar como',
+  previewLearner: 'Aluno matriculado',
+  previewVisitor: 'Visitante',
+  closePreview: 'Fechar prévia',
+  previewLocked: 'Matrícula necessária para acessar esta aula.',
+});
+
+Object.assign(translations['es'], {
+  draftPreview: 'Vista previa del borrador',
+  draftPreviewHelp:
+    'Esta vista guarda el borrador. Simula el acceso tras publicar, sin matricular ni registrar progreso. Los medios usan tu acceso de autor.',
+  previewAudience: 'Ver como',
+  previewLearner: 'Alumno matriculado',
+  previewVisitor: 'Visitante',
+  closePreview: 'Cerrar vista previa',
+  previewLocked: 'Se requiere matrícula para ver esta lección.',
+});
+
+Object.assign(translations['en'], {
+  publicationProblems: 'Resolve these items before publishing',
+  PUBLICATION_EMPTY: 'Add at least one module with a lesson.',
+  PUBLICATION_ORDER: 'Module or lesson order is invalid. Save the draft to rebuild its order.',
+});
+
+Object.assign(translations['pt-BR'], {
+  publicationProblems: 'Resolva estes itens antes de publicar',
+  PUBLICATION_EMPTY: 'Adicione pelo menos um módulo com uma aula.',
+  PUBLICATION_ORDER:
+    'A ordem de módulos ou aulas é inválida. Salve o rascunho para reconstruir a ordem.',
+});
+
+Object.assign(translations['es'], {
+  publicationProblems: 'Resuelve estos elementos antes de publicar',
+  PUBLICATION_EMPTY: 'Añade al menos un módulo con una lección.',
+  PUBLICATION_ORDER:
+    'El orden de módulos o lecciones no es válido. Guarda el borrador para reconstruir el orden.',
+});
+
+Object.assign(translations.en, {
+  PUBLICATION_CONTENT: 'Add lesson text or select a video before publishing.',
+});
+Object.assign(translations['pt-BR'], {
+  PUBLICATION_CONTENT: 'Adicione texto à aula ou selecione um vídeo antes de publicar.',
+});
+Object.assign(translations.es, {
+  PUBLICATION_CONTENT: 'Añade texto a la lección o selecciona un vídeo antes de publicar.',
+});
+
+Object.assign(translations.en, {
+  videoDuration: 'Video duration',
+  videoDurationPending: 'Duration is available after video processing finishes.',
+});
+Object.assign(translations['pt-BR'], {
+  videoDuration: 'Duração do vídeo',
+  videoDurationPending: 'A duração estará disponível após o processamento do vídeo.',
+});
+Object.assign(translations.es, {
+  videoDuration: 'Duración del vídeo',
+  videoDurationPending: 'La duración estará disponible al finalizar el procesamiento del vídeo.',
+});
+
+Object.assign(translations['en'], {
+  FILE_MALWARE: 'Attachment blocked by the malware scanner or its inspection limits.',
+  FILE_SCAN_FAILED:
+    'Attachment scanning failed. Ask the operator to check the scanner before retrying.',
+});
+
+Object.assign(translations['pt-BR'], {
+  FILE_MALWARE: 'Anexo bloqueado pelo antivírus ou pelos limites de inspeção.',
+  FILE_SCAN_FAILED:
+    'Falha na inspeção do anexo. Peça ao operador para verificar o antivírus antes de tentar novamente.',
+});
+
+Object.assign(translations['es'], {
+  FILE_MALWARE: 'Adjunto bloqueado por el antivirus o sus límites de inspección.',
+  FILE_SCAN_FAILED:
+    'Falló la inspección del adjunto. Pide al operador que revise el antivirus antes de reintentar.',
+});

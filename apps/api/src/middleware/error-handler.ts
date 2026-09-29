@@ -11,6 +11,7 @@ export class AppError extends Error {
     public readonly statusCode: number,
     message: string,
     public readonly code?: string,
+    public readonly issues?: unknown[],
   ) {
     super(message);
     this.name = 'AppError';
@@ -38,6 +39,7 @@ export function errorHandler(err: Error, req: Request, res: Response, _next: Nex
     res.status(err.statusCode).json({
       error: err.message,
       ...(err.code ? { code: err.code } : {}),
+      ...(err.issues ? { issues: err.issues } : {}),
     });
     return;
   }

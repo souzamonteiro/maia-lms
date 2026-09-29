@@ -127,10 +127,9 @@ export function videosRouter(
               key,
               createHash('sha256').update(req.body).digest('hex'),
             );
-            db.prepare('UPDATE video_uploads SET offset=offset+? WHERE id=?').run(
-              req.body.length,
-              v.id,
-            );
+            db.prepare(
+              "UPDATE video_uploads SET offset=offset+?,last_activity_at=datetime('now') WHERE id=?",
+            ).run(req.body.length, v.id);
           }).immediate();
         } catch (error) {
           await store.delete(key);

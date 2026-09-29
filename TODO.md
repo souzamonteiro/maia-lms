@@ -64,6 +64,101 @@ policies fail closed. Migration, API parity, multilingual content, and hostile
 markup are covered by automated tests. See [authoring](docs/12-authoring.md).
 Not deployed; other E1 tasks remain open.
 
+## Focused studio and drag ordering — September 29, 2026
+
+EDIT-03 advanced locally: an optional course/module/lesson outline switches between
+editing sections without unmounting inputs or media components. The selected section
+survives language changes; invalid fields reveal their section before native form
+validation. Modules and lessons can be dragged within their existing parent, with
+Move up/Move down retained for keyboard and touch users. Ordering uses the existing
+revision, autosave, and recovery flows. Cross-module lesson dragging is not supported.
+
+EDIT-03 remains open: a complete learner/visitor preview of the draft is still pending.
+EDIT-04 also remains open: saves still create a whole-course revision, not incremental
+updates per editing unit. No deployment performed. See [authoring](docs/12-authoring.md).
+
+## Draft audience preview — September 29, 2026
+
+EDIT-03 completed locally: **Preview draft** saves the current draft and opens an
+author-only learner/visitor simulation with sanitized content, ready video, captions,
+transcripts, and attachment downloads. Visitor mode hides restricted lesson content;
+open courses and explicitly previewable lessons remain visible. Only the owner or
+an administrator can request this preview, and stale revision requests are rejected.
+It never publishes, enrolls, or records progress. Media uses existing author access;
+this is not a shareable visitor session or a substitute for authorization tests.
+EDIT-04 incremental per-unit saving remains pending. No deployment performed.
+
+## Incremental editing-unit saves — September 29, 2026
+
+EDIT-04 completed locally: existing drafts send only changed course metadata,
+module titles, or lessons through an atomic PATCH with the expected revision.
+Structural additions/removals and legacy recovered drafts without a saved baseline
+use PUT; new courses use POST. SQLite still stores a complete immutable revision,
+so this reduces request payloads, not revision storage. The editor preserves its
+saved baseline with local recovery, reports failed saves, supports explicit retry,
+and retains edits made while a request is in flight. Stale revisions are rejected
+rather than merged silently. Autosave still requires a valid course form.
+No deployment performed. See [authoring](docs/12-authoring.md).
+
+## Publication readiness checklist — September 29, 2026
+
+EDIT-05 advanced locally: publication now reports all missing text/video,
+non-ready or invalid media, and module/lesson ordering problems, with module,
+lesson, and attachment titles. The author-only revision-bound preflight and the
+transactional publish action share the same validator. Direct publish requests
+cannot bypass checks, including cross-course media relationships. The studio
+shows the full list in English, Portuguese, or Spanish. EDIT-05 remains open for
+lesson duration presentation in the editor. No deployment performed.
+
+## Video duration in the studio — September 29, 2026
+
+EDIT-05 completed locally: the selected video's server-probed duration is displayed
+in the editor once processing is READY, using m:ss or h:mm:ss. Missing/unfinished
+duration is explicitly unavailable, not zero. Refresh, selection changes, and all
+three interface languages are supported; attachment upload controls do not display
+video duration. Combined with existing article/video/mixed derivation, required and
+preview settings, attachments, and the publication checklist, this closes EDIT-05.
+No deployment performed; HLS and other MEDIA/PLAY backlog items remain open.
+
+## Private storage completion — September 29, 2026
+
+MEDIA-01 completed locally: the provider contract now exposes streaming reads,
+and the legacy buffered helper is capped at 8 MiB with pre-read and streaming
+checks. Large objects must use openRead. Storage rejects traversal, absolute paths,
+symlink components, and replacement of the initialized root with a symlink;
+failed writes clean temporary files and existing objects remain immutable.
+Tests transfer a 32 MiB object in bounded chunks and verify confinement across
+read, stat, delete, and write operations. Existing HTTP tests cover author isolation.
+The storage root and ancestors must remain controlled by the service/operator;
+this is not isolation from a malicious process running as the service user.
+No deployment performed. Upload lifecycle and orphan collection remain in MEDIA-02/04.
+
+## Incomplete upload expiration — September 29, 2026
+
+MEDIA-02 advanced locally: migration 009 records last upload activity, refreshed
+on every committed chunk. The worker checks hourly and expires up to 50 UPLOADING
+records inactive for seven days, only when no lesson or attachment in any revision
+references them. Existing uploads receive a fresh window on migration. Expiration
+sets CANCELLED/UPLOAD_EXPIRED before file deletion, releasing reserved quota and
+preventing late chunk commits. Cleanup retries registered chunks of CANCELLED
+uploads; failed deletions retain their records. READY, QUEUED, PROCESSING, FAILED,
+and referenced uploads are not expired. No output or published media is deleted.
+MEDIA-02 remains open for image uploads and attachment inspection/antimalware.
+Unregistered orphan files and full lifecycle collection remain in MEDIA-04.
+No deployment performed.
+
+## Optional attachment malware scanning — September 29, 2026
+
+MEDIA-02 advanced locally: ATTACHMENT_SCAN_MODE=clamav runs clamscan after format
+validation and before publishing any attachment output. Detection/inspection-limit
+alerts become FILE_MALWARE; scanner errors, missing executable, cancellation, and
+timeouts become FILE_SCAN_FAILED. Both leave the attachment FAILED and unavailable.
+Disabled remains the explicit default for existing installations. Scanner failures
+are displayed in the editor in all three languages. Integration tests use a fake
+scanner; real ClamAV/signature validation on the host or container is still pending.
+MEDIA-02 remains open for image uploads and deployment validation of scanning.
+No deployment or scanner installation performed.
+
 ## Evidence and limitations of the original review
 
 Reviewed the API, interface, internationalization, SQLite schema, worker, adapters,
@@ -130,17 +225,17 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Dependency: EDIT-01. Acceptance: preview and lessons use the same policy; XSS
   cases fail; legitimate content and translations remain readable. Installing a
   parser alone is insufficient.
-- [ ] **EDIT-03 — Studio organized by course/module/lesson.**
+- [x] **EDIT-03 — Studio organized by course/module/lesson.**
   Split the single form into screens/components, support keyboard and drag reordering,
   duplicate/remove drafts with confirmation, and preview as a learner/visitor.
   Dependency: BASE-01. Acceptance: build a multi-module course without editing JSON/SQL;
   deletion does not break enrolled revisions or remove media still referenced.
-- [ ] **EDIT-04 — Autosave, conflicts, and unsaved work protection.**
+- [x] **EDIT-04 — Autosave, conflicts, and unsaved work protection.**
   Save per editing unit, indicate status/errors, recover drafts, and detect concurrent
   edits through a version/ETag. Dependency: EDIT-03. Acceptance: network failure,
   two tabs, navigation, and language switching do not erase or silently overwrite
   content. At the original audit, `languageSelect` called `main()` and recreated the form.
-- [ ] **EDIT-05 — Lesson types and publication validation.**
+- [x] **EDIT-05 — Lesson types and publication validation.**
   Support `video`, `article`, `mixed`, media and attachment association, duration,
   required status, and preview. Dependencies: BASE-02, MEDIA-03, EDIT-02. Acceptance:
   video-only lessons need no placeholder text; publication lists missing fields and
@@ -148,7 +243,7 @@ does not satisfy a task. Preserve local internationalization changes and prototy
 
 ## P0 — end-to-end media and video
 
-- [ ] **MEDIA-01 — Private, secure storage.**
+- [x] **MEDIA-01 — Private, secure storage.**
   Confine paths to the root, including protection against `../`, absolute paths, and
   symlinks; server-generated keys, streaming, temporary writes/rename, and cleanup
   after failure. Dependencies: none. Acceptance: confinement and author isolation

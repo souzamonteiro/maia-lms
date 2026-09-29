@@ -1,3 +1,4 @@
+import { formatVideoDuration } from './duration.js';
 import { icon } from './icons.js';
 // Uploads resume from server offsets; completed chunks are checked against the selected file.
 export function mountVideoEditor(
@@ -19,10 +20,29 @@ export function mountVideoEditor(
   const choice = root.querySelector('.video-choice'),
     status = root.querySelector('.video-status'),
     progress = root.querySelector('progress');
+  const duration = document.createElement('p');
+  duration.className = 'video-duration';
+  duration.setAttribute('role', 'status');
+  duration.hidden = true;
+  if (endpoint === '/admin/videos') choice.closest('label').after(duration);
+  const scanError = document.createElement('p');
+  scanError.className = 'media-error';
+  scanError.setAttribute('role', 'status');
+  status.after(scanError);
+  let videos = [];
+  function updateDuration() {
+    duration.hidden = !videoId;
+    const selected = videos.find(video => video.id === videoId);
+    scanError.textContent =
+      selected?.status === 'FAILED' && selected.error ? t(selected.error) : '';
+    const value = selected?.status === 'READY' ? formatVideoDuration(selected.duration) : null;
+    duration.textContent = value ? `${t('videoDuration')}: ${value}` : t('videoDurationPending');
+  }
   let paused = false,
     busy = false;
   async function refresh() {
     const rows = await api(`${endpoint}?courseId=${courseId}`);
+    videos = rows;
     choice.innerHTML =
       `<option value="">${t('noVideo')}</option>` +
       rows
@@ -30,9 +50,11 @@ export function mountVideoEditor(
         .map(v => `<option value="${v.id}">${e(v.filename)} — ${t('video' + v.status)}</option>`)
         .join('');
     choice.value = videoId ?? '';
+    updateDuration();
   }
   choice.onchange = () => {
     videoId = choice.value;
+    updateDuration();
     onChange(videoId || null);
   };
   root.querySelector('.refresh-videos').onclick = () => refresh().catch(notify);

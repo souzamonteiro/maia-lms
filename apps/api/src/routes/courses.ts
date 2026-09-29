@@ -1,3 +1,4 @@
+import { publicationIssues } from '../services/publication.js';
 import { Router } from 'express';
 import type Database from 'better-sqlite3';
 import { randomUUID } from 'node:crypto';
@@ -181,6 +182,63 @@ export function coursesRouter(db: Database.Database): Router {
     assertOwner(c, req.session.userId, req.session.role);
     res.json(detail(c, c.current_revision_id, true));
   });
+  router.get('/admin/courses/:id/preview', requireRole('admin', 'author'), (req, res) => {
+    const c = course(req.params.id);
+    assertOwner(c, req.session.userId, req.session.role);
+    const audience = z.enum(['learner', 'visitor']).parse(req.query.audience);
+    const revisionId = z.string().uuid().parse(req.query.revisionId);
+    if (revisionId !== c.current_revision_id)
+      throw new AppError(409, 'Draft changed. Reload before previewing.', 'DRAFT_CONFLICT');
+    const draft = detail(c, revisionId, true);
+    const fullAccess = audience === 'learner' || draft.access_mode === 'OPEN_FREE';
+    res.set('Cache-Control', 'private, no-store').json({
+      title: draft.title,
+      summary: draft.summary,
+      revision_id: revisionId,
+      audience,
+      attachments: fullAccess ? draft.attachments : [],
+      modules: draft.modules.map(module => ({
+        id: module.id,
+        title: module.title,
+        lessons: module.lessons.map(item => {
+          const lesson = db.prepare('SELECT * FROM lessons WHERE id = ?').get(item.id) as {
+            id: string;
+            title: string;
+            body: string;
+            content_format: 'plain' | 'markdown';
+            render_policy_version: number;
+            is_preview: number;
+            video_id: string | null;
+            captions_json: string;
+          };
+          const allowed = fullAccess || Boolean(lesson.is_preview);
+          return {
+            id: lesson.id,
+            title: lesson.title,
+            locked: !allowed,
+            ...(allowed
+              ? {
+                  body_html: renderContent(
+                    lesson.body,
+                    lesson.content_format,
+                    lesson.render_policy_version,
+                  ),
+                  video_id: lesson.video_id,
+                  attachments: item.attachments,
+                  captions: JSON.parse(lesson.captions_json).map(
+                    (track: { language: string; label: string; vtt: string }) => ({
+                      language: track.language,
+                      label: track.label,
+                      transcript: parseCaptions(track.vtt).join('\n\n'),
+                    }),
+                  ),
+                }
+              : {}),
+          };
+        }),
+      })),
+    });
+  });
   router.post('/admin/content/preview', requireRole('admin', 'author'), (req, res) => {
     const data = z
       .object({ body: z.string().max(100000), contentFormat: z.enum(['plain', 'markdown']) })
@@ -209,36 +267,117 @@ export function coursesRouter(db: Database.Database): Router {
       .immediate();
     res.json(saved);
   });
+  router.patch('/admin/courses/:id', requireRole('admin', 'author'), (req, res) => {
+    const index = z.number().int().min(0).max(99);
+    const data = z
+      .object({
+        expectedRevisionId: z.string().uuid(),
+        changes: z
+          .array(
+            z.discriminatedUnion('unit', [
+              z.object({
+                unit: z.literal('course'),
+                value: courseSchema.omit({ modules: true, creationId: true }),
+              }),
+              z.object({
+                unit: z.literal('module'),
+                module: index,
+                title: z.string().min(1).max(200),
+              }),
+              z.object({
+                unit: z.literal('lesson'),
+                module: index,
+                lesson: index,
+                value: lessonSchema,
+              }),
+            ]),
+          )
+          .min(1)
+          .max(10101),
+      })
+      .parse(req.body);
+    const result = db
+      .transaction(() => {
+        const c = course(req.params.id);
+        assertOwner(c, req.session.userId, req.session.role);
+        if (c.current_revision_id !== data.expectedRevisionId)
+          throw new AppError(409, 'Draft changed. Reload before saving.', 'DRAFT_CONFLICT');
+        const current = detail(c, c.current_revision_id, true);
+        // Reconstruct on the server; omitted units are never supplied by a stale client.
+        const payload = courseSchema.parse({
+          ...current,
+          accessMode: current.access_mode,
+          attachments: current.attachments,
+          modules: current.modules.map(module => ({
+            title: module.title,
+            lessons: module.lessons.map(item => {
+              const row = db.prepare('SELECT * FROM lessons WHERE id=?').get(item.id) as Record<
+                string,
+                unknown
+              >;
+              return {
+                title: row.title,
+                body: row.body,
+                videoId: row.video_id,
+                contentFormat: row.content_format,
+                required: Boolean(row.is_required),
+                preview: Boolean(row.is_preview),
+                captions: JSON.parse(row.captions_json as string),
+                attachments: item.attachments,
+              };
+            }),
+          })),
+        });
+        const seen = new Set<string>();
+        for (const change of data.changes) {
+          const key =
+            change.unit === 'course'
+              ? 'course'
+              : `${change.unit}:${change.module}:${change.unit === 'lesson' ? change.lesson : ''}`;
+          if (seen.has(key)) throw new AppError(422, 'Duplicate editing unit');
+          seen.add(key);
+          if (change.unit === 'course') Object.assign(payload, change.value);
+          else {
+            const module = payload.modules[change.module];
+            if (!module) throw new AppError(422, 'Unknown module');
+            if (change.unit === 'module') module.title = change.title;
+            else {
+              if (!module.lessons[change.lesson]) throw new AppError(422, 'Unknown lesson');
+              module.lessons[change.lesson] = change.value;
+            }
+          }
+        }
+        if (db.prepare('SELECT id FROM courses WHERE slug=? AND id!=?').get(payload.slug, c.id))
+          throw new AppError(409, 'Slug already exists', 'SLUG_EXISTS');
+        const revisionId = writeRevision(c.id, payload);
+        db.prepare(
+          "UPDATE courses SET current_revision_id=?, updated_at=datetime('now') WHERE id=?",
+        ).run(revisionId, c.id);
+        return course(c.id);
+      })
+      .immediate();
+    res.json(result);
+  });
+  router.get('/admin/courses/:id/publication-check', requireRole('admin', 'author'), (req, res) => {
+    const c = course(req.params.id);
+    assertOwner(c, req.session.userId, req.session.role);
+    const revisionId = z.string().uuid().parse(req.query.revisionId);
+    if (revisionId !== c.current_revision_id)
+      throw new AppError(409, 'Draft changed. Reload before checking.', 'DRAFT_CONFLICT');
+    const issues = publicationIssues(db, c.id, revisionId);
+    res
+      .set('Cache-Control', 'private, no-store')
+      .json({ revisionId, ready: issues.length === 0, issues });
+  });
   router.post('/admin/courses/:id/publish', requireRole('admin'), (req, res) => {
     const saved = db
       .transaction(() => {
         const c = course(req.params.id);
-        if (
-          db
-            .prepare(
-              "SELECT l.id FROM lessons l JOIN modules m ON m.id=l.module_id WHERE m.revision_id=? AND trim(l.body)='' AND l.video_id IS NULL LIMIT 1",
-            )
-            .get(c.current_revision_id)
-        )
-          throw new AppError(422, 'Lesson needs text or video', 'VIDEO_INVALID');
-        if (
-          db
-            .prepare(
-              "SELECT a.id FROM course_attachments a JOIN video_uploads v ON v.id=a.upload_id WHERE a.revision_id=? AND v.status!='READY' LIMIT 1",
-            )
-            .get(c.current_revision_id)
-        )
-          throw new AppError(422, 'Attachment is not ready', 'FILE_NOT_READY');
         if (req.body.expectedRevisionId && req.body.expectedRevisionId !== c.current_revision_id)
           throw new AppError(409, 'Draft changed. Reload before publishing.', 'DRAFT_CONFLICT');
-        if (
-          db
-            .prepare(
-              "SELECT l.id FROM lessons l JOIN modules m ON m.id=l.module_id LEFT JOIN video_uploads v ON v.id=l.video_id WHERE m.revision_id=? AND l.video_id IS NOT NULL AND (v.status != 'READY' OR v.id IS NULL) LIMIT 1",
-            )
-            .get(c.current_revision_id)
-        )
-          throw new AppError(422, 'Video is not ready', 'VIDEO_NOT_READY');
+        const issues = publicationIssues(db, c.id, c.current_revision_id);
+        if (issues.length)
+          throw new AppError(422, 'Draft is not ready for publication', issues[0].code, issues);
         const revision = db
           .prepare('SELECT slug, access_mode, locale FROM course_revisions WHERE id = ?')
           .get(c.current_revision_id) as { slug: string; access_mode: string; locale: string };
@@ -291,7 +430,7 @@ export function coursesRouter(db: Database.Database): Router {
           )
           .all(m.id)
           .map(row => ({
-            ...(row as object),
+            ...(row as { id: string }),
             attachments: attachmentList(db, revisionId, (row as { id: string }).id),
           })),
       })),

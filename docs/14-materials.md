@@ -58,3 +58,31 @@ at this stage.
 
 Update: captions and transcripts are now available; see the [guide](15-captions.md).
 Earlier references to pending captions describe the first delivery.
+
+## Optional malware inspection
+
+Set `ATTACHMENT_SCAN_MODE=clamav` in the worker environment to scan attachments
+with `clamscan` after signature/encoding validation and before READY. The default
+is `disabled`, which performs format checks only and must not be described as
+malware inspection. Invalid mode values prevent worker startup.
+
+Install ClamAV and a maintained signature database on the worker host (or inside
+its container), verify that the service user can run `clamscan`, and enable the
+mode before restarting the worker. For Debian/Ubuntu, the packages are `clamav`
+and `clamav-freshclam`; keep the distribution's signature update service working.
+The current application image does not bundle those packages. Test the deployment
+with a harmless antivirus test fixture and a clean attachment before relying on it.
+See the [official ClamAV scanning guide](https://docs.clamav.net/manual/Usage/Scanning.html)
+and [command reference](https://github.com/Cisco-Talos/clamav/blob/main/docs/man/clamscan.1.in).
+
+The worker invokes the executable directly, without a shell, with a two-minute
+timeout, a 128 MiB file limit, a 512 MiB scan-size limit, and limit-exceeded alerts.
+Exit code 0 allows processing to continue. Exit code 1 blocks the attachment with
+FILE_MALWARE (including inspection-limit alerts); other failures use FILE_SCAN_FAILED.
+Private paths and scanner output are not returned to clients. Failed attachments
+remain unavailable; after repairing the scanner, use the existing validation retry.
+
+Enabling scanning does not rescan existing READY attachments. Originals remain in
+private storage according to the current lifecycle policy. Antivirus results are
+not a guarantee that a file is harmless, and real scanner deployment/signatures
+must be validated separately from the automated integration tests.

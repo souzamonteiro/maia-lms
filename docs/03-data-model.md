@@ -77,3 +77,12 @@ Transcripts are derived from valid cue blocks and do not alter the original cont
 lessons. The server writes its current policy on new revisions and dispatches
 lesson rendering by the stored version. Bodies and enrollment revision references
 are unchanged. Unsupported versions fail closed; clients cannot choose a policy.
+
+## Upload activity — migration 009
+
+`video_uploads.last_activity_at` stores the last committed chunk time. An insert
+trigger initializes it; migration initializes existing rows at upgrade time.
+An index supports inactive-upload selection. The worker marks unreferenced
+UPLOADING uploads CANCELLED with `error=UPLOAD_EXPIRED` after seven inactive days.
+Upload rows remain for history; registered chunks are removed after successful
+file deletion. This does not affect completed media or course revision references.

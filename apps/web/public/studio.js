@@ -1,3 +1,6 @@
+import { draftChanges } from './draft-changes.js';
+import { showCoursePreview } from './course-preview.js';
+import { mountStudioLayout, enableStudioDrag } from './studio-layout.js';
 import { mountAttachments, readAttachments } from './attachment-editor.js';
 import { mountVideoEditor } from './video-editor.js';
 import { icon, iconButton } from './icons.js';
@@ -6,6 +9,7 @@ let state;
 let timer;
 let pending;
 let context;
+let refreshLayout;
 const emptyLesson = () => ({
   title: '',
   body: '',
@@ -38,6 +42,7 @@ function status(name) {
   if (node) node.textContent = context.t(name);
 }
 function changed() {
+  refreshLayout?.();
   state.dirty = true;
   const recovered = persist();
   clearTimeout(timer);
@@ -94,19 +99,27 @@ async function save(manual) {
     return;
   }
   const sent = JSON.stringify(state.payload);
+  const changes = state.id ? draftChanges(state.savedPayload, state.payload) : null;
+  if (changes?.length === 0) {
+    state.dirty = false;
+    persist();
+    status('draftSaved');
+    return;
+  }
   status('saving');
   pending = (async () => {
     try {
       const result = await context.api(
         `/admin/courses${state.id ? `/${state.id}` : ''}`,
-        state.id ? 'PUT' : 'POST',
+        state.id ? (changes ? 'PATCH' : 'PUT') : 'POST',
         {
-          ...state.payload,
+          ...(changes ? { changes } : state.payload),
           ...(state.id
             ? { expectedRevisionId: state.revisionId }
             : { creationId: state.creationId }),
         },
       );
+      state.savedPayload = JSON.parse(sent);
       state.id = result.id;
       state.revisionId = result.current_revision_id;
       const reload = document.querySelector('#reload-course');
@@ -148,6 +161,13 @@ function move(field, direction) {
 }
 function controls(field, kind) {
   const { t } = context;
+  enableStudioDrag(field, {
+    t,
+    onMove: () => {
+      readForm();
+      changed();
+    },
+  });
   for (const [name, direction] of [
     ['moveUp', -1],
     ['moveDown', 1],
@@ -332,6 +352,21 @@ async function refreshList() {
     )
     .join('');
 }
+function publicationFeedback(issues) {
+  const { t, e } = context;
+  const dialog = document.createElement('dialog');
+  dialog.className = 'course-preview';
+  dialog.setAttribute('aria-label', t('publicationProblems'));
+  dialog.innerHTML = `<h2>${t('publicationProblems')}</h2><ul>${issues.map(issue => `<li>${[issue.moduleTitle, issue.lessonTitle, issue.attachmentTitle].filter(Boolean).map(e).join(' / ')}: ${e(t(issue.code))}</li>`).join('')}</ul><button type="button">${t('closePreview')}</button>`;
+  const previous = document.activeElement;
+  dialog.querySelector('button').onclick = () => dialog.close();
+  dialog.onclose = () => {
+    dialog.remove();
+    previous?.focus();
+  };
+  document.body.append(dialog);
+  dialog.showModal();
+}
 function blank() {
   return {
     userId: context.me.id,
@@ -376,6 +411,7 @@ function fromCourse(c) {
 export async function mountStudio(ctx) {
   clearTimeout(timer);
   if (pending) await pending;
+  refreshLayout = null;
   context = ctx;
   const { app, t, me, notify, api } = ctx;
   if (!state || state.userId !== me.id) {
@@ -387,7 +423,7 @@ export async function mountStudio(ctx) {
       /* Invalid local data is ignored. */
     }
   }
-  app.innerHTML = `<h1>${t('adminPublishTitle')}</h1><p>${t('studioDescription')}</p>${me.role === 'admin' ? `<a href="/admin/home">${t('editHome')}</a>` : ''}<div id="admin-list"></div><h2 id="editor-title">${state.id ? t('editCourseTitle') : t('newCourseTitle')}</h2><div class="actions"><button type="button" id="new-course" class="secondary">${icon('add')}${t('newCourseTitle')}</button><button type="button" id="reload-course" class="secondary" ${state.id ? '' : 'hidden'}>${icon('reloadDraft')}${t('reloadDraft')}</button></div><form id="editor"><label>${t('title')}<input name="title" required minlength="3" maxlength="255"></label><label>${t('courseSlugLabel')}<input name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" minlength="3" maxlength="100"></label><label>${t('summary')}<textarea name="summary" required minlength="10" maxlength="1000"></textarea></label><label>${t('access')}<select name="accessMode" aria-label="${t('access')}"><option value="OPEN_FREE">${t('accessOpenOption')}</option><option value="ENROLLED_FREE">${t('accessEnrolledOption')}</option></select></label><label>${t('courseLanguage')}<select name="locale"><option value="en">English</option><option value="pt-BR">Português</option><option value="es">Español</option></select></label><section id="course-attachments"></section><div id="modules"></div><div class="actions"><button type="button" id="add-module" class="secondary">${icon('add')}${t('addModule')}</button><button type="submit">${icon('saveDraft')}${t('saveDraft')}</button></div><p id="save-status" role="status" aria-live="polite"></p></form>`;
+  app.innerHTML = `<h1>${t('adminPublishTitle')}</h1><p>${t('studioDescription')}</p>${me.role === 'admin' ? `<a href="/admin/home">${t('editHome')}</a>` : ''}<div id="admin-list"></div><h2 id="editor-title">${state.id ? t('editCourseTitle') : t('newCourseTitle')}</h2><div class="actions"><button type="button" id="new-course" class="secondary">${icon('add')}${t('newCourseTitle')}</button><button type="button" id="reload-course" class="secondary" ${state.id ? '' : 'hidden'}>${icon('reloadDraft')}${t('reloadDraft')}</button></div><form id="editor"><section id="course-settings"><label>${t('title')}<input name="title" required minlength="3" maxlength="255"></label><label>${t('courseSlugLabel')}<input name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" minlength="3" maxlength="100"></label><label>${t('summary')}<textarea name="summary" required minlength="10" maxlength="1000"></textarea></label><label>${t('access')}<select name="accessMode" aria-label="${t('access')}"><option value="OPEN_FREE">${t('accessOpenOption')}</option><option value="ENROLLED_FREE">${t('accessEnrolledOption')}</option></select></label><label>${t('courseLanguage')}<select name="locale"><option value="en">English</option><option value="pt-BR">Português</option><option value="es">Español</option></select></label><section id="course-attachments"></section></section><div id="modules"></div><div class="actions"><button type="button" id="add-module" class="secondary">${icon('add')}${t('addModule')}</button><button type="button" id="preview-course">${icon('previewContent')}${t('draftPreview')}</button><button type="submit">${icon('saveDraft')}${t('saveDraft')}</button></div><p id="save-status" role="status" aria-live="polite"></p></form>`;
   const form = document.querySelector('#editor');
   for (const name of ['title', 'slug', 'summary', 'accessMode', 'locale'])
     form.elements[name].value = state.payload[name];
@@ -399,6 +435,14 @@ export async function mountStudio(ctx) {
     onChange: () => {
       readForm();
       changed();
+    },
+  });
+  refreshLayout = mountStudioLayout(form, {
+    t,
+    view: state.studioView,
+    onView: view => {
+      state.studioView = view;
+      if (state.dirty) persist();
     },
   });
   form.oninput = () => {
@@ -413,6 +457,15 @@ export async function mountStudio(ctx) {
   form.onsubmit = event => {
     event.preventDefault();
     save(true).catch(notify);
+  };
+  document.querySelector('#preview-course').onclick = async () => {
+    try {
+      await save(true);
+      if (!state.id || state.dirty || state.conflict || !form.checkValidity()) return;
+      await showCoursePreview({ ...ctx, id: state.id, revisionId: state.revisionId });
+    } catch (error) {
+      notify(error);
+    }
   };
   document.querySelector('#add-module').onclick = () => {
     document.querySelector('#modules').append(moduleField({ title: '', lessons: [emptyLesson()] }));
@@ -459,6 +512,14 @@ export async function mountStudio(ctx) {
           return;
         }
         const id = target.dataset.publish || target.dataset.archive;
+        if (target.dataset.publish) {
+          const revision = state.id === id ? state.revisionId : target.dataset.revision;
+          const check = await api(`/admin/courses/${id}/publication-check?revisionId=${revision}`);
+          if (!check.ready) {
+            publicationFeedback(check.issues);
+            return;
+          }
+        }
         await api(
           `/admin/courses/${id}/${target.dataset.publish ? 'publish' : 'archive'}`,
           'POST',
@@ -467,9 +528,15 @@ export async function mountStudio(ctx) {
         await refreshList();
       }
     } catch (error) {
-      notify(error);
+      if (error.status === 422 && error.issues?.some(issue => issue.code))
+        publicationFeedback(error.issues);
+      else notify(error);
     }
   };
+  if (!state.dirty) {
+    readForm();
+    state.savedPayload = structuredClone(state.payload);
+  }
   if (state.dirty) status(state.conflict ? 'DRAFT_CONFLICT' : 'restoredDraft');
   await refreshList();
 }

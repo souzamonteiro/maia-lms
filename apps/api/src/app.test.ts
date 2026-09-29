@@ -335,3 +335,95 @@ it('still limits repeated credential attempts',async()=>{
   for(let i=0;i<20;i++)expect((await request('/api/v1/auth/login','POST',{})).status).toBe(422);
   expect((await request('/api/v1/auth/login','POST',{})).status).toBe(429);
 });
+
+describe('author draft audience preview', () => {
+  it('enforces ownership, hides visitor content, and never publishes or enrolls', async () => {
+    const admin = await account('preview-admin@example.com', 'admin');
+    const author = await account('preview-author@example.com', 'author');
+    const learner = await account('preview-learner@example.com');
+    const data = draft('preview-draft', 'ENROLLED_FREE');
+    data.modules[0].lessons = [
+      { ...data.modules[0].lessons[0], title: 'Private', body: '**Private body**', contentFormat: 'markdown', preview: false },
+      { ...data.modules[0].lessons[0], title: 'Sample', body: '**Sample body**', contentFormat: 'markdown', preview: true },
+    ];
+    const created = await request('/api/v1/admin/courses', 'POST', data, author.cookie);
+    const url = `/api/v1/admin/courses/${created.data.id}/preview?revisionId=${created.data.current_revision_id}`;
+    expect((await request(`${url}&audience=learner`)).status).toBe(401);
+    expect((await request(`${url}&audience=learner`, 'GET', undefined, learner.cookie)).status).toBe(403);
+    const other = await account('other-author@example.com', 'author');
+    expect((await request(`${url}&audience=learner`, 'GET', undefined, other.cookie)).status).toBe(403);
+    const visitor = await request(`${url}&audience=visitor`, 'GET', undefined, author.cookie);
+    expect(visitor.status).toBe(200);
+    expect(visitor.data.modules[0].lessons[0]).toMatchObject({ title: 'Private', locked: true });
+    expect(visitor.data.modules[0].lessons[0]).not.toHaveProperty('body_html');
+    expect(visitor.data.modules[0].lessons[1].body_html).toContain('<strong>Sample body</strong>');
+    const enrolled = await request(`${url}&audience=learner`, 'GET', undefined, admin.cookie);
+    expect(enrolled.data.modules[0].lessons[0].body_html).toContain('<strong>Private body</strong>');
+    expect(enrolled.response.headers.get('cache-control')).toContain('no-store');
+    expect((await request(`${url}&audience=invalid`, 'GET', undefined, author.cookie)).status).toBe(422);
+    expect((await request(`/api/v1/courses/${created.data.id}`)).status).toBe(404);
+    const mine = await request('/api/v1/me/enrollments', 'GET', undefined, author.cookie);
+    expect(mine.data).toEqual([]);
+    await request(`/api/v1/admin/courses/${created.data.id}`, 'PUT', { ...data, expectedRevisionId: created.data.current_revision_id }, author.cookie);
+    expect((await request(`${url}&audience=learner`, 'GET', undefined, author.cookie)).status).toBe(409);
+  });
+});
+
+describe('incremental draft saves', () => {
+  it('applies editing units atomically, preserves publication, and rejects stale or unauthorized writes', async () => {
+    const admin = await account('incremental-admin@example.com', 'admin');
+    const other = await account('incremental-other@example.com', 'author');
+    const c = await publish(admin.cookie, 'incremental-course', 'OPEN_FREE');
+    const old = (await request(`/api/v1/admin/courses/${c.id}`, 'GET', undefined, admin.cookie)).data;
+    const oldLesson = old.modules[0].lessons[0];
+    const value = { title: 'Updated lesson', body: '**Updated**', contentFormat: 'markdown', required: true, preview: false };
+    const change = { expectedRevisionId: old.current_revision_id, changes: [{ unit: 'lesson', module: 0, lesson: 0, value }] };
+    expect((await request(`/api/v1/admin/courses/${c.id}`, 'PATCH', change, other.cookie)).status).toBe(403);
+    const invalid = await request(`/api/v1/admin/courses/${c.id}`, 'PATCH', { ...change, changes: [...change.changes, { unit: 'module', module: 99, title: 'Invalid' }] }, admin.cookie);
+    expect(invalid.status).toBe(422);
+    expect((await request(`/api/v1/admin/courses/${c.id}`, 'GET', undefined, admin.cookie)).data.current_revision_id).toBe(old.current_revision_id);
+    const saved = await request(`/api/v1/admin/courses/${c.id}`, 'PATCH', change, admin.cookie);
+    expect(saved.status).toBe(200);
+    expect(saved.data.published_revision_id).toBe(old.current_revision_id);
+    expect((await request(`/api/v1/lessons/${oldLesson.id}`)).data.body).toBe(oldLesson.body);
+    const updated = (await request(`/api/v1/admin/courses/${c.id}`, 'GET', undefined, admin.cookie)).data;
+    expect(updated.modules[0].lessons[0].body).toBe('**Updated**');
+    expect(updated.modules[0].title).toBe(old.modules[0].title);
+    expect((await request(`/api/v1/admin/courses/${c.id}`, 'PATCH', change, admin.cookie)).status).toBe(409);
+    const metadata = { slug: old.slug, title: 'Updated course', summary: old.summary, accessMode: old.access_mode, locale: old.locale, attachments: [] };
+    const next = await request(`/api/v1/admin/courses/${c.id}`, 'PATCH', { expectedRevisionId: saved.data.current_revision_id, changes: [{ unit: 'course', value: metadata }, { unit: 'module', module: 0, title: 'Updated module' }] }, admin.cookie);
+    expect(next.status).toBe(200);
+    const final = (await request(`/api/v1/admin/courses/${c.id}`, 'GET', undefined, admin.cookie)).data;
+    expect(final.title).toBe('Updated course');
+    expect(final.modules[0].title).toBe('Updated module');
+    expect(final.modules[0].lessons[0].body).toBe('**Updated**');
+  });
+});
+
+describe('publication checklist', () => {
+  it('lists every incomplete lesson and blocks publication until corrected', async () => {
+    const admin = await account('check-admin@example.com', 'admin');
+    const other = await account('check-other@example.com', 'author');
+    const data = draft('check-course', 'OPEN_FREE');
+    data.modules[0].lessons = [
+      { ...data.modules[0].lessons[0], title: 'First empty', body: '' },
+      { ...data.modules[0].lessons[0], title: 'Second empty', body: '  ' },
+    ];
+    const created = await request('/api/v1/admin/courses', 'POST', data, admin.cookie);
+    const url = `/api/v1/admin/courses/${created.data.id}`;
+    const query = `/publication-check?revisionId=${created.data.current_revision_id}`;
+    expect((await request(url + query, 'GET', undefined, other.cookie)).status).toBe(403);
+    const check = await request(url + query, 'GET', undefined, admin.cookie);
+    expect(check.data.ready).toBe(false);
+    expect(check.data.issues.map(issue => issue.lessonTitle)).toEqual(['First empty', 'Second empty']);
+    const blocked = await request(url + '/publish', 'POST', {}, admin.cookie);
+    expect(blocked.status).toBe(422);
+    expect(blocked.data.issues).toEqual(check.data.issues);
+    expect((await request(url, 'GET', undefined, admin.cookie)).data.status).toBe('DRAFT');
+    data.modules[0].lessons.forEach(lesson => { lesson.body = 'Ready to publish'; });
+    const saved = await request(url, 'PUT', { ...data, expectedRevisionId: created.data.current_revision_id }, admin.cookie);
+    expect((await request(url + query, 'GET', undefined, admin.cookie)).status).toBe(409);
+    expect((await request(url + `/publication-check?revisionId=${saved.data.current_revision_id}`, 'GET', undefined, admin.cookie)).data.ready).toBe(true);
+    expect((await request(url + '/publish', 'POST', { expectedRevisionId: saved.data.current_revision_id }, admin.cookie)).status).toBe(200);
+  });
+});

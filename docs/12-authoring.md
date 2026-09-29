@@ -88,3 +88,75 @@ Future rendering changes must introduce an explicit policy version and retain
 support for historical versions. Security fixes apply to every supported policy;
 pinning a version must never preserve a known unsafe renderer. Policy 1 keeps raw
 HTML literal, sanitizes Markdown with an allowlist, and restricts images to local paths.
+
+## Focused editing and ordering
+
+Enable **Edit one section at a time** to show a course outline. Select **Course
+settings**, a module, or a lesson to work on that section. Disable the option to
+return to the complete form. Switching sections keeps the existing inputs and media
+components mounted, preserving text and ongoing work. Language changes retain the
+selected section. A validation error reveals the section containing the invalid field.
+
+Use the dotted drag handle in a module or lesson's controls to reorder it. Modules
+move within the course; lessons move within their current module. Dropping on a
+later sibling moves the item after it; dropping on an earlier sibling moves it
+before that sibling. **Move up** and **Move down** remain available for keyboard
+and touch operation. Reordering uses the existing draft autosave and local recovery;
+publication and enrolled revisions are unchanged until explicitly published.
+
+The outline is an editing view, not a complete learner/visitor preview. Saving
+still sends the entire course draft; per-unit incremental saving remains pending.
+
+## Preview a draft as a learner or visitor
+
+Choose **Preview draft** to save the current form and open its saved revision in a
+modal preview. Invalid fields or save conflicts must be resolved first. Select
+**Enrolled learner** to inspect all lessons and materials, or **Visitor** to inspect
+open-course content and lessons marked as public previews. Restricted lessons show
+an enrollment message without their bodies, video, captions, or attachments.
+
+The preview includes sanitized lesson text, video controls, caption tracks,
+transcripts, and attachment downloads. Video must finish processing before it can
+play. Escape or **Close preview** returns to the editor; closing or changing audience
+stops playback. No enrollment, progress, or publication is created by the preview.
+
+This is an author-only simulation of the draft after publication, not a public
+preview URL or a login as another user. Media requests retain the author's normal
+authorization. The API checks ownership and the expected current revision and sends
+`Cache-Control: private, no-store`. A concurrent edit requires reloading the draft.
+
+## Incremental saves
+
+Existing drafts compare the form with the last acknowledged save. Only changed
+course metadata, module titles, and lessons are sent via PATCH; a lesson includes
+its text, settings, media, captions, and attachment metadata. Several changed units
+are committed together. Each request carries `expectedRevisionId`; another editor's
+save causes a conflict rather than silently overwriting their work. Module/lesson
+indexes are valid only for that exact revision.
+
+Adding or removing modules/lessons uses the full PUT workflow. New courses use POST,
+and recovered older drafts without a saved baseline use PUT. All saves still require
+a valid course form. No-op saves send no request. The server creates a complete new
+revision for every accepted change, preserving publication and enrollment snapshots;
+this optimization reduces transferred content, not database revision storage.
+
+After a network error, the draft and acknowledged baseline remain in local recovery.
+Reloading or switching language preserves edits. Use **Save draft** to retry; if the
+server accepted an earlier request but its response was lost, a conflict requires
+reloading/reconciling rather than blindly retrying over the newer revision.
+
+## Publication readiness
+
+Selecting **Publish** checks the exact saved revision and displays all detected
+blockers together, identified by module, lesson, or attachment title. Add text or
+a video to empty lessons, wait for processing or replace failed media, and save
+again before retrying publication. Video-only lessons do not require placeholder
+text. An invalid stored module/lesson order is rebuilt by saving the draft.
+
+The API also rejects media associated with another course, incorrect media kinds,
+and attachment references to a lesson outside the revision. Publication repeats
+these checks inside its transaction, so the preflight result does not bypass
+validation or guarantee later publication. A changed draft returns DRAFT_CONFLICT.
+The checklist is available only to the course owner or an administrator, while
+publication remains administrator-only. Existing published and enrolled revisions
+remain unchanged when checks fail.

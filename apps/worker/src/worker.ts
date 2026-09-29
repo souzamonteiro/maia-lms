@@ -1,3 +1,5 @@
+import { attachmentScanMode } from './attachment-scan.js';
+import { cleanupUploads } from './upload-cleanup.js';
 import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import { NodemailerEmailProvider } from '@maia/providers';
@@ -5,6 +7,7 @@ import { processVideo } from './video-jobs.js';
 import { pollOnce } from './jobs.js';
 
 if (process.env.NODE_ENV !== 'production' && fs.existsSync('.env')) process.loadEnvFile('.env');
+attachmentScanMode();
 const database = process.env.DATABASE_URL ?? './data/maia-lms.db';
 const concurrency = Number(process.env.WORKER_CONCURRENCY ?? 4);
 if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 20)
@@ -25,7 +28,19 @@ process.on('SIGINT', () => {
   running = false;
 });
 let mediaJob: Promise<unknown> | undefined;
+let nextCleanup = 0;
 while (running) {
+  if (Date.now() >= nextCleanup) {
+    nextCleanup = Date.now() + 60 * 60 * 1000;
+    try {
+      await cleanupUploads(db, process.env.STORAGE_ROOT ?? './data/storage');
+    } catch (error) {
+      console.error(
+        'Upload cleanup failed',
+        error instanceof Error ? error.message : 'Unknown error',
+      );
+    }
+  }
   if (!mediaJob)
     mediaJob = processVideo(db, process.env.STORAGE_ROOT ?? './data/storage')
       .catch(error => console.error('Video worker failed', error.message))

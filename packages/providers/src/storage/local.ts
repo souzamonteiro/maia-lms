@@ -17,6 +17,8 @@ export class LocalStorageProvider implements StorageProvider {
     this.root = fs.realpathSync(root);
   }
   private keyToPath(key: string): string {
+    if (fs.lstatSync(this.root).isSymbolicLink() || fs.realpathSync(this.root) !== this.root)
+      throw new Error('Storage root changed');
     if (
       !/^[a-zA-Z0-9_-]+(?:\/[a-zA-Z0-9_.-]+)*$/.test(key) ||
       key.split('/').some(p => p === '.' || p === '..')
@@ -47,6 +49,7 @@ export class LocalStorageProvider implements StorageProvider {
         Buffer.isBuffer(data) ? Readable.from([data]) : data,
         fs.createWriteStream(temp, { flags: 'wx', mode: 0o600 }),
       );
+      this.keyToPath(key);
       // Immutable objects; hard-link atomically fails if the destination already exists.
       fs.linkSync(temp, target);
     } finally {
@@ -59,12 +62,27 @@ export class LocalStorageProvider implements StorageProvider {
       fs.closeSync(fd);
       throw new Error('Not a regular file');
     }
-    return fs.createReadStream('', { fd, autoClose: true, ...options });
+    try {
+      return fs.createReadStream('', { fd, autoClose: true, ...options });
+    } catch (error) {
+      fs.closeSync(fd);
+      throw error;
+    }
   }
-  async readAuthorized(key: string): Promise<Buffer> {
+  async readAuthorized(key: string, maxBytes = 8 * 1024 * 1024): Promise<Buffer> {
+    if (!Number.isSafeInteger(maxBytes) || maxBytes < 0 || maxBytes > 8 * 1024 * 1024)
+      throw new Error('Buffered reads must be limited to at most 8 MiB; use openRead');
+    if ((await this.stat(key)).size > maxBytes)
+      throw new Error('Object exceeds buffered read limit; use openRead');
     const chunks: Buffer[] = [];
-    for await (const chunk of this.openRead(key)) chunks.push(Buffer.from(chunk));
-    return Buffer.concat(chunks);
+    let size = 0;
+    // Check again while reading: never trust a pre-read size alone.
+    for await (const chunk of this.openRead(key)) {
+      size += chunk.length;
+      if (size > maxBytes) throw new Error('Object exceeds buffered read limit; use openRead');
+      chunks.push(Buffer.from(chunk));
+    }
+    return Buffer.concat(chunks, size);
   }
   async delete(key: string): Promise<void> {
     fs.rmSync(this.keyToPath(key), { force: true });

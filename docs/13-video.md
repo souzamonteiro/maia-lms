@@ -108,3 +108,33 @@ installer's automatic database backup alone does not copy videos.
 
 Update: captions and transcripts are now available; see the [guide](15-captions.md).
 Earlier references to pending captions describe the first delivery.
+
+## Duration in the author studio
+
+After processing finishes, the selected video's measured duration appears below
+its selector. Use **Refresh status** to retrieve newly processed metadata. Changing
+or removing the selected video updates or hides the duration. Until READY with a
+valid duration, the editor reports that duration is unavailable rather than showing
+zero. Durations use m:ss below one hour and h:mm:ss above it, rounding fractional
+seconds up. The value comes from server-side processing and is not author-editable.
+It describes video playback time, not estimated reading time or certificate workload.
+The label is localized in English, Portuguese, and Spanish. Attachment controls do
+not display video duration.
+
+## Private storage contract
+
+Use `openRead(key, { start, end })` for video and attachment streams. The legacy
+`readAuthorized(key, maxBytes)` helper is reserved for small objects: it defaults
+to 8 MiB, allows a smaller caller limit, and rejects larger limits or objects.
+It checks size before reading and counts streamed bytes while collecting them.
+The helper's name does not enforce user authorization; API routes must verify
+ownership/enrollment before any provider operation.
+
+Storage keys are server-generated. The local adapter rejects traversal, absolute
+paths, symbolic-link components, and symlink replacement of its initialized root.
+Writes stream to private temporary files, atomically link immutable destinations,
+and clean temporary files on failure. Invalid read options close the opened file
+descriptor. Root/ancestor ownership remains a deployment requirement: these checks
+do not provide isolation against a malicious process with the service account's
+filesystem permissions. Keep the storage directory private and inaccessible to
+untrusted local writers.

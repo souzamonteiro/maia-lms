@@ -53,6 +53,8 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
         { timeout: 30000 },
       )
       .toContain('Ready');
+    await expect(page.locator('.video-editor > .video-duration')).toContainText('Video duration:');
+    await expect(page.locator('.video-editor > .video-duration')).toHaveText(/Video duration: 0:0[1-9]/);
     await page.getByText('Captions', { exact: true }).click();
     await page.locator('.caption-row[data-language="en"] .caption-file').setInputFiles({
       name: 'lesson.vtt',
@@ -65,12 +67,27 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     for (const language of ['pt-BR', 'es', 'en']) {
       await page.locator('#languageSelect').selectOption(language);
       await expect(page.locator('html')).toHaveAttribute('lang', language);
+      await expect(page.locator('.video-editor > .video-duration')).toContainText({ 'pt-BR': 'Duração do vídeo:', es: 'Duración del vídeo:', en: 'Video duration:' }[language]);
       await expect(page.locator('.caption-row[data-language="en"] textarea')).toHaveValue(
         /Hello captions/,
       );
     }
+    const selectedVideo = await page.locator('.video-editor .video-choice').inputValue();
+    await page.locator('.video-editor .video-choice').selectOption('');
+    await expect(page.locator('.video-editor > .video-duration')).toBeHidden();
+    await page.locator('.video-editor .video-choice').selectOption(selectedVideo);
+    await expect(page.locator('.video-editor > .video-duration')).toContainText('Video duration:');
     await page.locator('.lesson-content').fill('');
     await expect(page.locator('#save-status')).toContainText('Draft saved');
+    await page.getByRole('button', { name: 'Preview draft', exact: true }).click();
+    const draftPreview = page.getByRole('dialog');
+    await expect(draftPreview.locator('video')).toBeVisible();
+    await draftPreview.locator('video').evaluate((video: HTMLVideoElement) => { video.muted = true; return video.play(); });
+    await expect.poll(() => draftPreview.locator('video').evaluate((video: HTMLVideoElement) => video.currentTime)).toBeGreaterThan(0);
+    await expect(draftPreview.locator('track[srclang="en"]')).toHaveCount(1);
+    await draftPreview.getByLabel('Preview as').selectOption('visitor');
+    await expect(draftPreview.locator('video')).toBeVisible(); // OPEN_FREE draft
+    await draftPreview.getByRole('button', { name: 'Close preview' }).click();
     await card.getByRole('button', { name: 'Publish', exact: true }).click();
     await expect(page.locator('#message')).toBeEmpty();
     await expect(card)
@@ -154,6 +171,14 @@ test('author attaches PDF, ZIP and source with descriptions and downloads the pu
   }
   await page.getByRole('button', { name: 'Save draft', exact: true }).click();
   await expect(page.locator('#save-status')).toContainText('Draft saved');
+  await expect(page.locator('.attachment-upload .video-duration')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Preview draft', exact: true }).click();
+  const materialPreview = page.getByRole('dialog');
+  await expect(materialPreview).toContainText('Description of sources.zip');
+  const previewDownload = page.waitForEvent('download');
+  await materialPreview.getByRole('link', { name: 'example.py', exact: true }).click();
+  expect((await previewDownload).suggestedFilename()).toBe('example.py');
+  await materialPreview.getByRole('button', { name: 'Close preview' }).click();
   await card.getByRole('button', { name: 'Publish', exact: true }).click();
   await expect(card).toContainText('PUBLISHED');
   await card.getByRole('link', { name: 'View', exact: true }).click();
