@@ -1,6 +1,6 @@
 # Assessment and certificates
 
-> **Estado desta versão:** este documento registra requisitos do produto completo. O MVP atual entrega cursos gratuitos em texto, identidade, matrícula e progresso. Vídeo, comércio, quizzes, certificados, MFA e solicitações de privacidade ainda exigem implementação. Consulte [o roadmap](09-roadmap.md).
+> **Initial MVP status:** this document records requirements for the complete product. The initial MVP delivered free text courses, identity, enrollment, and progress. Video, commerce, quizzes, certificates, MFA, and privacy requests still required implementation at that stage. See [the roadmap](09-roadmap.md) for subsequent deliveries.
 
 Multiple-choice single/multi-select questions with server-held answer keys, deterministic scoring, configurable pass percent and attempt cap. Version question text, choices and grading keys; submitted attempts remain immutable. Random question order is optional and must be reproducible per attempt. Limit abuse through rate limiting and submission deadlines. Clearly state that an unproctored quiz certifies course completion under published rules, not independently verified professional competence.
 

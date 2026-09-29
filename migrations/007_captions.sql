@@ -1,0 +1,1 @@
+ALTER TABLE lessons ADD COLUMN captions_json TEXT NOT NULL DEFAULT '[]';

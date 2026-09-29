@@ -1,24 +1,25 @@
 # Roadmap and work packages
 
-> **Plano de implementação atualizado:** [TODO — plataforma completa de cursos em vídeo](../TODO.md).
-> A auditoria de 27/09/2026 detalha lacunas verificadas no código, prioridades P0/P1,
-> dependências e critérios de aceite. O protótipo já está publicado e recebeu
-> internacionalização (`en`, `pt-BR`, `es`); essas alterações devem ser preservadas.
-> Os marcos abaixo são a visão histórica; tarefas executáveis e estado pendente
-> passam a ser acompanhados no TODO.
+> **Updated implementation plan:** [TODO — complete video course platform](../TODO.md).
+> The September 27, 2026 audit details gaps verified in the code, P0/P1 priorities,
+> dependencies, and acceptance criteria. The prototype is already published and
+> includes internationalization (`en`, `pt-BR`, `es`); these changes must be preserved.
+> The milestones below provide historical context; actionable tasks and pending
+> status are now tracked in the TODO.
 
-## E1 iniciada — entrega local de 27/09/2026
+## E1 started — local delivery on September 27, 2026
 
-Editor Markdown, prévia sanitizada, rascunho separado da publicação, autosave e
-recuperação local, conflitos entre abas e home editorial implementados. Guia e
-limites: [autoria](12-authoring.md). E1 permanece parcial conforme o TODO; vídeo
-ainda depende de E2. Esta entrega não foi implantada no protótipo.
+Markdown editor, sanitized preview, drafts separate from publication, autosave,
+local recovery, cross-tab conflicts, and editorial homepage implemented. Guide and
+limits: [authoring](12-authoring.md). E1 remains partial as tracked in the TODO;
+video depends on E2. This delivery was not deployed to the prototype.
 
-## E2 iniciada — 28/09/2026
+## E2 started — September 28, 2026
 
-Upload retomável, processamento MP4/capa, associação à aula, publicação e player
-com autorização/retomada implementados localmente. Veja [vídeo](13-video.md). HLS,
-legendas, biblioteca completa e homologação na VPS permanecem pendentes.
+Resumable uploads, MP4/poster processing, lesson association, publication, and a
+player with authorization/resumption implemented locally. See [video](13-video.md).
+At this stage, HLS, captions, the complete library, and VPS validation remained
+pending. The subsequent caption delivery is recorded below.
 
 ## Implemented delivery
 
@@ -29,7 +30,7 @@ legendas, biblioteca completa e homologação na VPS permanecem pendentes.
 
 ## Pending before the full product is complete
 
-M2 adaptive HLS, captions, full media library and deployed validation; quizzes and completion policies from M3; M4 commerce including real provider verification and refunds; M5 credentials; MFA, privacy requests, richer catalog/editor, production performance/accessibility checks and validation of the complete video workflows on the deployed prototype. Provider adapters and database tables alone do not complete these milestones. SMTP, VPN, DNS and certificates require the destination environment.
+M2 adaptive HLS, full media library and deployed validation; quizzes and completion policies from M3; M4 commerce including real provider verification and refunds; M5 credentials; MFA, privacy requests, richer catalog/editor, production performance/accessibility checks and validation of the complete video workflows on the deployed prototype. Provider adapters and database tables alone do not complete these milestones. SMTP, VPN, DNS and certificates require the destination environment.
 
 The table below remains the complete product roadmap, not a claim that every milestone is shipped.
 
@@ -54,7 +55,12 @@ Create one issue per vertical slice, not one per layer. Start with: `M0 reposito
 
 Unit tests for policy and scoring; database integration tests for uniqueness and transactions; provider contract tests against sandbox fixtures; end-to-end browser tests for visitor/free/paid learner; media authorization tests for playlists/segments; load test for realistic concurrency; accessibility tests plus manual keyboard/screen reader pass; backup restoration drill. Revisit provider integration docs at implementation time.
 
-## Materiais complementares — 28/09/2026
+## Supplementary materials — September 28, 2026
 
-MEDIA-05 entregue localmente: anexos no curso/aula, metadados por revisão e download
-autorizado. [Guia](14-materials.md). As demais pendências de E2 continuam no TODO.
+MEDIA-05 delivered locally: course/lesson attachments, metadata per revision, and
+authorized downloads. [Guide](14-materials.md). Other E2 work remains in the TODO.
+
+## Captions — September 28, 2026
+
+PLAY-03 delivered locally: simple WebVTT per language, transcripts, and authorization
+per revision. [Guide](15-captions.md). HLS and the remaining E2 additions are still open.

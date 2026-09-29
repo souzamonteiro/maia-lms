@@ -1,434 +1,445 @@
-# TODO — Maia Learn como plataforma completa de cursos em vídeo
+# TODO — Maia Learn as a complete video course platform
 
-Auditoria: 27/09/2026. Este é o backlog de implementação do produto completo,
-solicitado após a publicação do protótipo. A entrega anterior é uma base para
-cursos em texto; não atende ainda ao objetivo de cursos em vídeo.
+Audit: September 27, 2026. This is the implementation backlog for the complete
+product, requested after the prototype was published. The preceding delivery was
+a foundation for text courses; it did not yet meet the video course objective.
 
-## Primeira implementação — 27/09/2026
+## First implementation — September 27, 2026
 
-Entregue no checkout local, ainda sem implantação: separação de revisão pública e
-rascunho, editor Markdown com prévia sanitizada, recuperação local, autosave de
-cursos existentes, conflitos entre abas, duplicação/ordenação por botões e seleção
-editorial da home. Novos componentes disponíveis em inglês, português e espanhol.
-Guia: [autoria e página inicial](docs/12-authoring.md).
+Delivered in the local checkout, not yet deployed: separate public and draft
+revisions, Markdown editor with sanitized preview, local recovery, autosave for
+existing courses, conflict detection across tabs, duplication/reordering with
+buttons, and editorial homepage selection. New components support English,
+Portuguese, and Spanish. Guide: [authoring and homepage](docs/12-authoring.md).
 
-- Concluídos: BASE-01, EDIT-01 e HOME-01 (seções fixas hero, destaques e recomendações).
-- BASE-02 parcial: migração 004 preserva texto, matrículas e progresso em fixture;
-  restauração do banco real, mídia e traduções ainda pendentes.
-- EDIT-02 parcial: parser e sanitização compartilhados/testados; versionamento
-  persistido da política de renderização ainda pendente.
-- EDIT-03/04 parciais: editor modular, ordenação por botões e recuperação implementados;
-  telas por aula, arraste e salvamento incremental por unidade ainda pendentes.
-- I18N-01 parcial: troca de idioma preserva o editor; e-mails/API legados pendentes.
-- Validação local: build, 38 testes automatizados e 3 testes no Chrome.
+- Completed: BASE-01, EDIT-01, and HOME-01 (fixed hero, featured, and recommended sections).
+- BASE-02 partial: migration 004 preserves text, enrollments, and progress in a fixture;
+  restoration of the real database, media, and translations remain pending.
+- EDIT-02 partial: shared, tested parser and sanitization; persisted rendering
+  policy versioning remains pending.
+- EDIT-03/04 partial: modular editor, button-based ordering, and recovery implemented;
+  per-lesson screens, dragging, and incremental saves per editing unit remain pending.
+- I18N-01 partial: switching languages preserves the editor; legacy emails/API remain pending.
+- Local validation: build, 38 automated tests, and 3 Chrome tests.
 
-E1 ainda tem os complementos acima. Upload, processamento, legendas e player de
-vídeo continuam em E2; a plataforma completa não está concluída.
+E1 still needs the additions above. At this stage, video upload, processing,
+captions, and playback remained in E2; the complete platform was not finished.
 
-## Primeira implementação de vídeo — 28/09/2026
+## First video implementation — September 28, 2026
 
-Fluxo MP4 entregue no checkout local: armazenamento privado, envio em blocos com
-retomada/verificação, associação à aula, fila separada, FFprobe/FFmpeg, capa,
-validação de publicação, player com Range/HEAD e retomada de posição. Instalação
-atualizada para FFmpeg e limites do worker. Validação: build/lint, 41 testes
-automatizados, quatro fluxos no Chrome e três testes de implantação. Não implantado.
-[Guia de vídeo](docs/13-video.md).
+MP4 workflow delivered in the local checkout: private storage, resumable and
+verified chunk uploads, lesson association, separate queue, FFprobe/FFmpeg, poster,
+publication validation, and player with Range/HEAD and position resumption. Installation
+updated for FFmpeg and worker limits. Validation: build/lint, 41 automated tests,
+four Chrome workflows, and three deployment tests. Not deployed.
+[Video guide](docs/13-video.md).
 
-MEDIA-01/02/03/04, JOB-01, PLAY-01/02/04, EDIT-05 e OPS-01 avançaram, mas ficam
-abertos: falta concluir HLS, legendas, biblioteca completa, limpeza automática de
-órfãos/expiração, progresso de transcode, navegação do aluno e homologação no Maia
-Edge/dispositivos. E2 e a plataforma completa permanecem em andamento.
+MEDIA-01/02/03/04, JOB-01, PLAY-01/02/04, EDIT-05, and OPS-01 advanced but remain
+open. At this stage, remaining work included HLS, captions, the complete library,
+automatic orphan/expiration cleanup, transcoding progress, learner navigation,
+and validation on Maia Edge/devices. E2 and the complete platform remain in progress.
 
-## Materiais complementares — 28/09/2026
+## Supplementary materials — September 28, 2026
 
-MEDIA-05 implementado: múltiplos anexos no curso ou aula, título, descrição,
-ordenação, substituição/remoção por revisão e download autorizado. PDF/ZIP e
-código-fonte usam upload retomável e validação de assinatura/codificação no worker.
-Antimalware e coleta de órfãos permanecem em MEDIA-02/04; não são recursos desta
-entrega. [Guia de materiais](docs/14-materials.md). Ainda sem implantação.
+MEDIA-05 implemented: multiple course or lesson attachments, titles, descriptions,
+ordering, replacement/removal per revision, and authorized downloads. PDF/ZIP and
+source code use resumable uploads and signature/encoding validation in the worker.
+Antimalware and orphan collection remain in MEDIA-02/04; they are not features of
+this delivery. [Materials guide](docs/14-materials.md). Not yet deployed.
 
-## Evidências e limites da revisão original
+## Captions and transcripts — September 28, 2026
 
-Revisados API, interface, internacionalização, esquema SQLite, worker, adaptadores,
-testes, instalação e documentos 01–11. A página pública de
-`https://learn.maiaplatform.org/` respondeu à consulta HTTP e contém o seletor de
-idiomas e o script modular. Não foram acessados painel autenticado, credenciais,
-dados privados nem configuração remota da VPS. Os detalhes internos abaixo são
-observações do checkout local, que pode diferir da release publicada. Não houve
-alteração funcional nem implantação nesta auditoria; os testes anteriores não
-comprovam as funcionalidades pendentes.
+PLAY-03 implemented: WebVTT import/editing in en/pt-BR/es, player selection,
+per-track transcripts, replacement/removal per revision, and authorized delivery.
+Supports the plain-text subset documented in the [guide](docs/15-captions.md);
+CSS, positioning, SRT, and automatic generation are outside this delivery.
+Locally validated with real video and Chrome; no deployment performed.
 
-Estado na auditoria, antes da primeira implementação acima:
+## Evidence and limitations of the original review
 
-| Área | O que existe | O que falta / evidência |
+Reviewed the API, interface, internationalization, SQLite schema, worker, adapters,
+tests, installation, and documents 01–11. The public page at
+`https://learn.maiaplatform.org/` responded to an HTTP request and includes the
+language selector and modular script. The authenticated dashboard, credentials,
+private data, and remote VPS configuration were not accessed. Internal details
+below are observations from the local checkout, which may differ from the published
+release. This audit made no functional changes or deployments; previous tests do
+not demonstrate pending features.
+
+Audit status, before the first implementation above:
+
+| Area | Existing capabilities | Missing capabilities / evidence |
 |---|---|---|
-| Identidade | Cadastro, login, sessão SQLite, recuperação/verificação, bootstrap admin | Administração de usuários, reenvio de verificação, perfil, MFA; criação de admin ainda precisa de teste real de instalação |
-| Idiomas | `en`, `pt-BR`, `es`, seletor, detecção e persistência local | Erros da API/e-mails, preferência de conta, formatos, testes e proteção do formulário ao trocar idioma; [i18n.js](apps/web/public/i18n.js) |
-| Autoria | Formulário de título, resumo, módulos e aulas | Só `textarea` de texto; não há mídia, Markdown, capa, reordenação assistida ou autosave; [app.js](apps/web/public/app.js) |
-| Conteúdo | `body` exibido com escape de HTML | Sem renderização Markdown; `lessonSchema` exige texto e não recebe `kind`/`mediaId`; [courses.ts](apps/api/src/routes/courses.ts) |
-| Publicação | Criar revisão, publicar, arquivar, matrícula presa à revisão | Edição muda curso para DRAFT e substitui `current_revision_id`, retirando a versão publicada do catálogo |
-| Vídeos | Colunas `media_id`, `kind` e tabela `assets` | Sem upload, inspeção, transcodificação, legendas, player ou entrega autorizada |
-| Worker | Outbox persistente, leases e retentativas de e-mail | Rejeita eventos diferentes de `email.send`; [jobs.ts](apps/worker/src/jobs.ts) |
-| Armazenamento | Adaptador local ainda desconectado das rotas | Leitura inteira em Buffer; resolução de caminho sem garantia de confinamento na raiz; [local.ts](packages/providers/src/storage/local.ts) |
-| Página inicial | Hero fixo e mesma listagem usada em `/courses` | Sem seleção editorial, ordem ou seções; tabela `promotions` não tem API/interface |
-| Aprendizado | Matrícula gratuita, conclusão manual, contagem no painel | Sem retomada de vídeo, navegação entre aulas, política de conclusão ou avaliações |
-| Comércio | Tabelas e adaptadores fake/Mercado Pago | API aceita só OPEN_FREE/ENROLLED_FREE; sem pedidos/checkout/webhooks/reconciliação operacional |
-| Certificados | Tabela e requisitos escritos | Sem elegibilidade, emissão, PDF, QR, verificação ou revogação |
-| Operação | systemd, SQLite, backup, Nginx e instaladores | Vídeos grandes, processamento, backup de mídia, monitoramento e atualização do protótipo precisam de validação própria |
+| Identity | Registration, login, SQLite sessions, recovery/verification, admin bootstrap | User administration, verification resend, profile, MFA; admin creation still needs a real installation test |
+| Languages | `en`, `pt-BR`, `es`, selector, detection, and local persistence | API errors/emails, account preference, formatting, tests, and form protection when switching languages; [i18n.js](apps/web/public/i18n.js) |
+| Authoring | Form for title, summary, modules, and lessons | Text `textarea` only; no media, Markdown, cover, assisted reordering, or autosave; [app.js](apps/web/public/app.js) |
+| Content | `body` displayed with HTML escaping | No Markdown rendering; `lessonSchema` requires text and does not accept `kind`/`mediaId`; [courses.ts](apps/api/src/routes/courses.ts) |
+| Publication | Create revision, publish, archive, enrollment pinned to revision | Editing changes the course to DRAFT and replaces `current_revision_id`, removing the published version from the catalog |
+| Videos | `media_id`, `kind` columns and `assets` table | No upload, inspection, transcoding, captions, player, or authorized delivery |
+| Worker | Persistent outbox, leases, and email retries | Rejects events other than `email.send`; [jobs.ts](apps/worker/src/jobs.ts) |
+| Storage | Local adapter still disconnected from routes | Reads entire files into a Buffer; path resolution does not guarantee confinement to the root; [local.ts](packages/providers/src/storage/local.ts) |
+| Homepage | Fixed hero and the same listing as `/courses` | No editorial selection, ordering, or sections; `promotions` table has no API/interface |
+| Learning | Free enrollment, manual completion, dashboard counts | No video resumption, lesson navigation, completion policy, or assessments |
+| Commerce | Tables and fake/Mercado Pago adapters | API accepts only OPEN_FREE/ENROLLED_FREE; no operational orders/checkout/webhooks/reconciliation |
+| Certificates | Table and written requirements | No eligibility, issuance, PDF, QR, verification, or revocation |
+| Operations | systemd, SQLite, backup, Nginx, and installers | Large videos, processing, media backup, monitoring, and prototype upgrades require dedicated validation |
 
-## Prioridades e regra de conclusão
+## Priorities and completion rule
 
-- **P0:** tornar viável publicar e consumir um curso real em vídeo, com editor e home curada.
-- **P1:** completar gestão, avaliação, comércio, certificados e operação do produto especificado. Faz parte da entrega completa, não fica descartado por ser posterior a P0.
-- **P2:** extensões previstas para depois do produto principal, explicitamente separadas ao final.
+- **P0:** make publishing and taking a real video course viable, with an editor and curated homepage.
+- **P1:** complete management, assessment, commerce, certificates, and operations for the specified product. This is part of the full delivery, not excluded because it follows P0.
+- **P2:** extensions planned after the core product, explicitly separated at the end.
 
-Cada checkbox representa trabalho pendente. Só concluir quando UI + API + banco
-+ permissões + falhas + testes pertinentes + documentação estiverem entregues.
-Tabela SQL, adaptador isolado, mock ou botão sem fluxo real não satisfazem a tarefa.
-Preservar as alterações locais de internacionalização e os dados do protótipo.
+Each unchecked box represents pending work. Mark complete only when UI + API +
+database + permissions + failure handling + relevant tests + documentation are
+delivered. A SQL table, isolated adapter, mock, or button without a real workflow
+does not satisfy a task. Preserve local internationalization changes and prototype data.
 
-## P0 — base de edição e publicação
+## P0 — editing and publication foundation
 
-- [x] **BASE-01 — Separar rascunho e versão publicada.**
-  Introduzir referências distintas para revisão de trabalho e revisão pública;
-  atualizar catálogo, detalhes, autorizações e matrícula para escolher a revisão
-  correta. Dependências: nenhuma. Aceite: salvar um rascunho não retira o curso do
-  ar; visitante vê a publicação anterior, autor vê o rascunho e aluno antigo mantém
-  sua revisão. Publicação troca a referência pública em uma transação.
-- [ ] **BASE-02 — Migrar os dados existentes sem reinterpretar texto.**
-  Novas migrações aditivas para revisões, formato de conteúdo, relações de mídia,
-  traduções/metadados e slots editoriais conforme os fluxos abaixo. Dependência:
-  BASE-01. Aceite: banco do protótipo restaurado em ambiente isolado conserva
-  contas, matrículas, progresso e aulas; textos antigos continuam `plain`, sem
-  executar marcação antes inofensiva. Não editar migrações já aplicadas.
-- [x] **EDIT-01 — Editor Markdown com barra de ferramentas e prévia.**
-  Títulos, negrito, itálico, listas, links, citações, blocos de código, tabelas e
-  imagens com alt text; edição e prévia acessíveis. Dependências: BASE-01/02.
-  Aceite: autor formata, salva, reabre e aluno recebe a mesma estrutura renderizada.
-  Markdown é a primeira solução escolhida; editor visual pode ser adicionado sem
-  exigir HTML livre para concluir esta entrega.
-- [ ] **EDIT-02 — Renderização segura e versionada.**
-  Definir `content_format`, parser e sanitização por allowlist no servidor; bloquear
-  scripts, handlers, URLs perigosas, SVG/HTML arbitrário e embeds não aprovados.
-  Dependência: EDIT-01. Aceite: prévia e aula usam a mesma política; casos de XSS
-  falham; conteúdo legítimo e traduções permanecem legíveis. Instalar um parser
-  sozinho não basta.
-- [ ] **EDIT-03 — Estúdio por curso/módulo/aula.**
-  Dividir o formulário único em telas/componentes, reordenar com teclado e arraste,
-  duplicar/remover rascunhos com confirmação e pré-visualizar como aluno/visitante.
-  Dependência: BASE-01. Aceite: montar curso com vários módulos sem editar JSON/SQL;
-  exclusão não quebra revisões já matriculadas nem remove mídia ainda referenciada.
-- [ ] **EDIT-04 — Autosave, conflitos e proteção de trabalho não salvo.**
-  Salvar por unidade de edição, indicar estado/erro, recuperar rascunho e detectar
-  edições concorrentes via versão/ETag. Dependência: EDIT-03. Aceite: queda de rede,
-  duas abas, navegação e troca de idioma não apagam nem sobrescrevem silenciosamente
-  o conteúdo. Hoje `languageSelect` chama `main()` e recria o formulário.
-- [ ] **EDIT-05 — Tipos de aula e validação de publicação.**
-  Suportar `video`, `article`, `mixed`, associação de mídia e anexos, duração,
-  obrigatoriedade e prévia. Dependências: BASE-02, MEDIA-03, EDIT-02. Aceite: aula
-  exclusivamente de vídeo não precisa de texto fictício; publicação lista campos
-  faltantes e impede mídia não READY, ordem inválida e relações com outro curso/autor.
+- [x] **BASE-01 — Separate drafts from the published version.**
+  Introduce separate references for working and public revisions; update the catalog,
+  details, authorization, and enrollment to select the correct revision.
+  Dependencies: none. Acceptance: saving a draft keeps the course live; visitors see
+  the previous publication, authors see the draft, and existing learners retain
+  their revision. Publication switches the public reference in a transaction.
+- [ ] **BASE-02 — Migrate existing data without reinterpreting text.**
+  Add new additive migrations for revisions, content format, media relationships,
+  translations/metadata, and editorial slots according to the workflows below.
+  Dependency: BASE-01. Acceptance: restoring the prototype database in an isolated
+  environment preserves accounts, enrollments, progress, and lessons; legacy text
+  remains `plain`, without executing previously harmless markup. Do not edit applied migrations.
+- [x] **EDIT-01 — Markdown editor with toolbar and preview.**
+  Headings, bold, italic, lists, links, quotes, code blocks, tables, and images with
+  alt text; accessible editing and preview. Dependencies: BASE-01/02.
+  Acceptance: authors format, save, and reopen content, and learners receive the same
+  rendered structure. Markdown is the initial choice; a visual editor may be added
+  without requiring unrestricted HTML to complete this delivery.
+- [ ] **EDIT-02 — Safe, versioned rendering.**
+  Define `content_format`, parser, and server-side allowlist sanitization; block
+  scripts, handlers, dangerous URLs, arbitrary SVG/HTML, and unapproved embeds.
+  Dependency: EDIT-01. Acceptance: preview and lessons use the same policy; XSS
+  cases fail; legitimate content and translations remain readable. Installing a
+  parser alone is insufficient.
+- [ ] **EDIT-03 — Studio organized by course/module/lesson.**
+  Split the single form into screens/components, support keyboard and drag reordering,
+  duplicate/remove drafts with confirmation, and preview as a learner/visitor.
+  Dependency: BASE-01. Acceptance: build a multi-module course without editing JSON/SQL;
+  deletion does not break enrolled revisions or remove media still referenced.
+- [ ] **EDIT-04 — Autosave, conflicts, and unsaved work protection.**
+  Save per editing unit, indicate status/errors, recover drafts, and detect concurrent
+  edits through a version/ETag. Dependency: EDIT-03. Acceptance: network failure,
+  two tabs, navigation, and language switching do not erase or silently overwrite
+  content. At the original audit, `languageSelect` called `main()` and recreated the form.
+- [ ] **EDIT-05 — Lesson types and publication validation.**
+  Support `video`, `article`, `mixed`, media and attachment association, duration,
+  required status, and preview. Dependencies: BASE-02, MEDIA-03, EDIT-02. Acceptance:
+  video-only lessons need no placeholder text; publication lists missing fields and
+  blocks non-READY media, invalid ordering, and links to another course/author.
 
-## P0 — mídia e vídeo de ponta a ponta
+## P0 — end-to-end media and video
 
-- [ ] **MEDIA-01 — Armazenamento privado e seguro.**
-  Confinar caminhos à raiz inclusive contra `../`, caminhos absolutos e symlinks;
-  chaves geradas pelo servidor, streaming, gravação temporária/rename e limpeza
-  após falha. Dependência: nenhuma. Aceite: testes de confinamento e isolamento
-  entre autores; transferência de arquivo grande sem Buffer integral na memória.
-  O adaptador atual não deve ser exposto antes desta correção.
-- [ ] **MEDIA-02 — Upload de vídeos, imagens e anexos.**
-  Endpoints autorizados, streaming/chunks com retomada, progresso, cancelar/repetir,
-  quotas e limpeza de uploads incompletos. Conferir tamanho e conteúdo real,
-  armazenar originais em quarentena e definir inspeção/antimalware para anexos.
-  Dependências: MEDIA-01, BASE-02. Aceite: upload interrompido retoma sem duplicar;
-  arquivo inválido ou de outro autor é recusado; disco cheio tem mensagem recuperável.
-- [ ] **MEDIA-03 — Processamento FFprobe/FFmpeg.**
-  Validar container/streams, gerar MP4 de reprodução e HLS adaptativo compatíveis,
-  poster, duração e metadados; limites de CPU/memória/tempo e subprocessos sem
-  interpolação de shell. Dependências: MEDIA-02, JOB-01. Aceite: vídeo real chega a
-  READY com saídas verificadas; arquivo corrompido fica FAILED com erro útil;
-  publicação não aponta para arquivos incompletos. Não aumentar resolução artificialmente.
-- [ ] **JOB-01 — Jobs longos e concorrência controlada.**
-  Separar capacidade de mídia da fila de e-mail; renovar lease, progresso, heartbeat,
-  cancelamento e recuperação após crash; idempotência das saídas e retentativa manual.
-  Dependência: MEDIA-01. Aceite: transcode maior que cinco minutos não é reclamado
-  por outro worker; queda/reinício não produz duas saídas concorrentes nem bloqueia SMTP.
-- [ ] **MEDIA-04 — Biblioteca e ciclo de vida de mídia.**
-  Listar por autor/curso, pesquisar, selecionar, substituir por nova versão, associar
-  imagem/capa/poster/anexo e exibir fila/erro. Dependências: MEDIA-02/03, EDIT-03.
-  Aceite: autor acompanha todo o processo sem terminal; coleta de órfãos considera
-  revisões antigas e só remove arquivos elegíveis após período definido.
-- [x] **MEDIA-05 — Materiais complementares com descrição.**
-  Permitir anexar múltiplos arquivos ao curso ou a uma aula, incluindo PDF, ZIP,
-  código-fonte e outros formatos permitidos. Cada anexo deve ter título e descrição
-  editáveis; mostrar nome do arquivo, formato e tamanho ao aluno. Oferecer upload,
-  ordenação, substituição e remoção pelo editor, preservando arquivos referenciados
-  por revisões anteriores. Dependências: MEDIA-01/02/04, BASE-01, EDIT-03.
-  Aceite: autor adiciona um PDF, um ZIP e um arquivo de código-fonte com descrições;
-  aluno autorizado vê os materiais no contexto do curso/aula e consegue baixá-los.
-  Downloads respeitam matrícula, revisão, revogação e política de prévia; URLs
-  diretas não contornam autorização. Aplicar limites e validação de tipos; servir
-  como download, sem executar código nem extrair arquivos ZIP automaticamente.
-- [ ] **PLAY-01 — Entrega autorizada de MP4 e HLS.**
-  Endpoints de playback vinculados à aula/revisão/entitlement, HTTP Range/206/416,
-  Content-Type correto, HEAD, expiração/renovação de sessão de reprodução; verificar
-  também playlists secundárias, segmentos, chaves e anexos. Dependências: MEDIA-03,
-  BASE-01. Aceite: acesso direto/URL copiada não contorna matrícula nem revogação;
-  preview público só libera o ativo aprovado, nunca o diretório inteiro.
-- [ ] **PLAY-02 — Player integrado e responsivo.**
-  Player HTML5 com HLS nativo/fallback adequado, play/pause, seek, volume, velocidade,
-  fullscreen, teclado, estados de carregamento/erro e qualidade. Dependência: PLAY-01.
-  Aceite: reprodução e avanço funcionam em desktop, Android e Safari/iOS; renovação
-  de acesso durante aula longa não interrompe indevidamente a reprodução.
-- [ ] **PLAY-03 — Legendas e transcrição.**
-  Upload/validação WebVTT, idioma e seleção de faixa, transcrição textual acessível,
-  fluxo de substituição e indicação de disponibilidade. Dependências: MEDIA-04,
-  PLAY-02. Aceite: autor publica legenda e aluno a ativa no player; as faixas de
-  cursos privados obedecem à mesma autorização do vídeo.
-- [ ] **PLAY-04 — Retomada e navegação do aluno.**
-  Sumário persistente de módulos, anterior/próxima, última aula, posição salva com
-  debounce, continuar assistindo e progresso de curso. Dependências: PLAY-02, BASE-01.
-  Aceite: recarregar/trocar dispositivo retoma posição; chamadas ficam dentro dos
-  limites da API; conclusão explícita segue política do curso, sem tomar segundos
-  informados pelo navegador como prova de aprendizagem.
-- [ ] **OPS-01 — Adaptar HTTP e instalação para vídeo.**
-  Separar upload do middleware JSON-only atual; autenticação/CSRF específicos para
-  multipart/chunks. Definir limites por rota e taxa para upload/player; revisar
-  Nginx (hoje 1 MB), buffering, timeouts, Range, armazenamento temporário, FFmpeg e
-  dependências nas instalações systemd/Docker. Dependências: MEDIA-02, PLAY-01.
-  Aceite: upload representativo, seek e reprodução longa atravessam a VPS/WireGuard
-  sem 413/415/429 indevidos, sem expor novos serviços públicos ou reiniciar a VPN.
+- [ ] **MEDIA-01 — Private, secure storage.**
+  Confine paths to the root, including protection against `../`, absolute paths, and
+  symlinks; server-generated keys, streaming, temporary writes/rename, and cleanup
+  after failure. Dependencies: none. Acceptance: confinement and author isolation
+  tests; large file transfers without an entire Buffer in memory. The original
+  adapter must not be exposed before this correction.
+- [ ] **MEDIA-02 — Upload videos, images, and attachments.**
+  Authorized endpoints, resumable streaming/chunks, progress, cancel/retry, quotas,
+  and incomplete upload cleanup. Check size and actual content, quarantine originals,
+  and define inspection/antimalware for attachments. Dependencies: MEDIA-01, BASE-02.
+  Acceptance: interrupted uploads resume without duplication; invalid files or files
+  belonging to another author are rejected; a full disk produces a recoverable error.
+- [ ] **MEDIA-03 — FFprobe/FFmpeg processing.**
+  Validate containers/streams, generate compatible playback MP4 and adaptive HLS,
+  poster, duration, and metadata; CPU/memory/time limits and subprocesses without
+  shell interpolation. Dependencies: MEDIA-02, JOB-01. Acceptance: real video reaches
+  READY with verified outputs; corrupted files become FAILED with useful errors;
+  publication never points to incomplete files. Do not artificially upscale resolution.
+- [ ] **JOB-01 — Long-running jobs and controlled concurrency.**
+  Separate media capacity from the email queue; lease renewal, progress, heartbeat,
+  cancellation, and crash recovery; idempotent outputs and manual retry.
+  Dependency: MEDIA-01. Acceptance: transcoding longer than five minutes is not
+  reclaimed by another worker; crashes/restarts neither produce concurrent duplicate
+  outputs nor block SMTP.
+- [ ] **MEDIA-04 — Media library and lifecycle.**
+  List by author/course, search, select, replace with a new version, associate
+  images/covers/posters/attachments, and display queue/errors. Dependencies:
+  MEDIA-02/03, EDIT-03. Acceptance: authors follow the entire process without a
+  terminal; orphan collection considers old revisions and removes only eligible
+  files after a defined retention period.
+- [x] **MEDIA-05 — Supplementary materials with descriptions.**
+  Allow multiple attachments per course or lesson, including PDF, ZIP, source code,
+  and other permitted formats. Each attachment has an editable title and description;
+  show learners the filename, format, and size. Provide upload, ordering, replacement,
+  and removal in the editor, preserving files referenced by previous revisions.
+  Dependencies: MEDIA-01/02/04, BASE-01, EDIT-03. Acceptance: authors add a PDF, ZIP,
+  and source file with descriptions; authorized learners see materials in their
+  course/lesson context and can download them. Downloads respect enrollment,
+  revision, revocation, and preview policy; direct URLs cannot bypass authorization.
+  Apply size limits and type validation; serve as downloads without executing code
+  or automatically extracting ZIP files.
+- [ ] **PLAY-01 — Authorized MP4 and HLS delivery.**
+  Playback endpoints tied to lesson/revision/entitlement, HTTP Range/206/416, correct
+  Content-Type, HEAD, and playback session expiration/renewal; also check secondary
+  playlists, segments, keys, and attachments. Dependencies: MEDIA-03, BASE-01.
+  Acceptance: direct access/copied URLs cannot bypass enrollment or revocation;
+  public previews expose only the approved asset, never the entire directory.
+- [ ] **PLAY-02 — Integrated, responsive player.**
+  HTML5 player with native HLS/appropriate fallback, play/pause, seek, volume, speed,
+  fullscreen, keyboard controls, loading/error states, and quality selection.
+  Dependency: PLAY-01. Acceptance: playback and seeking work on desktop, Android,
+  and Safari/iOS; access renewal during long lessons does not unnecessarily interrupt playback.
+- [x] **PLAY-03 — Captions and transcripts.**
+  WebVTT upload/validation, language and track selection, accessible text transcripts,
+  replacement workflow, and availability indication. Dependencies: MEDIA-04, PLAY-02.
+  Acceptance: authors publish captions and learners enable them in the player;
+  private course tracks follow the same authorization as video.
+- [ ] **PLAY-04 — Learner resumption and navigation.**
+  Persistent module outline, previous/next, last lesson, debounced position saving,
+  continue watching, and course progress. Dependencies: PLAY-02, BASE-01.
+  Acceptance: reloads/device changes resume position; requests stay within API limits;
+  explicit completion follows course policy, without treating seconds reported by
+  the browser as proof of learning.
+- [ ] **OPS-01 — Adapt HTTP and installation for video.**
+  Separate uploads from the original JSON-only middleware; dedicated authentication/CSRF
+  for multipart/chunks. Define route and rate limits for uploads/player; review
+  Nginx (1 MB at the audit), buffering, timeouts, Range, temporary storage, FFmpeg,
+  and dependencies in systemd/Docker installations. Dependencies: MEDIA-02, PLAY-01.
+  Acceptance: representative uploads, seeking, and long playback cross the VPS/WireGuard
+  without inappropriate 413/415/429 errors, exposing new public services, or restarting the VPN.
 
-## P0 — página inicial e apresentação de cursos
+## P0 — homepage and course presentation
 
-- [x] **HOME-01 — Seleção editorial de cursos.**
-  Painel para escolher curso do hero, cursos em destaque e coleções, ordenar,
-  agendar início/fim e remover da home sem despublicar. Usar/evoluir `promotions`;
-  oferecer API pública própria, separada da busca geral. Dependência: BASE-01.
-  Aceite: administrador escolhe explicitamente os cursos da página inicial e a ordem;
-  rascunhos/arquivados nunca vazam; curso retirado do destaque continua no catálogo.
-- [ ] **HOME-02 — Capas, cards e página de venda/apresentação.**
-  Capa e alt text, trailer/prévia, autor/bio, objetivos, pré-requisitos, nível,
-  idioma, carga horária, currículo e condições de acesso/certificado. Dependências:
-  MEDIA-04, EDIT-03, HOME-01. Aceite: edição pelo painel aparece na página pública;
-  cards possuem imagens e CTAs coerentes com matrícula/preço, sem estatísticas falsas.
-- [ ] **HOME-03 — Catálogo, categorias e busca paginada.**
-  Taxonomia gerenciável, filtros de acesso/idioma/nível, ordenação e paginação real
-  em vez do limite fixo de 100. Dependências: HOME-02. Aceite: filtros combináveis,
-  URL compartilhável, estado vazio útil e cursos além da primeira página acessíveis.
+- [x] **HOME-01 — Editorial course selection.**
+  Dashboard to select hero, featured courses, and collections, order them, schedule
+  start/end dates, and remove them from the homepage without unpublishing. Use/evolve
+  `promotions`; provide a dedicated public API separate from general search.
+  Dependency: BASE-01. Acceptance: administrators explicitly choose homepage courses
+  and their order; drafts/archived courses never leak; removing a highlight keeps
+  the course in the catalog.
+- [ ] **HOME-02 — Covers, cards, and sales/presentation page.**
+  Cover and alt text, trailer/preview, author/bio, objectives, prerequisites, level,
+  language, workload, curriculum, and access/certificate terms. Dependencies:
+  MEDIA-04, EDIT-03, HOME-01. Acceptance: dashboard edits appear on the public page;
+  cards have images and CTAs consistent with enrollment/pricing, without fake statistics.
+- [ ] **HOME-03 — Catalog, categories, and paginated search.**
+  Manageable taxonomy, access/language/level filters, sorting, and real pagination
+  instead of the fixed 100-item limit. Dependency: HOME-02. Acceptance: composable
+  filters, shareable URLs, useful empty states, and courses accessible beyond page one.
 
-## P1 — identidade, gestão e internacionalização
+## P1 — identity, management, and internationalization
 
-- [ ] **I18N-01 — Completar internacionalização existente.**
-  Preservar `en`, `pt-BR`, `es` e comportamento atual de detecção; traduzir todos os
-  novos componentes, estados, validações, e-mails e mensagens da API por códigos
-  estáveis; formatar datas/números/preços com locale. Dependência: transversal a cada
-  entrega, não uma reescrita posterior. Aceite: mesmos fluxos testados nos três idiomas,
-  chaves ausentes detectadas e mudança de idioma sem perda do formulário (EDIT-04).
-- [ ] **I18N-02 — Separar idioma da interface e do curso.**
-  Salvar preferência do usuário, permitir autor definir locale de conteúdo/legendas
-  e metadados traduzidos com fallback explícito. Dependências: BASE-02, I18N-01.
-  Aceite: escolher espanhol na interface não reclassifica curso em português nem
-  promete tradução automática do vídeo; preferência persiste entre dispositivos.
-- [ ] **ADMIN-01 — Gestão de usuários e autores.**
-  Listagem/busca, papéis, suspensão/reativação, perfil público do instrutor e auditoria;
-  bootstrap/redefinição administrativa com erros específicos, sem senhas padrão.
-  Dependência: identidade existente. Aceite: administrador delega autoria pelo painel;
-  autor não altera outro autor/conta; mudanças de acesso invalidam sessões necessárias.
-- [ ] **AUTH-01 — Completar os fluxos de conta.**
-  Perfil, troca de senha, reenvio/feedback de verificação, recuperação traduzida,
-  estados de conta e política explícita para e-mail não verificado; MFA de admin
-  com recuperação. Dependências: I18N-01, ADMIN-01. Aceite: cenários de token usado,
-  expirado, SMTP indisponível e perda do segundo fator têm recuperação verificável.
-- [ ] **ADMIN-02 — Matrículas, concessões e auditoria.**
-  Painel para inscrições, progresso, concessão/revogação manual com motivo, histórico
-  e tratamento de suporte. Dependência: BASE-01, ADMIN-01. Aceite: operação autorizada
-  e auditada altera acesso sem apagar histórico; não exige editar SQL manualmente.
-- [ ] **ADMIN-03 — Publicação, revisão e retirada urgente.**
-  Fluxo DRAFT → REVIEW → PUBLISHED, checklist, agendamento opcional e notificações;
-  distinguir arquivar (mantém acesso) de retirar acesso por motivo urgente.
-  Dependências: EDIT-05, ADMIN-02. Aceite: regras de cada transição são testadas e
-  retirada urgente não deixa o conteúdo acessível por URL/media grant antigo.
+- [ ] **I18N-01 — Complete existing internationalization.**
+  Preserve `en`, `pt-BR`, `es`, and existing detection behavior; translate all new
+  components, states, validations, emails, and API messages using stable codes;
+  format dates/numbers/prices by locale. Dependency: part of every delivery, not a
+  later rewrite. Acceptance: the same flows tested in all three languages, missing
+  keys detected, and language switching without form loss (EDIT-04).
+- [ ] **I18N-02 — Separate interface and course languages.**
+  Save user preferences, let authors set content/caption locales, and support
+  translated metadata with explicit fallback. Dependencies: BASE-02, I18N-01.
+  Acceptance: selecting Spanish in the interface neither reclassifies a Portuguese
+  course nor promises automatic video translation; preferences persist across devices.
+- [ ] **ADMIN-01 — User and author management.**
+  Listing/search, roles, suspension/reactivation, public instructor profiles, and
+  auditing; administrative bootstrap/reset with specific errors and no default passwords.
+  Dependency: existing identity. Acceptance: administrators delegate authorship in
+  the dashboard; authors cannot change another author/account; access changes
+  invalidate the relevant sessions.
+- [ ] **AUTH-01 — Complete account workflows.**
+  Profile, password changes, verification resend/feedback, localized recovery,
+  account states, and explicit unverified-email policy; administrator MFA with
+  recovery. Dependencies: I18N-01, ADMIN-01. Acceptance: used/expired tokens,
+  unavailable SMTP, and lost second factors have verifiable recovery paths.
+- [ ] **ADMIN-02 — Enrollments, grants, and audit.**
+  Dashboard for enrollments, progress, manual grants/revocation with reasons,
+  history, and support handling. Dependencies: BASE-01, ADMIN-01. Acceptance:
+  authorized, audited operations change access without deleting history or requiring manual SQL.
+- [ ] **ADMIN-03 — Publication, review, and urgent withdrawal.**
+  DRAFT → REVIEW → PUBLISHED workflow, checklist, optional scheduling, and notifications;
+  distinguish archiving (preserves access) from urgent access withdrawal.
+  Dependencies: EDIT-05, ADMIN-02. Acceptance: each transition's rules are tested;
+  urgent withdrawal leaves no access through old URLs/media grants.
 
-## P1 — avaliações e conclusão
+## P1 — assessments and completion
 
-- [ ] **QUIZ-01 — Construtor e versionamento de avaliações.**
-  Questões de uma/múltiplas alternativas, pontuação, nota mínima, tentativas,
-  avaliação por aula/final e prévia. Dependências: BASE-01, EDIT-03. Aceite: autor
-  monta prova pelo painel; gabaritos não aparecem no payload do aluno; revisão
-  nova não muda respostas/política de tentativas antigas.
-- [ ] **QUIZ-02 — Tentativas e correção no servidor.**
-  Início/submissão atômicos, limites, duplicação, prazos e feedback de resultado.
-  Dependência: QUIZ-01. Aceite: respostas manipuladas, repetidas, concorrentes ou de
-  outro curso não criam aprovação; uma submissão aceita torna-se imutável.
-- [ ] **LEARN-01 — Política de conclusão consistente.**
-  Snapshot de aulas obrigatórias/nota/tentativas por revisão, cálculo server-side e
-  conclusão idempotente. Dependências: PLAY-04, QUIZ-02. Aceite: painel e certificado
-  usam a mesma decisão; acesso revogado e prova reprovada não permitem emissão.
+- [ ] **QUIZ-01 — Assessment builder and versioning.**
+  Single/multiple-choice questions, scoring, passing grade, attempts, lesson/final
+  assessments, and preview. Dependencies: BASE-01, EDIT-03. Acceptance: authors build
+  assessments in the dashboard; answer keys never appear in learner payloads;
+  new revisions do not change old answers/attempt policies.
+- [ ] **QUIZ-02 — Server-side attempts and grading.**
+  Atomic start/submission, limits, duplicate handling, deadlines, and result feedback.
+  Dependency: QUIZ-01. Acceptance: manipulated, repeated, concurrent, or cross-course
+  answers cannot produce a passing result; accepted submissions become immutable.
+- [ ] **LEARN-01 — Consistent completion policy.**
+  Snapshot required lessons/grades/attempts per revision, server-side calculation,
+  and idempotent completion. Dependencies: PLAY-04, QUIZ-02. Acceptance: dashboard
+  and certificates use the same decision; revoked access and failed assessments prevent issuance.
 
-## P1 — venda e pagamentos
+## P1 — sales and payments
 
-- [ ] **PAY-01 — Preço, pedido e checkout real.**
-  Habilitar PAID no editor com preço/moeda/termos, snapshot de pedido, idempotência,
-  checkout hospedado e telas pendente/cancelado/aprovado. Dependências: BASE-01,
-  HOME-02, ADMIN-02. Aceite: preço enviado pelo navegador não é confiado; redirecionamento
-  de retorno não concede acesso; pedidos e estado são visíveis ao comprador.
-- [ ] **PAY-02 — Revisar contrato do adaptador e receber webhooks.**
-  Conferir documentação oficial vigente antes de implementar; testar assinatura,
-  origem dos identificadores, headers/query/body e deduplicação correta. Hoje
-  `verifyWebhook` tenta extrair `data.id` do corpo como URLSearchParams e usa esse
-  identificador como evento; não considerar integração homologada. Middleware de
-  sessão/origin/JSON e captura de bytes devem respeitar o contrato específico do
-  provedor sem exceção ampla nas demais rotas. Dependência: PAY-01. Aceite: fixtures
-  oficiais/sandbox aceitas, adulteradas recusadas, transições distintas do mesmo
-  pagamento processadas sem duplicar concessões.
-- [ ] **PAY-03 — Confirmação, reconciliação e direitos de acesso.**
-  Consultar estado autoritativo e conferir vendedor, referência, moeda e valor;
-  gravar pedido/pagamento/matrícula/entitlement/outbox em transação curta SQLite;
-  reconciliar eventos perdidos/atrasados. Dependência: PAY-02. Aceite: pagamento
-  aprovado concede uma vez; notificação repetida/fora de ordem não gera acesso errado;
-  pedido aprovado sem matrícula é detectado e recuperado.
-- [ ] **PAY-04 — Reembolso, contestação e suporte comercial.**
-  Reembolso total/parcial, chargeback, trilha de auditoria, revogação de acesso e
-  política para certificado já emitido; painel de pedidos e comprovantes.
-  Dependências: PAY-03, ADMIN-02. Aceite: retentativa não duplica reembolso; estado
-  local reconcilia com provedor; regras de reembolso parcial são explícitas.
-- [ ] **PAY-05 — Homologação e configuração comercial.**
-  Separar sandbox/produção, revisar identidade do vendedor, moeda, condições de
-  acesso/reembolso, suporte, recibos e exigências fiscais com responsável competente.
-  Dependências: PAY-01–04. Aceite: fluxo de compra/reversão testado em sandbox e
-  liberação real condicionada às credenciais/configuração do titular. Não substituir
-  integração pendente por pagamento fake em produção.
+- [ ] **PAY-01 — Pricing, orders, and real checkout.**
+  Enable PAID in the editor with price/currency/terms, order snapshots, idempotency,
+  hosted checkout, and pending/canceled/approved screens. Dependencies: BASE-01,
+  HOME-02, ADMIN-02. Acceptance: browser-supplied prices are not trusted; return
+  redirects do not grant access; buyers can see their orders and status.
+- [ ] **PAY-02 — Review the adapter contract and receive webhooks.**
+  Check current official documentation before implementation; test signatures,
+  identifier sources, headers/query/body, and correct deduplication. At the audit,
+  `verifyWebhook` attempted to extract `data.id` from the body as URLSearchParams
+  and used that identifier as the event; do not consider the integration validated.
+  Session/origin/JSON middleware and raw-byte capture must follow the provider's
+  specific contract without broad exceptions on other routes. Dependency: PAY-01.
+  Acceptance: official/sandbox fixtures accepted, tampered ones rejected, and distinct
+  transitions of the same payment processed without duplicate grants.
+- [ ] **PAY-03 — Confirmation, reconciliation, and access rights.**
+  Query authoritative status and verify seller, reference, currency, and amount;
+  write order/payment/enrollment/entitlement/outbox in a short SQLite transaction;
+  reconcile lost/delayed events. Dependency: PAY-02. Acceptance: approved payments
+  grant access once; repeated/out-of-order notifications cannot create incorrect
+  access; approved orders without enrollment are detected and recovered.
+- [ ] **PAY-04 — Refunds, disputes, and commercial support.**
+  Full/partial refunds, chargebacks, audit trail, access revocation, and policy for
+  issued certificates; orders and receipts dashboard. Dependencies: PAY-03, ADMIN-02.
+  Acceptance: retries cannot duplicate refunds; local state reconciles with the
+  provider; partial refund rules are explicit.
+- [ ] **PAY-05 — Validation and commercial configuration.**
+  Separate sandbox/production, review seller identity, currency, access/refund terms,
+  support, receipts, and tax requirements with a qualified responsible party.
+  Dependencies: PAY-01–04. Acceptance: purchase/reversal tested in the sandbox;
+  real activation depends on the owner's credentials/configuration. Do not substitute
+  fake production payments for a pending integration.
 
-## P1 — certificados
+## P1 — certificates
 
-- [ ] **CERT-01 — Elegibilidade e emissão idempotente.**
-  Conferir conclusão, entitlement, e-mail verificado, nome e consentimento de
-  divulgação; snapshot da identidade/curso/carga horária/emitente. Dependências:
-  LEARN-01, AUTH-01 e PAY-04 para cursos pagos. Aceite: requisições concorrentes
-  geram uma emissão válida; alteração posterior de perfil/curso não reescreve o documento.
-- [ ] **CERT-02 — PDF, QR e consulta pública.**
-  Geração assíncrona, download autorizado, código opaco, verificação pública com
-  dados mínimos e estado válido/revogado; tela de certificados do aluno.
-  Dependências: CERT-01, JOB-01. Aceite: QR abre URL canônica, PDF mantém texto
-  legível, worker pode repetir sem duplicar emissão, e busca não enumera identidades.
-- [ ] **CERT-03 — Revogação e reemissão.**
-  Painel e motivo privado, novo documento quando necessário, vínculo com anterior
-  e preservação da consulta de códigos antigos. Dependências: CERT-02, ADMIN-02.
-  Aceite: documento revogado continua verificável como revogado; só admin autorizado
-  reemite e o histórico é auditável.
+- [ ] **CERT-01 — Eligibility and idempotent issuance.**
+  Check completion, entitlement, verified email, name, and disclosure consent;
+  snapshot identity/course/workload/issuer. Dependencies: LEARN-01, AUTH-01, and
+  PAY-04 for paid courses. Acceptance: concurrent requests produce one valid issuance;
+  subsequent profile/course edits do not rewrite the document.
+- [ ] **CERT-02 — PDF, QR, and public verification.**
+  Asynchronous generation, authorized download, opaque code, public verification
+  with minimal data and valid/revoked status; learner certificates screen.
+  Dependencies: CERT-01, JOB-01. Acceptance: QR opens the canonical URL, PDF text
+  remains readable, workers can retry without duplicate issuance, and lookup does
+  not enumerate identities.
+- [ ] **CERT-03 — Revocation and reissuance.**
+  Dashboard and private reason, new document when needed, link to the previous one,
+  and preservation of old-code lookups. Dependencies: CERT-02, ADMIN-02.
+  Acceptance: revoked documents remain verifiable as revoked; only authorized
+  administrators can reissue, with auditable history.
 
-## P1 — confiabilidade, proteção e lançamento completo
+## P1 — reliability, protection, and full launch
 
-- [ ] **DATA-01 — Reforçar invariantes do SQLite.**
-  Validar referências cruzadas de revisões/mídia/curso e unicidade de quiz final,
-  emissão ativa e identificação de pagamentos antes de ligar os fluxos. Hoje
-  `UNIQUE(revision_id, lesson_id)` não impede múltiplos quizzes com lesson_id NULL;
-  certificado não tem unicidade de emissão por política. Dependências: BASE-02 e
-  desenho QUIZ/PAY/CERT. Aceite: migrações e testes de concorrência impedem estados
-  inválidos sem depender exclusivamente de verificações prévias no código.
-- [ ] **OPS-02 — Backup integrado e restauração de mídia.**
-  Banco + manifestos/versões/arquivos referenciados + configuração, retenção,
-  cópia externa e restauração ensaiada. Dependências: MEDIA-04. Aceite: restaurar
-  curso publicado e revisão antiga permite assistir, retomar e validar certificado;
-  backup SQLite isolado não conta como backup completo dos vídeos.
-- [ ] **OPS-03 — Observabilidade e operação pelo painel.**
-  Métricas de fila/transcode/playback/SMTP/pagamentos/disco, logs sem tokens/PII,
-  alertas, inspeção e retentativa administrativa. Dependências: JOB-01, PAY-03.
-  Aceite: operador identifica job travado e causa de erro sem examinar segredos;
-  readiness da API não é usada como prova de que todos os workers estão saudáveis.
-- [ ] **OPS-04 — Capacidade real no Maia Edge.**
-  Definir público/bitrate/limite de upload e testar banda da hospedeira, VPN, VPS,
-  disco e concorrência SQLite/FFmpeg. Dependências: PLAY-02, OPS-01. Aceite: registrar
-  cenário, latência, taxa de erro, uso de recursos e limite suportado; se ultrapassar
-  capacidade, habilitar armazenamento/CDN pelo adaptador sem mudar direitos de acesso.
-- [ ] **OPS-05 — Atualização segura do protótipo publicado.**
-  Ambiente de homologação, backup antes de migração, artefatos/permissões verificados
-  pelo usuário do serviço, smoke test via HTTPS, rollback e roteiro hospedeira/VPS.
-  Dependências: BASE-02, OPS-01/02. Aceite: atualizar uma cópia representativa e testar
-  restauração antes de publicar; preservar `.env`, contas, idiomas e VPN. Docker e
-  systemd precisam ser exercitados, não apenas validados por sintaxe.
-- [ ] **SEC-01 — Autorização, abuso e conteúdo hostil.**
-  Testes de acesso entre usuários/autores/cursos, mídia privada e revogada, Markdown,
-  upload, extração/transcode, replay de pagamento e limites de armazenamento.
-  Dependências: entregas correspondentes. Aceite: nenhum endpoint novo contorna
-  políticas; arquivos de teste hostis falham de modo controlado, sem vazamento.
-- [ ] **PRIV-01 — Privacidade e autosserviço.**
-  Perfil/correção, exportação, solicitação de exclusão, consentimentos versionados,
-  retenção de contas/mídia/pagamentos e contato de suporte. Dependências: ADMIN-01,
-  PAY-04, CERT-03. Aceite: pedidos rastreáveis respeitam retenção definida; consulta
-  pública de certificado expõe somente dados consentidos. Revisão jurídica é uma
-  dependência externa, não uma afirmação de conformidade já alcançada.
-- [ ] **UX-01 — Acessibilidade e estados reais de uso.**
-  Teclado/foco, leitor de tela, contraste, zoom/mobile, legendas, mensagens de erro,
-  esqueletos/carregamento e telas vazias; testar nos três idiomas. Dependências:
-  EDIT-03, PLAY-03, HOME-03, I18N-01. Aceite: publicar e assistir sem mouse; player,
-  editor e formulários não perdem contexto em erros.
-- [ ] **SEO-01 — Páginas públicas indexáveis.**
-  Conteúdo útil renderizado no servidor, título/descrição por curso, canonical,
-  sitemap, Open Graph/capas e locale; bloquear indexação das áreas privadas.
-  Dependências: HOME-02/03, I18N-02. Aceite: HTML inicial de um curso publicado
-  contém sua apresentação; crawler não recebe somente o shell genérico atual.
-- [ ] **QA-01 — Suíte e demonstração do produto completo.**
-  Ampliar testes HTTP, banco, jobs e navegador para todos os fluxos abaixo, incluindo
-  Chrome/Firefox/Safari e mobile quando aplicável. Dependências: todas as entregas
-  P0/P1. Aceite: relatórios novos por versão; o teste atual de artigo em inglês
-  não serve como aceite de vídeo, editor, idiomas, checkout ou certificado.
-- [ ] **DOC-01 — Contrato e operação sincronizados com a implementação.**
-  Atualizar OpenAPI, modelo de dados, instalação/configuração, manual de autor/aluno/
-  admin, limites e procedimentos de recuperação a cada entrega. Dependência:
-  transversal. Aceite: API implementada e planejamento futuro separados; exemplos
-  executáveis não dependem de credenciais padrão nem de passos omitidos.
+- [ ] **DATA-01 — Strengthen SQLite invariants.**
+  Validate cross-references among revisions/media/courses and uniqueness of final
+  quizzes, active issuance, and payment identifiers before enabling workflows.
+  At the audit, `UNIQUE(revision_id, lesson_id)` allowed multiple quizzes with NULL
+  lesson_id; certificates lacked uniqueness per issuance policy. Dependencies:
+  BASE-02 and QUIZ/PAY/CERT design. Acceptance: migrations and concurrency tests
+  prevent invalid states without relying exclusively on prior code checks.
+- [ ] **OPS-02 — Integrated backup and media restoration.**
+  Database + manifests/versions/referenced files + configuration, retention,
+  off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:
+  restoring a published course and old revision allows playback, resumption, and
+  certificate verification; a SQLite-only backup is not a complete video backup.
+- [ ] **OPS-03 — Observability and dashboard operations.**
+  Queue/transcode/playback/SMTP/payment/disk metrics, logs without tokens/PII,
+  alerts, inspection, and administrative retries. Dependencies: JOB-01, PAY-03.
+  Acceptance: operators identify stuck jobs and error causes without inspecting
+  secrets; API readiness is not treated as proof that every worker is healthy.
+- [ ] **OPS-04 — Real capacity on Maia Edge.**
+  Define audience/bitrate/upload limits and test host, VPN, and VPS bandwidth,
+  disk, and SQLite/FFmpeg concurrency. Dependencies: PLAY-02, OPS-01. Acceptance:
+  record scenario, latency, error rate, resource use, and supported limits; if
+  capacity is exceeded, enable storage/CDN through the adapter without changing access rights.
+- [ ] **OPS-05 — Safe upgrades of the published prototype.**
+  Staging environment, backup before migration, artifacts/permissions verified as
+  the service user, HTTPS smoke tests, rollback, and host/VPS runbook.
+  Dependencies: BASE-02, OPS-01/02. Acceptance: upgrade a representative copy and
+  test restoration before publishing; preserve `.env`, accounts, languages, and VPN.
+  Exercise Docker and systemd installations, not just their syntax.
+- [ ] **SEC-01 — Authorization, abuse, and hostile content.**
+  Tests for cross-user/author/course access, private/revoked media, Markdown,
+  uploads, extraction/transcoding, payment replay, and storage limits.
+  Dependencies: corresponding deliveries. Acceptance: no new endpoint bypasses
+  policies; hostile test files fail in a controlled way without leaks.
+- [ ] **PRIV-01 — Privacy and self-service.**
+  Profile/correction, export, deletion requests, versioned consent, account/media/payment
+  retention, and support contact. Dependencies: ADMIN-01, PAY-04, CERT-03.
+  Acceptance: traceable requests respect defined retention; public certificate
+  lookups expose only consented data. Legal review is an external dependency, not
+  a claim that compliance has already been achieved.
+- [ ] **UX-01 — Accessibility and real usage states.**
+  Keyboard/focus, screen readers, contrast, zoom/mobile, captions, error messages,
+  skeleton/loading and empty states; test all three languages. Dependencies:
+  EDIT-03, PLAY-03, HOME-03, I18N-01. Acceptance: publish and watch without a mouse;
+  player, editor, and forms retain context when errors occur.
+- [ ] **SEO-01 — Indexable public pages.**
+  Useful server-rendered content, per-course title/description, canonical URLs,
+  sitemap, Open Graph/covers, and locale; prevent indexing of private areas.
+  Dependencies: HOME-02/03, I18N-02. Acceptance: initial HTML for a published course
+  contains its presentation; crawlers do not receive only the original generic shell.
+- [ ] **QA-01 — Complete product test suite and demonstration.**
+  Extend HTTP, database, job, and browser tests to all workflows below, including
+  Chrome/Firefox/Safari and mobile where applicable. Dependencies: all P0/P1
+  deliveries. Acceptance: new reports per version; the original English article
+  test does not establish acceptance for video, editor, languages, checkout, or certificates.
+- [ ] **DOC-01 — Keep contracts and operations aligned with implementation.**
+  Update OpenAPI, data model, installation/configuration, author/learner/admin
+  manuals, limits, and recovery procedures with every delivery. Dependency:
+  cross-cutting. Acceptance: implemented API and future plans are separate;
+  runnable examples do not depend on default credentials or omitted steps.
 
-## Sequência de entregas demonstráveis
+## Sequence of demonstrable deliveries
 
-| Entrega | Itens centrais | Demonstração exigida |
+| Delivery | Core items | Required demonstration |
 |---|---|---|
-| E1 — Autoria utilizável e home editorial | BASE, EDIT-01–04, HOME-01, I18N transversal | Formatar/reabrir aula; editar sem tirar publicação do ar; selecionar e ordenar destaques |
-| E2 — Curso em vídeo gratuito completo | MEDIA, JOB, PLAY, EDIT-05, HOME-02/03, OPS-01 | Subir vídeo real, acompanhar processamento, publicar com legenda e reproduzir/retomar pelo domínio público |
-| E3 — Gestão e avaliação | ADMIN, AUTH, I18N-02, QUIZ, LEARN, DATA pertinente | Administrador delega autoria; aluno realiza prova; conclusão calculada no servidor |
-| E4 — Comércio e credenciais | PAY, CERT, DATA pertinente | Compra sandbox, confirmação, acesso, conclusão, PDF/QR, reembolso e revogação |
-| E5 — Homologação e lançamento completo | OPS-02–05, SEC, PRIV, UX, SEO, QA, DOC | Restauração, carga, acessibilidade, três idiomas e atualização da instalação existente |
+| E1 — Usable authoring and editorial homepage | BASE, EDIT-01–04, HOME-01, cross-cutting I18N | Format/reopen a lesson; edit while keeping publication live; select and order highlights |
+| E2 — Complete free video course | MEDIA, JOB, PLAY, EDIT-05, HOME-02/03, OPS-01 | Upload real video, monitor processing, publish with captions, and play/resume through the public domain |
+| E3 — Management and assessment | ADMIN, AUTH, I18N-02, QUIZ, LEARN, relevant DATA | Administrator delegates authorship; learner takes an assessment; completion calculated on the server |
+| E4 — Commerce and credentials | PAY, CERT, relevant DATA | Sandbox purchase, confirmation, access, completion, PDF/QR, refund, and revocation |
+| E5 — Validation and full launch | OPS-02–05, SEC, PRIV, UX, SEO, QA, DOC | Restoration, load, accessibility, three languages, and upgrade of the existing installation |
 
-Segurança, migração e i18n acompanham cada entrega; E5 consolida os ensaios e não
-é o primeiro momento em que esses aspectos são considerados. E2 torna o produto
-utilizável para vídeo gratuito, mas não encerra o escopo completo P0/P1.
+Security, migration, and i18n accompany every delivery; E5 consolidates rehearsals
+rather than introducing these concerns for the first time. E2 makes the product
+usable for free video courses but does not complete the full P0/P1 scope.
 
-## Teste final de aceitação do produto
+## Final product acceptance test
 
-- [ ] Administrador cria autor e configura a seleção editorial da home.
-- [ ] Autor cria curso com capa/objetivos, módulos reordenáveis, Markdown, vídeo,
-  legenda e materiais complementares (PDF, ZIP e código-fonte) com descrição;
-  interrompe e retoma upload; corrige um erro de processamento.
-- [ ] Autor prepara nova revisão enquanto a publicação antiga continua acessível.
-- [ ] Visitante encontra curso por busca/filtro e assiste somente às prévias permitidas.
-- [ ] Aluno se cadastra, verifica e-mail, matricula-se ou paga, assiste em desktop/mobile,
-  retoma posição, faz avaliação e recebe o certificado conforme a política.
-- [ ] Nenhuma URL de mídia ou resposta do navegador concede acesso a quem não tem direito.
-- [ ] Administrador consulta pedido, reembolsa/revoga e confere os efeitos no acesso e certificado.
-- [ ] Trocar entre inglês/português/espanhol preserva rascunhos e traduz o fluxo inteiro.
-- [ ] Operador recupera falha de worker e restaura banco/mídia em outra instalação funcional.
-- [ ] Toda a jornada acima funciona em `learn.maiaplatform.org`, além dos testes locais.
+- [ ] Administrator creates an author and configures editorial homepage selection.
+- [ ] Author creates a course with cover/objectives, reorderable modules, Markdown,
+  video, captions, and supplementary materials (PDF, ZIP, and source code) with
+  descriptions; interrupts/resumes an upload and fixes a processing error.
+- [ ] Author prepares a new revision while the old publication remains accessible.
+- [ ] Visitor finds a course through search/filters and watches only permitted previews.
+- [ ] Learner registers, verifies email, enrolls or pays, watches on desktop/mobile,
+  resumes position, takes an assessment, and receives a certificate according to policy.
+- [ ] No media URL or browser response grants access to an unauthorized user.
+- [ ] Administrator checks an order, refunds/revokes, and verifies effects on access and certificates.
+- [ ] Switching among English/Portuguese/Spanish preserves drafts and translates the entire workflow.
+- [ ] Operator recovers from worker failure and restores database/media into another working installation.
+- [ ] The entire journey above works at `learn.maiaplatform.org`, beyond local tests.
 
-## P2 — extensões registradas, sem bloquear o núcleo
+## P2 — recorded extensions that do not block the core
 
-- [ ] **EXT-01:** PayPal e outros provedores após estabilizar o contrato de pagamentos.
-- [ ] **EXT-02:** Cupons e campanhas comerciais com política de preços e auditoria.
-- [ ] **EXT-03:** Assistente por curso via Maia Chat/RAG com acesso e referências restritos.
-- [ ] **EXT-04:** Geração/tradução automática de legendas com revisão humana.
+- [ ] **EXT-01:** PayPal and other providers after stabilizing the payment contract.
+- [ ] **EXT-02:** Coupons and commercial campaigns with pricing policy and auditing.
+- [ ] **EXT-03:** Per-course assistant through Maia Chat/RAG with restricted access and references.
+- [ ] **EXT-04:** Automatic caption generation/translation with human review.
 
-Marketplace, divisão de pagamentos entre vendedores, SCORM, aplicativo nativo,
-proctoring e promessa de DRM continuam fora do escopo definido em
-[produto](docs/01-product.md). Não são pré-requisitos para completar a plataforma
-single-publisher solicitada.
+Marketplace, split payments between sellers, SCORM, native apps, proctoring, and
+promised DRM remain outside the scope defined in [product](docs/01-product.md).
+They are not prerequisites for completing the requested single-publisher platform.
 
-## Parâmetros externos a definir antes da publicação das respectivas etapas
+## External parameters to define before publishing the corresponding stages
 
-Pico de espectadores e banda disponível; tamanho/duração dos vídeos; limites e
-retenção de originais; identidade/conta do vendedor; preço/moeda; duração de acesso
-e reembolso parcial; carga horária e texto do certificado; SMTP; política de
-privacidade e responsáveis pelo suporte. O desenvolvimento de editor, upload,
-player e home não precisa esperar essas definições comerciais. Estimativas de
-prazo devem ser feitas por entrega após validar o pipeline com arquivos reais;
-não há porcentagem de conclusão confiável baseada apenas em tabelas existentes.
+Peak viewers and available bandwidth; video size/duration; limits and original-file
+retention; seller identity/account; price/currency; access duration and partial
+refunds; workload and certificate wording; SMTP; privacy policy and support owners.
+Editor, upload, player, and homepage development need not wait for these commercial
+decisions. Estimate schedules per delivery after validating the pipeline with real
+files; existing table counts alone cannot provide a reliable completion percentage.

@@ -167,7 +167,25 @@ it.runIf(process.env.VIDEO_TEST_REAL === '1')(
     const payload = {
       ...draft('real-video'),
       expectedRevisionId: c.current_revision_id,
-      modules: [{ title: 'Video', lessons: [{ title: 'Watch', body: '', videoId: video.id }] }],
+      modules: [
+        {
+          title: 'Video',
+          lessons: [
+            {
+              title: 'Watch',
+              body: '',
+              videoId: video.id,
+              captions: [
+                {
+                  language: 'en',
+                  label: 'English',
+                  vtt: 'WEBVTT\n\n00:00.000 --> 00:02.000\nHello world',
+                },
+              ],
+            },
+          ],
+        },
+      ],
     };
     expect((await request(`/api/v1/admin/courses/${c.id}`, 'PUT', payload, a.cookie)).status).toBe(
       200,
@@ -190,12 +208,63 @@ it.runIf(process.env.VIDEO_TEST_REAL === '1')(
     expect(lesson.kind).toBe('video');
     const url = `${base}/api/v1/lessons/${lesson.id}/video`;
     expect((await fetch(url)).status).toBe(403);
+    const captionUrl = url.replace('/video', '/captions/en');
+    expect((await fetch(captionUrl)).status).toBe(403);
     expect((await fetch(url.replace('/video', '/poster'))).status).toBe(403);
     await request(`/api/v1/courses/${c.id}/enroll`, 'POST', {}, learner.cookie);
     expect(
       (await fetch(url.replace('/video', '/poster'), { headers: { Cookie: learner.cookie } }))
         .status,
     ).toBe(200);
+    const captions = await fetch(captionUrl, { headers: { Cookie: learner.cookie } });
+    expect(captions.status).toBe(200);
+    expect(captions.headers.get('content-type')).toContain('text/vtt');
+    expect(await captions.text()).toContain('Hello world');
+    const beforeEdit = (await request(`/api/v1/admin/courses/${c.id}`, 'GET', undefined, a.cookie))
+      .data;
+    const edited = await request(
+      `/api/v1/admin/courses/${c.id}`,
+      'PUT',
+      {
+        ...payload,
+        expectedRevisionId: beforeEdit.current_revision_id,
+        modules: [
+          {
+            title: 'Video',
+            lessons: [
+              {
+                title: 'Watch',
+                body: '',
+                videoId: video.id,
+                captions: [
+                  {
+                    language: 'en',
+                    label: 'English',
+                    vtt: 'WEBVTT\n\n00:00.000 --> 00:02.000\nNew captions',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      a.cookie,
+    );
+    expect(edited.status).toBe(200);
+    await request(`/api/v1/admin/courses/${c.id}/publish`, 'POST', {}, a.cookie);
+    const updated = (await request(`/api/v1/admin/courses/${c.id}`, 'GET', undefined, a.cookie))
+      .data;
+    const newLesson = updated.modules[0].lessons[0].id;
+    expect(
+      (
+        await fetch(`${base}/api/v1/lessons/${newLesson}/captions/en`, {
+          headers: { Cookie: learner.cookie },
+        })
+      ).status,
+    ).toBe(403);
+    expect(
+      await (await fetch(captionUrl, { headers: { Cookie: learner.cookie } })).text(),
+    ).toContain('Hello world');
     const playback = await fetch(url, { headers: { Cookie: learner.cookie, Range: 'bytes=0-31' } });
     expect(playback.status).toBe(206);
     expect((await playback.arrayBuffer()).byteLength).toBe(32);
@@ -210,6 +279,7 @@ it.runIf(process.env.VIDEO_TEST_REAL === '1')(
     expect(
       (await fetch(url, { headers: { Cookie: learner.cookie, Range: 'bytes=32-63' } })).status,
     ).toBe(403);
+    expect((await fetch(captionUrl, { headers: { Cookie: learner.cookie } })).status).toBe(403);
     const invalid = (
       await request(
         '/api/v1/admin/videos',

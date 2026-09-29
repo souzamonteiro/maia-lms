@@ -185,7 +185,8 @@ paths:
       responses:
         '200':
           description: Lesson with original body, content_format, sanitized body_html
-            and saved progress
+            and saved progress; captions array includes language, label and plain
+            transcript. The admin course detail includes captions_json for editing.
         '403':
           description: Enrollment required or wrong revision
   /lessons/{id}/progress:
@@ -338,6 +339,14 @@ paths:
                               default: []
                               items:
                                 $ref: '#/components/schemas/AttachmentInput'
+                            captions:
+                              type: array
+                              maxItems: 3
+                              default: []
+                              description: At most one track per supported language.
+                                Replaces tracks in the new revision.
+                              items:
+                                $ref: '#/components/schemas/CaptionInput'
                 creationId:
                   type: string
                   format: uuid
@@ -898,6 +907,31 @@ paths:
           description: Access denied
         '404':
           description: Not found
+  /lessons/{id}/captions/{language}:
+    parameters:
+      - $ref: '#/components/parameters/lessonId'
+      - name: language
+        in: path
+        required: true
+        schema:
+          type: string
+          enum:
+            - en
+            - pt-BR
+            - es
+    get:
+      summary: Authorized WebVTT track for a READY lesson video
+      responses:
+        '200':
+          description: Same lesson/revision access as video; private no-store
+          content:
+            text/vtt:
+              schema:
+                type: string
+        '403':
+          description: Enrollment required or wrong revision
+        '404':
+          description: Missing video or language track
 components:
   securitySchemes:
     cookieAuth:
@@ -1019,3 +1053,25 @@ components:
           type: string
           maxLength: 2000
           default: ''
+    CaptionInput:
+      type: object
+      required:
+        - language
+        - label
+        - vtt
+      properties:
+        language:
+          type: string
+          enum:
+            - en
+            - pt-BR
+            - es
+        label:
+          type: string
+          minLength: 1
+          maxLength: 80
+        vtt:
+          type: string
+          maxLength: 100000
+          description: Plain WebVTT cues only; at most 100000 UTF-8 bytes. Increasing
+            start times, end greater than start, no markup/CSS/regions/cue settings.

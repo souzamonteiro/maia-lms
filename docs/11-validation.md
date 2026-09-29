@@ -1,60 +1,74 @@
-# Registro de validação — 2026-09-27
+# Validation record — 2026-09-27
 
-Validação local da entrega MVP, em Node.js 24.18.1:
+Local validation of the MVP delivery, using Node.js 24.18.1:
 
-- `npm run build`: compilação de todos os workspaces em ordem de dependência.
-- `npm run lint`: sem erros.
-- `npm test`: 28 testes aprovados; políticas, migrações, autenticação, cookies HTTPS atrás de proxy, permissões, matrícula idempotente, acesso/revisões/progresso, revogação de sessões, leases/retries, SMTP e backup/restauração.
-- `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome npm run test:e2e`: aprovado no Chrome; administrador cria/publica curso, aluno cadastra/entra/matricula/conclui aula e consulta progresso. Texto com marcação de script é exibido como texto.
-- `npm audit` e `npm audit --omit=dev`: nenhuma vulnerabilidade reportada na consulta desta validação.
-- `npm ci --dry-run`: lockfile consistente.
-- Instaladores: sintaxe Bash e simulação host/VPS aprovadas.
-- CLI real do repositório maia-edge: registro e planejamento da rota HTTPS `learn.maiaplatform.org → 10.77.0.2:3200` em estado temporário, com certificado de teste; sem aplicação à infraestrutura.
-- YAML de Compose, OpenAPI e CI: parseado sem erros.
+- `npm run build`: all workspaces compiled in dependency order.
+- `npm run lint`: no errors.
+- `npm test`: 28 passing tests; policies, migrations, authentication, HTTPS cookies behind a proxy, permissions, idempotent enrollment, access/revisions/progress, session revocation, leases/retries, SMTP and backup/restoration.
+- `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome npm run test:e2e`: passed in Chrome; an administrator creates/publishes a course, a learner registers/signs in/enrolls/completes a lesson and checks progress. Script markup is displayed as text.
+- `npm audit` and `npm audit --omit=dev`: no vulnerabilities reported during this validation.
+- `npm ci --dry-run`: consistent lockfile.
+- Installers: Bash syntax and host/VPS dry runs passed.
+- Actual CLI from the maia-edge repository: registration and planning of the HTTPS route `learn.maiaplatform.org → 10.77.0.2:3200` in temporary state with a test certificate; no infrastructure changes applied.
+- Compose, OpenAPI and CI YAML parsed without errors.
 
-Não executados neste ambiente: instalação real de systemd na hospedeira/VPS, build Docker (Docker indisponível), emissão/renovação TLS, DNS público, SMTP externo, testes de carga e auditoria completa de acessibilidade. CI configura Node.js 22/24, browser e build Docker, mas sua execução remota não faz parte deste registro.
+Not run in this environment: actual systemd installation on host/VPS, Docker build
+(Docker unavailable), TLS issuance/renewal, public DNS, external SMTP, load tests
+or a full accessibility audit. CI configures Node.js 22/24, a browser and Docker
+builds, but remote CI execution is not part of this record.
 
-Estes resultados cobrem o MVP documentado no README. Não validam funcionalidades futuras de vídeo, comércio, quizzes ou certificados.
+These results cover the MVP documented in the README at that stage. They do not
+validate future video, commerce, quiz or certificate features.
 
-## Autoria e home — 27/09/2026
+## Authoring and homepage — 2026-09-27
 
-Validação da primeira implementação E1 no checkout local: `npm run build`,
-`npm run lint`, `npm test` (38 testes, 8 arquivos) e
+Local validation of the first E1 implementation: `npm run build`, `npm run lint`,
+`npm test` (38 tests, 8 files) and
 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome npm run test:e2e`
-(3 testes) passaram. `npm audit` não reportou vulnerabilidades.
+(3 tests) passed. `npm audit` reported no vulnerabilities.
 
-Cobertura acrescentada: migração 004 sobre fixture legada, publicação independente
-do rascunho, revisão da matrícula, conflitos, permissões, sanitização Markdown,
-seleção/agendamento da home, recuperação local e troca de idioma sem perda de
-conteúdo. O teste móvel verifica largura de 390px no Chrome; não representa
-homologação em dispositivos reais. Sessões consultadas pela navegação deixam de
-consumir a quota de tentativas de login; o limite de credenciais continua testado.
+Added coverage: migration 004 over a legacy fixture, publication independent of
+drafts, enrollment revisions, conflicts, permissions, Markdown sanitization,
+homepage selection/scheduling, local recovery and changing language without losing
+content. The mobile test checks a 390px Chrome viewport; it does not qualify actual
+devices. Session lookups during navigation no longer consume the login-attempt
+quota; credential rate limiting remains tested.
 
-Não houve implantação nem acesso ao banco de produção. Vídeo e demais etapas do
-[TODO](../TODO.md) permanecem pendentes; veja o [guia de autoria](12-authoring.md).
+There was no deployment or production database access. Video and other stages in
+the [TODO](../TODO.md) remained pending at this stage; see the [authoring guide](12-authoring.md).
 
-## Vídeo MP4 — 28/09/2026
+## MP4 video — 2026-09-28
 
-Build, lint, 41 testes automatizados (com `VIDEO_TEST_REAL=1`), quatro testes
-no Chrome e três testes do instalador/proxy passaram. FFmpeg e FFprobe foram
-disponibilizados em uma pasta temporária para os testes locais, sem instalar
-pacotes no sistema da hospedeira. O teste de navegador enviou um MP4 real,
-aguardou processamento, publicou a aula e verificou avanço do tempo de reprodução.
+Build, lint, 41 automated tests (with `VIDEO_TEST_REAL=1`), four Chrome tests and
+three installer/proxy tests passed. FFmpeg and FFprobe were made available in a
+temporary directory for local tests without installing system packages on the
+host. The browser test uploaded a real MP4, waited for processing, published the
+lesson and verified that playback time advanced.
 
-Cobertura nova inclui confinamento/symlinks, falha de stream, original imutável,
-chunks concorrentes, SHA-256, origem, permissões, limite de tamanho, cancelamento,
-claim exclusivo, conversão/capa, arquivo inválido, Range/HEAD/416 e revogação.
-O teste completo identificou quota HTTP consumida por arquivos estáticos: o
-limite agora cobre a API e uploads têm limite próprio por usuário.
+New coverage includes path confinement/symlinks, stream failure, immutable originals,
+concurrent chunks, SHA-256, origin, permissions, size limits, cancellation, exclusive
+claims, conversion/poster generation, invalid files, Range/HEAD/416 and revocation.
+The full test identified HTTP quota consumption by static files: the limit now
+covers the API, and uploads have a separate per-user limit.
 
-Não foram executados implantação, Docker build, Safari/Android, carga ou teste
-HTTPS pela VPS nesta entrega. HLS e legendas ainda não estão disponíveis.
+Deployment, Docker build, Safari/Android, load and HTTPS-through-VPS tests were not
+run for this delivery. HLS and captions were not yet available at this stage.
 
-## Materiais complementares — 28/09/2026
+## Supplementary materials — 2026-09-28
 
-Build/lint, 43 testes automatizados com vídeo real e cinco fluxos no Chrome passaram.
-O fluxo novo envia PDF, ZIP e código-fonte pelo editor, preenche descrições, publica
-e verifica o conteúdo do download. Os testes HTTP conferem autorização, revogação,
-revisão antiga preservada, relação entre cursos e bloqueio de publicação antes de
-READY. Validação de tipos inclui assinatura PDF/ZIP e rejeição de binário disfarçado
-de código-fonte. Isso não é validação antimalware. Sem implantação nesta entrega.
+Build/lint, 43 automated tests with real video and five Chrome workflows passed.
+The new workflow uploads PDF, ZIP and source code through the editor, fills in
+descriptions, publishes and checks downloaded contents. HTTP tests check
+authorization, revocation, preservation of earlier revisions, cross-course
+relationships and blocking publication before READY. Type validation includes
+PDF/ZIP signatures and rejection of binary files disguised as source code. This
+is not malware validation. No deployment was performed for this delivery.
+
+## Captions and transcripts — 2026-09-28
+
+Build/lint, 45 automated tests and five Chrome workflows passed. The video workflow
+imports WebVTT, preserves tracks when changing interface language, loads cues in
+the player and opens the transcript. The API rejects access without enrollment,
+from an unassigned revision or after enrollment revocation; older captions remain
+available after a new publication. Invalid format, markup, duplicate languages and
+oversized input are tested. No deployment or Safari/Android qualification was performed.

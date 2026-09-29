@@ -647,3 +647,33 @@ Object.assign(translations['es'], {
   FILE_INVALID: 'Archivo inválido o no permitido. Comprueba formato y tamaño.',
   FILE_NOT_READY: 'Espera a que todos los materiales estén listos antes de publicar.',
 });
+
+Object.assign(translations['en'], {
+  captions: 'Captions',
+  captionLabel: 'Caption label',
+  captionFile: 'Import WebVTT',
+  captionHelp:
+    'Use plain WEBVTT cues (no styling). Import or edit below; empty text removes the track. Up to 100 KB per language.',
+  captionTooLarge: 'Caption file exceeds 100 KB.',
+  transcript: 'Transcript',
+});
+
+Object.assign(translations['pt-BR'], {
+  captions: 'Legendas',
+  captionLabel: 'Nome da faixa',
+  captionFile: 'Importar WebVTT',
+  captionHelp:
+    'Use blocos WEBVTT com texto simples (sem estilos). Importe ou edite abaixo; texto vazio remove a faixa. Até 100 KB por idioma.',
+  captionTooLarge: 'A legenda excede 100 KB.',
+  transcript: 'Transcrição',
+});
+
+Object.assign(translations['es'], {
+  captions: 'Subtítulos',
+  captionLabel: 'Nombre de pista',
+  captionFile: 'Importar WebVTT',
+  captionHelp:
+    'Usa bloques WEBVTT con texto simple (sin estilos). Importa o edita abajo; texto vacío elimina la pista. Hasta 100 KB por idioma.',
+  captionTooLarge: 'El archivo supera 100 KB.',
+  transcript: 'Transcripción',
+});

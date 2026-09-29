@@ -1,72 +1,76 @@
-# Autoria e página inicial
+# Authoring and homepage
 
-## Criar e editar
+## Creating and editing
 
-Entre como autor ou administrador em `/admin`. Preencha título, slug, resumo,
-idioma do conteúdo e acesso gratuito; acrescente módulos e aulas. O idioma do
-curso é independente do seletor de idioma da interface.
+Sign in as an author or administrator at `/admin`. Enter the title, slug, summary,
+content language and free-access mode; add modules and lessons. Course language
+is independent of the interface language selector.
 
-Novas aulas usam Markdown. A barra usa ícones com dicas traduzidas e nomes acessíveis. Ela insere títulos, negrito, itálico, listas,
-citação, código, link, imagem e tabela. Use **Prévia** para conferir o resultado
-renderizado pelo servidor. HTML escrito na aula é exibido literalmente; scripts,
-URLs perigosas e embeds não são executados. Imagens aceitam somente caminhos
-locais do site; o botão insere marcação, não faz upload. Upload de imagens continua pendente. Para videoaulas, veja o [guia de vídeo](13-video.md).
+New lessons use Markdown. The toolbar uses icons with translated tooltips and
+accessible names. It inserts headings, bold, italics, lists, quotes, code, links,
+images and tables. Use **Preview content** to check the server-rendered result.
+HTML written in the lesson is displayed literally; scripts, dangerous URLs and
+embeds are not executed. Images accept only local site paths; the button inserts
+markup, not an upload. Image upload remains pending. For video lessons, see the
+[video guide](13-video.md).
 
-Aulas antigas mantêm texto simples. Escolher Markdown explicitamente converte a
-interpretação do conteúdo; confira a prévia antes de publicar.
+Existing lessons retain plain text. Explicitly choosing Markdown changes how the
+content is interpreted; check the preview before publishing.
 
-Salve uma vez para criar o curso. Depois, alterações válidas são salvas após uma
-pausa de aproximadamente 1,6 segundo. O salvamento ainda cria uma revisão do curso
-inteiro. Campos inválidos impedem o salvamento no servidor; o estado informa o erro.
-Há recuperação local no mesmo navegador/conta, quando o armazenamento do navegador
-está disponível. Ela não substitui backup nem sincroniza rascunhos entre dispositivos.
-Trocar o idioma da interface preserva a edição. Sair com alterações pendentes
-aciona o aviso do navegador.
+Save once to create the course. After that, valid changes are saved after a pause
+of approximately 1.6 seconds. Saving still creates a revision of the entire course.
+Invalid fields prevent server saves; the status reports the error. Local recovery
+is available in the same browser/account when browser storage is available. It
+neither replaces backups nor synchronizes drafts across devices. Changing the
+interface language preserves editing state. Leaving with pending changes triggers
+the browser's warning.
 
-Os botões permitem duplicar, remover e mover módulos/aulas para cima ou para baixo.
-Remoção pede confirmação. Arraste e telas independentes por aula ainda não existem.
+Buttons duplicate, remove and move modules/lessons up or down. Removal requires
+confirmation. Dragging and separate screens for each lesson are not available yet.
 
-Duas abas não sobrescrevem silenciosamente a mesma revisão: o segundo salvamento
-recebe conflito e mantém o texto local. Copie o conteúdo que deseja preservar antes
-de confirmar o recarregamento da versão do servidor.
+Two tabs do not silently overwrite the same revision: the second save receives a
+conflict and retains local text. Copy any content you want to keep before confirming
+that the server version should be reloaded.
 
-## Publicação
+## Publication
 
-Salvar altera apenas o rascunho. Visitantes e novas matrículas continuam usando a
-revisão publicada; alunos existentes permanecem na revisão da matrícula. O
-administrador publica pelo painel. Essa ação promove conteúdo, slug, idioma e
-acesso da revisão em uma transação. Arquivar remove descoberta pública e novas
-matrículas, preservando acesso já concedido.
+Saving changes only the draft. Visitors and new enrollments continue using the
+published revision; existing learners remain on their enrollment revision. The
+administrator publishes through the dashboard. This action promotes the revision's
+content, slug, language and access mode in one transaction. Archiving removes public
+discovery and new enrollment while preserving access already granted.
 
-## Selecionar a página inicial
+## Selecting homepage courses
 
-Como administrador, abra `/admin/home`. Adicione cursos publicados ao hero (no
-máximo um), destaques ou recomendações. Defina prioridade (menor primeiro), início
-e fim opcional. O formulário usa horário local e envia UTC. Salve a seleção.
+As an administrator, open `/admin/home`. Add published courses to the hero (at most
+one), featured section or recommendations. Set priority (lower first), start time
+and optional end time. The form uses local time and submits UTC. Save the selection.
 
-A home mostra somente seleções ativas e publicadas. Remover um destaque não
-remove o curso do catálogo em `/courses`. Não há ainda coleções com nomes livres,
-capas ou upload. Edições simultâneas da seleção geram conflito de versão.
+The homepage shows only active, published selections. Removing a featured placement
+does not remove the course from the catalog at `/courses`. Custom-named collections,
+cover images and uploads are not available here yet. Concurrent edits to the
+selection cause a version conflict.
 
-## Migração e validação
+## Migration and validation
 
-A migração aditiva `004_authoring.sql` é aplicada pelo migrador existente. Ela
-preserva `current_revision_id` como ponteiro editável e acrescenta
-`published_revision_id`. Só associa automaticamente uma revisão pública de curso
-PUBLISHED/ARCHIVED cuja revisão já tenha `published_at`; não republica antigos
-rascunhos. Metadados de revisão e `content_format` preservam conteúdo legado.
+The additive `004_authoring.sql` migration is applied by the existing migrator.
+It preserves `current_revision_id` as the editable pointer and adds
+`published_revision_id`. It automatically assigns a public revision only for a
+PUBLISHED/ARCHIVED course whose revision already has `published_at`; it does not
+republish old drafts. Revision metadata and `content_format` preserve legacy content.
 
-Antes de atualizar produção, siga backup/restauração e instalação descritos em
-[operações](08-operations.md). Esta entrega foi validada em bancos temporários;
-não houve migração do banco publicado nem reinício dos serviços.
+Before updating production, follow backup/restoration and installation instructions
+in [operations](08-operations.md). This delivery was validated with temporary
+databases; the published database was not migrated and services were not restarted.
 
-Validação local: build, 38 testes automatizados e 3 testes no Chrome. Cobrem migração
-legada, permissões, revisão pública/matrícula, sanitização, agenda da home,
-concorrência, recuperação local, troca entre três idiomas e largura móvel de 390px.
-Essa verificação não equivale a homologação Safari/Android ou auditoria completa de
-acessibilidade. A política de renderização ainda não tem versão persistida por aula.
+Local validation: build, 38 automated tests and 3 Chrome tests. They cover legacy
+migration, permissions, public/enrollment revisions, sanitization, homepage schedules,
+concurrency, local recovery, switching between three languages and a 390px mobile
+viewport. This does not equal Safari/Android qualification or a complete accessibility
+audit. The rendering policy still has no persisted version per lesson.
 
-## Materiais complementares
+## Supplementary materials
 
-O curso e cada aula têm uma seção para anexar arquivos com título, descrição e ordem.
-Veja [materiais complementares](14-materials.md) para envio, substituição e acesso.
+The course and each lesson have a section for attaching files with a title,
+description and order. See [supplementary materials](14-materials.md) for uploading,
+replacement and access.

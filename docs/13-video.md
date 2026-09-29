@@ -1,12 +1,13 @@
-# Videoaulas — primeira entrega E2
+# Video lessons — first E2 delivery
 
-Esta entrega permite enviar, processar e publicar uma videoaula MP4 pelo editor.
-Ainda não encerra E2: HLS adaptativo, legendas/transcrição, anexos, biblioteca de
-imagens, navegação anterior/próxima e homologação pela VPS permanecem no TODO.
+This delivery supports uploading, processing and publishing an MP4 video lesson
+through the editor. It does not complete E2: adaptive HLS, captions/transcripts,
+attachments, the image library, previous/next navigation and VPS qualification
+were still in the TODO at this stage. Later deliveries are noted below.
 
-## Instalar ou atualizar
+## Installing or upgrading
 
-Na hospedeira Debian/Ubuntu, instale as ferramentas de mídia antes de atualizar:
+On a Debian/Ubuntu host, install media tools before upgrading:
 
 ```bash
 sudo apt-get update
@@ -15,75 +16,76 @@ cd /home/roberto/projects/maia-lms
 sudo ./install.sh host --host-ip 10.77.0.2 --proxy-ip 10.77.0.1
 ```
 
-O instalador verifica `ffmpeg` e `ffprobe` antes de parar os serviços. A migração
-005 é aditiva. O worker tem limite de 2 GiB de RAM, duas CPUs e 128 tarefas na
-instalação systemd e no Compose. A imagem compartilhada do Compose inclui FFmpeg;
-reconstrua-a ao atualizar. API e worker usam o mesmo `STORAGE_ROOT` privado.
+The installer checks `ffmpeg` and `ffprobe` before stopping services. Migration 005
+is additive. The worker is limited to 2 GiB of RAM, two CPUs and 128 tasks in systemd
+and Compose installations. The shared Compose image includes FFmpeg; rebuild it
+when upgrading. The API and worker use the same private `STORAGE_ROOT`.
 
-Não é necessária outra porta ou rota pública. Os blocos enviados têm no máximo
-512 KiB, abaixo do limite de 1 MiB do vhost existente. A API tem limite de 300 pedidos/minuto por IP;
-blocos têm limite separado de 300/minuto por conta autenticada. Range/HEAD passam pelo proxy
-atual. A validação local não comprova capacidade da VPN, banda ou configuração real
-da VPS; faça o teste final pelo domínio após a atualização.
+No additional port or public route is needed. Uploaded chunks are at most 512 KiB,
+below the existing virtual host's 1 MiB limit. The API allows 300 requests/minute
+per IP; chunks have a separate limit of 300/minute per authenticated account.
+Range/HEAD pass through the existing proxy. Local validation does not establish
+VPN capacity, bandwidth or the actual VPS configuration; perform the final test
+through the domain after upgrading.
 
-## Fluxo do autor
+## Author workflow
 
-1. Crie o curso, módulo e título da aula e salve o rascunho. O texto pode ficar
-   vazio enquanto prepara o vídeo; publicação exige texto ou vídeo pronto.
-2. Reabra **Editar**. Em **Videoaula**, selecione um arquivo e clique **Enviar / retomar**.
-3. O indicador mostra o progresso. **Pausar** interrompe após o bloco atual.
-   Para retomar após recarregar a página, escolha o envio no seletor e selecione
-   novamente o mesmo arquivo. O navegador verifica SHA-256 de todos os blocos já
-   recebidos antes de continuar; arquivo diferente é recusado.
-4. Ao terminar o envio, o vídeo entra na fila. Use **Atualizar estado** para
-   acompanhar. **Pronto** significa que MP4 e imagem de capa foram gerados.
-5. Salve a aula (ou aguarde o autosave) e publique como administrador. Vídeos em
-   processamento, cancelados ou com falha impedem a publicação.
+1. Create the course, module and lesson title, then save the draft. Text may remain
+   empty while preparing the video; publication requires text or a ready video.
+2. Reopen **Edit**. Under **Video lesson**, select a file and click **Upload / resume**.
+3. The indicator shows progress. **Pause** stops after the current chunk. To resume
+   after reloading the page, choose the upload in the selector and select the same
+   file again. The browser checks SHA-256 for all previously received chunks before
+   continuing; a different file is rejected.
+4. Once uploaded, the video enters the queue. Use **Refresh status** to follow it.
+   **Ready** means the MP4 and poster image have been generated.
+5. Save the lesson (or wait for autosave) and publish as an administrator. Processing,
+   cancelled or failed videos prevent publication.
 
-Um vídeo pode ser reutilizado em aulas do mesmo curso; outro curso é recusado.
-Escolher **Sem vídeo** remove a associação do novo rascunho, preservando revisões
-anteriores. Para substituir um vídeo, envie um novo arquivo e publique nova revisão.
+A video can be reused in lessons of the same course; another course is rejected.
+Selecting **No video** removes the association from the new draft while preserving
+previous revisions. To replace a video, upload a new file and publish a new revision.
 
-**Repetir processamento** recoloca um vídeo FAILED na fila. Confira FFmpeg/FFprobe,
-espaço livre e os limites abaixo. **Cancelar envio incompleto** remove os blocos
-persistidos de uploads ainda incompletos; não remove vídeos publicados. Se o envio
-estiver ativo, pause-o antes de confirmar o cancelamento.
+**Retry processing** requeues a FAILED video. Check FFmpeg/FFprobe, free space and
+the limits below. **Cancel incomplete upload** removes persisted chunks from
+incomplete uploads; it does not remove published videos. If the upload is active,
+pause it before confirming cancellation.
 
-## Limites atuais
+## Current limits
 
-- Entradas MP4/MOV ou Matroska/WebM, conferidas pelo FFprobe; extensão/MIME não bastam.
-- Até 2 GiB por original, quatro horas e dimensão máxima de 4096 pixels por eixo.
-- Quota de 20 GiB de originais reservados por autor, incluindo envios incompletos.
-- Saída H.264/AAC em MP4 com início rápido, até 1280×720, preservando proporção e sem
-  ampliar a resolução; até 4 GiB de saída. Capa JPEG gerada automaticamente.
-- Um processamento por worker, com dois threads de codificação, timeout de quatro
-  horas, heartbeat a cada 15 segundos e retomada de jobs sem heartbeat por dois minutos.
-- Originais em blocos são mantidos para retentativa. Reserve espaço também para
-  temporários e saídas; a quota de originais não é um limite total de uso de disco.
-- Ainda não há expiração automática de uploads abandonados nem coleta de órfãos
-  após crash. Cancele envios incompletos pelo painel e monitore disco. Não apague
-  diretórios de vídeos referenciados por revisões antigas.
+- MP4/MOV or Matroska/WebM inputs, checked by FFprobe; extension/MIME alone is insufficient.
+- Up to 2 GiB per original, four hours and a maximum dimension of 4096 pixels per axis.
+- Quota of 20 GiB of reserved originals per author, including incomplete uploads.
+- H.264/AAC output in fast-start MP4, up to 1280×720, preserving aspect ratio without
+  upscaling; up to 4 GiB output. A JPEG poster is generated automatically.
+- One processing job per worker, two encoding threads, a four-hour timeout, a heartbeat
+  every 15 seconds, and reclaiming jobs with no heartbeat for two minutes.
+- Original chunks are retained for retries. Reserve space for temporary files and
+  outputs too; the originals quota is not a total disk-usage limit.
+- There is no automatic expiration of abandoned uploads or orphan cleanup after
+  crashes yet. Cancel incomplete uploads through the dashboard and monitor disk space.
+  Do not delete video directories referenced by older revisions.
 
-Os objetos têm nomes gerados no servidor, gravação temporária seguida de publicação
-atômica e não são sobrescritos. O adaptador recusa traversal e symlinks. A raiz deve
-ser gravável somente pela conta do serviço; não a compartilhe com usuários locais
-não confiáveis. O endpoint recebe somente um bloco limitado por requisição; montagem
-e reprodução usam streams, sem carregar o vídeo inteiro em RAM.
+Objects have server-generated names, temporary writes followed by atomic publication,
+and are not overwritten. The adapter rejects traversal and symlinks. Only the service
+account should be able to write to the root; do not share it with untrusted local
+users. The endpoint receives only one bounded chunk per request; assembly and playback
+use streams rather than loading the entire video into RAM.
 
-## Reprodução e acesso
+## Playback and access
 
-O player nativo oferece reprodução, avanço, volume, tela cheia e controle de
-velocidade. Alunos matriculados salvam posição aproximadamente a cada 15 segundos
-e ao pausar; a conclusão continua explícita. A sessão deve continuar válida.
+The native player supports playback, seeking, volume, fullscreen and speed controls.
+Enrolled learners save their position approximately every 15 seconds and when pausing;
+completion remains explicit. The session must remain valid.
 
-Cada pedido de vídeo/capa revalida publicação, prévia, autoria ou matrícula ativa
-na revisão correspondente. Não há acesso público à pasta de armazenamento.
-HTTP Range suporta 206/416 e HEAD; respostas usam cache privado desabilitado.
-Revogação bloqueia novos pedidos, mas não recolhe bytes já recebidos no navegador.
+Each video/poster request revalidates publication, preview, ownership or active
+enrollment for the corresponding revision. The storage directory has no public
+access. HTTP Range supports 206/416 and HEAD; responses disable private caching.
+Revocation blocks new requests but cannot recall bytes already received by the browser.
 
-## Validação e implementação
+## Validation and implementation
 
-Use FFmpeg/FFprobe disponíveis no PATH:
+Make FFmpeg/FFprobe available on PATH:
 
 ```bash
 npm run build
@@ -92,14 +94,17 @@ VIDEO_TEST_REAL=1 npm test
 VIDEO_TEST_REAL=1 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome npm run test:e2e
 ```
 
-Sem `VIDEO_TEST_REAL=1`, os testes de conversão/reprodução real são explicitamente
-ignorados. A CI instala FFmpeg e habilita esses testes. O teste HTTP verifica também
-permissões, origem, limite, offset, cancelamento, arquivo inválido e revogação.
+Without `VIDEO_TEST_REAL=1`, real conversion/playback tests are explicitly skipped.
+CI installs FFmpeg and enables those tests. HTTP tests also check permissions,
+origin, limits, offsets, cancellation, invalid files and revocation.
 
-A implementação usa [FFmpeg](https://ffmpeg.org/ffmpeg.html) e
-[FFprobe](https://ffmpeg.org/ffprobe.html), executados sem shell, com formatos de
-entrada restritos e sem protocolos de rede. A fila `video_uploads` é independente
-da outbox de e-mail. Jobs só publicam saídas se ainda possuem o lease atual.
+The implementation uses [FFmpeg](https://ffmpeg.org/ffmpeg.html) and
+[FFprobe](https://ffmpeg.org/ffprobe.html), invoked without a shell, with restricted
+input formats and no network protocols. The `video_uploads` queue is independent
+of the email outbox. Jobs publish outputs only while they still own the current lease.
 
-Faça backup do SQLite **e** de `STORAGE_ROOT`, preservando referências e permissões.
-O backup automático de banco do instalador, sozinho, não copia os vídeos.
+Back up SQLite **and** `STORAGE_ROOT`, preserving references and permissions. The
+installer's automatic database backup alone does not copy videos.
+
+Update: captions and transcripts are now available; see the [guide](15-captions.md).
+Earlier references to pending captions describe the first delivery.

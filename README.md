@@ -1,76 +1,77 @@
 # Maia Learn / Maia LMS
 
-Plataforma de cursos em `https://learn.maiaplatform.org`, com Node.js, TypeScript, Express e **SQLite**. Aplicação e banco ficam na máquina hospedeira; a VPS com **Maia Edge** publica HTTPS e encaminha as requisições pela VPN WireGuard.
+Course platform at `https://learn.maiaplatform.org`, built with Node.js, TypeScript, Express and **SQLite**. The application and database run on the host machine; the VPS running **Maia Edge** serves HTTPS and forwards requests through the WireGuard VPN.
 
-## Estado da implementação
+## Implementation status
 
-O plano do produto completo está em [TODO.md](TODO.md), com auditoria do estado atual, prioridades, dependências e critérios de conclusão.
+The full product plan is tracked in [TODO.md](TODO.md), including the current-state audit, priorities, dependencies and completion criteria.
 
-Esta versão entrega o **cursos gratuitos com aulas em texto, Markdown e vídeo MP4**:
+This version provides **free courses with text, Markdown and MP4 video lessons**:
 
-- Interface com internacionalização em inglês, português e espanhol: catálogo, busca, curso, aula, cadastro, login, recuperação de senha e área do aluno.
-- [Editor Markdown](docs/12-authoring.md) com ferramentas, prévia, recuperação de rascunhos, autosave e detecção de conflitos.
-- Autoria de cursos, módulos e aulas; rascunho independente da publicação e arquivamento por administrador.
-- Seleção, ordem e agendamento dos cursos da página inicial em `/admin/home`.
-- Revisões preservadas para alunos já matriculados; prévias públicas e controle de acesso.
-- [Videoaulas](docs/13-video.md): upload retomável, processamento FFmpeg, capa, player e posição salva.
-- [Materiais complementares](docs/14-materials.md): PDF, ZIP e código-fonte com título, descrição e download autorizado por revisão.
-- Matrícula idempotente, progresso por aula e painel de aprendizado.
-- Sessões persistentes em SQLite; e-mails em outbox com tentativas de entrega pelo worker.
-- Instaladores da hospedeira e da VPS, backup verificável e testes HTTP e de navegador.
+- Interface internationalization in English, Portuguese and Spanish: catalog, search, course, lesson, registration, login, password recovery and learner area.
+- [Markdown editor](docs/12-authoring.md) with formatting tools, preview, draft recovery, autosave and conflict detection.
+- Course, module and lesson authoring; drafts independent of publication and administrator-controlled archiving.
+- Homepage course selection, ordering and scheduling at `/admin/home`.
+- Preserved revisions for existing enrollments; public previews and access control.
+- [Video lessons](docs/13-video.md): resumable uploads, FFmpeg processing, poster images, player and saved playback position.
+- [Supplementary materials](docs/14-materials.md): PDF, ZIP and source code with titles, descriptions and authorized downloads tied to revisions.
+- [WebVTT captions and transcripts](docs/15-captions.md) in Portuguese, English and Spanish, preserved by revision.
+- Idempotent enrollment, lesson progress and learning dashboard.
+- Persistent SQLite sessions; email outbox with worker delivery retries.
+- Host and VPS installers, verifiable backups, HTTP tests and browser tests.
 
-**Ainda não implementados:** HLS adaptativo, legendas e biblioteca completa de mídia, quizzes, checkout/webhooks/reembolsos, certificados, MFA e exportação/exclusão de conta. As tabelas e alguns adaptadores herdados preparam essas etapas, mas não são funcionalidades disponíveis. Os documentos de produto registram a visão completa; [o roadmap](docs/09-roadmap.md) distingue o estado atual.
+**Not yet implemented:** adaptive HLS and a complete media library, quizzes, checkout/webhooks/refunds, certificates, MFA and account export/deletion. Existing tables and some inherited adapters prepare for these stages but do not make them available features. Product documents describe the full vision; [the roadmap](docs/09-roadmap.md) distinguishes the current state.
 
-## Desenvolvimento
+## Development
 
-Requisitos: Node.js **22.12+** (22 ou 24), npm, Python 3, make e compilador C++ caso os módulos nativos precisem de compilação. Para processar vídeos, instale também FFmpeg/FFprobe (`sudo apt-get install -y ffmpeg` em Debian/Ubuntu).
+Requirements: Node.js **22.12+** (22 or 24), npm, Python 3, make and a C++ compiler if native modules need compilation. Video processing also requires FFmpeg/FFprobe (`sudo apt-get install -y ffmpeg` on Debian/Ubuntu).
 
 ```bash
 npm ci
 cp .env.example .env
-# Substitua SESSION_SECRET e MEDIA_SIGNING_KEY por valores de: openssl rand -hex 32
+# Replace SESSION_SECRET and MEDIA_SIGNING_KEY with values from: openssl rand -hex 32
 npm run build
 npm run migrate
 npm run dev:api
 ```
 
-Abra `http://localhost:3000`. Em outro terminal:
+Open `http://localhost:3000`. In another terminal:
 
 ```bash
 npm run dev:worker
 ```
 
-Configure um SMTP em `MAIL_TRANSPORT`. Para capturar e-mails localmente com Docker:
+Configure SMTP in `MAIL_TRANSPORT`. To capture email locally with Docker:
 
 ```bash
 docker compose --env-file .env -f infra/docker-compose.yml --profile dev up -d mailpit
 ```
 
-Abra `http://localhost:8025`. Sem SMTP, a aplicação funciona, mas verificação e recuperação de senha permanecem na fila, com até cinco tentativas de entrega.
+Open `http://localhost:8025`. Without SMTP, the application works, but verification and password recovery emails remain queued, with up to five delivery attempts.
 
-Crie o primeiro administrador sem colocar a senha no histórico:
+Create the first administrator without putting the password in shell history:
 
 ```bash
-read -rsp 'Senha do administrador (12–128 caracteres): ' ADMIN_PASSWORD
+read -rsp 'Administrator password (12–128 characters): ' ADMIN_PASSWORD
 export ADMIN_PASSWORD
 npm run admin -- admin@example.com
 unset ADMIN_PASSWORD
 ```
 
-Entre com essa conta e acesse `/admin`. O comando recusa sobrescrever uma conta existente. Novos usuários pelo site recebem o papel de aluno.
+Sign in with that account and open `/admin`. The command refuses to overwrite an existing account. Users registering through the site receive the learner role.
 
-## Hospedeira + VPS
+## Host + VPS
 
-Primeiro configure o túnel usando o [Maia Edge](../maia-edge/README.md). Os IPs abaixo são exemplos: use os endereços reais do túnel existente.
+First configure the tunnel using [Maia Edge](../maia-edge/README.md). The IPs below are examples: use the actual addresses of the existing tunnel.
 
-Na hospedeira:
+On the host:
 
 ```bash
 ./install.sh host --host-ip 10.77.0.2 --proxy-ip 10.77.0.1 --dry-run
 sudo ./install.sh host --host-ip 10.77.0.2 --proxy-ip 10.77.0.1
 ```
 
-Na VPS, com Nginx e a VPN Maia Edge funcionando (mesmo padrão do maia-chat):
+On the VPS, with Nginx and the Maia Edge VPN already working (the same pattern as maia-chat):
 
 ```bash
 ./install.sh vps --upstream 10.77.0.2:3200 --dry-run
@@ -79,23 +80,23 @@ sudo certbot certonly --webroot -w /var/www/html -d learn.maiaplatform.org
 sudo ./install.sh vps --upstream 10.77.0.2:3200
 ```
 
-O instalador da hospedeira cria serviços systemd, segredos aleatórios, diretórios persistentes e backup antes de atualizar. O da VPS instala o vhost HTTP/HTTPS, testa e recarrega Nginx, preservando a VPN existente. Se o certificado já existe, pule os passos de emissão. O modo antigo via CLI permanece disponível explicitamente com `--edge-dir`; ele pode reiniciar a VPN gerenciada.
+The host installer creates systemd services, random secrets, persistent directories and a backup before upgrading. The VPS installer installs the HTTP/HTTPS virtual host, tests and reloads Nginx, and preserves the existing VPN. If the certificate already exists, skip issuance. The legacy CLI mode remains explicitly available through `--edge-dir`; it may restart the managed VPN.
 
-Consulte [o guia de operações](docs/08-operations.md) para SMTP, DNS, TLS, firewall, administrador em produção, atualização, backup e restauração. Os instaladores fornecem `--help` e `--dry-run`.
+See [the operations guide](docs/08-operations.md) for SMTP, DNS, TLS, firewall, production administrator accounts, upgrades, backups and restoration. The installers provide `--help` and `--dry-run`.
 
-## Docker opcional
+## Optional Docker deployment
 
 ```bash
-# Em .env: PUBLIC_BASE_URL=http://localhost:3200
+# In .env: PUBLIC_BASE_URL=http://localhost:3200
 # MAIL_TRANSPORT=smtp://mailpit:1025
-# NODE_ENV=development para HTTP local
+# NODE_ENV=development for local HTTP
 
 docker compose --env-file .env -f infra/docker-compose.yml --profile dev up -d --build
 ```
 
-O volume `maia_data` contém SQLite e armazenamento. Não use `down -v` para atualizações. Para produção, configure `NODE_ENV=production`, a URL HTTPS, `BIND_IP` com o IP da VPN e `TRUST_PROXY` com o IP da VPS; use SMTP real. Não há outro Nginx nem portas públicas 80/443 no Compose.
+The `maia_data` volume contains SQLite and storage. Do not use `down -v` for upgrades. For production, set `NODE_ENV=production`, the HTTPS URL, `BIND_IP` to the VPN IP and `TRUST_PROXY` to the VPS IP; use real SMTP. Compose does not add another Nginx instance or public ports 80/443.
 
-## Validação
+## Validation
 
 ```bash
 npm run build
@@ -106,21 +107,21 @@ npm run test:e2e
 npm audit
 ```
 
-A suíte usa bancos temporários. Para usar um Chrome já instalado, informe `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome` ao teste de navegador.
+The suite uses temporary databases. To use an installed Chrome browser, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome` when running browser tests.
 
-## Estrutura
+## Structure
 
-| Diretório | Responsabilidade |
+| Directory | Responsibility |
 |---|---|
-| `apps/api` | HTTP, autenticação, cursos, matrículas e progresso |
-| `apps/web` | HTML, CSS e JavaScript, servidos pelo mesmo processo da API |
-| `apps/worker` | Filas independentes de e-mails e processamento de vídeo |
-| `packages/domain` | Tipos, validação e políticas |
-| `packages/providers` | SMTP e adaptadores reservados para pagamentos/armazenamento |
-| `migrations` | Migrações SQLite sequenciais e transacionais |
-| `scripts` | Instalação, administrador e backup |
-| `spec/openapi.yaml` | Contrato da API implementada |
+| `apps/api` | HTTP, authentication, courses, enrollment and progress |
+| `apps/web` | HTML, CSS and JavaScript served by the API process |
+| `apps/worker` | Independent email and video-processing queues |
+| `packages/domain` | Types, validation and policies |
+| `packages/providers` | SMTP and adapters reserved for payments/storage |
+| `migrations` | Sequential, transactional SQLite migrations |
+| `scripts` | Installation, administrator accounts and backup |
+| `spec/openapi.yaml` | Implemented API contract |
 
-`/healthz` informa vida do processo; `/readyz` verifica o banco. SQLite opera com WAL, foreign keys e busy timeout, em disco local. Não é necessário servidor PostgreSQL.
+`/healthz` reports process liveness; `/readyz` checks the database. SQLite uses WAL, foreign keys and a busy timeout on local disk. No PostgreSQL server is required.
 
-Licença: [Apache 2.0](LICENSE).
+License: [Apache 2.0](LICENSE).

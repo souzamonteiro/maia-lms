@@ -48,18 +48,25 @@ The runtime currently uses users, http_sessions, email_tokens, courses, course_r
 
 Migration 002 adds lesson titles, session versioning and the actual session store; migration 003 adds worker lease tokens. Never modify an applied migration to upgrade an existing database. Migration 004 adds separate editable/public revision pointers, revision metadata snapshots, plain/markdown content format and home concurrency state. Course edits create a new editable revision without changing published status or metadata; publication atomically promotes that revision. Existing enrollments keep their revision and entitlement. Legacy content defaults to plain and is never implicitly interpreted as Markdown. Archiving closes public discovery/enrollment while preserving existing access.
 
-## Vídeo MP4 — migração 005
+## MP4 video — migration 005
 
-`video_uploads` registra dono/curso, tamanho reservado, offset, estado, saída/capa,
-duração e lease/heartbeat de processamento. `video_chunks` registra offset, tamanho,
-chave privada e SHA-256; a combinação upload/offset é única. `lessons.video_id`
-associa cada revisão ao vídeo, sem reutilizar os registros reservados de `assets`.
-A API impede relações entre cursos e publicação sem vídeo READY. `kind` é derivado
-de texto/vídeo como article, mixed ou video. A fila de vídeo é independente da outbox.
+`video_uploads` records owner/course, reserved size, offset, status, output/poster,
+duration, and processing lease/heartbeat. `video_chunks` records offset, size,
+private key, and SHA-256; the upload/offset combination is unique. `lessons.video_id`
+associates each revision with its video without reusing the reserved `assets` records.
+The API prevents cross-course relationships and publication without READY video.
+`kind` is derived from text/video as article, mixed, or video. The video queue is
+independent of the outbox.
 
-## Materiais — migração 006
+## Materials — migration 006
 
-`video_uploads.media_kind` separa vídeo de anexo (legado recebe video).
-`course_attachments` relaciona arquivo, revisão e aula opcional, com título, descrição
-e ordem próprios. Metadados e relações são copiados para novas revisões; arquivos
-são imutáveis. A API verifica tipo e curso do upload e estado READY na publicação.
+`video_uploads.media_kind` distinguishes videos from attachments (legacy records use video).
+`course_attachments` links a file, revision, and optional lesson, with its own title,
+description, and order. Metadata and relationships are copied to new revisions;
+files are immutable. The API checks upload type and course, and READY status on publication.
+
+## Captions — migration 007
+
+`lessons.captions_json` stores up to three tracks (language, label, vtt), defaulting to `[]`.
+The API validates format, size, and language uniqueness before creating a revision.
+Transcripts are derived from valid cue blocks and do not alter the original content.

@@ -57,6 +57,13 @@ function readForm() {
         title: l.querySelector('.lesson-title').value,
         body: l.querySelector('.lesson-content').value,
         videoId: l.dataset.videoId || null,
+        captions: [...l.querySelectorAll('.caption-row')]
+          .filter(r => r.querySelector('textarea').value.trim())
+          .map(r => ({
+            language: r.dataset.language,
+            label: r.querySelector('input').value,
+            vtt: r.querySelector('textarea').value,
+          })),
         attachments: readAttachments(l.querySelector(':scope > .lesson-attachments')),
         contentFormat: l.querySelector('.lesson-format').value,
         required: l.querySelector('.lesson-required').checked,
@@ -266,6 +273,36 @@ function lessonField(lesson) {
       changed();
     },
   });
+  const captions = document.createElement('details');
+  captions.innerHTML = `<summary>${t('captions')}</summary><p>${t('captionHelp')}</p>`;
+  for (const [language, label] of [
+    ['en', 'English'],
+    ['pt-BR', 'Português'],
+    ['es', 'Español'],
+  ]) {
+    const track = (lesson.captions || []).find(c => c.language === language);
+    const row = document.createElement('fieldset');
+    row.className = 'caption-row';
+    row.dataset.language = language;
+    row.innerHTML = `<legend>${label}</legend><label>${t('captionLabel')}<input maxlength="80" value="${e(track?.label || label)}"></label><label>${t('captionFile')}<input type="file" accept=".vtt,text/vtt" class="caption-file"></label><label>WebVTT<textarea maxlength="100000">${e(track?.vtt || '')}</textarea></label>`;
+    row.querySelector('.caption-file').onchange = async event => {
+      const file = event.target.files[0];
+      if (!file) return;
+      if (file.size > 100000) {
+        notify(t('captionTooLarge'));
+        return;
+      }
+      try {
+        row.querySelector('textarea').value = await file.text();
+        readForm();
+        changed();
+      } catch (error) {
+        notify(error);
+      }
+    };
+    captions.append(row);
+  }
+  field.querySelector(':scope > .row-controls').before(captions);
   controls(field, 'lesson');
   return field;
 }
@@ -326,6 +363,7 @@ function fromCourse(c) {
           title: l.title,
           body: l.body,
           videoId: l.video_id,
+          captions: JSON.parse(l.captions_json || '[]'),
           attachments: l.attachments || [],
           contentFormat: l.content_format,
           required: Boolean(l.is_required),

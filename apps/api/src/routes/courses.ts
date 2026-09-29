@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { slugSchema, UpdateLessonProgressSchema } from '@maia/domain';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { attachmentList } from './attachments.js';
+import { captionsSchema, parseCaptions } from '../services/captions.js';
 import { renderContent } from '../services/content.js';
 import { AppError } from '../middleware/error-handler.js';
 
@@ -14,6 +15,7 @@ const attachmentSchema = z.object({
   description: z.string().max(2000).default(''),
 });
 const lessonSchema = z.object({
+  captions: captionsSchema,
   title: z.string().min(1).max(200),
   attachments: z.array(attachmentSchema).max(30).default([]),
   body: z.string().max(100000),
@@ -117,7 +119,7 @@ export function coursesRouter(db: Database.Database): Router {
       module.lessons.forEach((lesson, li) => {
         const lessonId = randomUUID();
         db.prepare(
-          `INSERT INTO lessons (id, module_id, sort_order, title, body, is_required, is_preview, content_format, video_id, kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO lessons (id, module_id, sort_order, title, body, is_required, is_preview, content_format, video_id, kind, captions_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         ).run(
           lessonId,
           moduleId,
@@ -129,6 +131,7 @@ export function coursesRouter(db: Database.Database): Router {
           lesson.contentFormat,
           lesson.videoId ?? null,
           lesson.videoId ? (lesson.body.trim() ? 'mixed' : 'video') : 'article',
+          JSON.stringify(lesson.captions),
         );
         writeAttachments(lesson.attachments, lessonId);
       });
@@ -280,7 +283,7 @@ export function coursesRouter(db: Database.Database): Router {
         ...m,
         lessons: db
           .prepare(
-            `SELECT id, title, kind, video_id, is_required, is_preview, content_format${editing ? ', body' : ''} FROM lessons WHERE module_id = ? ORDER BY sort_order`,
+            `SELECT id, title, kind, video_id, is_required, is_preview, content_format${editing ? ', body, captions_json' : ''} FROM lessons WHERE module_id = ? ORDER BY sort_order`,
           )
           .all(m.id)
           .map(row => ({
@@ -353,6 +356,7 @@ export function coursesRouter(db: Database.Database): Router {
           author_id: string;
           published_revision_id: string | null;
           body: string;
+          captions_json: string;
           content_format: 'plain' | 'markdown';
           is_preview: number;
         }
@@ -368,6 +372,14 @@ export function coursesRouter(db: Database.Database): Router {
       throw new AppError(403, 'Enrollment required');
     res.json({
       ...lesson,
+      captions_json: undefined,
+      captions: JSON.parse(lesson.captions_json).map(
+        (c: { language: string; label: string; vtt: string }) => ({
+          language: c.language,
+          label: c.label,
+          transcript: parseCaptions(c.vtt).join('\n\n'),
+        }),
+      ),
       body_html: renderContent(lesson.body ?? '', lesson.content_format),
       attachments: attachmentList(db, lesson.revision_id, req.params.id),
       can_track_progress: Boolean(e && e.revision_id === lesson.revision_id),

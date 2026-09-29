@@ -53,6 +53,22 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
         { timeout: 30000 },
       )
       .toContain('Ready');
+    await page.getByText('Captions', { exact: true }).click();
+    await page.locator('.caption-row[data-language="en"] .caption-file').setInputFiles({
+      name: 'lesson.vtt',
+      mimeType: 'text/vtt',
+      buffer: Buffer.from('WEBVTT\n\n00:00.000 --> 00:02.000\nHello captions'),
+    });
+    await expect(page.locator('.caption-row[data-language="en"] textarea')).toHaveValue(
+      /Hello captions/,
+    );
+    for (const language of ['pt-BR', 'es', 'en']) {
+      await page.locator('#languageSelect').selectOption(language);
+      await expect(page.locator('html')).toHaveAttribute('lang', language);
+      await expect(page.locator('.caption-row[data-language="en"] textarea')).toHaveValue(
+        /Hello captions/,
+      );
+    }
     await page.locator('.lesson-content').fill('');
     await expect(page.locator('#save-status')).toContainText('Draft saved');
     await card.getByRole('button', { name: 'Publish', exact: true }).click();
@@ -68,6 +84,17 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     await page.getByRole('link', { name: 'Real video lesson', exact: true }).click();
     const video = page.locator('video');
     await expect(video).toBeVisible();
+    await expect(page.locator('track[srclang="en"]')).toHaveCount(1);
+    await video.evaluate((v: HTMLVideoElement) => {
+      v.textTracks[0].mode = 'showing';
+    });
+    await expect
+      .poll(() => video.evaluate((v: HTMLVideoElement) => v.textTracks[0].cues?.length))
+      .toBe(1);
+    await page.getByText('Transcript — English', { exact: true }).click();
+    await expect(
+      page.locator('.plain-content').filter({ hasText: 'Hello captions' }),
+    ).toBeVisible();
     await video.evaluate((v: HTMLVideoElement) => v.play());
     await expect
       .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
