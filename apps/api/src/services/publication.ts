@@ -13,6 +13,28 @@ export function publicationIssues(
   revisionId: string,
 ): PublicationIssue[] {
   const issues: PublicationIssue[] = [];
+  const cover = db
+    .prepare(
+      `SELECT r.cover_file_id,r.cover_alt,v.status,v.course_id,v.media_kind,v.filename
+    FROM course_revisions r LEFT JOIN video_uploads v ON v.id=r.cover_file_id WHERE r.id=?`,
+    )
+    .get(revisionId) as {
+    cover_file_id: string | null;
+    cover_alt: string;
+    status: string | null;
+    course_id: string | null;
+    media_kind: string | null;
+    filename: string | null;
+  };
+  if (
+    cover?.cover_file_id &&
+    (!cover.cover_alt.trim() ||
+      cover.status !== 'READY' ||
+      cover.course_id !== courseId ||
+      cover.media_kind !== 'attachment' ||
+      !/\.(png|jpe?g)$/i.test(cover.filename || ''))
+  )
+    issues.push({ code: 'COVER_INVALID' });
   const modules = db
     .prepare('SELECT id,title,sort_order FROM modules WHERE revision_id=? ORDER BY sort_order')
     .all(revisionId) as { id: string; title: string; sort_order: number }[];

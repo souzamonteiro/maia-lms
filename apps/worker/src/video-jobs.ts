@@ -1,3 +1,4 @@
+import { normalizeImage } from './image-attachment.js';
 import { scanAttachment, AttachmentScanError } from './attachment-scan.js';
 import type Database from 'better-sqlite3';
 import { LocalStorageProvider, validateAttachment } from '@maia/providers';
@@ -58,7 +59,8 @@ export async function processVideo(db: Database.Database, root: string): Promise
     if (job.media_kind === 'attachment') {
       validateAttachment(job.filename, input);
       await scanAttachment(input, controller.signal);
-      await store.putPrivate(outputKey, fs.createReadStream(input), 'application/octet-stream');
+      const safeFile = await normalizeImage(job.filename, input, directory, controller.signal);
+      await store.putPrivate(outputKey, fs.createReadStream(safeFile), 'application/octet-stream');
       const saved = db
         .prepare(
           "UPDATE video_uploads SET status='READY',output_key=?,lease=NULL,error=NULL WHERE id=? AND lease=? AND status='PROCESSING'",

@@ -257,6 +257,52 @@ paths:
                 - modules
                 - expectedRevisionId
               properties:
+                instructorName:
+                  type: string
+                  maxLength: 200
+                  default: ''
+                instructorBio:
+                  type: string
+                  maxLength: 5000
+                  default: ''
+                accessTerms:
+                  type: string
+                  maxLength: 5000
+                  default: ''
+                  description: Presentation text only; does not change enrollment rules.
+                certificateTerms:
+                  type: string
+                  maxLength: 5000
+                  default: ''
+                  description: Presentation text only; does not enable certificate issuance.
+                learningOutcomes:
+                  type: string
+                  maxLength: 5000
+                  default: ''
+                prerequisites:
+                  type: string
+                  maxLength: 5000
+                  default: ''
+                level:
+                  type: [string, 'null']
+                  enum: [beginner, intermediate, advanced, null]
+                  default: null
+                durationMinutes:
+                  type: [integer, 'null']
+                  minimum: 1
+                  maximum: 60000
+                  default: null
+                  description: Author-provided estimated workload, not measured video duration.
+                coverFileId:
+                  type: [string, 'null']
+                  format: uuid
+                  default: null
+                  description: PNG/JPEG attachment upload from this course. Publication requires READY.
+                coverAlt:
+                  type: string
+                  maxLength: 300
+                  default: ''
+                  description: Required nonblank alternative text when publishing a cover.
                 slug:
                   type: string
                   minLength: 3
@@ -406,7 +452,7 @@ paths:
                           value:
                             type: object
                             required: [slug, title, summary, accessMode]
-                            description: Same metadata and attachment fields and limits as PUT, excluding modules and creationId.
+                            description: Same metadata and attachment fields and limits as PUT, excluding modules and creationId. Includes coverFileId, coverAlt, learningOutcomes, prerequisites, level, durationMinutes, instructorName, instructorBio, accessTerms and certificateTerms.
                       - type: object
                         required: [unit, module, title]
                         properties:
@@ -436,6 +482,26 @@ paths:
           description: DRAFT_CONFLICT or SLUG_EXISTS; no changes applied
         '422':
           description: Invalid or duplicate editing unit, index, content or media relationship; no changes applied
+  /courses/{id}/cover:
+    get:
+      summary: Stream a normalized course cover for an authorized revision
+      description: Current published covers are public. Drafts require owner/admin access; older revisions also allow actively entitled learners. Private no-store caching and nosniff headers apply. HEAD is supported.
+      parameters:
+        - $ref: '#/components/parameters/courseId'
+        - name: revisionId
+          in: query
+          schema: {type: string, format: uuid}
+          description: Defaults to the published revision.
+      responses:
+        '200':
+          description: Normalized PNG or JPEG image
+          content:
+            image/png:
+              schema: {type: string, format: binary}
+            image/jpeg:
+              schema: {type: string, format: binary}
+        '404':
+          description: Missing, unready or inaccessible cover
   /admin/courses/{id}/publication-check:
     get:
       summary: Check publication readiness of the exact current draft (owner/admin)
@@ -466,7 +532,7 @@ paths:
                       properties:
                         code:
                           type: string
-                          enum: [PUBLICATION_EMPTY, PUBLICATION_CONTENT, PUBLICATION_ORDER, VIDEO_INVALID, VIDEO_NOT_READY, FILE_INVALID, FILE_NOT_READY]
+                          enum: [COVER_INVALID, PUBLICATION_EMPTY, PUBLICATION_CONTENT, PUBLICATION_ORDER, VIDEO_INVALID, VIDEO_NOT_READY, FILE_INVALID, FILE_NOT_READY]
                         moduleTitle: {type: string}
                         lessonTitle: {type: string}
                         attachmentTitle: {type: string}
@@ -888,8 +954,8 @@ paths:
                   type: string
                   minLength: 1
                   maxLength: 255
-                  description: 'Allowed extensions: PDF, ZIP or supported UTF-8 text/source
-                    formats; source/text limited to 2 MiB at validation.'
+                  description: 'Allowed extensions: PNG/JPEG, PDF, ZIP or supported UTF-8 text/source
+                    formats. Images: 10 MiB, 16 megapixels, 8192 pixels per side; normalized by the worker. Source/text: 2 MiB at validation.'
                 size:
                   type: integer
                   minimum: 1

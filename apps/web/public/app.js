@@ -1,3 +1,4 @@
+import { coursePresentation } from './course-presentation.js';
 import { icon } from './icons.js';
 import { mountStudio, studioDirty } from './studio.js';
 import { mountHomeEditor, homeDirty } from './home-editor.js';
@@ -71,9 +72,14 @@ function button(id, callback) {
     .querySelector(id)
     ?.addEventListener('click', () => Promise.resolve().then(callback).catch(notify));
 }
+function coverImage(c) {
+  return c.cover_file_id
+    ? `<img class="course-cover" loading="lazy" src="/api/v1/courses/${e(c.id)}/cover?revisionId=${e(c.revision_id || c.published_revision_id)}" alt="${e(c.cover_alt)}">`
+    : '';
+}
 function cards(courses) {
   return courses.length
-    ? `<div class="grid">${courses.map(c => `<article class="card"><span class="badge">${c.access_mode === 'OPEN_FREE' ? t('accessOpen') : t('accessEnrolled')}</span><h2><a href="/courses/${e(c.slug)}">${e(c.title)}</a></h2><p>${e(c.summary)}</p></article>`).join('')}</div>`
+    ? `<div class="grid">${courses.map(c => `<article class="card">${coverImage(c)}<span class="badge">${c.access_mode === 'OPEN_FREE' ? t('accessOpen') : t('accessEnrolled')}</span><h2><a href="/courses/${e(c.slug)}">${e(c.title)}</a></h2><p>${e(c.summary)}</p></article>`).join('')}</div>`
     : `<p>${t('noCoursesPublished')}</p>`;
 }
 async function catalog() {
@@ -113,7 +119,7 @@ function attachmentCards(items = []) {
 }
 async function detail(slug) {
   const c = await api(`/courses/${encodeURIComponent(slug)}`);
-  app.innerHTML = `<a href="/courses">${t('backToCourses')}</a><h1>${e(c.title)}</h1><p>${e(c.summary)}</p>${c.enrollment ? `<p class="badge">${t('enrolledBadge')}</p>` : me ? `<button id="enroll">${t('enrollFree')}</button>` : `<p><a href="/auth/login">${t('signIn')}</a>${t('toEnrollSuffix')}</p>`}${attachmentCards(c.attachments)}${c.modules.map(m => `<section><h2>${e(m.title)}</h2><ol>${m.lessons.map(l => `<li><a href="/lessons/${e(l.id)}">${e(l.title)}</a>${l.is_preview ? t('previewOpen') : ''}</li>`).join('')}</ol></section>`).join('')}`;
+  app.innerHTML = `<a href="/courses">${t('backToCourses')}</a><h1>${e(c.title)}</h1>${coverImage(c)}<p>${e(c.summary)}</p>${coursePresentation(c, { t, e })}${c.enrollment ? `<p class="badge">${t('enrolledBadge')}</p>` : me ? `<button id="enroll">${t('enrollFree')}</button>` : `<p><a href="/auth/login">${t('signIn')}</a>${t('toEnrollSuffix')}</p>`}${attachmentCards(c.attachments)}${c.modules.map(m => `<section><h2>${e(m.title)}</h2><ol>${m.lessons.map(l => `<li><a href="/lessons/${e(l.id)}">${e(l.title)}</a>${l.is_preview ? t('previewOpen') : ''}</li>`).join('')}</ol></section>`).join('')}`;
   button('#enroll', async () => {
     await api(`/courses/${c.id}/enroll`, 'POST');
     await detail(slug);
@@ -181,7 +187,7 @@ async function admin() {
 async function home() {
   const selection = await api('/home');
   const hero = selection.hero[0];
-  app.innerHTML = `<section class="hero"><p class="eyebrow">Maia Learn</p><h1>${hero ? e(hero.title) : t('heroTitle')}</h1><p>${hero ? e(hero.summary) : t('heroText')}</p>${hero ? `<a class="button" href="/courses/${e(hero.slug)}">${t('viewCourse')}</a>` : ''}</section>${['featured', 'recommended'].map(slot => (selection[slot].length ? `<section><h2>${t(slot === 'featured' ? 'homeFeatured' : 'homeRecommended')}</h2>${cards(selection[slot])}</section>` : '')).join('')}<a class="button" href="/courses">${t('allCourses')}</a>`;
+  app.innerHTML = `<section class="hero"><p class="eyebrow">Maia Learn</p><h1>${hero ? e(hero.title) : t('heroTitle')}</h1>${hero ? coverImage(hero) : ''}<p>${hero ? e(hero.summary) : t('heroText')}</p>${hero ? `<a class="button" href="/courses/${e(hero.slug)}">${t('viewCourse')}</a>` : ''}</section>${['featured', 'recommended'].map(slot => (selection[slot].length ? `<section><h2>${t(slot === 'featured' ? 'homeFeatured' : 'homeRecommended')}</h2>${cards(selection[slot])}</section>` : '')).join('')}<a class="button" href="/courses">${t('allCourses')}</a>`;
 }
 window.addEventListener('beforeunload', event => {
   if (

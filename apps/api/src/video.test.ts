@@ -27,7 +27,7 @@ async function request(
   const response = await fetch(base + path, {
     method,
     headers: { 'Content-Type': 'application/json', Cookie: cookie, ...extra },
-    ...(method !== 'GET' ? { body: JSON.stringify(body ?? {}) } : {}),
+    ...(!['GET', 'HEAD'].includes(method) ? { body: JSON.stringify(body ?? {}) } : {}),
   });
   const data = response.headers.get('content-type')?.includes('json')
     ? await response.json()
@@ -414,4 +414,33 @@ it('materials preserve revisions and authorize downloads, including preview and 
       )
     ).status,
   ).toBe(422);
+});
+
+it('keeps covers revision-bound, requires ready images and alt text, and protects unpublished images', async () => {
+  const admin = await account('cover-admin@example.com', 'admin');
+  const other = await account('cover-other@example.com', 'author');
+  const learner = await account('cover-student@example.com');
+  const course = (await request('/api/v1/admin/courses','POST',draft('covers'),admin.cookie)).data;
+  const upload = (await request('/api/v1/admin/files','POST',{courseId:course.id,filename:'cover.png',size:8},admin.cookie)).data;
+  fs.mkdirSync(path.join(directory,'covers'));
+  fs.writeFileSync(path.join(directory,'covers','test'),Buffer.from([137,80,78,71,13,10,26,10]));
+  db.prepare("UPDATE video_uploads SET status='READY',output_key='covers/test' WHERE id=?").run(upload.id);
+  let saved = (await request(`/api/v1/admin/courses/${course.id}`,'PUT',{...draft('covers'),coverFileId:upload.id,expectedRevisionId:course.current_revision_id},admin.cookie)).data;
+  expect((await request(`/api/v1/admin/courses/${course.id}/publish`,'POST',{},admin.cookie)).data.code).toBe('COVER_INVALID');
+  saved = (await request(`/api/v1/admin/courses/${course.id}`,'PATCH',{expectedRevisionId:saved.current_revision_id,changes:[{unit:'course',value:{...draft('covers'),coverFileId:upload.id,coverAlt:'Accessible cover'}}]},admin.cookie)).data;
+  const coverPath = `/api/v1/courses/${course.id}/cover?revisionId=${saved.current_revision_id}`;
+  expect((await request(coverPath)).status).toBe(404);
+  expect((await request(coverPath,'GET',undefined,other.cookie)).status).toBe(404);
+  expect((await request(coverPath,'HEAD',undefined,admin.cookie)).status).toBe(200);
+  await request(`/api/v1/admin/courses/${course.id}/publish`,'POST',{},admin.cookie);
+  expect((await request(coverPath)).response.headers.get('content-type')).toContain('image/png');
+  await request(`/api/v1/courses/${course.id}/enroll`,'POST',{},learner.cookie);
+  const next = (await request(`/api/v1/admin/courses/${course.id}`,'PUT',{...draft('covers'),expectedRevisionId:saved.current_revision_id},admin.cookie)).data;
+  expect((await request(`/api/v1/courses/${course.id}`)).data.cover_file_id).toBe(upload.id);
+  await request(`/api/v1/admin/courses/${course.id}/publish`,'POST',{},admin.cookie);
+  expect((await request(coverPath)).status).toBe(404);
+  expect((await request(coverPath,'GET',undefined,learner.cookie)).status).toBe(200);
+  expect(next.current_revision_id).not.toBe(saved.current_revision_id);
+  const foreign = (await request('/api/v1/admin/courses','POST',draft('foreign-cover'),other.cookie)).data;
+  expect((await request(`/api/v1/admin/courses/${foreign.id}`,'PUT',{...draft('foreign-cover'),coverFileId:upload.id,expectedRevisionId:foreign.current_revision_id},other.cookie)).status).toBe(422);
 });

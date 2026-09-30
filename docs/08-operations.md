@@ -188,3 +188,23 @@ Before enabling, install the scanner and current signatures in that same runtime
 and verify access as the service user. A missing or failing scanner blocks new
 attachments when enabled. Existing READY files are not rescanned automatically.
 Deployment steps and limits are in [materials](14-materials.md#optional-malware-inspection).
+
+## Course cover upgrade
+
+Apply migration 010 before restarting the updated API and worker. It adds optional
+cover metadata to revisions; existing courses remain valid without covers. Covers
+use the existing private storage and normalized PNG/JPEG processing. No new public
+port or Maia Edge configuration is required. Cover requests are authorized by
+revision and return private, no-store responses.
+
+## Course presentation upgrade
+
+Apply migration 011 before starting the updated API. It adds prerequisites to
+course revisions with an empty default. Existing objectives, level, and workload
+columns retain their values. No new services or Maia Edge configuration are needed.
+
+## Instructor and terms upgrade
+
+Apply migration 012 before starting the updated API. Existing courses receive empty
+instructor and terms fields. No account roles, enrollment policies, or certificate
+behavior change. No additional service or Maia Edge configuration is required.

@@ -427,3 +427,26 @@ describe('publication checklist', () => {
     expect((await request(url + '/publish', 'POST', { expectedRevisionId: saved.data.current_revision_id }, admin.cookie)).status).toBe(200);
   });
 });
+
+describe('course presentation', () => {
+  it('preserves published presentation and keeps metadata through lesson-only saves', async () => {
+    const admin = await account('presentation@example.com','admin');
+    const data = { ...draft('presentation','OPEN_FREE'), instructorName:'Original instructor', instructorBio:'Original biography', accessTerms:'Free enrollment', certificateTerms:'No certificate', learningOutcomes:'Build a project', prerequisites:'Basic programming', level:'beginner', durationMinutes:90 };
+    const created = (await request('/api/v1/admin/courses','POST',data,admin.cookie)).data;
+    const url = `/api/v1/admin/courses/${created.id}`;
+    await request(url+'/publish','POST',{},admin.cookie);
+    const edited = (await request(url,'PUT',{...data,instructorName:'Draft instructor',accessTerms:'Draft access terms',learningOutcomes:'Draft objectives',durationMinutes:120,expectedRevisionId:created.current_revision_id},admin.cookie)).data;
+    const publicView = (await request(`/api/v1/courses/${created.id}`)).data;
+    expect(publicView.learning_outcomes).toBe('Build a project');
+    expect(publicView.instructor_name).toBe('Original instructor');
+    expect(publicView.access_terms).toBe('Free enrollment');
+    expect(publicView.duration_minutes).toBe(90);
+    const saved = await request(url,'PATCH',{expectedRevisionId:edited.current_revision_id,changes:[{unit:'lesson',module:0,lesson:0,value:{title:'Edited lesson',body:'Updated text'}}]},admin.cookie);
+    expect(saved.status).toBe(200);
+    const detail = (await request(url,'GET',undefined,admin.cookie)).data;
+    expect(detail).toMatchObject({instructor_name:'Draft instructor',instructor_bio:'Original biography',access_terms:'Draft access terms',certificate_terms:'No certificate',learning_outcomes:'Draft objectives',prerequisites:'Basic programming',level:'beginner',duration_minutes:120});
+    for (const invalid of [{instructorName:'x'.repeat(201)},{instructorBio:'x'.repeat(5001)},{accessTerms:'x'.repeat(5001)},{certificateTerms:'x'.repeat(5001)},{durationMinutes:-1},{durationMinutes:0.5},{level:'expert'},{prerequisites:'x'.repeat(5001)}]) {
+      expect((await request(url,'PUT',{...data,...invalid,expectedRevisionId:detail.current_revision_id},admin.cookie)).status).toBe(422);
+    }
+  });
+});

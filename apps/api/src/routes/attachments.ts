@@ -17,6 +17,61 @@ export function attachmentsRouter(db: Database.Database, config: Config): Router
     config.MEDIA_SIGNING_KEY,
     config.PUBLIC_BASE_URL,
   );
+  router.get('/courses/:id/cover', (req, res, next) => {
+    void (async () => {
+      const row = db
+        .prepare(
+          `SELECT r.id AS revision_id,c.id AS course_id,c.author_id,c.status,c.published_revision_id,v.filename,v.output_key
+        FROM courses c JOIN course_revisions r ON r.course_id=c.id JOIN video_uploads v ON v.id=r.cover_file_id AND v.course_id=c.id
+        WHERE (c.id=? OR c.slug=?) AND r.id=COALESCE(?,c.published_revision_id) AND v.status='READY' AND v.media_kind='attachment'`,
+        )
+        .get(
+          req.params.id,
+          req.params.id,
+          typeof req.query.revisionId === 'string' ? req.query.revisionId : null,
+        ) as
+        | {
+            revision_id: string;
+            course_id: string;
+            author_id: string;
+            status: string;
+            published_revision_id: string;
+            filename: string;
+            output_key: string;
+          }
+        | undefined;
+      if (!row || !/\.(png|jpe?g)$/i.test(row.filename)) throw new AppError(404, 'Cover not found');
+      const owner = req.session.role === 'admin' || req.session.userId === row.author_id;
+      const publicAccess =
+        row.status === 'PUBLISHED' && row.revision_id === row.published_revision_id;
+      const enrolled = db
+        .prepare(
+          `SELECT e.id FROM enrollments e JOIN entitlements t ON t.enrollment_id=e.id
+        WHERE e.user_id=? AND e.course_id=? AND e.revision_id=? AND e.state='active' AND t.revoked_at IS NULL
+        AND julianday(t.starts_at)<=julianday('now') AND (t.ends_at IS NULL OR julianday(t.ends_at)>julianday('now'))`,
+        )
+        .get(req.session.userId ?? '', row.course_id, row.revision_id);
+      if (!owner && !publicAccess && !enrolled) throw new AppError(404, 'Cover not found');
+      const stat = await store.stat(row.output_key);
+      res.set({
+        'Content-Type': /\.png$/i.test(row.filename) ? 'image/png' : 'image/jpeg',
+        'Content-Length': String(stat.size),
+        'Cache-Control': 'private, no-store',
+        'X-Content-Type-Options': 'nosniff',
+      });
+      if (req.method === 'HEAD') {
+        res.end();
+        return;
+      }
+      const stream = store.openRead(row.output_key);
+      res.on('close', () => stream.destroy());
+      stream.on('error', error => {
+        if (res.headersSent) res.destroy(error);
+        else next(error);
+      });
+      stream.pipe(res);
+    })().catch(next);
+  });
   router.get('/attachments/:id/download', (req, res, next) => {
     void (async () => {
       const a = db

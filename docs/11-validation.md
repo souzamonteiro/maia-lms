@@ -195,3 +195,58 @@ canceled-upload cleanup, retry after a simulated deletion failure, idempotency,
 and quota release. The HTTP upload test verifies that a committed chunk refreshes
 activity. Existing migration tests apply migration 009 without altering enrollment
 or progress. No deployment performed; the worker requires migration 009 before restart.
+
+## Optional scanner integration and image materials — September 30, 2026
+
+The scanner integration was tested using a controlled executable returning clean,
+detected, and operational-error exit statuses. Only clean scans reached READY;
+failed scans had no downloadable output. Missing executable and invalid configuration
+were also tested. ClamAV and real signatures are not installed in this development
+environment; real scanner validation remains pending. Its mode defaults to disabled.
+
+Image validation uses real FFprobe/FFmpeg for PNG/JPEG normalization, forged/truncated
+input rejection, and oversized dimension rejection. The browser material workflow
+uploads a PNG, publishes it with its description, and downloads the normalized PNG
+through the existing authorized attachment route. No migration or deployment was
+performed for scanner integration or image attachments.
+
+Validation results for this delivery: build and lint passed; all 60 automated tests
+passed with `VIDEO_TEST_REAL=1`, and both Chromium media workflows passed, including
+the newly added PNG upload/download. Scanner tests validate integration behavior,
+not real malware detection effectiveness.
+
+## Course covers — September 30, 2026
+
+Build and lint passed. All 61 automated tests passed with `VIDEO_TEST_REAL=1`.
+The existing seven non-media browser workflows passed; the two media workflows
+passed after updating their controls for the new cover picker. The material flow
+selects a processed PNG as cover, supplies alt text, publishes, and verifies that
+the course image loads with the expected width.
+
+HTTP tests verify required alt text, cross-course rejection, unpublished cover
+protection, HEAD/content type, preservation while editing, and older-revision
+access only for authorized users after republishing. No deployment performed.
+Migration 010 is required for both the API and upload cleanup worker.
+
+## Course presentation metadata — September 30, 2026
+
+Build and lint passed. All 62 automated tests passed with `VIDEO_TEST_REAL=1`.
+All six Chromium authoring workflows passed. New HTTP coverage verifies published
+metadata remains unchanged during editing, lesson-only PATCH retains presentation,
+and invalid level/workload/length values are rejected. Browser coverage verifies
+preservation across all interface languages and literal rendering of author text,
+including markup-like input, on the published course page.
+
+Migration 011 is required before starting the updated API. No deployment performed.
+
+## Instructor and course terms — September 30, 2026
+
+Build and lint passed; all 62 automated tests passed with `VIDEO_TEST_REAL=1`.
+All six authoring Chromium workflows passed. Extended HTTP assertions verify
+published metadata stays unchanged, lesson-only saves preserve instructor/terms,
+and length limits reject invalid values. Browser assertions verify preservation
+across languages and escaped biography text, access terms, and the explicit
+certificate-unavailable notice on the public course page.
+
+Migration 012 is required for the API. No deployment performed; these fields do
+not implement account profiles, access policy enforcement, or certificate issuance.

@@ -60,6 +60,12 @@ export function videosRouter(
       .parse(req.body);
     if (mediaKind === 'attachment' && !allowedAttachment(v.filename))
       throw new AppError(422, 'Unsupported file type', 'FILE_INVALID');
+    if (
+      mediaKind === 'attachment' &&
+      /\.(png|jpe?g)$/i.test(v.filename) &&
+      v.size > 10 * 1024 * 1024
+    )
+      throw new AppError(422, 'Image exceeds 10 MiB', 'FILE_INVALID');
     const id = randomUUID();
     db.transaction(() => {
       const course = db.prepare('SELECT author_id FROM courses WHERE id=?').get(v.courseId) as

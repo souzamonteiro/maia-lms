@@ -159,6 +159,54 @@ scanner; real ClamAV/signature validation on the host or container is still pend
 MEDIA-02 remains open for image uploads and deployment validation of scanning.
 No deployment or scanner installation performed.
 
+## Image attachments — September 30, 2026
+
+MEDIA-02 advanced locally: PNG/JPEG images can be uploaded as course/lesson
+materials with titles and descriptions. The API caps images at 10 MiB; the worker
+checks signatures, decodes with FFprobe/FFmpeg, limits dimensions to 8192 per side
+and 16 megapixels, and re-encodes a single frame without source metadata before READY.
+Normalized output also has a 10 MiB cap. Optional ClamAV inspection applies before
+normalization. Downloads retain enrollment/revision authorization and attachment
+headers. SVG and other image types remain unsupported. MEDIA-02 remains open for
+inline/cover image workflows and real scanner deployment validation; HOME-02 also
+tracks covers. No deployment performed.
+
+## Revision-bound course covers — September 30, 2026
+
+HOME-02/MEDIA-02 advanced locally: the studio uploads/selects a PNG/JPEG cover and
+alternative text. Migration 010 stores both on each revision. Publication requires
+a READY image belonging to the course and nonblank alt text. Catalog cards,
+editorial homepage placements, course pages, and draft previews show the cover.
+Draft edits preserve the published image; prior enrolled revisions retain their
+image. Public cover delivery exposes only the current published revision, while
+owner/admin and active enrolled access are checked for other revisions. Expiration
+protects images referenced as covers. HOME-02 remains open for trailers, instructor
+profiles, objectives, prerequisites, level, workload, and access/certificate terms.
+Inline lesson images and real scanner deployment validation also remain pending.
+No deployment performed.
+
+## Course objectives and presentation — September 30, 2026
+
+HOME-02 advanced locally: authors can edit learning objectives, prerequisites,
+level, and estimated workload in minutes. Migration 011 adds prerequisites;
+existing revision fields store the other values. Course pages and draft previews
+show the saved presentation as plain text, with localized labels and levels.
+Draft edits do not alter public metadata; lesson-only incremental saves retain
+all presentation fields. HOME-02 remains open for trailers, instructor profiles,
+and access/certificate terms. No deployment performed.
+
+## Instructor and course terms — September 30, 2026
+
+HOME-02 advanced locally: instructor display name/biography, access terms, and
+certificate information can be edited per course revision. They appear as escaped
+plain text on the course page and draft preview, survive incremental saves and
+language switching, and do not modify published/enrolled revisions. These are
+presentation fields, not account identity, enrollment policy, or certificate
+issuance. Certificate information includes an explicit notice that the platform
+does not yet issue certificates. Migration 012 adds empty defaults for existing
+courses. HOME-02 remains open for trailers; account-level instructor management
+remains in ADMIN-01. No deployment performed.
+
 ## Evidence and limitations of the original review
 
 Reviewed the API, interface, internationalization, SQLite schema, worker, adapters,

@@ -12,6 +12,7 @@ export function mountVideoEditor(
     notify,
     onChange,
     endpoint = '/admin/videos',
+    filterMedia = () => true,
     accept = 'video/mp4,video/webm,video/quicktime,.mkv',
   },
 ) {
@@ -46,7 +47,7 @@ export function mountVideoEditor(
     choice.innerHTML =
       `<option value="">${t('noVideo')}</option>` +
       rows
-        .filter(v => v.status !== 'CANCELLED')
+        .filter(v => v.status !== 'CANCELLED' && filterMedia(v))
         .map(v => `<option value="${v.id}">${e(v.filename)} — ${t('video' + v.status)}</option>`)
         .join('');
     choice.value = videoId ?? '';

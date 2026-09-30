@@ -1,6 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 export const attachmentExtensions = [
+  'png',
+  'jpg',
+  'jpeg',
   'pdf',
   'zip',
   'txt',
@@ -49,6 +52,16 @@ export function validateAttachment(filename: string, file: string): void {
     fs.readSync(fd, header, 0, 8, 0);
   } finally {
     fs.closeSync(fd);
+  }
+  if (['.png', '.jpg', '.jpeg'].includes(ext)) {
+    if (fs.statSync(file).size > 10 * 1024 * 1024) throw new Error('Image exceeds 10 MiB');
+    const valid =
+      ext === '.png'
+        ? header.equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+        : header.subarray(0, 3).equals(Buffer.from([255, 216, 255]));
+    if (!valid) throw new Error('Invalid image signature');
+    // The worker must decode and normalize before publishing this attachment.
+    return;
   }
   if (ext === '.pdf') {
     if (!header.subarray(0, 5).equals(Buffer.from('%PDF-'))) throw new Error('Invalid PDF');

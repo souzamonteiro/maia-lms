@@ -41,14 +41,14 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
       .locator('#admin-list .card')
       .filter({ has: page.getByRole('heading', { name: 'Browser video course', exact: true }) });
     await card.getByRole('button', { name: 'Edit', exact: true }).click();
-    await page.locator('.video-file').setInputFiles(file);
+    await page.locator('.video-editor .video-file').setInputFiles(file);
     await page.getByRole('button', { name: 'Upload / resume', exact: true }).click();
-    await expect(page.locator('.video-status')).toHaveText('Queued for processing');
+    await expect(page.locator('.video-editor .video-status')).toHaveText('Queued for processing');
     await expect
       .poll(
         async () => {
           await page.getByRole('button', { name: 'Refresh status', exact: true }).click();
-          return page.locator('.video-choice').textContent();
+          return page.locator('.video-editor .video-choice').textContent();
         },
         { timeout: 30000 },
       )
@@ -147,6 +147,7 @@ test('author attaches PDF, ZIP and source with descriptions and downloads the pu
   zip.writeUInt32LE(0x06054b50);
   for (const [name, bytes] of [
     ['guide.pdf', Buffer.from('%PDF-1.7\n%%EOF')],
+    ['diagram.png', execFileSync('ffmpeg', ['-nostdin', '-v', 'error', '-f', 'lavfi', '-i', 'color=c=blue:s=32x24', '-frames:v', '1', '-threads', '1', '-f', 'image2pipe', '-vcodec', 'png', 'pipe:1'])],
     ['sources.zip', zip],
     ['example.py', Buffer.from('print("hello")')],
   ] as [string, Buffer][]) {
@@ -169,6 +170,10 @@ test('author attaches PDF, ZIP and source with descriptions and downloads the pu
       )
       .toContain('Ready');
   }
+  await page.locator('#course-cover .refresh-videos').click();
+  const imageOption = page.locator('#course-cover option').filter({ hasText: 'diagram.png' });
+  await page.locator('#course-cover select').selectOption(await imageOption.getAttribute('value'));
+  await page.getByLabel('Cover alternative text', { exact: true }).fill('A blue course illustration');
   await page.getByRole('button', { name: 'Save draft', exact: true }).click();
   await expect(page.locator('#save-status')).toContainText('Draft saved');
   await expect(page.locator('.attachment-upload .video-duration')).toHaveCount(0);
@@ -182,7 +187,14 @@ test('author attaches PDF, ZIP and source with descriptions and downloads the pu
   await card.getByRole('button', { name: 'Publish', exact: true }).click();
   await expect(card).toContainText('PUBLISHED');
   await card.getByRole('link', { name: 'View', exact: true }).click();
+  await expect(page.getByRole('img', { name: 'A blue course illustration' })).toBeVisible();
+  await expect.poll(() => page.locator('.course-cover').evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(32);
   await expect(page.locator('.attachments')).toContainText('Description of sources.zip');
+  await expect(page.locator('.attachments')).toContainText('Description of diagram.png');
+  const imageDownload = page.waitForEvent('download');
+  await page.getByRole('link', { name: 'diagram.png', exact: true }).click();
+  const image = await imageDownload;
+  expect(fs.readFileSync((await image.path())!).subarray(0,8)).toEqual(Buffer.from([137,80,78,71,13,10,26,10]));
   const downloaded = page.waitForEvent('download');
   await page.getByRole('link', { name: 'example.py', exact: true }).click();
   const file = await downloaded;

@@ -34,7 +34,7 @@ export function mountAttachments(root, items, ctx) {
       videoId: item.fileId,
       endpoint: '/admin/files',
       accept:
-        '.pdf,.zip,.txt,.md,.csv,.json,.yaml,.yml,.xml,.toml,.js,.ts,.tsx,.jsx,.py,.java,.c,.cpp,.h,.cs,.go,.rs,.rb,.php,.sql,.sh,.css,.html,.ipynb',
+        '.png,.jpg,.jpeg,.pdf,.zip,.txt,.md,.csv,.json,.yaml,.yml,.xml,.toml,.js,.ts,.tsx,.jsx,.py,.java,.c,.cpp,.h,.cs,.go,.rs,.rb,.php,.sql,.sh,.css,.html,.ipynb',
       onChange: id => {
         field.dataset.fileId = id || '';
         onChange();

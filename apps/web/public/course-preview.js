@@ -1,3 +1,4 @@
+import { coursePresentation } from './course-presentation.js';
 // Author-only simulation: never enrolls, tracks progress, or publishes the draft.
 export async function showCoursePreview({ api, t, e, id, revisionId }) {
   const dialog = document.createElement('dialog');
@@ -23,7 +24,7 @@ export async function showCoursePreview({ api, t, e, id, revisionId }) {
         `/admin/courses/${id}/preview?audience=${select.value}&revisionId=${revisionId}`,
       );
       if (request !== generation || !dialog.isConnected) return;
-      root.innerHTML = `<h1>${e(course.title)}</h1><p>${e(course.summary)}</p>${materials(course.attachments)}${course.modules.map(m => `<section><h2>${e(m.title)}</h2>${m.lessons.map(l => `<article><h3>${e(l.title)}</h3>${l.locked ? `<p>${t('previewLocked')}</p>` : `${l.video_id ? `<video controls playsinline preload="none" poster="/api/v1/lessons/${e(l.id)}/poster" src="/api/v1/lessons/${e(l.id)}/video">${l.captions.map(c => `<track kind="captions" srclang="${e(c.language)}" label="${e(c.label)}" src="/api/v1/lessons/${e(l.id)}/captions/${e(c.language)}">`).join('')}</video>` : ''}<div class="lesson-body prose">${l.body_html}</div>${materials(l.attachments)}${l.captions.map(c => `<details><summary>${t('transcript')} — ${e(c.label)}</summary><p class="plain-content">${e(c.transcript)}</p></details>`).join('')}`}</article>`).join('')}</section>`).join('')}`;
+      root.innerHTML = `<h1>${e(course.title)}</h1>${course.cover_file_id ? `<img class="course-cover" src="/api/v1/courses/${e(course.course_id)}/cover?revisionId=${e(course.revision_id)}" alt="${e(course.cover_alt)}">` : ''}<p>${e(course.summary)}</p>${coursePresentation(course, { t, e })}${materials(course.attachments)}${course.modules.map(m => `<section><h2>${e(m.title)}</h2>${m.lessons.map(l => `<article><h3>${e(l.title)}</h3>${l.locked ? `<p>${t('previewLocked')}</p>` : `${l.video_id ? `<video controls playsinline preload="none" poster="/api/v1/lessons/${e(l.id)}/poster" src="/api/v1/lessons/${e(l.id)}/video">${l.captions.map(c => `<track kind="captions" srclang="${e(c.language)}" label="${e(c.label)}" src="/api/v1/lessons/${e(l.id)}/captions/${e(c.language)}">`).join('')}</video>` : ''}<div class="lesson-body prose">${l.body_html}</div>${materials(l.attachments)}${l.captions.map(c => `<details><summary>${t('transcript')} — ${e(c.label)}</summary><p class="plain-content">${e(c.transcript)}</p></details>`).join('')}`}</article>`).join('')}</section>`).join('')}`;
       root.querySelectorAll('video').forEach(video =>
         video.addEventListener(
           'error',

@@ -86,3 +86,18 @@ Enabling scanning does not rescan existing READY attachments. Originals remain i
 private storage according to the current lifecycle policy. Antivirus results are
 not a guarantee that a file is harmless, and real scanner deployment/signatures
 must be validated separately from the automated integration tests.
+
+## PNG and JPEG materials
+
+The material picker also accepts `.png`, `.jpg`, and `.jpeg` for course or lesson
+attachments. Add a title and description, upload, and refresh status until READY.
+Images have a 10 MiB upload limit, at most 8192 pixels per side, and at most
+16 megapixels. SVG, GIF, and other image formats are not accepted by this workflow.
+
+The worker checks the signature, runs optional malware inspection, probes dimensions,
+and decodes/re-encodes one image frame with FFmpeg while stripping source metadata.
+Each image tool has a 30-second timeout. Invalid, truncated, oversized, or failed
+images remain FAILED; normalized output must also fit within 10 MiB. The learner
+receives the normalized file as an authorized download, not an inline image. File
+size displayed in material metadata describes the original upload; download headers
+use the actual normalized size. Course covers and inline lesson images remain pending.

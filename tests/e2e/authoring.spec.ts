@@ -10,6 +10,14 @@ test('Markdown draft, language switching, autosave, safe preview, conflicts and 
   await page.locator('[name=slug]').fill('editorial-course');
   await page.locator('[name=summary]').fill('A course prepared in the new author studio.');
   await page.locator('[name=accessMode]').selectOption('OPEN_FREE');
+  await page.getByLabel('Learning objectives', {exact:true}).fill('Build a project <script>unsafe</script>');
+  await page.getByLabel('Prerequisites', {exact:true}).fill('Basic programming');
+  await page.locator('[name=level]').selectOption('beginner');
+  await page.locator('[name=durationMinutes]').fill('90');
+  await page.getByLabel('Instructor name', {exact:true}).fill('Course instructor');
+  await page.getByLabel('Instructor biography', {exact:true}).fill('Teaches <b>programming</b>');
+  await page.getByLabel('Access terms', {exact:true}).fill('Free access to these lessons');
+  await page.getByLabel('Certificate information', {exact:true}).fill('No certificate included');
   await page.locator('.module-title').fill('Introduction');
   await page.locator('.lesson-title').fill('Markdown lesson');
   const markdown='# Hello\n\n**Strong text**\n\n<script>alert("unsafe")</script>';
@@ -19,6 +27,10 @@ test('Markdown draft, language switching, autosave, safe preview, conflicts and 
     await expect(page.locator('html')).toHaveAttribute('lang',language);
     await expect(page.locator('.lesson-content')).toHaveValue(markdown);
     await expect(page.locator('[name=title]')).toHaveValue('Editorial course');
+    await expect(page.locator('[name=learningOutcomes]')).toHaveValue('Build a project <script>unsafe</script>');
+    await expect(page.locator('[name=durationMinutes]')).toHaveValue('90');
+    await expect(page.locator('[name=instructorName]')).toHaveValue('Course instructor');
+    await expect(page.locator('[name=accessTerms]')).toHaveValue('Free access to these lessons');
   }
   await page.getByRole('button',{name:'Preview content',exact:true}).click();
   await expect(page.locator('.content-preview h1')).toHaveText('Hello');
@@ -57,6 +69,16 @@ test('Markdown draft, language switching, autosave, safe preview, conflicts and 
   await page.goto('/');
   await expect(page.getByRole('heading',{name:'Featured courses',exact:true})).toBeVisible();
   await expect(page.getByRole('link',{name:'Editorial course',exact:true})).toBeVisible();
+  await page.goto(`/courses/${course.id}`);
+  await expect(page.locator('.course-presentation')).toContainText('Basic programming');
+  await expect(page.locator('.course-presentation')).toContainText('Build a project <script>unsafe</script>');
+  await expect(page.locator('.course-presentation')).toContainText('90');
+  await expect(page.locator('.course-presentation')).toContainText('Course instructor');
+  await expect(page.locator('.course-presentation')).toContainText('Teaches <b>programming</b>');
+  await expect(page.locator('.course-presentation b')).toHaveCount(0);
+  await expect(page.locator('.course-presentation')).toContainText('Free access to these lessons');
+  await expect(page.locator('.course-presentation')).toContainText('Certificates are not currently issued');
+  await expect(page.locator('.course-presentation script')).toHaveCount(0);
   await page.goto(`/lessons/${old}`);
   await expect(page.locator('.lesson-body h1')).toHaveText('Hello');
   await page.screenshot({path:'test-results/markdown-lesson.png',fullPage:true});

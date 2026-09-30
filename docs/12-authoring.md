@@ -160,3 +160,49 @@ validation or guarantee later publication. A changed draft returns DRAFT_CONFLIC
 The checklist is available only to the course owner or an administrator, while
 publication remains administrator-only. Existing published and enrolled revisions
 remain unchanged when checks fail.
+
+## Course covers
+
+Save the course first, then use **Course cover** to upload a PNG/JPEG or select an
+existing image from the course. Add **Cover alternative text** describing the image.
+Refresh its processing status and save the draft. Publication requires a READY
+image and nonblank alternative text; the cover itself is optional. Select **No cover**
+and save to remove it from the next revision without deleting the image file.
+
+Covers appear on catalog cards, editorial homepage placements, the course page,
+and draft previews. They use the image processing limits documented in
+[materials](14-materials.md#png-and-jpeg-materials). Editing or removing a draft cover
+does not change the live cover until publication. Existing enrolled revisions keep
+their cover. Only the current published cover is public; other revisions require
+author/admin access or an active enrollment assigned to that revision.
+
+## Objectives, prerequisites, level, and workload
+
+Course settings include **Learning objectives** and **Prerequisites** (plain text,
+up to 5,000 characters each), **Course level** (unspecified, beginner, intermediate,
+or advanced), and **Estimated workload (minutes)** (blank or an integer from 1 to
+60,000). Blank values are omitted from the public presentation. Workload is an
+estimate supplied by the author, separate from measured video duration and future
+certificate eligibility rules.
+
+These values appear on the course page and in the draft preview. Labels and level
+names follow the interface language; author-written content is not automatically
+translated. Values belong to the revision, survive lesson-only incremental saves,
+and reach the public page only when that revision is published. Existing enrolled
+learners continue to see their assigned revision's presentation.
+
+## Instructor and course terms
+
+Course settings include **Instructor name** (up to 200 characters), **Instructor
+biography**, **Access terms**, and **Certificate information** (up to 5,000 characters
+each). All are optional plain text; markup is displayed literally. Empty sections
+are omitted from the public page and draft preview. The author supplies these
+texts; interface language changes translate labels, not the written content.
+
+These fields describe the course and belong to its revision. They do not change
+account roles, ownership, access expiration, refunds, or completion rules. Changes
+become public only on publication; enrolled learners retain their assigned revision.
+When certificate information is present, the page explicitly states that this
+platform does not yet issue certificates. Certificate issuance remains a separate
+planned feature. Instructor text is a course presentation, not an account profile
+or identity verification system.

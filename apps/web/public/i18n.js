@@ -792,3 +792,116 @@ Object.assign(translations['es'], {
   FILE_SCAN_FAILED:
     'Falló la inspección del adjunto. Pide al operador que revise el antivirus antes de reintentar.',
 });
+
+translations.en.fileLimits +=
+  ' PNG/JPEG images: up to 10 MiB and 16 megapixels (8192 pixels per side).';
+translations['pt-BR'].fileLimits +=
+  ' Imagens PNG/JPEG: até 10 MiB e 16 megapixels (8192 pixels por lado).';
+translations.es.fileLimits +=
+  ' Imágenes PNG/JPEG: hasta 10 MiB y 16 megapíxeles (8192 píxeles por lado).';
+
+Object.assign(translations['en'], {
+  courseCover: 'Course cover',
+  selectCover: 'Select cover image',
+  noCover: 'No cover',
+  coverAlt: 'Cover alternative text',
+  COVER_INVALID: 'Choose a ready PNG/JPEG from this course and provide alternative text.',
+});
+
+Object.assign(translations['pt-BR'], {
+  courseCover: 'Capa do curso',
+  selectCover: 'Selecionar imagem de capa',
+  noCover: 'Sem capa',
+  coverAlt: 'Texto alternativo da capa',
+  COVER_INVALID: 'Escolha uma imagem PNG/JPEG pronta deste curso e forneça o texto alternativo.',
+});
+
+Object.assign(translations['es'], {
+  courseCover: 'Portada del curso',
+  selectCover: 'Seleccionar imagen de portada',
+  noCover: 'Sin portada',
+  coverAlt: 'Texto alternativo de la portada',
+  COVER_INVALID: 'Elige una imagen PNG/JPEG lista de este curso y proporciona texto alternativo.',
+});
+
+Object.assign(translations.en, {
+  refreshCover: 'Refresh cover status',
+  retryCover: 'Retry cover processing',
+  cancelCover: 'Cancel cover upload',
+});
+Object.assign(translations['pt-BR'], {
+  refreshCover: 'Atualizar estado da capa',
+  retryCover: 'Reprocessar capa',
+  cancelCover: 'Cancelar envio da capa',
+});
+Object.assign(translations.es, {
+  refreshCover: 'Actualizar estado de portada',
+  retryCover: 'Reprocesar portada',
+  cancelCover: 'Cancelar subida de portada',
+});
+
+Object.assign(translations['en'], {
+  learningOutcomes: 'Learning objectives',
+  prerequisites: 'Prerequisites',
+  courseLevel: 'Course level',
+  courseWorkload: 'Estimated workload (minutes)',
+  notSpecified: 'Not specified',
+  levelBeginner: 'Beginner',
+  levelIntermediate: 'Intermediate',
+  levelAdvanced: 'Advanced',
+});
+
+Object.assign(translations['pt-BR'], {
+  learningOutcomes: 'Objetivos de aprendizagem',
+  prerequisites: 'Pré-requisitos',
+  courseLevel: 'Nível do curso',
+  courseWorkload: 'Carga horária estimada (minutos)',
+  notSpecified: 'Não informado',
+  levelBeginner: 'Iniciante',
+  levelIntermediate: 'Intermediário',
+  levelAdvanced: 'Avançado',
+});
+
+Object.assign(translations['es'], {
+  learningOutcomes: 'Objetivos de aprendizaje',
+  prerequisites: 'Requisitos previos',
+  courseLevel: 'Nivel del curso',
+  courseWorkload: 'Carga horaria estimada (minutos)',
+  notSpecified: 'No especificado',
+  levelBeginner: 'Principiante',
+  levelIntermediate: 'Intermedio',
+  levelAdvanced: 'Avanzado',
+});
+
+Object.assign(translations['en'], {
+  instructorName: 'Instructor name',
+  instructorBio: 'Instructor biography',
+  accessTerms: 'Access terms',
+  certificateTerms: 'Certificate information',
+  courseInstructor: 'Instructor',
+  presentationTermsHelp:
+    'These fields describe the course. They do not change enrollment rules or enable certificate issuance.',
+  certificateUnavailable: 'Certificates are not currently issued by this platform.',
+});
+
+Object.assign(translations['pt-BR'], {
+  instructorName: 'Nome do instrutor',
+  instructorBio: 'Biografia do instrutor',
+  accessTerms: 'Condições de acesso',
+  certificateTerms: 'Informações sobre certificado',
+  courseInstructor: 'Instrutor',
+  presentationTermsHelp:
+    'Estes campos descrevem o curso. Não alteram as regras de matrícula nem habilitam a emissão de certificados.',
+  certificateUnavailable: 'Esta plataforma ainda não emite certificados.',
+});
+
+Object.assign(translations['es'], {
+  instructorName: 'Nombre del instructor',
+  instructorBio: 'Biografía del instructor',
+  accessTerms: 'Condiciones de acceso',
+  certificateTerms: 'Información sobre certificados',
+  courseInstructor: 'Instructor',
+  presentationTermsHelp:
+    'Estos campos describen el curso. No cambian las reglas de matrícula ni habilitan la emisión de certificados.',
+  certificateUnavailable: 'Esta plataforma aún no emite certificados.',
+});

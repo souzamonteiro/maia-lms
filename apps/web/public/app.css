@@ -360,3 +360,5 @@ button.icon-only {
 .course-preview { width: min(900px, 92vw); max-height: 90vh; overflow: auto; padding: 1.5rem; }
 .course-preview::backdrop { background: #0008; }
 .course-preview video { width: 100%; }
+
+.course-cover { display: block; width: 100%; max-height: 28rem; aspect-ratio: 16 / 9; object-fit: cover; border-radius: .5rem; }

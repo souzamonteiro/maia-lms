@@ -26,6 +26,17 @@ const lessonSchema = z.object({
   preview: z.boolean().default(false),
 });
 const courseSchema = z.object({
+  instructorName: z.string().max(200).default(''),
+  instructorBio: z.string().max(5000).default(''),
+  accessTerms: z.string().max(5000).default(''),
+  certificateTerms: z.string().max(5000).default(''),
+
+  learningOutcomes: z.string().max(5000).default(''),
+  prerequisites: z.string().max(5000).default(''),
+  level: z.enum(['beginner', 'intermediate', 'advanced']).nullable().default(null),
+  durationMinutes: z.number().int().min(1).max(60000).nullable().default(null),
+  coverFileId: z.string().uuid().nullable().default(null),
+  coverAlt: z.string().max(300).default(''),
   attachments: z.array(attachmentSchema).max(30).default([]),
   creationId: z.string().uuid().optional(),
   slug: slugSchema,
@@ -44,6 +55,17 @@ const courseSchema = z.object({
     .max(100),
 });
 type Course = {
+  instructor_name: string;
+  instructor_bio: string;
+  access_terms: string;
+  certificate_terms: string;
+
+  learning_outcomes: string;
+  prerequisites: string;
+  level: 'beginner' | 'intermediate' | 'advanced' | null;
+  duration_minutes: number | null;
+  cover_file_id: string | null;
+  cover_alt: string;
   id: string;
   slug: string;
   author_id: string;
@@ -55,8 +77,8 @@ type Course = {
   summary: string;
 };
 type Enrollment = { id: string; revision_id: string; state: string };
-const publicCourse = `SELECT c.*, r.title, r.summary FROM courses c JOIN course_revisions r ON r.id = c.published_revision_id`;
-const selectCourse = `SELECT c.*, r.title, r.summary FROM courses c JOIN course_revisions r ON r.id = c.current_revision_id`;
+const publicCourse = `SELECT c.*, r.title, r.summary, r.cover_file_id, r.cover_alt, r.learning_outcomes, r.prerequisites, r.level, r.duration_minutes, r.instructor_name, r.instructor_bio, r.access_terms, r.certificate_terms FROM courses c JOIN course_revisions r ON r.id = c.published_revision_id`;
+const selectCourse = `SELECT c.*, r.title, r.summary, r.cover_file_id, r.cover_alt, r.learning_outcomes, r.prerequisites, r.level, r.duration_minutes, r.instructor_name, r.instructor_bio, r.access_terms, r.certificate_terms FROM courses c JOIN course_revisions r ON r.id = c.current_revision_id`;
 
 export function coursesRouter(db: Database.Database): Router {
   const router = Router();
@@ -92,10 +114,36 @@ export function coursesRouter(db: Database.Database): Router {
         )
           throw new AppError(422, 'Video belongs to another course', 'VIDEO_INVALID');
       }
+    if (
+      data.coverFileId &&
+      !db
+        .prepare(
+          "SELECT id FROM video_uploads WHERE id=? AND course_id=? AND media_kind='attachment' AND status!='CANCELLED' AND (lower(filename) LIKE '%.png' OR lower(filename) LIKE '%.jpg' OR lower(filename) LIKE '%.jpeg')",
+        )
+        .get(data.coverFileId, courseId)
+    )
+      throw new AppError(422, 'Invalid cover image', 'COVER_INVALID');
     const revisionId = randomUUID();
     db.prepare(
       'INSERT INTO course_revisions (id, course_id, title, summary, slug, access_mode, locale) VALUES (?, ?, ?, ?, ?, ?, ?)',
     ).run(revisionId, courseId, data.title, data.summary, data.slug, data.accessMode, data.locale);
+    db.prepare('UPDATE course_revisions SET cover_file_id=?,cover_alt=? WHERE id=?').run(
+      data.coverFileId,
+      data.coverAlt,
+      revisionId,
+    );
+    db.prepare(
+      'UPDATE course_revisions SET learning_outcomes=?,prerequisites=?,level=?,duration_minutes=? WHERE id=?',
+    ).run(data.learningOutcomes, data.prerequisites, data.level, data.durationMinutes, revisionId);
+    db.prepare(
+      'UPDATE course_revisions SET instructor_name=?,instructor_bio=?,access_terms=?,certificate_terms=? WHERE id=?',
+    ).run(
+      data.instructorName,
+      data.instructorBio,
+      data.accessTerms,
+      data.certificateTerms,
+      revisionId,
+    );
     function writeAttachments(items: z.infer<typeof attachmentSchema>[], lessonId: string | null) {
       for (const [index, item] of items.entries()) {
         if (
@@ -196,6 +244,18 @@ export function coursesRouter(db: Database.Database): Router {
       summary: draft.summary,
       revision_id: revisionId,
       audience,
+      course_id: c.id,
+      cover_file_id: draft.cover_file_id,
+      cover_alt: draft.cover_alt,
+      learning_outcomes: draft.learning_outcomes,
+      prerequisites: draft.prerequisites,
+      level: draft.level,
+      duration_minutes: draft.duration_minutes,
+      instructor_name: draft.instructor_name,
+      instructor_bio: draft.instructor_bio,
+      access_terms: draft.access_terms,
+      certificate_terms: draft.certificate_terms,
+
       attachments: fullAccess ? draft.attachments : [],
       modules: draft.modules.map(module => ({
         id: module.id,
@@ -306,6 +366,17 @@ export function coursesRouter(db: Database.Database): Router {
         // Reconstruct on the server; omitted units are never supplied by a stale client.
         const payload = courseSchema.parse({
           ...current,
+          coverFileId: current.cover_file_id,
+          coverAlt: current.cover_alt,
+          learningOutcomes: current.learning_outcomes,
+          prerequisites: current.prerequisites,
+          level: current.level,
+          durationMinutes: current.duration_minutes,
+          instructorName: current.instructor_name,
+          instructorBio: current.instructor_bio,
+          accessTerms: current.access_terms,
+          certificateTerms: current.certificate_terms,
+
           accessMode: current.access_mode,
           attachments: current.attachments,
           modules: current.modules.map(module => ({
@@ -409,7 +480,7 @@ export function coursesRouter(db: Database.Database): Router {
   function detail(c: Course, revisionId: string, editing = false, e?: Enrollment) {
     const revision = db
       .prepare(
-        'SELECT title, summary, slug, access_mode, locale FROM course_revisions WHERE id = ?',
+        'SELECT title, summary, slug, access_mode, locale, cover_file_id, cover_alt, learning_outcomes, prerequisites, level, duration_minutes, instructor_name, instructor_bio, access_terms, certificate_terms FROM course_revisions WHERE id = ?',
       )
       .get(revisionId) as Record<string, unknown>;
     const modules = db

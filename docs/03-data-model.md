@@ -86,3 +86,28 @@ An index supports inactive-upload selection. The worker marks unreferenced
 UPLOADING uploads CANCELLED with `error=UPLOAD_EXPIRED` after seven inactive days.
 Upload rows remain for history; registered chunks are removed after successful
 file deletion. This does not affect completed media or course revision references.
+
+## Course covers — migration 010
+
+`course_revisions.cover_file_id` optionally references a PNG/JPEG attachment upload;
+`cover_alt` stores alternative text with default empty string. Existing courses have
+no cover. The relationship is indexed and copied by incremental revision saves.
+Publication validates course ownership, media type, readiness, and nonblank alt text.
+Upload expiration excludes every image referenced by a revision's cover.
+
+## Presentation metadata — migration 011
+
+Migration 011 adds `course_revisions.prerequisites` with an empty-string default.
+The existing `learning_outcomes`, `level`, and `duration_minutes` fields now support
+the authoring and learner-facing flows. API inputs use `learningOutcomes`,
+`prerequisites`, `level`, and `durationMinutes`; responses retain database field
+names. All fields are revision-bound. Blank workload and level are stored as NULL;
+no synthetic workload is inferred from video duration.
+
+## Instructor and terms — migration 012
+
+`course_revisions` adds `instructor_name`, `instructor_bio`, `access_terms`, and
+`certificate_terms`, all non-null TEXT with empty defaults. API inputs use camelCase;
+responses use these column names. Full and incremental saves copy them into the
+new revision. They are presentation metadata, not authorization or certificate
+policy. Existing courses gain no instructor claims or certificate promises.
