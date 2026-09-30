@@ -111,3 +111,27 @@ no synthetic workload is inferred from video duration.
 responses use these column names. Full and incremental saves copy them into the
 new revision. They are presentation metadata, not authorization or certificate
 policy. Existing courses gain no instructor claims or certificate promises.
+
+## Course trailers — migration 013
+
+`course_revisions.trailer_video_id` optionally references `video_uploads` and is
+indexed. The reserved legacy `trailer_media_id` is unchanged and not used by this
+workflow. API inputs use `trailerVideoId`; responses use `trailer_video_id`. New
+revisions copy the reference, publication requires a same-course READY video, and
+upload expiration protects any revision reference. Existing courses have no trailer.
+
+## Course categories — migration 014
+
+`categories` stores global `id`, unique `slug`, `name`, `description`, and integer
+`version` (initially 1). Updates compare `expectedVersion` within an immediate
+transaction and increment it; stale edits/deletions return CATEGORY_CONFLICT.
+
+`course_revision_categories` joins revisions and categories with a composite primary
+key and a category/revision lookup index. Revision deletion cascades to assignments;
+category deletion is restricted while any revision references it. Existing courses
+start without categories; their content and enrollment references are unchanged.
+Course inputs accept up to ten unique `categoryIds`; detail and preview responses
+expose `categories` objects. Incremental saves copy unchanged assignments. Catalog
+filtering uses only `published_revision_id`, while enrolled learners retain their
+assigned revision's associations. Category names/slugs are global metadata, not
+revision snapshots, and updates to them apply immediately.

@@ -13,6 +13,7 @@ import { attachmentsRouter } from './routes/attachments.js';
 import { playbackRouter } from './routes/playback.js';
 import { videosRouter } from './routes/videos.js';
 import { homeRouter } from './routes/home.js';
+import { categoriesRouter } from './routes/categories.js';
 import { coursesRouter } from './routes/courses.js';
 import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
@@ -138,6 +139,7 @@ export function createApp(db: Database.Database, config: Config): express.Applic
   // ── API routes ────────────────────────────────────────────────
   app.use('/api/v1/auth', authLimiter, authRouter(db, config.PUBLIC_BASE_URL));
 
+  app.use('/api/v1', categoriesRouter(db));
   app.use('/api/v1', coursesRouter(db));
   app.use('/api/v1', homeRouter(db));
   app.use('/api/v1', videosRouter(db, config));

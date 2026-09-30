@@ -1,3 +1,4 @@
+import { revisionCategories } from './categories.js';
 import { publicationIssues } from '../services/publication.js';
 import { Router } from 'express';
 import type Database from 'better-sqlite3';
@@ -26,6 +27,12 @@ const lessonSchema = z.object({
   preview: z.boolean().default(false),
 });
 const courseSchema = z.object({
+  categoryIds: z
+    .array(z.string().uuid())
+    .max(10)
+    .refine(ids => new Set(ids).size === ids.length)
+    .default([]),
+  trailerVideoId: z.string().uuid().nullable().default(null),
   instructorName: z.string().max(200).default(''),
   instructorBio: z.string().max(5000).default(''),
   accessTerms: z.string().max(5000).default(''),
@@ -55,6 +62,8 @@ const courseSchema = z.object({
     .max(100),
 });
 type Course = {
+  locale: string;
+  trailer_video_id: string | null;
   instructor_name: string;
   instructor_bio: string;
   access_terms: string;
@@ -77,8 +86,8 @@ type Course = {
   summary: string;
 };
 type Enrollment = { id: string; revision_id: string; state: string };
-const publicCourse = `SELECT c.*, r.title, r.summary, r.cover_file_id, r.cover_alt, r.learning_outcomes, r.prerequisites, r.level, r.duration_minutes, r.instructor_name, r.instructor_bio, r.access_terms, r.certificate_terms FROM courses c JOIN course_revisions r ON r.id = c.published_revision_id`;
-const selectCourse = `SELECT c.*, r.title, r.summary, r.cover_file_id, r.cover_alt, r.learning_outcomes, r.prerequisites, r.level, r.duration_minutes, r.instructor_name, r.instructor_bio, r.access_terms, r.certificate_terms FROM courses c JOIN course_revisions r ON r.id = c.current_revision_id`;
+const publicCourse = `SELECT c.*, r.title, r.summary, r.cover_file_id, r.cover_alt, r.learning_outcomes, r.prerequisites, r.level, r.duration_minutes, r.instructor_name, r.instructor_bio, r.access_terms, r.certificate_terms, r.trailer_video_id FROM courses c JOIN course_revisions r ON r.id = c.published_revision_id`;
+const selectCourse = `SELECT c.*, r.title, r.summary, r.cover_file_id, r.cover_alt, r.learning_outcomes, r.prerequisites, r.level, r.duration_minutes, r.instructor_name, r.instructor_bio, r.access_terms, r.certificate_terms, r.trailer_video_id FROM courses c JOIN course_revisions r ON r.id = c.current_revision_id`;
 
 export function coursesRouter(db: Database.Database): Router {
   const router = Router();
@@ -123,10 +132,27 @@ export function coursesRouter(db: Database.Database): Router {
         .get(data.coverFileId, courseId)
     )
       throw new AppError(422, 'Invalid cover image', 'COVER_INVALID');
+    if (
+      data.trailerVideoId &&
+      !db
+        .prepare(
+          "SELECT id FROM video_uploads WHERE id=? AND course_id=? AND media_kind='video' AND status!='CANCELLED'",
+        )
+        .get(data.trailerVideoId, courseId)
+    )
+      throw new AppError(422, 'Invalid trailer', 'TRAILER_INVALID');
+    for (const id of data.categoryIds)
+      if (!db.prepare('SELECT id FROM categories WHERE id=?').get(id))
+        throw new AppError(422, 'Unknown category', 'CATEGORY_NOT_FOUND');
     const revisionId = randomUUID();
     db.prepare(
       'INSERT INTO course_revisions (id, course_id, title, summary, slug, access_mode, locale) VALUES (?, ?, ?, ?, ?, ?, ?)',
     ).run(revisionId, courseId, data.title, data.summary, data.slug, data.accessMode, data.locale);
+    for (const id of data.categoryIds)
+      db.prepare('INSERT INTO course_revision_categories(revision_id,category_id) VALUES(?,?)').run(
+        revisionId,
+        id,
+      );
     db.prepare('UPDATE course_revisions SET cover_file_id=?,cover_alt=? WHERE id=?').run(
       data.coverFileId,
       data.coverAlt,
@@ -142,6 +168,10 @@ export function coursesRouter(db: Database.Database): Router {
       data.instructorBio,
       data.accessTerms,
       data.certificateTerms,
+      revisionId,
+    );
+    db.prepare('UPDATE course_revisions SET trailer_video_id=? WHERE id=?').run(
+      data.trailerVideoId,
       revisionId,
     );
     function writeAttachments(items: z.infer<typeof attachmentSchema>[], lessonId: string | null) {
@@ -189,14 +219,60 @@ export function coursesRouter(db: Database.Database): Router {
     return revisionId;
   }
   router.get('/courses', (req, res) => {
-    const search = typeof req.query.q === 'string' ? req.query.q.slice(0, 200) : '';
-    res.json(
-      db
-        .prepare(
-          `${publicCourse} WHERE c.status = 'PUBLISHED' AND (r.title LIKE ? OR r.summary LIKE ?) ORDER BY c.created_at DESC LIMIT 100`,
-        )
-        .all(`%${search}%`, `%${search}%`),
-    );
+    const query = z
+      .object({
+        q: z.string().max(200).default(''),
+        category: slugSchema.optional(),
+        locale: z.enum(['en', 'pt-BR', 'es']).optional(),
+        level: z.enum(['beginner', 'intermediate', 'advanced']).optional(),
+        accessMode: z.enum(['OPEN_FREE', 'ENROLLED_FREE']).optional(),
+        sort: z.enum(['newest', 'title']).default('newest'),
+        page: z.coerce.number().int().min(1).max(1000000).default(1),
+        pageSize: z.coerce.number().int().min(1).max(100).default(100),
+        format: z.enum(['array', 'page']).default('array'),
+      })
+      .parse(Object.fromEntries(Object.entries(req.query).filter(([, value]) => value !== '')));
+    const clauses = [
+      "c.status='PUBLISHED'",
+      "(r.title LIKE ? ESCAPE '\\' OR r.summary LIKE ? ESCAPE '\\')",
+    ];
+    const search = `%${query.q.replace(/[\\%_]/g, character => '\\' + character)}%`;
+    const parameters: (string | number)[] = [search, search];
+    for (const [column, value] of [
+      ['r.locale', query.locale],
+      ['r.level', query.level],
+      ['r.access_mode', query.accessMode],
+    ]) {
+      if (value) {
+        clauses.push(`${column}=?`);
+        parameters.push(value);
+      }
+    }
+    if (query.category) {
+      clauses.push(
+        'EXISTS (SELECT 1 FROM course_revision_categories rc JOIN categories cat ON cat.id=rc.category_id WHERE rc.revision_id=r.id AND cat.slug=?)',
+      );
+      parameters.push(query.category);
+    }
+    const where = clauses.join(' AND ');
+    const order =
+      query.sort === 'title'
+        ? 'r.title COLLATE NOCASE ASC,c.id ASC'
+        : 'c.created_at DESC,c.id DESC';
+    const result = db.transaction(() => {
+      const total = (
+        db
+          .prepare(
+            `SELECT count(*) AS total FROM courses c JOIN course_revisions r ON r.id=c.published_revision_id WHERE ${where}`,
+          )
+          .get(...parameters) as { total: number }
+      ).total;
+      const items = db
+        .prepare(`${publicCourse} WHERE ${where} ORDER BY ${order} LIMIT ? OFFSET ?`)
+        .all(...parameters, query.pageSize, (query.page - 1) * query.pageSize);
+      return { items, total, page: query.page, pageSize: query.pageSize };
+    })();
+    res.json(query.format === 'page' ? result : result.items);
   });
   router.get('/admin/courses', requireRole('admin', 'author'), (req, res) => {
     res.json(
@@ -240,6 +316,7 @@ export function coursesRouter(db: Database.Database): Router {
     const draft = detail(c, revisionId, true);
     const fullAccess = audience === 'learner' || draft.access_mode === 'OPEN_FREE';
     res.set('Cache-Control', 'private, no-store').json({
+      categories: draft.categories,
       title: draft.title,
       summary: draft.summary,
       revision_id: revisionId,
@@ -255,6 +332,8 @@ export function coursesRouter(db: Database.Database): Router {
       instructor_bio: draft.instructor_bio,
       access_terms: draft.access_terms,
       certificate_terms: draft.certificate_terms,
+      trailer_video_id: draft.trailer_video_id,
+      locale: draft.locale,
 
       attachments: fullAccess ? draft.attachments : [],
       modules: draft.modules.map(module => ({
@@ -366,6 +445,7 @@ export function coursesRouter(db: Database.Database): Router {
         // Reconstruct on the server; omitted units are never supplied by a stale client.
         const payload = courseSchema.parse({
           ...current,
+          categoryIds: current.categories.map(category => category.id),
           coverFileId: current.cover_file_id,
           coverAlt: current.cover_alt,
           learningOutcomes: current.learning_outcomes,
@@ -376,6 +456,7 @@ export function coursesRouter(db: Database.Database): Router {
           instructorBio: current.instructor_bio,
           accessTerms: current.access_terms,
           certificateTerms: current.certificate_terms,
+          trailerVideoId: current.trailer_video_id,
 
           accessMode: current.access_mode,
           attachments: current.attachments,
@@ -480,7 +561,7 @@ export function coursesRouter(db: Database.Database): Router {
   function detail(c: Course, revisionId: string, editing = false, e?: Enrollment) {
     const revision = db
       .prepare(
-        'SELECT title, summary, slug, access_mode, locale, cover_file_id, cover_alt, learning_outcomes, prerequisites, level, duration_minutes, instructor_name, instructor_bio, access_terms, certificate_terms FROM course_revisions WHERE id = ?',
+        'SELECT title, summary, slug, access_mode, locale, cover_file_id, cover_alt, learning_outcomes, prerequisites, level, duration_minutes, instructor_name, instructor_bio, access_terms, certificate_terms, trailer_video_id FROM course_revisions WHERE id = ?',
       )
       .get(revisionId) as Record<string, unknown>;
     const modules = db
@@ -491,6 +572,7 @@ export function coursesRouter(db: Database.Database): Router {
       ...revision,
       slug: editing ? revision.slug : c.slug,
       revision_id: revisionId,
+      categories: revisionCategories(db, revisionId),
       attachments: attachmentList(db, revisionId, null),
       enrollment: e ?? null,
       modules: modules.map(m => ({

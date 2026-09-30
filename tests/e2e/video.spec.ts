@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -88,6 +88,10 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     await draftPreview.getByLabel('Preview as').selectOption('visitor');
     await expect(draftPreview.locator('video')).toBeVisible(); // OPEN_FREE draft
     await draftPreview.getByRole('button', { name: 'Close preview' }).click();
+    await page.locator('#course-trailer .refresh-videos').click();
+    await page.locator('#course-trailer select').selectOption(selectedVideo);
+    await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+    await expect(page.locator('#save-status')).toContainText('Draft saved');
     await card.getByRole('button', { name: 'Publish', exact: true }).click();
     await expect(page.locator('#message')).toBeEmpty();
     await expect(card)
@@ -98,6 +102,10 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
         );
       });
     await card.getByRole('link', { name: 'View', exact: true }).click();
+    const trailer = page.locator('.course-trailer');
+    await expect(trailer).toBeVisible();
+    await trailer.evaluate((video: HTMLVideoElement) => { video.muted = true; return video.play(); });
+    await expect.poll(() => trailer.evaluate((video: HTMLVideoElement) => video.currentTime)).toBeGreaterThan(0);
     await page.getByRole('link', { name: 'Real video lesson', exact: true }).click();
     const video = page.locator('video');
     await expect(video).toBeVisible();

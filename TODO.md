@@ -207,6 +207,69 @@ does not yet issue certificates. Migration 012 adds empty defaults for existing
 courses. HOME-02 remains open for trailers; account-level instructor management
 remains in ADMIN-01. No deployment performed.
 
+## Revision-bound course trailers — September 30, 2026
+
+HOME-02 completed locally: authors upload/select a course trailer using the video
+pipeline, and publication requires a READY video from the same course. Migration
+013 stores the trailer reference per revision. Course pages and draft previews
+include the trailer player and poster; published trailers are explicitly public
+even for enrolled courses. Drafts remain author/admin-only, with historical access
+for active enrollments assigned to the corresponding revision. Range/HEAD and
+poster delivery reuse playback authorization. Changing a draft does not replace
+the live trailer until publication. Course language is also shown in presentation.
+Together with covers, objectives, prerequisites, level, workload, curriculum,
+instructor text, and descriptive terms, this closes HOME-02. Certificates,
+commerce, account profiles, HLS, and inline lesson images remain in their own tasks.
+No deployment performed.
+
+## Paginated catalog and filters — September 30, 2026
+
+HOME-03 advanced locally: the catalog now displays 12 courses per page with totals,
+previous/next links, title or newest sorting, and combinable language, level, and
+access filters. Search/filter/page values live in shareable URLs; submitting a new
+filter resets pagination, and browser back/reload preserves it. All queries use
+published revision metadata and exclude drafts/archives. The API supports pages
+beyond the old 100-course ceiling and retains the legacy array response unless
+format=page is requested. Empty states and controls support all three languages.
+HOME-03 remains open for manageable categories/taxonomy. No migration or deployment.
+
+## Managed course categories — September 30, 2026
+
+HOME-03 completed locally: administrators can create, rename and delete unused
+categories; authors select up to ten categories per course revision. The public
+catalog combines a category slug with existing filters and pagination, and course
+pages link to the corresponding category search. Draft association changes remain
+private until publication; historical revision references prevent category deletion.
+The taxonomy is flat, with shared authored names/descriptions across interface
+languages. Category metadata changes are immediate and use optimistic concurrency.
+Migration 014 is required. No deployment performed.
+
+## Localized account emails and authentication errors — September 30, 2026
+
+I18N-01 advanced locally: browser registration saves the selected interface locale;
+verification and recovery emails use the saved account locale (en, pt-BR or es,
+with English fallback for other legacy locales). Authentication-route errors now
+have stable codes translated by the interface. Switching interface language keeps
+entered account-form fields in memory without storing passwords in browser storage.
+
+Recovery still returns the same 204 response for known and unknown addresses; the
+requester's locale cannot override the account's email language. I18N-01 remains
+open for remaining API/email flows and broader translation coverage. I18N-02 still
+needs preference editing/synchronization and translated course metadata. Verification
+feedback/resend and the remaining AUTH-01 workflows are not completed by this delivery.
+No migration or deployment performed.
+
+## Email verification confirmation — September 30, 2026
+
+AUTH-01 and I18N-01 advanced locally: newly queued verification emails open a
+localized confirmation page rather than a JSON response. Merely opening the page
+does not consume its token. Explicit POST confirmation provides pending, success,
+invalid, expired, already-used and retry states; switching interface language keeps
+the result without resubmitting. Legacy GET email links remain compatible. Token
+validation, consumption and account verification are atomic, including competing
+requests. Resend, account preferences, MFA and the remaining account workflows are
+still pending. No migration or deployment performed.
+
 ## Evidence and limitations of the original review
 
 Reviewed the API, interface, internationalization, SQLite schema, worker, adapters,
@@ -371,12 +434,12 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Dependency: BASE-01. Acceptance: administrators explicitly choose homepage courses
   and their order; drafts/archived courses never leak; removing a highlight keeps
   the course in the catalog.
-- [ ] **HOME-02 — Covers, cards, and sales/presentation page.**
+- [x] **HOME-02 — Covers, cards, and sales/presentation page.**
   Cover and alt text, trailer/preview, author/bio, objectives, prerequisites, level,
   language, workload, curriculum, and access/certificate terms. Dependencies:
   MEDIA-04, EDIT-03, HOME-01. Acceptance: dashboard edits appear on the public page;
   cards have images and CTAs consistent with enrollment/pricing, without fake statistics.
-- [ ] **HOME-03 — Catalog, categories, and paginated search.**
+- [x] **HOME-03 — Catalog, categories, and paginated search.**
   Manageable taxonomy, access/language/level filters, sorting, and real pagination
   instead of the fixed 100-item limit. Dependency: HOME-02. Acceptance: composable
   filters, shareable URLs, useful empty states, and courses accessible beyond page one.

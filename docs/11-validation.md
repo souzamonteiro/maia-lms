@@ -250,3 +250,101 @@ certificate-unavailable notice on the public course page.
 
 Migration 012 is required for the API. No deployment performed; these fields do
 not implement account profiles, access policy enforcement, or certificate issuance.
+
+## Course trailers — September 30, 2026
+
+Build and lint passed. All 63 automated tests passed with `VIDEO_TEST_REAL=1`,
+and all nine Chromium workflows passed. The video browser workflow selects the
+processed video as trailer, publishes it, and confirms real playback on the course
+page before continuing to lesson playback.
+
+HTTP coverage verifies pending-video rejection, owner/admin draft access, rejection
+of other authors, public trailer Range/HEAD/poster delivery, invalid ranges, private
+lesson isolation, unchanged public playback during draft editing, removal of old
+public access after republishing, and cross-course selection rejection.
+Migration 013 is required for the API and upload cleanup worker. No deployment
+performed. Trailer-specific captions remain unsupported; lesson captions are separate.
+
+## Paginated catalog and filters — September 30, 2026
+
+Build and lint passed. All 64 automated tests passed with `VIDEO_TEST_REAL=1`,
+and all ten Chromium workflows passed.
+
+HTTP coverage uses more than 100 courses to verify pagination beyond the legacy
+first-page limit, stable ordering, combined filters, literal wildcard searches,
+empty results, invalid query rejection, and isolation of unpublished metadata.
+The default response remains an array; `format=page` returns pagination metadata.
+
+The anonymous browser workflow verifies 12-course pages, query preservation across
+navigation and reload, independent interface/content languages, empty filter
+results, browser back navigation, and layout at a 390-pixel viewport. Catalog
+fixtures are seeded directly into the isolated browser-test database to avoid
+spending the application's request budget on fixture setup.
+
+No new migration or deployment was performed for this increment. HOME-03 remains
+open for manageable categories and taxonomy.
+
+## Managed categories — September 30, 2026
+
+Build and lint passed. All 66 automated tests passed with `VIDEO_TEST_REAL=1`,
+and all eleven Chromium workflows passed. The OpenAPI YAML parses successfully.
+HTTP coverage verifies administrator-only taxonomy mutations, validated fields,
+unique slugs, stale-version conflicts, deletion of unused categories, protection
+of historical references, assignment limits, preservation during incremental saves,
+published/draft separation, preview data, and composable catalog filtering.
+
+The new browser workflow creates and renames a category, verifies literal rendering
+of markup-like names, preserves category/form selections across all three interface
+languages, publishes a categorized course, follows its catalog link, combines filters,
+and verifies deletion rules. Existing catalog coverage also caught and now guards
+against edits being lost while language changes wait for taxonomy loading.
+
+Browser tests share one server/IP and now inspect the rate-limit response headers
+before each workflow, waiting for the next window when the remaining budget is low.
+Production rate limits are unchanged. The full suite passed in approximately
+1 minute 24 seconds, including real FFmpeg media processing and playback.
+
+Migration 014 is required before the updated API starts. Existing courses remain
+uncategorized. No deployment performed. The taxonomy is flat and its authored text
+is shared across interface languages; category assignments are revision-bound,
+while category metadata updates are immediate.
+
+## Localized account workflows — September 30, 2026
+
+Build and lint passed. All 71 automated tests passed with `VIDEO_TEST_REAL=1`.
+The new multilingual account browser workflow and the existing complete learner
+workflow both passed in Chromium. Account HTTP tests verify queued verification and
+recovery subjects/links in en, pt-BR and es, English fallback for a legacy locale,
+recovery using the saved locale despite a different request locale, unchanged 204
+responses for unknown accounts, and stable errors for duplicate registration,
+invalid credentials, used/expired tokens and password length.
+
+Browser coverage checks registration payload locale and translated login errors in
+all three languages, retained form input while switching languages, and absence of
+the entered password from local/session storage. Existing reset tests still verify
+single-use tokens and session revocation. Real SMTP delivery was not exercised;
+these tests validate the transactional outbox payloads and browser behavior.
+No new migration or deployment performed. I18N-01, I18N-02 and AUTH-01 remain partial.
+
+## Email verification confirmation — September 30, 2026
+
+Build and lint passed. All 73 automated tests passed with `VIDEO_TEST_REAL=1`,
+and all fourteen Chromium workflows passed in 34.5 seconds, including real video
+processing/playback and material downloads. OpenAPI YAML parses successfully.
+
+HTTP tests verify non-consuming page delivery, language hints in newly queued email
+links, atomic single-use POST confirmation under competing requests, compatibility
+with legacy GET links, and rejection of expired, malformed and password-reset tokens
+without changing account verification. Browser coverage checks explicit confirmation,
+pending/success controls, success preserved across language changes, all three
+interface languages, and invalid/expired/already-used feedback.
+
+Each browser workflow now models an independent client address behind the loopback
+proxy configured only in the isolated E2E server. Browser and HTTP request contexts
+share that workflow's address. This replaces waiting for a shared global request
+window and avoids exhausting the authentication window across unrelated test users.
+Application rate limits remain enabled and unchanged.
+
+No new migration or deployment performed. Real SMTP delivery was not exercised.
+Verification resend, account preference synchronization and the remaining AUTH-01
+requirements remain pending.

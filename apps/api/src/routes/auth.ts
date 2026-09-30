@@ -1,3 +1,4 @@
+import { accountMail } from '../services/account-mail.js';
 // Authentication routes: register, login, logout, verify email, password reset
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import argon2 from 'argon2';
@@ -47,7 +48,7 @@ export function authRouter(db: Database.Database, baseUrl: string): Router {
           .prepare('SELECT id FROM users WHERE email_normalized = ?')
           .get(emailNormalized);
         if (existing) {
-          throw new AppError(409, 'Email already registered');
+          throw new AppError(409, 'Email already registered', 'AUTH_EMAIL_EXISTS');
         }
 
         const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
@@ -56,7 +57,7 @@ export function authRouter(db: Database.Database, baseUrl: string): Router {
 
         const createAccount = db.transaction(() => {
           if (db.prepare('SELECT id FROM users WHERE email_normalized = ?').get(emailNormalized))
-            throw new AppError(409, 'Email already registered');
+            throw new AppError(409, 'Email already registered', 'AUTH_EMAIL_EXISTS');
           db.prepare(
             `INSERT INTO users (id, email, email_normalized, password_hash, role, status, locale, created_at, updated_at)
            VALUES (?, ?, ?, ?, 'learner', 'active', ?, ?, ?)`,
@@ -73,7 +74,8 @@ export function authRouter(db: Database.Database, baseUrl: string): Router {
            VALUES (?, ?, ?, 'verify', ?)`,
           ).run(tokenId, userId, tokenHash, expiresAt);
 
-          const verifyUrl = `${baseUrl}/api/v1/auth/verify-email?token=${token}`;
+          const language = locale === 'pt-BR' || locale === 'es' ? locale : 'en';
+          const verifyUrl = `${baseUrl}/auth/verify-email?lang=${language}&token=${token}`;
 
           db.prepare(
             "INSERT INTO outbox (id, event_type, payload) VALUES (?, 'email.send', ?)",
@@ -81,8 +83,7 @@ export function authRouter(db: Database.Database, baseUrl: string): Router {
             crypto.randomUUID(),
             JSON.stringify({
               to: rawEmail,
-              subject: 'Verifique sua conta Maia',
-              text: `Verifique seu e-mail: ${verifyUrl}`,
+              ...accountMail(locale, 'verify', verifyUrl),
             }),
           );
         });
@@ -115,11 +116,11 @@ export function authRouter(db: Database.Database, baseUrl: string): Router {
 
         const valid = await argon2.verify(hashToVerify, password);
         if (!valid || !user) {
-          throw new AppError(401, 'Invalid email or password');
+          throw new AppError(401, 'Invalid email or password', 'AUTH_INVALID_CREDENTIALS');
         }
 
         if (user.status === 'suspended') {
-          throw new AppError(403, 'Account suspended');
+          throw new AppError(403, 'Account suspended', 'AUTH_SUSPENDED');
         }
 
         // Regenerate session to prevent fixation
@@ -172,7 +173,7 @@ export function authRouter(db: Database.Database, baseUrl: string): Router {
 
       if (!user) {
         req.session.destroy(() => {});
-        throw new AppError(401, 'Session invalid');
+        throw new AppError(401, 'Session invalid', 'AUTH_SESSION_INVALID');
       }
       res.json(user);
     } catch (err) {
@@ -180,40 +181,38 @@ export function authRouter(db: Database.Database, baseUrl: string): Router {
     }
   });
 
-  // GET /api/v1/auth/verify-email?token=...
-  router.get('/verify-email', async (req: Request, res: Response, next: NextFunction) => {
+  // GET remains compatible with older emails; new UI confirms explicitly via POST.
+  const verifyEmail = (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { token } = req.query as { token?: string };
-      if (typeof token !== 'string' || !token) throw new AppError(400, 'Missing token');
-
+      const token = req.method === 'GET' ? req.query.token : req.body?.token;
+      if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token))
+        throw new AppError(400, 'Invalid token', 'AUTH_TOKEN_INVALID');
       const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-      const record = db
-        .prepare(
-          `SELECT id, user_id, expires_at, used_at FROM email_tokens
-           WHERE token_hash = ? AND kind = 'verify'`,
-        )
-        .get(tokenHash) as
-        { id: string; user_id: string; expires_at: string; used_at: string | null } | undefined;
-
-      if (!record) throw new AppError(400, 'Invalid token');
-      if (record.used_at) throw new AppError(400, 'Token already used');
-      if (new Date(record.expires_at) < new Date()) throw new AppError(400, 'Token expired');
-
-      const now = new Date().toISOString();
       db.transaction(() => {
-        db.prepare('UPDATE users SET verified_at = ?, updated_at = ? WHERE id = ?').run(
-          now,
-          now,
-          record.user_id,
-        );
-        db.prepare('UPDATE email_tokens SET used_at = ? WHERE id = ?').run(now, record.id);
-      })();
-
-      res.json({ message: 'Email verified successfully' });
-    } catch (err) {
-      next(err);
+        const record = db
+          .prepare(
+            `SELECT id,user_id,expires_at,used_at FROM email_tokens
+          WHERE token_hash=? AND kind='verify'`,
+          )
+          .get(tokenHash) as
+          { id: string; user_id: string; expires_at: string; used_at: string | null } | undefined;
+        if (!record) throw new AppError(400, 'Invalid token', 'AUTH_TOKEN_INVALID');
+        if (record.used_at) throw new AppError(400, 'Token already used', 'AUTH_TOKEN_USED');
+        if (new Date(record.expires_at).getTime() <= Date.now())
+          throw new AppError(400, 'Token expired', 'AUTH_TOKEN_EXPIRED');
+        const now = new Date().toISOString();
+        db.prepare('UPDATE email_tokens SET used_at=? WHERE id=?').run(now, record.id);
+        db.prepare(
+          'UPDATE users SET verified_at=COALESCE(verified_at,?),updated_at=? WHERE id=?',
+        ).run(now, now, record.user_id);
+      }).immediate();
+      res.json({ message: 'Email verified successfully', code: 'EMAIL_VERIFIED' });
+    } catch (error) {
+      next(error);
     }
-  });
+  };
+  router.get('/verify-email', verifyEmail);
+  router.post('/verify-email', verifyEmail);
 
   // POST /api/v1/auth/forgot-password
   router.post('/forgot-password', async (req: Request, res: Response, next: NextFunction) => {
@@ -226,8 +225,8 @@ export function authRouter(db: Database.Database, baseUrl: string): Router {
 
       const emailNormalized = normalizeEmail(email);
       const user = db
-        .prepare('SELECT id, email FROM users WHERE email_normalized = ?')
-        .get(emailNormalized) as { id: string; email: string } | undefined;
+        .prepare('SELECT id, email, locale FROM users WHERE email_normalized = ?')
+        .get(emailNormalized) as { id: string; email: string; locale: string } | undefined;
 
       if (user) {
         db.transaction(() => {
@@ -248,8 +247,7 @@ export function authRouter(db: Database.Database, baseUrl: string): Router {
             crypto.randomUUID(),
             JSON.stringify({
               to: user.email,
-              subject: 'Recupere sua senha Maia',
-              text: `Redefina sua senha: ${resetUrl}`,
+              ...accountMail(user.locale, 'reset', resetUrl),
             }),
           );
         })();
@@ -267,9 +265,11 @@ export function authRouter(db: Database.Database, baseUrl: string): Router {
     try {
       const { token, password } = req.body as { token?: string; password?: string };
       if (typeof token !== 'string' || typeof password !== 'string' || !token || !password)
-        throw new AppError(400, 'Missing token or password');
-      if (password.length < 8) throw new AppError(422, 'Password must be at least 8 characters');
-      if (password.length > 128) throw new AppError(422, 'Password too long');
+        throw new AppError(400, 'Missing token or password', 'AUTH_RESET_INVALID');
+      if (password.length < 8)
+        throw new AppError(422, 'Password must be at least 8 characters', 'AUTH_PASSWORD_LENGTH');
+      if (password.length > 128)
+        throw new AppError(422, 'Password too long', 'AUTH_PASSWORD_LENGTH');
 
       const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
       const record = db
@@ -280,8 +280,10 @@ export function authRouter(db: Database.Database, baseUrl: string): Router {
         .get(tokenHash) as
         { id: string; user_id: string; expires_at: string; used_at: string | null } | undefined;
 
-      if (!record || record.used_at) throw new AppError(400, 'Invalid or expired token');
-      if (new Date(record.expires_at) < new Date()) throw new AppError(400, 'Token expired');
+      if (!record || record.used_at)
+        throw new AppError(400, 'Invalid or expired token', 'AUTH_TOKEN_INVALID');
+      if (new Date(record.expires_at) < new Date())
+        throw new AppError(400, 'Token expired', 'AUTH_TOKEN_EXPIRED');
 
       const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
       const now = new Date().toISOString();
@@ -292,7 +294,8 @@ export function authRouter(db: Database.Database, baseUrl: string): Router {
             'UPDATE email_tokens SET used_at = ? WHERE id = ? AND used_at IS NULL AND expires_at > ?',
           )
           .run(now, record.id, now);
-        if (consumed.changes !== 1) throw new AppError(400, 'Invalid or expired token');
+        if (consumed.changes !== 1)
+          throw new AppError(400, 'Invalid or expired token', 'AUTH_TOKEN_INVALID');
         db.prepare(
           'UPDATE users SET password_hash = ?, session_version = session_version + 1, updated_at = ? WHERE id = ?',
         ).run(passwordHash, now, record.user_id);

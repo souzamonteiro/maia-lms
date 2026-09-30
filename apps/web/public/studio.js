@@ -55,10 +55,14 @@ function readForm() {
   if (!form) return;
   state.payload = {
     ...Object.fromEntries(new FormData(form)),
+    categoryIds: [...form.querySelectorAll('[name=categoryId]:checked')]
+      .map(input => input.value)
+      .sort(),
     level: form.elements.level.value || null,
     durationMinutes: form.elements.durationMinutes.value
       ? Number(form.elements.durationMinutes.value)
       : null,
+    trailerVideoId: form.querySelector('#course-trailer').dataset.videoId || null,
     coverFileId: form.querySelector('#course-cover').dataset.fileId || null,
     attachments: readAttachments(document.querySelector('#course-attachments')),
     modules: [...form.querySelectorAll('.module-editor')].map(m => ({
@@ -81,6 +85,7 @@ function readForm() {
       })),
     })),
   };
+  delete state.payload.categoryId;
 }
 async function save(manual) {
   clearTimeout(timer);
@@ -391,6 +396,7 @@ function fromCourse(c) {
     dirty: false,
     conflict: false,
     payload: {
+      categoryIds: (c.categories || []).map(category => category.id).sort(),
       coverFileId: c.cover_file_id,
       coverAlt: c.cover_alt,
       learningOutcomes: c.learning_outcomes,
@@ -401,6 +407,7 @@ function fromCourse(c) {
       instructorBio: c.instructor_bio,
       accessTerms: c.access_terms,
       certificateTerms: c.certificate_terms,
+      trailerVideoId: c.trailer_video_id,
 
       slug: c.slug,
       title: c.title,
@@ -439,7 +446,12 @@ export async function mountStudio(ctx) {
       /* Invalid local data is ignored. */
     }
   }
-  app.innerHTML = `<h1>${t('adminPublishTitle')}</h1><p>${t('studioDescription')}</p>${me.role === 'admin' ? `<a href="/admin/home">${t('editHome')}</a>` : ''}<div id="admin-list"></div><h2 id="editor-title">${state.id ? t('editCourseTitle') : t('newCourseTitle')}</h2><div class="actions"><button type="button" id="new-course" class="secondary">${icon('add')}${t('newCourseTitle')}</button><button type="button" id="reload-course" class="secondary" ${state.id ? '' : 'hidden'}>${icon('reloadDraft')}${t('reloadDraft')}</button></div><form id="editor"><section id="course-settings"><label>${t('title')}<input name="title" required minlength="3" maxlength="255"></label><label>${t('courseSlugLabel')}<input name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" minlength="3" maxlength="100"></label><label>${t('summary')}<textarea name="summary" required minlength="10" maxlength="1000"></textarea></label><label>${t('instructorName')}<textarea name="instructorName" maxlength="200"></textarea></label><label>${t('instructorBio')}<textarea name="instructorBio" maxlength="5000"></textarea></label><label>${t('accessTerms')}<textarea name="accessTerms" maxlength="5000"></textarea></label><label>${t('certificateTerms')}<textarea name="certificateTerms" maxlength="5000"></textarea></label><p class="muted">${t('presentationTermsHelp')}</p><label>${t('learningOutcomes')}<textarea name="learningOutcomes" maxlength="5000"></textarea></label><label>${t('prerequisites')}<textarea name="prerequisites" maxlength="5000"></textarea></label><label>${t('courseLevel')}<select name="level"><option value="">${t('notSpecified')}</option><option value="beginner">${t('levelBeginner')}</option><option value="intermediate">${t('levelIntermediate')}</option><option value="advanced">${t('levelAdvanced')}</option></select></label><label>${t('courseWorkload')}<input name="durationMinutes" type="number" min="1" max="60000" step="1"></label><label>${t('access')}<select name="accessMode" aria-label="${t('access')}"><option value="OPEN_FREE">${t('accessOpenOption')}</option><option value="ENROLLED_FREE">${t('accessEnrolledOption')}</option></select></label><label>${t('courseLanguage')}<select name="locale"><option value="en">English</option><option value="pt-BR">Português</option><option value="es">Español</option></select></label><label>${t('coverAlt')}<input name="coverAlt" maxlength="300"></label><section id="course-cover"></section><section id="course-attachments"></section></section><div id="modules"></div><div class="actions"><button type="button" id="add-module" class="secondary">${icon('add')}${t('addModule')}</button><button type="button" id="preview-course">${icon('previewContent')}${t('draftPreview')}</button><button type="submit">${icon('saveDraft')}${t('saveDraft')}</button></div><p id="save-status" role="status" aria-live="polite"></p></form>`;
+  const categories = await api('/categories');
+  const categoryIds = state.payload.categoryIds || [];
+  for (const id of categoryIds) {
+    if (!categories.some(c => c.id === id)) categories.push({ id, name: t('CATEGORY_NOT_FOUND') });
+  }
+  app.innerHTML = `<h1>${t('adminPublishTitle')}</h1><p>${t('studioDescription')}</p>${me.role === 'admin' ? `<div class="actions"><a href="/admin/home">${t('editHome')}</a><a href="/admin/categories">${t('manageCategories')}</a></div>` : ''}<div id="admin-list"></div><h2 id="editor-title">${state.id ? t('editCourseTitle') : t('newCourseTitle')}</h2><div class="actions"><button type="button" id="new-course" class="secondary">${icon('add')}${t('newCourseTitle')}</button><button type="button" id="reload-course" class="secondary" ${state.id ? '' : 'hidden'}>${icon('reloadDraft')}${t('reloadDraft')}</button></div><form id="editor"><section id="course-settings"><fieldset id="course-categories"><legend>${t('categories')}</legend><p>${t('courseCategoriesHelp')}</p>${categories.map(c => `<label><input type="checkbox" name="categoryId" value="${ctx.e(c.id)}" ${categoryIds.includes(c.id) ? 'checked' : ''}> ${ctx.e(c.name)}</label>`).join('') || `<p>${t('noCategories')}</p>`}</fieldset><label>${t('title')}<input name="title" required minlength="3" maxlength="255"></label><label>${t('courseSlugLabel')}<input name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" minlength="3" maxlength="100"></label><label>${t('summary')}<textarea name="summary" required minlength="10" maxlength="1000"></textarea></label><label>${t('instructorName')}<textarea name="instructorName" maxlength="200"></textarea></label><label>${t('instructorBio')}<textarea name="instructorBio" maxlength="5000"></textarea></label><label>${t('accessTerms')}<textarea name="accessTerms" maxlength="5000"></textarea></label><label>${t('certificateTerms')}<textarea name="certificateTerms" maxlength="5000"></textarea></label><p class="muted">${t('presentationTermsHelp')}</p><label>${t('learningOutcomes')}<textarea name="learningOutcomes" maxlength="5000"></textarea></label><label>${t('prerequisites')}<textarea name="prerequisites" maxlength="5000"></textarea></label><label>${t('courseLevel')}<select name="level"><option value="">${t('notSpecified')}</option><option value="beginner">${t('levelBeginner')}</option><option value="intermediate">${t('levelIntermediate')}</option><option value="advanced">${t('levelAdvanced')}</option></select></label><label>${t('courseWorkload')}<input name="durationMinutes" type="number" min="1" max="60000" step="1"></label><label>${t('access')}<select name="accessMode" aria-label="${t('access')}"><option value="OPEN_FREE">${t('accessOpenOption')}</option><option value="ENROLLED_FREE">${t('accessEnrolledOption')}</option></select></label><label>${t('courseLanguage')}<select name="locale"><option value="en">English</option><option value="pt-BR">Português</option><option value="es">Español</option></select></label><label>${t('coverAlt')}<input name="coverAlt" maxlength="300"></label><section id="course-cover"></section><p>${t('trailerHelp')}</p><section id="course-trailer"></section><section id="course-attachments"></section></section><div id="modules"></div><div class="actions"><button type="button" id="add-module" class="secondary">${icon('add')}${t('addModule')}</button><button type="button" id="preview-course">${icon('previewContent')}${t('draftPreview')}</button><button type="submit">${icon('saveDraft')}${t('saveDraft')}</button></div><p id="save-status" role="status" aria-live="polite"></p></form>`;
   const form = document.querySelector('#editor');
   for (const name of [
     'title',
@@ -458,6 +470,31 @@ export async function mountStudio(ctx) {
     'certificateTerms',
   ])
     form.elements[name].value = state.payload[name] ?? '';
+  const trailer = form.querySelector('#course-trailer');
+  trailer.dataset.videoId = state.payload.trailerVideoId || '';
+  mountVideoEditor(trailer, {
+    ...ctx,
+    courseId: state.id,
+    videoId: state.payload.trailerVideoId,
+    t: key =>
+      t(
+        {
+          videoLesson: 'courseTrailer',
+          selectVideo: 'selectTrailer',
+          noVideo: 'noTrailer',
+          videoFile: 'trailerFile',
+          uploadVideo: 'uploadTrailer',
+          refreshVideos: 'refreshTrailer',
+          retryVideo: 'retryTrailer',
+          cancelUpload: 'cancelTrailer',
+        }[key] || key,
+      ),
+    onChange: id => {
+      trailer.dataset.videoId = id || '';
+      readForm();
+      changed();
+    },
+  });
   const cover = form.querySelector('#course-cover');
   cover.dataset.fileId = state.payload.coverFileId || '';
   mountVideoEditor(cover, {

@@ -11,14 +11,35 @@ export function playbackRouter(db: Database.Database, config: Config): Router {
     config.PUBLIC_BASE_URL,
   );
   router.get(
-    ['/lessons/:id/video', '/lessons/:id/poster', '/lessons/:id/captions/:language'],
+    [
+      '/lessons/:id/video',
+      '/lessons/:id/poster',
+      '/lessons/:id/captions/:language',
+      '/courses/:id/trailer',
+      '/courses/:id/trailer/poster',
+    ],
     (req, res, next) => {
       void (async () => {
-        const row = db
-          .prepare(
-            `SELECT l.captions_json,v.output_key, v.poster_key, l.is_preview,m.revision_id,c.id AS course_id,c.author_id,c.status,c.access_mode,c.published_revision_id FROM lessons l JOIN modules m ON m.id=l.module_id JOIN course_revisions r ON r.id=m.revision_id JOIN courses c ON c.id=r.course_id JOIN video_uploads v ON v.id=l.video_id AND v.course_id=c.id WHERE l.id=? AND v.status='READY'`,
-          )
-          .get(req.params.id) as
+        const trailer = req.path.startsWith('/courses/');
+        const row = (
+          trailer
+            ? db
+                .prepare(
+                  `SELECT '[]' AS captions_json,v.output_key,v.poster_key,1 AS is_preview,r.id AS revision_id,c.id AS course_id,c.author_id,c.status,c.access_mode,c.published_revision_id
+          FROM courses c JOIN course_revisions r ON r.course_id=c.id JOIN video_uploads v ON v.id=r.trailer_video_id AND v.course_id=c.id
+          WHERE (c.id=? OR c.slug=?) AND r.id=COALESCE(?,c.published_revision_id) AND v.status='READY' AND v.media_kind='video'`,
+                )
+                .get(
+                  req.params.id,
+                  req.params.id,
+                  typeof req.query.revisionId === 'string' ? req.query.revisionId : null,
+                )
+            : db
+                .prepare(
+                  `SELECT l.captions_json,v.output_key, v.poster_key, l.is_preview,m.revision_id,c.id AS course_id,c.author_id,c.status,c.access_mode,c.published_revision_id FROM lessons l JOIN modules m ON m.id=l.module_id JOIN course_revisions r ON r.id=m.revision_id JOIN courses c ON c.id=r.course_id JOIN video_uploads v ON v.id=l.video_id AND v.course_id=c.id WHERE l.id=? AND v.status='READY'`,
+                )
+                .get(req.params.id)
+        ) as
           | {
               output_key: string;
               captions_json: string;

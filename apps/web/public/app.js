@@ -1,3 +1,5 @@
+import { mountEmailVerification } from './email-verification.js';
+import { mountCategoryEditor, categoriesDirty } from './category-editor.js';
 import { coursePresentation } from './course-presentation.js';
 import { icon } from './icons.js';
 import { mountStudio, studioDirty } from './studio.js';
@@ -14,6 +16,10 @@ const escapeHtml = value =>
 const e = escapeHtml;
 let me;
 let locale = detectLocale();
+if (location.pathname === '/auth/verify-email') {
+  const emailLocale = new URLSearchParams(location.search).get('lang');
+  if (['en', 'pt-BR', 'es'].includes(emailLocale)) locale = emailLocale;
+}
 function t(key, values) {
   return translate(locale, key, values);
 }
@@ -83,16 +89,75 @@ function cards(courses) {
     : `<p>${t('noCoursesPublished')}</p>`;
 }
 async function catalog() {
-  app.innerHTML = `<section class="hero"><p class="eyebrow">Maia Learn</p><h1>${t('heroTitle')}</h1><p>${t('heroText')}</p></section><h2>${t('exploreCourses')}</h2><form id="search"><label>${t('searchCoursesLabel')}<input name="q" type="search" placeholder="${t('searchPlaceholder')}"></label><button type="submit">${t('search')}</button></form><div id="catalog"></div>`;
-  const load = async query => {
-    document.querySelector('#catalog').innerHTML = cards(
-      await api(`/courses?q=${encodeURIComponent(query || '')}`),
-    );
-  };
-  bindForm('#search', data => load(data.get('q')));
-  await load('');
+  const params = new URLSearchParams(location.search);
+  const categories = await api('/categories');
+  // Preserve edits made while language switching waits for the taxonomy response.
+  const existingForm = app.querySelector('#search');
+  const filters = existingForm ? new URLSearchParams(new FormData(existingForm)) : params;
+  const selectedCategory = filters.get('category') || '';
+  const categoryOptions = [['', t('allCategories')], ...categories.map(c => [c.slug, c.name])];
+  if (selectedCategory && !categories.some(c => c.slug === selectedCategory))
+    categoryOptions.push([selectedCategory, selectedCategory]);
+  const options = (values, selected) =>
+    values
+      .map(
+        ([value, label]) =>
+          `<option value="${e(value)}" ${selected === value ? 'selected' : ''}>${e(label)}</option>`,
+      )
+      .join('');
+  app.innerHTML = `<h1>${t('exploreCourses')}</h1><form id="search" action="/courses" method="get"><label>${t('category')}<select name="category">${options(categoryOptions, selectedCategory)}</select></label><label>${t('searchCoursesLabel')}<input name="q" type="search" maxlength="200" value="${e(filters.get('q') || '')}"></label><label>${t('courseLanguage')}<select name="locale">${options(
+    [
+      ['', t('allLanguages')],
+      ['en', 'English'],
+      ['pt-BR', 'Português'],
+      ['es', 'Español'],
+    ],
+    filters.get('locale') || '',
+  )}</select></label><label>${t('courseLevel')}<select name="level">${options(
+    [
+      ['', t('allLevels')],
+      ['beginner', t('levelBeginner')],
+      ['intermediate', t('levelIntermediate')],
+      ['advanced', t('levelAdvanced')],
+    ],
+    filters.get('level') || '',
+  )}</select></label><label>${t('access')}<select name="accessMode">${options(
+    [
+      ['', t('allAccess')],
+      ['OPEN_FREE', t('accessOpen')],
+      ['ENROLLED_FREE', t('accessEnrolled')],
+    ],
+    filters.get('accessMode') || '',
+  )}</select></label><label>${t('catalogSort')}<select name="sort">${options(
+    [
+      ['newest', t('sortNewest')],
+      ['title', t('sortTitle')],
+    ],
+    filters.get('sort') || 'newest',
+  )}</select></label><button type="submit">${t('search')}</button><a href="/courses">${t('clearFilters')}</a></form><div id="catalog" aria-live="polite">${t('loadingCourses')}</div>`;
+  const root = document.querySelector('#catalog');
+  params.set('format', 'page');
+  params.set('pageSize', '12');
+  try {
+    const result = await api(`/courses?${params}`);
+    if (!root.isConnected) return;
+    const pageLink = page => {
+      const query = new URLSearchParams(location.search);
+      query.delete('format');
+      query.delete('pageSize');
+      query.set('page', String(page));
+      return `/courses?${query}`;
+    };
+    root.innerHTML = `<p>${t('catalogResults')}: ${new Intl.NumberFormat(locale).format(result.total)}</p>${result.items.length ? cards(result.items) : `<p>${t('catalogEmpty')}</p>`}<nav class="actions" aria-label="${t('catalogPages')}">${result.page > 1 ? `<a href="${e(pageLink(result.page - 1))}">${t('previousPage')}</a>` : ''}<span>${t('catalogPage')} ${result.page} / ${Math.max(1, Math.ceil(result.total / result.pageSize))}</span>${result.page * result.pageSize < result.total ? `<a href="${e(pageLink(result.page + 1))}">${t('nextPage')}</a>` : ''}</nav>`;
+  } catch (error) {
+    if (root.isConnected) root.textContent = t('catalogLoadError');
+    notify(error);
+  }
 }
 async function auth(kind) {
+  // Keep credentials only in the current DOM; never persist them to browser storage.
+  const previous = app.querySelector('#auth');
+  const values = previous ? new FormData(previous) : null;
   const titles = {
     login: t('authTitleLogin'),
     register: t('authTitleRegister'),
@@ -101,8 +166,15 @@ async function auth(kind) {
   };
   const reset = kind === 'reset-password';
   app.innerHTML = `<h1>${titles[kind]}</h1><form id="auth" class="auth">${!reset ? `<label>${t('email')}<input name="email" type="email" autocomplete="email" required maxlength="255"></label>` : ''}${kind !== 'forgot-password' ? `<label>${t('password')}<input name="password" type="password" autocomplete="${kind === 'login' ? 'current-password' : 'new-password'}" minlength="8" maxlength="128" required></label>` : ''}<button type="submit">${t('continue')}</button></form><p><a href="/auth/register">${t('createAccount')}</a> · <a href="/auth/login">${t('signIn')}</a> · <a href="/auth/forgot-password">${t('forgotPassword')}</a></p>`;
+  if (values) {
+    for (const name of ['email', 'password']) {
+      const field = app.querySelector(`#auth [name=${name}]`);
+      if (field) field.value = values.get(name) || '';
+    }
+  }
   bindForm('#auth', async data => {
     const payload = Object.fromEntries(data);
+    if (kind === 'register') payload.locale = locale;
     if (reset) payload.token = new URLSearchParams(location.search).get('token');
     await api(`/auth/${kind}`, 'POST', payload);
     if (kind === 'login') location.href = '/my-learning';
@@ -179,7 +251,10 @@ async function learning() {
 async function admin() {
   if (!me || !['admin', 'author'].includes(me.role)) throw new Error(t('adminAccessRestricted'));
   const context = { app, api, t, e, notify, me };
-  if (location.pathname === '/admin/home') {
+  if (location.pathname === '/admin/categories') {
+    if (me.role !== 'admin') throw new Error(t('adminAccessRestricted'));
+    await mountCategoryEditor(context);
+  } else if (location.pathname === '/admin/home') {
     if (me.role !== 'admin') throw new Error(t('adminAccessRestricted'));
     await mountHomeEditor(context);
   } else await mountStudio(context);
@@ -192,7 +267,8 @@ async function home() {
 window.addEventListener('beforeunload', event => {
   if (
     (location.pathname === '/admin' && studioDirty()) ||
-    (location.pathname === '/admin/home' && homeDirty())
+    (location.pathname === '/admin/home' && homeDirty()) ||
+    (location.pathname === '/admin/categories' && categoriesDirty())
   ) {
     event.preventDefault();
     event.returnValue = '';
@@ -214,7 +290,8 @@ async function main() {
     });
   }
   const parts = location.pathname.split('/').filter(Boolean);
-  if (parts[0] === 'auth') await auth(parts[1]);
+  if (location.pathname === '/auth/verify-email') mountEmailVerification({ app, api, t });
+  else if (parts[0] === 'auth') await auth(parts[1]);
   else if (parts[0] === 'courses' && parts[1]) await detail(parts[1]);
   else if (parts[0] === 'lessons') await lesson(parts[1]);
   else if (parts[0] === 'my-learning') await learning();

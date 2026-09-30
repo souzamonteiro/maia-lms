@@ -208,3 +208,17 @@ columns retain their values. No new services or Maia Edge configuration are need
 Apply migration 012 before starting the updated API. Existing courses receive empty
 instructor and terms fields. No account roles, enrollment policies, or certificate
 behavior change. No additional service or Maia Edge configuration is required.
+
+## Course trailer upgrade
+
+Apply migration 013 before restarting the updated API and worker. Trailers reuse
+the existing video processing, private storage, and authorized Range delivery over
+Maia Edge. No new ports or services are required. Published course trailers are
+public promotional media; their underlying lesson access rules remain unchanged.
+
+## Upgrading for course categories
+
+Apply migration 014 before starting the updated API. It creates the taxonomy and
+revision-assignment tables; existing courses remain uncategorized. The host installer
+applies pending migrations as part of its normal upgrade. No new service, environment
+variable, port, or Maia Edge configuration is required.

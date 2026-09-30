@@ -35,6 +35,22 @@ export function publicationIssues(
       !/\.(png|jpe?g)$/i.test(cover.filename || ''))
   )
     issues.push({ code: 'COVER_INVALID' });
+  const trailer = db
+    .prepare(
+      `SELECT r.trailer_video_id,v.status,v.course_id,v.media_kind FROM course_revisions r
+    LEFT JOIN video_uploads v ON v.id=r.trailer_video_id WHERE r.id=?`,
+    )
+    .get(revisionId) as {
+    trailer_video_id: string | null;
+    status: string | null;
+    course_id: string | null;
+    media_kind: string | null;
+  };
+  if (
+    trailer?.trailer_video_id &&
+    (trailer.status !== 'READY' || trailer.course_id !== courseId || trailer.media_kind !== 'video')
+  )
+    issues.push({ code: 'TRAILER_INVALID' });
   const modules = db
     .prepare('SELECT id,title,sort_order FROM modules WHERE revision_id=? ORDER BY sort_order')
     .all(revisionId) as { id: string; title: string; sort_order: number }[];

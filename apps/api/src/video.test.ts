@@ -444,3 +444,35 @@ it('keeps covers revision-bound, requires ready images and alt text, and protect
   const foreign = (await request('/api/v1/admin/courses','POST',draft('foreign-cover'),other.cookie)).data;
   expect((await request(`/api/v1/admin/courses/${foreign.id}`,'PUT',{...draft('foreign-cover'),coverFileId:upload.id,expectedRevisionId:foreign.current_revision_id},other.cookie)).status).toBe(422);
 });
+
+it('publishes only the revision trailer with Range support without exposing private lessons', async () => {
+  const admin = await account('trailer-admin@example.com','admin');
+  const other = await account('trailer-other@example.com','author');
+  const course = (await request('/api/v1/admin/courses','POST',draft('trailers'),admin.cookie)).data;
+  const upload = (await request('/api/v1/admin/videos','POST',{courseId:course.id,filename:'trailer.mp4',size:10},admin.cookie)).data;
+  let saved = (await request(`/api/v1/admin/courses/${course.id}`,'PUT',{...draft('trailers'),trailerVideoId:upload.id,expectedRevisionId:course.current_revision_id},admin.cookie)).data;
+  expect((await request(`/api/v1/admin/courses/${course.id}/publish`,'POST',{},admin.cookie)).data.code).toBe('TRAILER_INVALID');
+  fs.mkdirSync(path.join(directory,'trailers'));
+  fs.writeFileSync(path.join(directory,'trailers','movie'),'0123456789');
+  fs.writeFileSync(path.join(directory,'trailers','poster'),'poster');
+  db.prepare("UPDATE video_uploads SET status='READY',output_key='trailers/movie',poster_key='trailers/poster' WHERE id=?").run(upload.id);
+  const url = `/api/v1/courses/${course.id}/trailer?revisionId=${saved.current_revision_id}`;
+  expect((await request(url)).status).toBe(403);
+  expect((await request(url,'GET',undefined,other.cookie)).status).toBe(403);
+  expect((await request(url,'HEAD',undefined,admin.cookie)).status).toBe(200);
+  await request(`/api/v1/admin/courses/${course.id}/publish`,'POST',{},admin.cookie);
+  const range = await request(url,'GET',undefined,'',{Range:'bytes=2-4'});
+  expect(range.status).toBe(206);
+  expect(range.data).toBe('234');
+  expect((await request(url,'GET',undefined,'',{Range:'bytes=20-30'})).status).toBe(416);
+  expect((await request(`/api/v1/courses/${course.id}/trailer/poster`)).status).toBe(200);
+  const detail = (await request(`/api/v1/courses/${course.id}`)).data;
+  expect((await request(`/api/v1/lessons/${detail.modules[0].lessons[0].id}`)).status).toBe(403);
+  saved = (await request(`/api/v1/admin/courses/${course.id}`,'PUT',{...draft('trailers'),expectedRevisionId:saved.current_revision_id},admin.cookie)).data;
+  expect((await request(url)).status).toBe(200);
+  await request(`/api/v1/admin/courses/${course.id}/publish`,'POST',{},admin.cookie);
+  expect((await request(url)).status).toBe(403);
+  expect((await request(`/api/v1/courses/${course.id}/trailer`)).status).toBe(404);
+  const foreign = (await request('/api/v1/admin/courses','POST',draft('foreign-trailer'),other.cookie)).data;
+  expect((await request(`/api/v1/admin/courses/${foreign.id}`,'PUT',{...draft('foreign-trailer'),trailerVideoId:upload.id,expectedRevisionId:foreign.current_revision_id},other.cookie)).status).toBe(422);
+});

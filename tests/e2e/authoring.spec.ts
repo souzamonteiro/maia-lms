@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 test('Markdown draft, language switching, autosave, safe preview, conflicts and home curation', async ({page,context})=>{
   await page.goto('/auth/login');

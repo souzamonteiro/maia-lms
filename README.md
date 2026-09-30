@@ -12,12 +12,13 @@ This version provides **free courses with text, Markdown and MP4 video lessons**
 - [Markdown editor](docs/12-authoring.md) with formatting tools, preview, draft recovery, autosave and conflict detection.
 - Course, module and lesson authoring; drafts independent of publication and administrator-controlled archiving.
 - Homepage course selection, ordering and scheduling at `/admin/home`.
+- Paginated catalog with combined search, category, language, level and access filters; [category management](docs/12-authoring.md#course-categories) at `/admin/categories`.
 - Preserved revisions for existing enrollments; public previews and access control.
 - [Video lessons](docs/13-video.md): resumable uploads, FFmpeg processing, poster images, player and saved playback position.
 - [Supplementary materials](docs/14-materials.md): PDF, ZIP and source code with titles, descriptions and authorized downloads tied to revisions.
 - [WebVTT captions and transcripts](docs/15-captions.md) in Portuguese, English and Spanish, preserved by revision.
 - Idempotent enrollment, lesson progress and learning dashboard.
-- Persistent SQLite sessions; email outbox with worker delivery retries.
+- Persistent SQLite sessions; localized verification/recovery emails, an explicit email confirmation page, and email outbox with worker delivery retries.
 - Host and VPS installers, verifiable backups, HTTP tests and browser tests.
 
 **Not yet implemented:** adaptive HLS and a complete media library, quizzes, checkout/webhooks/refunds, certificates, MFA and account export/deletion. Existing tables and some inherited adapters prepare for these stages but do not make them available features. Product documents describe the full vision; [the roadmap](docs/09-roadmap.md) distinguishes the current state.

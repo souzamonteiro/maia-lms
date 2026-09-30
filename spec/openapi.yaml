@@ -32,11 +32,12 @@ paths:
                 locale:
                   type: string
                   default: pt-BR
+                  description: Saved account locale. The browser sends its selected interface locale. Account emails support en, pt-BR and es, with English fallback for other accepted locales.
       responses:
         '201':
           description: Account created
         '409':
-          description: Email exists
+          description: AUTH_EMAIL_EXISTS
         '422':
           description: Invalid fields
   /auth/login:
@@ -61,7 +62,7 @@ paths:
         '200':
           description: User and session cookie
         '401':
-          description: Invalid credentials
+          description: AUTH_INVALID_CREDENTIALS
   /auth/logout:
     post:
       summary: Destroy current session
@@ -82,21 +83,37 @@ paths:
           description: Session missing or invalid
   /auth/verify-email:
     get:
-      summary: Consume email verification token
+      summary: Consume a verification token from a legacy email link
+      deprecated: true
+      description: Kept for previously queued or delivered email links. New emails link to the confirmation page at /auth/verify-email, which uses POST only after the user confirms.
       parameters:
         - name: token
           in: query
           required: true
-          schema:
-            type: string
+          schema: {type: string, pattern: '^[a-f0-9]{64}$'}
       responses:
-        '200':
-          description: Verified
-        '400':
-          description: Invalid or expired token
+        '200': {description: Verified; code EMAIL_VERIFIED}
+        '400': {description: AUTH_TOKEN_INVALID, AUTH_TOKEN_USED or AUTH_TOKEN_EXPIRED}
+    post:
+      summary: Explicitly confirm email ownership using a single-use verification token
+      description: No session required. Token validation, consumption and user verification share one immediate transaction. Password-reset tokens cannot verify an email address. Existing verified_at timestamps are preserved.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: {type: string, pattern: '^[a-f0-9]{64}$'}
+      responses:
+        '200': {description: Verified; code EMAIL_VERIFIED}
+        '400': {description: AUTH_TOKEN_INVALID, AUTH_TOKEN_USED or AUTH_TOKEN_EXPIRED}
+        '429': {description: Authentication request limit reached}
   /auth/forgot-password:
     post:
-      summary: Queue reset email if account exists
+      summary: Queue reset email in the saved account locale if the account exists
+      description: Request locale is ignored. Known, unknown and missing addresses receive 204; the response does not reveal the account language or existence.
       requestBody:
         content:
           application/json:
@@ -135,15 +152,111 @@ paths:
           description: Invalid token
   /courses:
     get:
-      summary: Search published courses (maximum 100)
+      summary: Search and paginate published course revisions
       parameters:
         - name: q
           in: query
-          schema:
-            type: string
+          schema: {type: string, maxLength: 200}
+          description: Literal title/summary search; percent and underscore are not wildcards.
+        - name: locale
+          in: query
+          schema: {type: string, enum: [en, pt-BR, es]}
+        - name: level
+          in: query
+          schema: {type: string, enum: [beginner, intermediate, advanced]}
+        - name: category
+          in: query
+          description: Category slug, combined with the other filters using AND. Unknown slugs return no courses.
+          schema: {type: string, minLength: 3, maxLength: 100, pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"}
+        - name: accessMode
+          in: query
+          schema: {type: string, enum: [OPEN_FREE, ENROLLED_FREE]}
+        - name: sort
+          in: query
+          schema: {type: string, enum: [newest, title], default: newest}
+        - name: page
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 1000000, default: 1}
+        - name: pageSize
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 100, default: 100}
+        - name: format
+          in: query
+          schema: {type: string, enum: [array, page], default: array}
       responses:
         '200':
-          description: Array of published courses
+          description: Legacy array by default. With format=page, an object containing items, total, page and pageSize. Total and items use the same database snapshot. Filters combine with AND; empty results have total=0 and items=[]. Sorting has a stable ID tie-breaker. Out-of-range pages have empty items.
+        '422':
+          description: Invalid pagination, filter, sort or search value
+  /categories:
+    get:
+      summary: List the public flat taxonomy sorted by name
+      responses:
+        '200':
+          description: Array of id, slug, name and description; all categories are public, including unused categories. Names are authored text shared across interface languages.
+  /admin/categories:
+    get:
+      summary: List categories with version and references_count (administrator only)
+      security:
+        - cookieAuth: []
+      responses:
+        '200': {description: Category array; references_count includes all historical revisions}
+        '403': {description: Administrator required}
+    post:
+      summary: Create a category (administrator only)
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryInput'
+      responses:
+        '201': {description: Created category with id and version}
+        '409': {description: CATEGORY_SLUG_EXISTS}
+        '422': {description: Invalid category fields}
+        '403': {description: Administrator required}
+  /admin/categories/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    put:
+      summary: Update global category text and slug immediately (administrator only)
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/CategoryInput'
+                - $ref: '#/components/schemas/CategoryVersion'
+      responses:
+        '200': {description: Updated category with incremented version}
+        '404': {description: CATEGORY_NOT_FOUND}
+        '409': {description: CATEGORY_CONFLICT or CATEGORY_SLUG_EXISTS}
+        '422': {description: Invalid fields}
+        '403': {description: Administrator required}
+    delete:
+      summary: Delete a category without references in any course revision (administrator only)
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryVersion'
+      responses:
+        '204': {description: Deleted}
+        '404': {description: CATEGORY_NOT_FOUND}
+        '409': {description: CATEGORY_CONFLICT or CATEGORY_IN_USE}
+        '422': {description: Invalid expectedVersion}
+        '403': {description: Administrator required}
   /courses/{id}:
     parameters:
       - $ref: '#/components/parameters/courseId'
@@ -257,6 +370,13 @@ paths:
                 - modules
                 - expectedRevisionId
               properties:
+                categoryIds:
+                  $ref: '#/components/schemas/CategoryIds'
+                trailerVideoId:
+                  type: [string, 'null']
+                  format: uuid
+                  default: null
+                  description: Same-course video selected as public trailer after publication; READY required at publication.
                 instructorName:
                   type: string
                   maxLength: 200
@@ -452,7 +572,7 @@ paths:
                           value:
                             type: object
                             required: [slug, title, summary, accessMode]
-                            description: Same metadata and attachment fields and limits as PUT, excluding modules and creationId. Includes coverFileId, coverAlt, learningOutcomes, prerequisites, level, durationMinutes, instructorName, instructorBio, accessTerms and certificateTerms.
+                            description: Same metadata and attachment fields and limits as PUT, excluding modules and creationId. Includes categoryIds, coverFileId, coverAlt, learningOutcomes, prerequisites, level, durationMinutes, instructorName, instructorBio, accessTerms certificateTerms and trailerVideoId.
                       - type: object
                         required: [unit, module, title]
                         properties:
@@ -482,6 +602,42 @@ paths:
           description: DRAFT_CONFLICT or SLUG_EXISTS; no changes applied
         '422':
           description: Invalid or duplicate editing unit, index, content or media relationship; no changes applied
+  /courses/{id}/trailer:
+    get:
+      summary: Play the selected revision's course trailer
+      description: Current published trailers are public regardless of enrollment mode. Drafts require owner/admin access; historical revisions also allow active enrolled learners. Supports HEAD, byte ranges and private no-store caching. Does not record progress.
+      parameters:
+        - $ref: '#/components/parameters/courseId'
+        - name: revisionId
+          in: query
+          schema: {type: string, format: uuid}
+          description: Defaults to the published revision.
+      responses:
+        '200':
+          description: MP4 stream
+        '206':
+          description: MP4 byte range
+        '403':
+          description: Revision access denied
+        '404':
+          description: Trailer missing or not READY
+        '416':
+          description: Unsatisfiable range
+  /courses/{id}/trailer/poster:
+    get:
+      summary: Trailer poster with the same revision authorization as playback
+      parameters:
+        - $ref: '#/components/parameters/courseId'
+        - name: revisionId
+          in: query
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: JPEG poster (HEAD and Range also supported)
+        '403':
+          description: Revision access denied
+        '404':
+          description: Trailer or poster unavailable
   /courses/{id}/cover:
     get:
       summary: Stream a normalized course cover for an authorized revision
@@ -532,7 +688,7 @@ paths:
                       properties:
                         code:
                           type: string
-                          enum: [COVER_INVALID, PUBLICATION_EMPTY, PUBLICATION_CONTENT, PUBLICATION_ORDER, VIDEO_INVALID, VIDEO_NOT_READY, FILE_INVALID, FILE_NOT_READY]
+                          enum: [TRAILER_INVALID, COVER_INVALID, PUBLICATION_EMPTY, PUBLICATION_CONTENT, PUBLICATION_ORDER, VIDEO_INVALID, VIDEO_NOT_READY, FILE_INVALID, FILE_NOT_READY]
                         moduleTitle: {type: string}
                         lessonTitle: {type: string}
                         attachmentTitle: {type: string}
@@ -1207,6 +1363,8 @@ components:
                   - OPEN_FREE
                   - ENROLLED_FREE
               modules: *id007
+              categoryIds:
+                $ref: '#/components/schemas/CategoryIds'
               creationId:
                 type: string
                 format: uuid
@@ -1219,6 +1377,25 @@ components:
                 items:
                   $ref: '#/components/schemas/AttachmentInput'
   schemas:
+    CategoryIds:
+      type: array
+      maxItems: 10
+      uniqueItems: true
+      default: []
+      items: {type: string, format: uuid}
+      description: Existing category IDs assigned to this revision. Unknown IDs return CATEGORY_NOT_FOUND. Assignments become public on publication; omitted assignments default to empty in full course writes.
+    CategoryInput:
+      type: object
+      required: [slug, name]
+      properties:
+        slug: {type: string, minLength: 3, maxLength: 100, pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"}
+        name: {type: string, minLength: 1, maxLength: 100}
+        description: {type: string, maxLength: 1000, default: ''}
+    CategoryVersion:
+      type: object
+      required: [expectedVersion]
+      properties:
+        expectedVersion: {type: integer, minimum: 1}
     HomePlacement:
       type: object
       required:

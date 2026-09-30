@@ -10,7 +10,7 @@ export async function cleanupUploads(db: Database.Database, root: string): Promi
         WHERE v.status='UPLOADING' AND julianday(v.last_activity_at)<julianday('now','-7 days')
         AND NOT EXISTS (SELECT 1 FROM lessons l WHERE l.video_id=v.id)
         AND NOT EXISTS (SELECT 1 FROM course_attachments a WHERE a.upload_id=v.id)
-        AND NOT EXISTS (SELECT 1 FROM course_revisions r WHERE r.cover_file_id=v.id)
+        AND NOT EXISTS (SELECT 1 FROM course_revisions r WHERE r.cover_file_id=v.id OR r.trailer_video_id=v.id)
         ORDER BY v.last_activity_at LIMIT 50)`,
     ).run();
   }).immediate();

@@ -18,9 +18,11 @@ export function createWebApp(): express.Application {
     '/auth/register',
     '/auth/forgot-password',
     '/auth/reset-password',
+    '/auth/verify-email',
     '/my-learning',
     '/admin',
     '/admin/home',
+    '/admin/categories',
   ]) {
     app.get(route, (_req, res) => res.render('home.njk', { title: 'Learn with Maia' }));
   }

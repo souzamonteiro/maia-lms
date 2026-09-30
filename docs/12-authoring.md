@@ -206,3 +206,43 @@ When certificate information is present, the page explicitly states that this
 platform does not yet issue certificates. Certificate issuance remains a separate
 planned feature. Instructor text is a course presentation, not an account profile
 or identity verification system.
+
+## Course trailer
+
+Save the course, then use **Course trailer** to upload a video or select one from
+that course. Wait for processing, refresh status, and save. Only a READY video can
+be published as a trailer. Select **No trailer** to remove it from the next revision.
+The course page and draft preview display the selected video with native controls
+and its generated poster. Course language appears separately from interface language.
+
+A published trailer is public even when lessons require enrollment. Selecting a
+lesson video as the trailer intentionally makes that video publicly watchable via
+the trailer endpoint after publication; it does not unlock other lesson content.
+Draft trailers remain accessible only to the author or administrators. Replacing
+or removing a draft trailer leaves the live trailer unchanged until publication.
+Old trailer URLs stop being public after republishing, while authorized enrolled
+learners retain their assigned revision. Trailer playback never records lesson progress.
+Trailer-specific captions are not supported yet; lesson caption tracks remain separate.
+
+## Course categories
+
+Administrators open **Administer → Manage categories** to create or edit categories.
+Each category has a unique URL slug, a name (up to 100 characters), and an optional
+plain-text description (up to 1,000 characters). Names and descriptions are shared
+across interface languages. All categories are public, including unused categories.
+The taxonomy is flat; nested categories and translated taxonomy labels are not
+implemented. Editing category metadata takes effect immediately, including on older
+course revisions. Changing the slug changes the catalog URL; old URLs are not redirected.
+
+Authors and administrators select up to ten categories under **Categories** in the
+course settings. Save the draft and publish to update public course assignments.
+Incremental lesson/module saves retain category selections. Recovery and interface
+language switching retain unsaved course selections; the category management form
+also retains unsaved text when switching interface language within the same page.
+It warns before leaving with unsaved changes, but has no persistent local recovery.
+
+Category edits use a version check: reopen a category to resolve a concurrent-edit
+conflict. Only categories without references in any saved course revision can be
+deleted. Removing a category from the current draft does not remove historical
+references or make it eligible for deletion. Course pages expose category links to
+the catalog, where category, content language, access and level filters combine.

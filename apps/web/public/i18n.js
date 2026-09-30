@@ -905,3 +905,222 @@ Object.assign(translations['es'], {
     'Estos campos describen el curso. No cambian las reglas de matrícula ni habilitan la emisión de certificados.',
   certificateUnavailable: 'Esta plataforma aún no emite certificados.',
 });
+
+Object.assign(translations['en'], {
+  courseTrailer: 'Course trailer',
+  selectTrailer: 'Select trailer',
+  noTrailer: 'No trailer',
+  trailerFile: 'Trailer file',
+  uploadTrailer: 'Upload trailer / resume',
+  refreshTrailer: 'Refresh trailer status',
+  retryTrailer: 'Retry trailer',
+  cancelTrailer: 'Cancel trailer upload',
+  trailerHelp: 'A published trailer is public, including for courses that require enrollment.',
+  TRAILER_INVALID: 'Select a ready video belonging to this course for the trailer.',
+});
+
+Object.assign(translations['pt-BR'], {
+  courseTrailer: 'Trailer do curso',
+  selectTrailer: 'Selecionar trailer',
+  noTrailer: 'Sem trailer',
+  trailerFile: 'Arquivo do trailer',
+  uploadTrailer: 'Enviar trailer / retomar',
+  refreshTrailer: 'Atualizar estado do trailer',
+  retryTrailer: 'Reprocessar trailer',
+  cancelTrailer: 'Cancelar envio do trailer',
+  trailerHelp: 'O trailer publicado é público, inclusive em cursos que exigem matrícula.',
+  TRAILER_INVALID: 'Selecione um vídeo pronto deste curso para o trailer.',
+});
+
+Object.assign(translations['es'], {
+  courseTrailer: 'Tráiler del curso',
+  selectTrailer: 'Seleccionar tráiler',
+  noTrailer: 'Sin tráiler',
+  trailerFile: 'Archivo del tráiler',
+  uploadTrailer: 'Subir tráiler / reanudar',
+  refreshTrailer: 'Actualizar estado del tráiler',
+  retryTrailer: 'Reprocesar tráiler',
+  cancelTrailer: 'Cancelar subida del tráiler',
+  trailerHelp: 'El tráiler publicado es público, incluso en cursos que requieren matrícula.',
+  TRAILER_INVALID: 'Selecciona un vídeo listo de este curso para el tráiler.',
+});
+
+Object.assign(translations['en'], {
+  allLanguages: 'All languages',
+  allLevels: 'All levels',
+  allAccess: 'All access types',
+  catalogSort: 'Sort by',
+  sortNewest: 'Newest first',
+  sortTitle: 'Title',
+  clearFilters: 'Clear filters',
+  catalogResults: 'Results',
+  catalogEmpty: 'No courses match these filters. Try another search or clear the filters.',
+  catalogPages: 'Catalog pages',
+  previousPage: 'Previous page',
+  nextPage: 'Next page',
+  catalogPage: 'Page',
+  catalogLoadError: 'Could not load courses. Check the filters and try again.',
+});
+
+Object.assign(translations['pt-BR'], {
+  allLanguages: 'Todos os idiomas',
+  allLevels: 'Todos os níveis',
+  allAccess: 'Todos os tipos de acesso',
+  catalogSort: 'Ordenar por',
+  sortNewest: 'Mais recentes',
+  sortTitle: 'Título',
+  clearFilters: 'Limpar filtros',
+  catalogResults: 'Resultados',
+  catalogEmpty: 'Nenhum curso corresponde aos filtros. Tente outra busca ou limpe os filtros.',
+  catalogPages: 'Páginas do catálogo',
+  previousPage: 'Página anterior',
+  nextPage: 'Próxima página',
+  catalogPage: 'Página',
+  catalogLoadError: 'Não foi possível carregar os cursos. Confira os filtros e tente novamente.',
+});
+
+Object.assign(translations['es'], {
+  allLanguages: 'Todos los idiomas',
+  allLevels: 'Todos los niveles',
+  allAccess: 'Todos los tipos de acceso',
+  catalogSort: 'Ordenar por',
+  sortNewest: 'Más recientes',
+  sortTitle: 'Título',
+  clearFilters: 'Limpiar filtros',
+  catalogResults: 'Resultados',
+  catalogEmpty: 'Ningún curso coincide con los filtros. Prueba otra búsqueda o borra los filtros.',
+  catalogPages: 'Páginas del catálogo',
+  previousPage: 'Página anterior',
+  nextPage: 'Página siguiente',
+  catalogPage: 'Página',
+  catalogLoadError: 'No se pudieron cargar los cursos. Revisa los filtros e inténtalo de nuevo.',
+});
+
+Object.assign(translations.en, {
+  categories: 'Categories',
+  category: 'Category',
+  allCategories: 'All categories',
+  manageCategories: 'Manage categories',
+  categoryName: 'Category name',
+  categorySlug: 'Category slug',
+  categoryDescription: 'Category description',
+  newCategory: 'New category',
+  editCategory: 'Edit category',
+  saveCategory: 'Save category',
+  deleteCategory: 'Delete category',
+  categorySaved: 'Category saved.',
+  confirmDeleteCategory: 'Delete this unused category?',
+  categoriesHelp:
+    'Names and descriptions are shared across interface languages. Changes apply immediately. Changing a slug changes its catalog URL. Only unused categories can be deleted.',
+  courseCategoriesHelp:
+    'Select up to 10 categories. Changes become public when the course is published.',
+  noCategories: 'No categories yet. An administrator can create them.',
+  CATEGORY_IN_USE: 'This category is used by a saved course revision and cannot be deleted.',
+  CATEGORY_SLUG_EXISTS: 'A category already uses this slug.',
+  CATEGORY_NOT_FOUND: 'Category unavailable. Reload the editor and check the selection.',
+  CATEGORY_CONFLICT: 'The category changed in another session. Reopen it before saving.',
+});
+Object.assign(translations['pt-BR'], {
+  categories: 'Categorias',
+  category: 'Categoria',
+  allCategories: 'Todas as categorias',
+  manageCategories: 'Administrar categorias',
+  categoryName: 'Nome da categoria',
+  categorySlug: 'Slug da categoria',
+  categoryDescription: 'Descrição da categoria',
+  newCategory: 'Nova categoria',
+  editCategory: 'Editar categoria',
+  saveCategory: 'Salvar categoria',
+  deleteCategory: 'Excluir categoria',
+  categorySaved: 'Categoria salva.',
+  confirmDeleteCategory: 'Excluir esta categoria sem uso?',
+  categoriesHelp:
+    'Nomes e descrições são compartilhados entre os idiomas da interface. As alterações são imediatas. Alterar o slug muda a URL do catálogo. Apenas categorias sem uso podem ser excluídas.',
+  courseCategoriesHelp:
+    'Selecione até 10 categorias. As alterações ficam públicas quando o curso é publicado.',
+  noCategories: 'Ainda não há categorias. Um administrador pode criá-las.',
+  CATEGORY_IN_USE: 'Esta categoria é usada por uma revisão salva de curso e não pode ser excluída.',
+  CATEGORY_SLUG_EXISTS: 'Uma categoria já usa este slug.',
+  CATEGORY_NOT_FOUND: 'Categoria indisponível. Recarregue o editor e confira a seleção.',
+  CATEGORY_CONFLICT: 'A categoria foi alterada em outra sessão. Abra-a novamente antes de salvar.',
+});
+Object.assign(translations.es, {
+  categories: 'Categorías',
+  category: 'Categoría',
+  allCategories: 'Todas las categorías',
+  manageCategories: 'Administrar categorías',
+  categoryName: 'Nombre de la categoría',
+  categorySlug: 'Slug de la categoría',
+  categoryDescription: 'Descripción de la categoría',
+  newCategory: 'Nueva categoría',
+  editCategory: 'Editar categoría',
+  saveCategory: 'Guardar categoría',
+  deleteCategory: 'Eliminar categoría',
+  categorySaved: 'Categoría guardada.',
+  confirmDeleteCategory: '¿Eliminar esta categoría sin uso?',
+  categoriesHelp:
+    'Los nombres y las descripciones se comparten entre los idiomas de la interfaz. Los cambios son inmediatos. Cambiar el slug cambia la URL del catálogo. Solo se pueden eliminar categorías sin uso.',
+  courseCategoriesHelp:
+    'Selecciona hasta 10 categorías. Los cambios se hacen públicos al publicar el curso.',
+  noCategories: 'Aún no hay categorías. Un administrador puede crearlas.',
+  CATEGORY_IN_USE: 'Una revisión guardada de un curso usa esta categoría y no se puede eliminar.',
+  CATEGORY_SLUG_EXISTS: 'Una categoría ya usa este slug.',
+  CATEGORY_NOT_FOUND: 'Categoría no disponible. Recarga el editor y revisa la selección.',
+  CATEGORY_CONFLICT: 'La categoría cambió en otra sesión. Ábrela de nuevo antes de guardar.',
+});
+
+Object.assign(translations.en, {
+  AUTH_EMAIL_EXISTS: 'This email is already registered. Sign in or reset your password.',
+  AUTH_INVALID_CREDENTIALS: 'Invalid email or password.',
+  AUTH_SUSPENDED: 'This account is suspended.',
+  AUTH_SESSION_INVALID: 'Your session has expired. Sign in again.',
+  AUTH_TOKEN_INVALID: 'This link is invalid or has already been used. Request a new link.',
+  AUTH_TOKEN_USED: 'This link has already been used.',
+  AUTH_TOKEN_EXPIRED: 'This link has expired. Request a new link.',
+  AUTH_RESET_INVALID: 'Use a valid reset link and enter your new password.',
+  AUTH_PASSWORD_LENGTH: 'Your password must contain 8 to 128 characters.',
+});
+Object.assign(translations['pt-BR'], {
+  AUTH_EMAIL_EXISTS: 'Este e-mail já está cadastrado. Entre ou redefina sua senha.',
+  AUTH_INVALID_CREDENTIALS: 'E-mail ou senha inválidos.',
+  AUTH_SUSPENDED: 'Esta conta está suspensa.',
+  AUTH_SESSION_INVALID: 'Sua sessão expirou. Entre novamente.',
+  AUTH_TOKEN_INVALID: 'Este link é inválido ou já foi usado. Solicite um novo link.',
+  AUTH_TOKEN_USED: 'Este link já foi usado.',
+  AUTH_TOKEN_EXPIRED: 'Este link expirou. Solicite um novo link.',
+  AUTH_RESET_INVALID: 'Use um link de recuperação válido e informe sua nova senha.',
+  AUTH_PASSWORD_LENGTH: 'Sua senha deve conter de 8 a 128 caracteres.',
+});
+Object.assign(translations.es, {
+  AUTH_EMAIL_EXISTS: 'Este correo ya está registrado. Inicia sesión o restablece tu contraseña.',
+  AUTH_INVALID_CREDENTIALS: 'Correo electrónico o contraseña incorrectos.',
+  AUTH_SUSPENDED: 'Esta cuenta está suspendida.',
+  AUTH_SESSION_INVALID: 'Tu sesión ha caducado. Inicia sesión de nuevo.',
+  AUTH_TOKEN_INVALID: 'Este enlace no es válido o ya se ha usado. Solicita un enlace nuevo.',
+  AUTH_TOKEN_USED: 'Este enlace ya se ha usado.',
+  AUTH_TOKEN_EXPIRED: 'Este enlace ha caducado. Solicita un enlace nuevo.',
+  AUTH_RESET_INVALID: 'Usa un enlace de recuperación válido e introduce tu nueva contraseña.',
+  AUTH_PASSWORD_LENGTH: 'Tu contraseña debe contener entre 8 y 128 caracteres.',
+});
+
+Object.assign(translations.en, {
+  emailVerifyTitle: 'Verify your email',
+  emailVerifyHelp: 'Confirm below to verify the email address associated with this link.',
+  emailVerifyAction: 'Verify email',
+  emailVerifying: 'Verifying your email…',
+  EMAIL_VERIFIED: 'Your email is verified. You can sign in to continue learning.',
+});
+Object.assign(translations['pt-BR'], {
+  emailVerifyTitle: 'Confirme seu e-mail',
+  emailVerifyHelp: 'Confirme abaixo para verificar o endereço de e-mail associado a este link.',
+  emailVerifyAction: 'Confirmar e-mail',
+  emailVerifying: 'Confirmando seu e-mail…',
+  EMAIL_VERIFIED: 'Seu e-mail foi confirmado. Entre para continuar aprendendo.',
+});
+Object.assign(translations.es, {
+  emailVerifyTitle: 'Verifica tu correo electrónico',
+  emailVerifyHelp: 'Confirma abajo para verificar la dirección de correo asociada a este enlace.',
+  emailVerifyAction: 'Verificar correo',
+  emailVerifying: 'Verificando tu correo…',
+  EMAIL_VERIFIED: 'Tu correo está verificado. Inicia sesión para seguir aprendiendo.',
+});
