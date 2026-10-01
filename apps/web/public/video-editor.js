@@ -124,7 +124,10 @@ export function mountVideoEditor(
           headers: { 'Content-Type': 'application/octet-stream', 'Upload-Offset': String(offset) },
           body: file.slice(offset, offset + 512 * 1024),
         });
-        if (!response.ok) throw new Error(t('uploadInterrupted'));
+        if (!response.ok) {
+          const result = await response.json().catch(() => null);
+          throw new Error((result?.code && t(result.code)) || t('uploadInterrupted'));
+        }
         offset = (await response.json()).offset;
         progress.value = (offset / file.size) * 100;
         status.textContent = `${Math.round(progress.value)}%`;
@@ -136,6 +139,7 @@ export function mountVideoEditor(
         status.textContent = t('videoQUEUED');
       } else status.textContent = t('uploadPaused');
       await refresh();
+      notify('');
     } catch (error) {
       notify(error);
       status.textContent = t('uploadInterrupted');

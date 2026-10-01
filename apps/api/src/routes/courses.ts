@@ -630,10 +630,23 @@ export function coursesRouter(db: Database.Database): Router {
     res.json(
       db
         .prepare(
-          `SELECT e.*, c.slug, r.title,
+          `SELECT e.*, c.slug, r.title, continue_lesson.id AS continue_lesson_id,
+      continue_lesson.title AS continue_lesson_title,
       (SELECT count(*) FROM lessons l JOIN modules m ON m.id = l.module_id WHERE m.revision_id = e.revision_id AND l.is_required = 1) AS required_lessons,
       (SELECT count(*) FROM lesson_progress p JOIN lessons l ON l.id = p.lesson_id WHERE p.enrollment_id = e.id AND p.completed_at IS NOT NULL AND l.is_required = 1) AS completed_lessons
-      FROM enrollments e JOIN courses c ON c.id = e.course_id JOIN course_revisions r ON r.id = e.revision_id WHERE e.user_id = ?`,
+      FROM enrollments e JOIN courses c ON c.id = e.course_id JOIN course_revisions r ON r.id = e.revision_id
+      LEFT JOIN lessons continue_lesson ON continue_lesson.id = (
+        SELECT l.id FROM lessons l JOIN modules m ON m.id = l.module_id
+        LEFT JOIN lesson_progress p ON p.enrollment_id = e.id AND p.lesson_id = l.id
+        WHERE m.revision_id = e.revision_id
+        ORDER BY CASE
+          WHEN p.completed_at IS NULL AND p.position_seconds > 0 THEN 0
+          WHEN p.completed_at IS NULL THEN 1
+          WHEN p.updated_at IS NOT NULL THEN 2
+          ELSE 3 END,
+          p.updated_at DESC, m.sort_order, l.sort_order LIMIT 1
+      )
+      WHERE e.user_id = ?`,
         )
         .all(req.session.userId),
     );
@@ -667,6 +680,42 @@ export function coursesRouter(db: Database.Database): Router {
     const owner = req.session.role === 'admin' || req.session.userId === lesson.author_id;
     if (!publicAccess && !owner && (!e || e.revision_id !== lesson.revision_id))
       throw new AppError(403, 'Enrollment required');
+    const enrolled = Boolean(e && e.revision_id === lesson.revision_id);
+    const orderedLessons = db
+      .prepare(
+        `SELECT l.id, l.title, l.is_preview, m.id AS module_id, m.title AS module_title
+        FROM lessons l JOIN modules m ON m.id = l.module_id
+        WHERE m.revision_id = ? ORDER BY m.sort_order, l.sort_order`,
+      )
+      .all(lesson.revision_id) as Array<{
+      id: string;
+      title: string;
+      is_preview: number;
+      module_id: string;
+      module_title: string;
+    }>;
+    const accessibleLessons = orderedLessons.filter(
+      item =>
+        owner ||
+        enrolled ||
+        (lesson.status === 'PUBLISHED' &&
+          lesson.published_revision_id === lesson.revision_id &&
+          (lesson.access_mode === 'OPEN_FREE' || item.is_preview === 1)),
+    );
+    const currentIndex = accessibleLessons.findIndex(item => item.id === req.params.id);
+    const navigationModules: Array<{
+      id: string;
+      title: string;
+      lessons: Array<{ id: string; title: string }>;
+    }> = [];
+    for (const item of accessibleLessons) {
+      let module = navigationModules.at(-1);
+      if (!module || module.id !== item.module_id) {
+        module = { id: item.module_id, title: item.module_title, lessons: [] };
+        navigationModules.push(module);
+      }
+      module.lessons.push({ id: item.id, title: item.title });
+    }
     res.json({
       ...lesson,
       captions_json: undefined,
@@ -683,7 +732,12 @@ export function coursesRouter(db: Database.Database): Router {
         lesson.render_policy_version,
       ),
       attachments: attachmentList(db, lesson.revision_id, req.params.id),
-      can_track_progress: Boolean(e && e.revision_id === lesson.revision_id),
+      can_track_progress: enrolled,
+      navigation: {
+        modules: navigationModules,
+        previous_lesson_id: accessibleLessons[currentIndex - 1]?.id ?? null,
+        next_lesson_id: accessibleLessons[currentIndex + 1]?.id ?? null,
+      },
       progress: e
         ? (db
             .prepare('SELECT * FROM lesson_progress WHERE enrollment_id = ? AND lesson_id = ?')

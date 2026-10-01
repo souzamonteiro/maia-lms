@@ -51,6 +51,14 @@ the limits below. **Cancel incomplete upload** removes persisted chunks from
 incomplete uploads; it does not remove published videos. If the upload is active,
 pause it before confirming cancellation.
 
+If the API reports that storage is full, the upload remains resumable at the last
+committed chunk. Free disk space on the service host, then reselect the same file
+and choose **Upload / resume**. The server does not advance the upload offset when
+it cannot persist a chunk. This recovery message is available in English, Brazilian
+Portuguese, and Spanish. Keep sufficient disk space for temporary files and
+processed outputs as well as original uploads. After a successful retry, the stale
+error notice is cleared and processing status is shown.
+
 ## Current limits
 
 - MP4/MOV or Matroska/WebM inputs, checked by FFprobe; extension/MIME alone is insufficient.
@@ -75,8 +83,14 @@ use streams rather than loading the entire video into RAM.
 ## Playback and access
 
 The native player supports playback, seeking, volume, fullscreen and speed controls.
-Enrolled learners save their position approximately every 15 seconds and when pausing;
-completion remains explicit. The session must remain valid.
+Enrolled learners save their position approximately every 15 seconds and when pausing.
+If a pause occurs while a position request is still in flight, the player sends one
+trailing save with the latest position after that request settles. Time updates remain
+throttled; public viewers never write learner progress. Completion remains explicit.
+The saved position is returned for the learner's active enrollment after a new login.
+The saved position is returned for the learner's active enrollment after a new login,
+including from an isolated browser context using the same account.
+The session must remain valid while requesting protected playback resources.
 
 Each video/poster request revalidates publication, preview, ownership or active
 enrollment for the corresponding revision. The storage directory has no public

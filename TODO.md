@@ -159,6 +159,16 @@ scanner; real ClamAV/signature validation on the host or container is still pend
 MEDIA-02 remains open for image uploads and deployment validation of scanning.
 No deployment or scanner installation performed.
 
+## Recoverable full-disk upload failure — September 30, 2026
+
+MEDIA-02 advanced locally: an `ENOSPC` while storing an upload chunk returns HTTP
+507 with the stable `UPLOAD_STORAGE_FULL` code. The editor displays a recovery
+message in English, Portuguese, and Spanish; the failed chunk does not advance the
+server offset, so the author can free disk space and resume the same upload. A
+successful retry clears the stale error notice. API and Chromium tests simulate the
+storage error and verify a subsequent chunk succeeds at the unchanged offset.
+MEDIA-02 remains open for its other stated criteria. No deployment performed.
+
 ## Image attachments — September 30, 2026
 
 MEDIA-02 advanced locally: PNG/JPEG images can be uploaded as course/lesson
@@ -259,6 +269,18 @@ needs preference editing/synchronization and translated course metadata. Verific
 feedback/resend and the remaining AUTH-01 workflows are not completed by this delivery.
 No migration or deployment performed.
 
+## Persisted interface-language preference — September 30, 2026
+
+I18N-02 advanced locally: authenticated users can update their account interface
+language through `PUT /auth/locale`, restricted to `en`, `pt-BR`, and `es`. A new
+session applies the saved account preference before browser detection/local storage;
+anonymous visitors retain browser-local selection. API tests verify all supported
+values, invalid-locale rejection, and authentication. Chromium coverage changes
+languages while signed in, then opens a fresh isolated browser context with English
+browser settings and confirms the account's Spanish preference is restored. I18N-02
+remains open for authored course metadata translations, caption-locale authoring,
+and explicit metadata fallback. No migration or deployment performed.
+
 ## Email verification confirmation — September 30, 2026
 
 AUTH-01 and I18N-01 advanced locally: newly queued verification emails open a
@@ -267,8 +289,41 @@ does not consume its token. Explicit POST confirmation provides pending, success
 invalid, expired, already-used and retry states; switching interface language keeps
 the result without resubmitting. Legacy GET email links remain compatible. Token
 validation, consumption and account verification are atomic, including competing
-requests. Resend, account preferences, MFA and the remaining account workflows are
+requests. Verification resend, profile management, MFA and the remaining account workflows are
 still pending. No migration or deployment performed.
+
+## Persisted interface language preference — September 30, 2026
+I18N-02 advanced locally: authenticated users can save `en`, `pt-BR`, or `es` as
+their interface preference through `PUT /auth/locale`. A new login applies the
+account locale ahead of the browser's detected or locally stored locale; anonymous
+language selection remains browser-local. API validation rejects unsupported
+values, and Chromium coverage verifies all three preferences plus restoration in
+an isolated browser context. I18N-02 remains open for author-selected caption
+locales and translated course metadata/fallback. Recovery emails also use the
+current saved account locale even when the recovery request supplies a different
+locale. No migration or deployment performed.
+
+## Learner lesson navigation — September 30, 2026
+
+PLAY-04 advanced locally: authorized lesson responses now include an ordered
+module outline and previous/next links. Visitors see only public or preview lessons;
+active learners see lessons in their assigned revision, and owners/admins can
+inspect their authorized draft. API tests verify order and ensure restricted lesson
+titles do not leak through preview navigation. The outline labels are translated in
+English, Portuguese, and Spanish. The learning dashboard links to the most recently
+active unfinished lesson, otherwise the first unfinished lesson; when all lessons
+are complete, it links to the latest lesson with activity. Revoked courses have no
+continuation action. Position saves remain throttled to the existing 15-second
+interval; a pause during an in-flight save now queues the final position instead
+of dropping it. Unit tests cover this race, the throttle, and visitor write denial.
+Real-video Chromium coverage now enrolls a learner, holds the first progress request,
+pauses at a later position, verifies the trailing API save, reloads the lesson, and
+checks that playback resumes from the saved point. It then ends the learner session,
+checks that playback resumes from the saved point. A second Playwright browser
+context with an isolated cookie jar signs in as the same learner and verifies that
+the same lesson resumes there. PLAY-04 remains open for independent browser-engine/
+device qualification and real-device/media testing. No migration or deployment
+performed.
 
 ## Evidence and limitations of the original review
 

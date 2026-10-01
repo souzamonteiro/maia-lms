@@ -16,6 +16,9 @@ test('administrator publishes; a learner enrolls and completes an article', asyn
   await page
     .getByLabel('Content (text)')
     .fill('Your first project starts here. <script>alert("xss")</script>');
+  await page.getByRole('button', { name: 'Add lesson' }).click();
+  await page.getByLabel('Title', { exact: true }).nth(2).fill('Build your first project');
+  await page.getByLabel('Content (text)').nth(1).fill('Create a small project with Maia.');
   await page.getByRole('button', { name: 'Save draft' }).click();
   const courseCard = page.locator('#admin-list .card').filter({has:page.getByRole('heading',{name:'First steps with Maia',exact:true})});
   await courseCard.getByRole('button', { name: 'Publish', exact: true }).click();
@@ -36,10 +39,29 @@ test('administrator publishes; a learner enrolls and completes an article', asyn
   await expect(page.getByText('You are enrolled in this course.')).toBeVisible();
   await page.getByRole('link', { name: 'Welcome' }).click();
   await expect(page.locator('.lesson-body')).toContainText('<script>alert("xss")</script>');
+  await expect(page.getByRole('navigation', { name: 'Course outline' }).getByRole('link')).toHaveCount(2);
+  await expect(page.getByRole('link', { name: 'Next lesson', exact: true })).toBeVisible();
+  await page.getByLabel('Language').selectOption('pt-BR');
+  await page.locator('#languageSelect').selectOption('pt-BR');
+  await expect(page.getByRole('navigation', { name: 'Navegação das aulas' })).toBeVisible();
+  await page.locator('#languageSelect').selectOption('es');
+  await expect(page.getByRole('link', { name: 'Siguiente lección', exact: true })).toBeVisible();
+  await page.locator('#languageSelect').selectOption('en');
   await page.getByRole('button', { name: 'Mark as complete' }).click();
   await expect(page.getByRole('button', { name: 'Lesson completed ✓' })).toBeVisible();
+  await page.getByRole('link', { name: 'Next lesson', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Build your first project' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Previous lesson', exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'My learning', exact: true }).click();
-  await expect(page.getByText('1 of 1 required lessons completed.')).toBeVisible();
+  await expect(page.getByText('1 of 2 required lessons completed.')).toBeVisible();
+  await expect(page.getByText('1 of 2 required lessons completed.')).toBeVisible();
+  await page.locator('#languageSelect').selectOption('pt-BR');
+  await expect(page.getByRole('link', { name: 'Continuar aprendendo', exact: true })).toBeVisible();
+  await page.locator('#languageSelect').selectOption('es');
+  await expect(page.getByRole('link', { name: 'Continuar aprendiendo', exact: true })).toBeVisible();
+  await page.locator('#languageSelect').selectOption('en');
+  await page.getByRole('link', { name: 'Continue learning', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Build your first project' })).toBeVisible();
   await page.goto('/courses');
   await expect(page.getByRole('link', { name: 'First steps with Maia' })).toBeVisible();
   await page.screenshot({ path: 'test-results/catalog.png', fullPage: true });

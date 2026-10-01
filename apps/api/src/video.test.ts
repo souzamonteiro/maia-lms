@@ -11,6 +11,7 @@ import { once } from 'node:events';
 import { createApp } from './app.js';
 import { runMigrations } from './db/migrate.js';
 import { loadConfig } from './config.js';
+import { LocalStorageProvider } from '@maia/providers';
 
 let directory: string;
 let db: Database.Database;
@@ -129,6 +130,34 @@ it('author upload is resumable, bounded, isolated and cancellable', async () => 
   );
   expect((await chunk(id, a.cookie, 3, Buffer.from('def'))).status).toBe(409);
   expect(db.prepare('SELECT * FROM video_chunks WHERE upload_id=?').all(id)).toEqual([]);
+});
+it('reports full storage as recoverable and leaves the upload offset unchanged', async () => {
+  const author = await account('disk-full@video.test', 'author');
+  const course = (await request('/api/v1/admin/courses', 'POST', draft('disk-full'), author.cookie))
+    .data;
+  const created = await request(
+    '/api/v1/admin/videos',
+    'POST',
+    { courseId: course.id, filename: 'movie.mp4', size: 6 },
+    author.cookie,
+  );
+  const originalPut = LocalStorageProvider.prototype.putPrivate;
+  LocalStorageProvider.prototype.putPrivate = async () => {
+    throw Object.assign(new Error('No space left on device'), { code: 'ENOSPC' });
+  };
+  try {
+    const failed = await chunk(created.data.id, author.cookie, 0, Buffer.from('abc'));
+    expect(failed.status).toBe(507);
+    expect(await failed.json()).toMatchObject({ code: 'UPLOAD_STORAGE_FULL' });
+    const state = await request(`/api/v1/admin/videos/${created.data.id}`, 'GET', undefined, author.cookie);
+    expect(state.data.offset).toBe(0);
+    expect(state.data.chunks).toEqual([]);
+  } finally {
+    LocalStorageProvider.prototype.putPrivate = originalPut;
+  }
+  const resumed = await chunk(created.data.id, author.cookie, 0, Buffer.from('abc'));
+  expect(resumed.status).toBe(200);
+  expect((await resumed.json()).offset).toBe(3);
 });
 it.runIf(process.env.VIDEO_TEST_REAL === '1')(
   'real video converts, publishes and streams only to entitled learners; invalid files fail',

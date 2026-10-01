@@ -151,6 +151,41 @@ form.auth {
 .lesson {
   max-width: 850px;
 }
+.lesson-outline {
+  display: block;
+  max-width: 850px;
+  margin: 20px 0;
+  padding: 16px 20px;
+  border: 1px solid var(--line);
+  background: white;
+}
+.lesson-outline h2 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+.lesson-outline ol {
+  margin: 0 0 14px;
+  padding-left: 24px;
+}
+.lesson-outline section:last-child ol {
+  margin-bottom: 0;
+}
+.lesson-outline [aria-current='page'] {
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration-thickness: 2px;
+}
+.lesson-navigation {
+  max-width: 850px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 20px 0;
+}
+.lesson-navigation span,
+.lesson-navigation a {
+  min-width: 44px;
+}
 footer {
   border-top: 1px solid var(--line);
   margin-top: 60px;

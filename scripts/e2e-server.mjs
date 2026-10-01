@@ -21,7 +21,7 @@ Object.assign(process.env, {
 const db = new Database(process.env.DATABASE_URL);
 runMigrations(db);
 db.prepare(
-  "INSERT INTO users(id,email,email_normalized,password_hash,role) VALUES ('e2e-admin','admin@example.com','admin@example.com',?,'admin')",
+  "INSERT INTO users(id,email,email_normalized,password_hash,role,locale) VALUES ('e2e-admin','admin@example.com','admin@example.com',?,'admin','en')",
 ).run(await argon2.hash('Admin-test-password-123'));
 // Verification fixtures are deliberately not login accounts.
 db.prepare(

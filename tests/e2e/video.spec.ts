@@ -32,7 +32,7 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     await page.locator('[name=title]').fill('Browser video course');
     await page.locator('[name=slug]').fill('browser-video-course');
     await page.locator('[name=summary]').fill('A real video course for browser verification.');
-    await page.locator('[name=accessMode]').selectOption('OPEN_FREE');
+    await page.locator('[name=accessMode]').selectOption('ENROLLED_FREE');
     await page.locator('.module-title').fill('Video module');
     await page.locator('.lesson-title').fill('Real video lesson');
     await page.locator('.lesson-content').fill('Video introduction');
@@ -42,6 +42,18 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
       .filter({ has: page.getByRole('heading', { name: 'Browser video course', exact: true }) });
     await card.getByRole('button', { name: 'Edit', exact: true }).click();
     await page.locator('.video-editor .video-file').setInputFiles(file);
+    await page.route('**/api/v1/admin/videos/*/chunks', route =>
+      route.fulfill({
+        status: 507,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Storage is full', code: 'UPLOAD_STORAGE_FULL' }),
+      }),
+    );
+    await page.getByRole('button', { name: 'Upload / resume', exact: true }).click();
+    await expect(page.locator('#message')).toContainText(
+      /Storage is full\. Free disk space|O armazenamento está cheio\.|El almacenamiento está lleno\./,
+    );
+    await page.unroute('**/api/v1/admin/videos/*/chunks');
     await page.getByRole('button', { name: 'Upload / resume', exact: true }).click();
     await expect(page.locator('.video-editor .video-status')).toHaveText('Queued for processing');
     await expect
@@ -86,7 +98,8 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     await expect.poll(() => draftPreview.locator('video').evaluate((video: HTMLVideoElement) => video.currentTime)).toBeGreaterThan(0);
     await expect(draftPreview.locator('track[srclang="en"]')).toHaveCount(1);
     await draftPreview.getByLabel('Preview as').selectOption('visitor');
-    await expect(draftPreview.locator('video')).toBeVisible(); // OPEN_FREE draft
+    await draftPreview.getByLabel('Preview as').selectOption('learner');
+    await expect(draftPreview.locator('video')).toBeVisible();
     await draftPreview.getByRole('button', { name: 'Close preview' }).click();
     await page.locator('#course-trailer .refresh-videos').click();
     await page.locator('#course-trailer select').selectOption(selectedVideo);
@@ -106,6 +119,20 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     await expect(trailer).toBeVisible();
     await trailer.evaluate((video: HTMLVideoElement) => { video.muted = true; return video.play(); });
     await expect.poll(() => trailer.evaluate((video: HTMLVideoElement) => video.currentTime)).toBeGreaterThan(0);
+    await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+    await page.goto('/auth/register');
+    await page.getByLabel('Email', { exact: true }).fill('video-learner@example.com');
+    await page.getByLabel('Password', { exact: true }).fill('Video-learner-password-123');
+    await page.getByRole('button', { name: 'Continue', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText('Account created');
+    await page.goto('/auth/login');
+    await page.getByLabel('Email', { exact: true }).fill('video-learner@example.com');
+    await page.getByLabel('Password', { exact: true }).fill('Video-learner-password-123');
+    await page.getByRole('button', { name: 'Continue', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'My learning' })).toBeVisible();
+    await page.goto('/courses/browser-video-course');
+    await page.getByRole('button', { name: 'Enroll for free', exact: true }).click();
+    await expect(page.getByText('You are enrolled in this course.')).toBeVisible();
     await page.getByRole('link', { name: 'Real video lesson', exact: true }).click();
     const video = page.locator('video');
     await expect(video).toBeVisible();
@@ -120,10 +147,65 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     await expect(
       page.locator('.plain-content').filter({ hasText: 'Hello captions' }),
     ).toBeVisible();
+    let resolveFirstSave: (() => void) | undefined;
+    let notifyFirstSave: (() => void) | undefined;
+    let progressRequestCount = 0;
+    const firstSaveStarted = new Promise<void>(resolve => {
+      notifyFirstSave = resolve;
+    });
+    await page.route('**/api/v1/lessons/*/progress', async route => {
+      progressRequestCount += 1;
+      if (progressRequestCount === 1) {
+        notifyFirstSave?.();
+        await new Promise<void>(resolve => {
+          resolveFirstSave = resolve;
+        });
+      }
+      await route.continue();
+    });
     await video.evaluate((v: HTMLVideoElement) => v.play());
-    await expect
-      .poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime))
-      .toBeGreaterThan(0);
+    await firstSaveStarted;
+    await video.evaluate((v: HTMLVideoElement) => {
+      v.currentTime = 1.25;
+      v.pause();
+    });
+    const finalSaveResponse = page.waitForResponse(
+      response =>
+        response.url().includes('/progress') && response.request().method() === 'PUT' &&
+        progressRequestCount >= 2,
+    );
+    resolveFirstSave?.();
+    expect((await finalSaveResponse).status()).toBe(200);
+    const lessonUrl = new URL(page.url());
+    const lessonId = lessonUrl.pathname.split('/').at(-1);
+    const savedLesson = await page.request.get(`/api/v1/lessons/${lessonId}`);
+    expect((await savedLesson.json()).progress.position_seconds).toBe(1);
+    await page.reload();
+    await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime)).toBeGreaterThan(0.9);
+    await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+    const origin = new URL(page.url()).origin;
+    const browser = page.context().browser();
+    if (!browser) throw new Error('A browser instance is required for isolated-session coverage');
+    const freshContext = await browser.newContext({
+      baseURL: origin,
+      extraHTTPHeaders: { 'X-Forwarded-For': '10.254.1.21' },
+    });
+    try {
+      const freshPage = await freshContext.newPage();
+      await freshPage.goto('/auth/login');
+      await freshPage.getByLabel('Email', { exact: true }).fill('video-learner@example.com');
+      await freshPage.getByLabel('Password', { exact: true }).fill('Video-learner-password-123');
+      await freshPage.getByRole('button', { name: 'Continue', exact: true }).click();
+      await expect(freshPage.getByRole('heading', { name: 'My learning' })).toBeVisible();
+      await freshPage.goto(`/lessons/${lessonId}`);
+      const resumedVideo = freshPage.locator('video');
+      await expect(resumedVideo).toBeVisible();
+      await expect
+        .poll(() => resumedVideo.evaluate((v: HTMLVideoElement) => v.currentTime))
+        .toBeGreaterThan(0.9);
+    } finally {
+      await freshContext.close();
+    }
     await page.screenshot({ path: 'test-results/video-lesson.png', fullPage: true });
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });

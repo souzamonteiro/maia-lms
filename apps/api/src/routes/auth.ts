@@ -1,4 +1,5 @@
 import { accountMail } from '../services/account-mail.js';
+import { z } from 'zod';
 // Authentication routes: register, login, logout, verify email, password reset
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import argon2 from 'argon2';
@@ -180,6 +181,24 @@ export function authRouter(db: Database.Database, baseUrl: string): Router {
       next(err);
     }
   });
+
+  router.put(
+    '/locale',
+    requireAuth,
+    validateBody(z.object({ locale: z.enum(['en', 'pt-BR', 'es']) })),
+    (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const { locale } = req.body as { locale: 'en' | 'pt-BR' | 'es' };
+        db.prepare("UPDATE users SET locale = ?, updated_at = datetime('now') WHERE id = ?").run(
+          locale,
+          req.session.userId,
+        );
+        res.json({ locale });
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
 
   // GET remains compatible with older emails; new UI confirms explicitly via POST.
   const verifyEmail = (req: Request, res: Response, next: NextFunction) => {

@@ -1,4 +1,5 @@
 import { mountEmailVerification } from './email-verification.js';
+import { attachPlaybackPositionSaver } from './playback-position.js';
 import { mountCategoryEditor, categoriesDirty } from './category-editor.js';
 import { coursePresentation } from './course-presentation.js';
 import { icon } from './icons.js';
@@ -199,7 +200,9 @@ async function detail(slug) {
 }
 async function lesson(id) {
   const l = await api(`/lessons/${encodeURIComponent(id)}`);
-  app.innerHTML = `<a href="/courses/${e(l.course_id)}">${t('backToCourse')}</a><article class="lesson"><h1>${e(l.title)}</h1><div class="lesson-body prose">${l.video_id ? `<video id="lesson-video" controls playsinline preload="metadata" poster="/api/v1/lessons/${e(id)}/poster" src="/api/v1/lessons/${e(id)}/video">${(l.captions || []).map(c => `<track kind="captions" srclang="${e(c.language)}" label="${e(c.label)}" src="/api/v1/lessons/${e(id)}/captions/${e(c.language)}">`).join('')}</video><label>${t('playbackSpeed')}<select id="playback-speed"><option>0.75</option><option selected>1</option><option>1.25</option><option>1.5</option><option>2</option></select></label><p id="video-error" role="status"></p>` : ''}${l.body_html}</div>${attachmentCards(l.attachments)}${(l.captions || []).map(c => `<details><summary>${t('transcript')} — ${e(c.label)}</summary><div class="plain-content">${e(c.transcript)}</div></details>`).join('')}</article>${me ? `<button id="complete">${l.progress?.completed_at ? t('lessonCompleted') : t('markComplete')}</button>` : `<p>${t('signInToTrackProgress')}</p>`}`;
+  const outline = `<nav class="lesson-outline" aria-label="${t('courseOutline')}">${l.navigation.modules.map(m => `<section><h2>${e(m.title)}</h2><ol>${m.lessons.map(item => `<li><a href="/lessons/${e(item.id)}"${item.id === id ? ' aria-current="page"' : ''}>${e(item.title)}</a></li>`).join('')}</ol></section>`).join('')}</nav>`;
+  const lessonNavigation = `<nav class="lesson-navigation" aria-label="${t('lessonNavigation')}">${l.navigation.previous_lesson_id ? `<a rel="prev" href="/lessons/${e(l.navigation.previous_lesson_id)}">${t('previousLesson')}</a>` : '<span></span>'}${l.navigation.next_lesson_id ? `<a rel="next" href="/lessons/${e(l.navigation.next_lesson_id)}">${t('nextLesson')}</a>` : '<span></span>'}</nav>`;
+  app.innerHTML = `<a href="/courses/${e(l.course_id)}">${t('backToCourse')}</a>${outline}<article class="lesson"><h1>${e(l.title)}</h1><div class="lesson-body prose">${l.video_id ? `<video id="lesson-video" controls playsinline preload="metadata" poster="/api/v1/lessons/${e(id)}/poster" src="/api/v1/lessons/${e(id)}/video">${(l.captions || []).map(c => `<track kind="captions" srclang="${e(c.language)}" label="${e(c.label)}" src="/api/v1/lessons/${e(id)}/captions/${e(c.language)}">`).join('')}</video><label>${t('playbackSpeed')}<select id="playback-speed"><option>0.75</option><option selected>1</option><option>1.25</option><option>1.5</option><option>2</option></select></label><p id="video-error" role="status"></p>` : ''}${l.body_html}</div>${attachmentCards(l.attachments)}${(l.captions || []).map(c => `<details><summary>${t('transcript')} — ${e(c.label)}</summary><div class="plain-content">${e(c.transcript)}</div></details>`).join('')}</article>${lessonNavigation}${me ? `<button id="complete">${l.progress?.completed_at ? t('lessonCompleted') : t('markComplete')}</button>` : `<p>${t('signInToTrackProgress')}</p>`}`;
   const video = document.querySelector('#lesson-video');
   if (video) {
     video.addEventListener('loadedmetadata', () => {
@@ -212,27 +215,13 @@ async function lesson(id) {
     document.querySelector('#playback-speed').onchange = event => {
       video.playbackRate = Number(event.target.value);
     };
-    let lastSave = 0,
-      saving = false;
-    const savePosition = async () => {
-      if (!l.can_track_progress || saving || !Number.isFinite(video.currentTime)) return;
-      saving = true;
-      lastSave = Date.now();
-      try {
-        await api(`/lessons/${id}/progress`, 'PUT', {
-          positionSeconds: Math.floor(video.currentTime),
-        });
-      } catch {
-        /* Public preview viewers may have no enrollment. */
-      } finally {
-        saving = false;
-      }
-    };
-    video.addEventListener('timeupdate', () => {
-      if (Date.now() - lastSave > 15000) void savePosition();
-    });
-    video.addEventListener('pause', () => {
-      void savePosition();
+    attachPlaybackPositionSaver(video, {
+      canSave: () => l.can_track_progress,
+      initialPosition: l.progress?.position_seconds ?? null,
+      save: position =>
+        api(`/lessons/${id}/progress`, 'PUT', {
+          positionSeconds: position,
+        }),
     });
   }
   button('#complete', async () => {
@@ -246,7 +235,7 @@ async function learning() {
     return;
   }
   const courses = await api('/me/enrollments');
-  app.innerHTML = `<h1>${t('myLearningTitle')}</h1>${courses.length ? courses.map(c => `<article class="card"><h2><a href="/courses/${e(c.slug)}">${e(c.title)}</a></h2><p>${t('lessonsProgress', { completed: c.completed_lessons, required: c.required_lessons })}${c.state === 'revoked' ? t('revokedAccess') : ''}.</p><progress value="${c.completed_lessons}" max="${Math.max(1, c.required_lessons)}" aria-label="${t('courseProgressAria')}"></progress></article>`).join('') : `<p>${t('nextLearningPrefix')}<a href="/courses">${t('coursesCatalog')}</a>.</p>`}`;
+  app.innerHTML = `<h1>${t('myLearningTitle')}</h1>${courses.length ? courses.map(c => `<article class="card"><h2><a href="/courses/${e(c.slug)}">${e(c.title)}</a></h2><p>${t('lessonsProgress', { completed: c.completed_lessons, required: c.required_lessons })}${c.state === 'revoked' ? t('revokedAccess') : ''}.</p><progress value="${c.completed_lessons}" max="${Math.max(1, c.required_lessons)}" aria-label="${t('courseProgressAria')}"></progress>${c.state !== 'revoked' && c.continue_lesson_id ? `<p><a class="button" href="/lessons/${e(c.continue_lesson_id)}">${t('continueCourse')}</a></p>` : ''}</article>`).join('') : `<p>${t('nextLearningPrefix')}<a href="/courses">${t('coursesCatalog')}</a>.</p>`}`;
 }
 async function admin() {
   if (!me || !['admin', 'author'].includes(me.role)) throw new Error(t('adminAccessRestricted'));
@@ -282,6 +271,11 @@ async function main() {
     me = null;
   }
   if (me) {
+    if (['en', 'pt-BR', 'es'].includes(me.locale)) {
+      locale = me.locale;
+      storeLocale(locale);
+      applyLocale();
+    }
     document.querySelector('#account').innerHTML =
       `${['admin', 'author'].includes(me.role) ? `<a href="/admin">${t('administer')}</a>` : ''}<button id="logout" class="secondary">${icon('signOut')}${t('signOut')}</button>`;
     button('#logout', async () => {
@@ -299,10 +293,21 @@ async function main() {
   else if (!parts.length) await home();
   else await catalog();
 }
-languageSelect.addEventListener('change', () => {
-  locale = languageSelect.value;
-  storeLocale(locale);
-  main().catch(notify);
+languageSelect.addEventListener('change', async () => {
+  const nextLocale = languageSelect.value;
+  const previousLocale = locale;
+  languageSelect.disabled = true;
+  try {
+    if (me) await api('/auth/locale', 'PUT', { locale: nextLocale });
+    locale = nextLocale;
+    storeLocale(locale);
+    await main();
+  } catch (error) {
+    languageSelect.value = previousLocale;
+    notify(error);
+  } finally {
+    languageSelect.disabled = false;
+  }
 });
 main().catch(error => {
   app.innerHTML = `<h1>${t('pageNotFoundTitle')}</h1><p><a href="/courses">${t('backToCoursesLink')}</a> · <a href="/auth/login">${t('signIn')}</a></p>`;

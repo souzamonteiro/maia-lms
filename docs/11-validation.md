@@ -1,3 +1,4 @@
+No deployment was performed.
 # Validation record — 2026-09-27
 
 Local validation of the MVP delivery, using Node.js 24.18.1:
@@ -348,3 +349,73 @@ Application rate limits remain enabled and unchanged.
 No new migration or deployment performed. Real SMTP delivery was not exercised.
 Verification resend, account preference synchronization and the remaining AUTH-01
 requirements remain pending.
+
+## Learner lesson navigation — September 30, 2026
+
+The focused API test verifies ordered navigation, preview filtering without
+restricted-title disclosure, and full revision navigation for an enrolled learner.
+The Chromium learning workflow verifies the outline and next/previous links, changes
+the interface among English, Portuguese, and Spanish without losing lesson context,
+checks the dashboard's localized Continue learning action in all three languages,
+and confirms course progress remains based on explicit completion. Build and lint
+passed. The complete Vitest suite passed 72 tests; two optional real-video tests were
+skipped because `VIDEO_TEST_REAL=1` was not enabled. The full Chromium suite passed
+12 workflows; its two real-media workflows were skipped for the same reason. The
+focused API suite passed all 29 tests, and the focused learner workflow passed
+again after adding the three-language dashboard assertions. Three focused unit
+tests cover pause during an in-flight save, interval throttling, and visitor
+no-write behavior. No deployment or device/browser qualification beyond Chromium
+was performed.
+
+## Persisted interface-language preference — September 30, 2026
+
+The HTTP suite verifies authenticated locale updates for en, pt-BR, and es, checks
+that `GET /auth/me` returns each saved value, rejects unsupported locales, and
+rejects anonymous updates. The Chromium account-language suite passes both workflows;
+it confirms signed-in selector changes are persisted and a fresh browser context
+with an English browser locale adopts the account's Spanish preference after login.
+It also verifies recovery emails use the saved account locale even when a different
+locale is supplied with the request. Focused validation passed: 31 API tests and two
+Chromium workflows. The complete real-media suite passed all 80 automated tests and
+all 15 Chromium workflows; build, lint, OpenAPI parsing, and `git diff --check` passed.
+No deployment was performed.
+
+## Recoverable full-disk upload failure — September 30, 2026
+
+The API integration test simulates `ENOSPC` during chunk storage and verifies HTTP
+507 with `UPLOAD_STORAGE_FULL`, unchanged offset/chunk metadata, and successful retry
+at that offset after storage recovers. The real-video Chromium workflow simulates
+the 507 response, checks a localized recovery message, resumes the same selected
+file, and observes the error notice clear after success. The focused video HTTP
+suite passed five tests (one optional real-video test skipped in that invocation),
+and both focused video browser workflows passed with media enabled. This tests
+application recovery behavior, not an actually full production filesystem. No
+deployment was performed.
+
+## Playback position save race — September 30, 2026
+
+The new position-saver unit tests passed for the in-flight pause race, the
+15-second timeupdate throttle, and suppression of writes for public viewers.
+`npm run build` and `npm run lint` passed. With FFmpeg/FFprobe available,
+`VIDEO_TEST_REAL=1 npm test -- --reporter=dot` passed all 77 tests with no skips.
+`VIDEO_TEST_REAL=1 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome
+npm run test:e2e` passed all 14 Chromium workflows, including real video upload,
+processing, and playback. The learner video workflow blocks the first position
+request, pauses at a later position, confirms the trailing save, reloads the lesson,
+verifies restoration, then opens a second Playwright browser context with an
+isolated cookie jar, signs in again, and verifies the same lesson resumes there.
+This confirms persistence across authenticated browser contexts in Chromium; it does
+not qualify other browser engines, physical devices, or production behavior. No
+deployment was performed.
+
+## Recoverable full-disk upload failure — September 30, 2026
+
+The API integration test simulates `ENOSPC` during chunk storage and verifies HTTP
+507 with `UPLOAD_STORAGE_FULL`, unchanged offset/chunk metadata, and successful retry
+at that offset after storage recovers. The editor translates the stable code in all
+three supported languages. The focused video HTTP suite passed five tests, with the
+optional real-video case skipped in that focused invocation. This tests application
+recovery behavior, not an actually full production filesystem. The focused video
+Chromium suite passed both workflows, including the localized 507 message, successful
+retry, and clearance of the old notice. The complete real-media suite passed 78 tests
+and all 14 Chromium workflows; build and lint passed. No deployment was performed.

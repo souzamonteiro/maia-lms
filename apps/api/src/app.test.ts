@@ -49,7 +49,7 @@ const draft = (slug: string, accessMode = 'ENROLLED_FREE') => ({
   modules: [
     {
       title: 'Primeiro módulo',
-      lessons: [{ title: 'Primeira aula', body: 'Conteúdo reservado', required: true }],
+      lessons: [{ title: 'Primeira aula', body: 'Conteúdo reservado', required: true, preview: false }],
     },
   ],
 });
@@ -84,6 +84,68 @@ afterEach(async () => {
 });
 
 describe('HTTP learning workflow', () => {
+    it('returns an ordered outline without exposing lessons outside the current access', async () => {
+      const admin = await account('outline-admin@example.com', 'admin');
+      const learner = await account('outline-learner@example.com');
+      const course = draft('lesson-outline');
+      course.modules[0].lessons[0].preview = true;
+      course.modules[0].lessons.push(
+        { title: 'Restricted lesson', body: 'Private', required: true, preview: false },
+        { title: 'Second preview', body: 'Public preview', required: true, preview: true },
+      );
+      const created = await request('/api/v1/admin/courses', 'POST', course, admin.cookie);
+      expect(created.status).toBe(201);
+      expect(
+        (await request(`/api/v1/admin/courses/${created.data.id}/publish`, 'POST', {}, admin.cookie))
+          .status,
+      ).toBe(200);
+      const published = await request('/api/v1/courses/lesson-outline');
+      const [first, restricted, secondPreview] = published.data.modules[0].lessons;
+
+      const preview = await request(`/api/v1/lessons/${first.id}`);
+      expect(preview.data.navigation.modules[0].lessons.map((item: { id: string }) => item.id)).toEqual(
+        [first.id, secondPreview.id],
+      );
+      expect(JSON.stringify(preview.data.navigation)).not.toContain('Restricted lesson');
+      expect(preview.data.navigation.previous_lesson_id).toBeNull();
+      expect(preview.data.navigation.next_lesson_id).toBe(secondPreview.id);
+
+      await request(`/api/v1/courses/${published.data.id}/enroll`, 'POST', {}, learner.cookie);
+      const enrolled = await request(`/api/v1/lessons/${first.id}`, 'GET', undefined, learner.cookie);
+      expect(enrolled.data.navigation.modules[0].lessons.map((item: { id: string }) => item.id)).toEqual(
+        [first.id, restricted.id, secondPreview.id],
+      );
+      const middle = await request(`/api/v1/lessons/${restricted.id}`, 'GET', undefined, learner.cookie);
+      expect(middle.data.navigation.previous_lesson_id).toBe(first.id);
+      expect(middle.data.navigation.next_lesson_id).toBe(secondPreview.id);
+          const initialContinue = await request('/api/v1/me/enrollments', 'GET', undefined, learner.cookie);
+          expect(initialContinue.data[0].continue_lesson_id).toBe(first.id);
+          await request(
+            `/api/v1/lessons/${secondPreview.id}/progress`,
+            'PUT',
+            { positionSeconds: 42 },
+            learner.cookie,
+          );
+          const resumedContinue = await request('/api/v1/me/enrollments', 'GET', undefined, learner.cookie);
+          expect(resumedContinue.data[0].continue_lesson_id).toBe(secondPreview.id);
+          await request(
+            `/api/v1/lessons/${first.id}/progress`,
+            'PUT',
+            { complete: true },
+            learner.cookie,
+          );
+          const nextContinue = await request('/api/v1/me/enrollments', 'GET', undefined, learner.cookie);
+          expect(nextContinue.data[0].continue_lesson_id).toBe(secondPreview.id);
+          await request(
+            `/api/v1/lessons/${secondPreview.id}/progress`,
+            'PUT',
+            { complete: true },
+            learner.cookie,
+          );
+          const remainingContinue = await request('/api/v1/me/enrollments', 'GET', undefined, learner.cookie);
+          expect(remainingContinue.data[0].continue_lesson_id).toBe(restricted.id);
+          expect(remainingContinue.data[0].continue_lesson_title).toBe('Restricted lesson');
+    });
   it('serves the application and health checks', async () => {
     expect((await request('/')).data).toContain('Maia Learn');
     expect((await request('/static/app.js')).status).toBe(200);
@@ -1012,7 +1074,67 @@ describe('localized account workflows', () => {
   });
 });
 
-describe('email verification confirmation', () => {
+describe('account interface language preference', () => {
+    it('persists supported locales, rejects unsupported values, and requires authentication', async () => {
+      const user = await account('locale-preference@example.com');
+      expect((await request('/api/v1/auth/locale', 'PUT', { locale: 'es' })).status).toBe(401);
+      for (const locale of ['en', 'pt-BR', 'es']) {
+        const updated = await request(
+          '/api/v1/auth/locale',
+          'PUT',
+          { locale },
+          user.cookie,
+        );
+        expect(updated.status).toBe(200);
+        expect(updated.data).toEqual({ locale });
+        expect((await request('/api/v1/auth/me', 'GET', undefined, user.cookie)).data.locale).toBe(
+          locale,
+        );
+      }
+
+      const invalid = await request('/api/v1/auth/locale', 'PUT', { locale: 'fr' }, user.cookie);
+      expect(invalid.status).toBe(422);
+      expect((await request('/api/v1/auth/me', 'GET', undefined, user.cookie)).data.locale).toBe(
+        'es',
+      );
+    });
+
+    it('uses the saved account locale for recovery emails, not the request locale', async () => {
+      const user = await account('locale-recovery@example.com');
+      const cases = [
+        ['en', 'pt-BR', 'Reset your Maia password', 'Reset your password:'],
+        ['pt-BR', 'es', 'Recupere sua senha Maia', 'Redefina sua senha:'],
+        ['es', 'en', 'Restablece tu contraseña de Maia', 'Restablece tu contraseña:'],
+      ];
+      for (const [accountLocale, requestLocale, subject, prompt] of cases) {
+        expect(
+          (await request(
+            '/api/v1/auth/locale',
+            'PUT',
+            { locale: accountLocale },
+            user.cookie,
+          )).status,
+        ).toBe(200);
+        expect(
+          (
+            await request(
+              '/api/v1/auth/forgot-password',
+              'POST',
+              { email: 'locale-recovery@example.com', locale: requestLocale },
+            )
+          ).status,
+        ).toBe(204);
+        const { payload } = db
+          .prepare('SELECT payload FROM outbox ORDER BY rowid DESC LIMIT 1')
+          .get() as { payload: string };
+        const email = JSON.parse(payload) as { subject: string; text: string };
+        expect(email.subject).toBe(subject);
+        expect(email.text).toContain(prompt);
+      }
+    });
+  });
+
+  describe('email verification confirmation', () => {
   it('serves a non-consuming page and atomically consumes verification tokens through POST', async () => {
     const registered = await request('/api/v1/auth/register', 'POST', {
       email: 'confirm@example.com',

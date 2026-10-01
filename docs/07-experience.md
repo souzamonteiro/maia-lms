@@ -51,10 +51,15 @@ page reload/navigation still clears those fields. Credential, duplicate-account,
 suspension, password-length and token errors use stable API codes translated by the
 web interface. API `error` text remains English for compatibility; clients should
 translate `code` instead of matching text.
-
-This does not synchronize interface preferences across devices or add a preference
-editor. New verification emails link to the confirmation page described below. Verification
-resend remains planned.
+Signed-in users save interface-language changes to their account. On a new browser
+session, the account preference takes precedence over that browser's detected or
+locally stored language. Anonymous visitors continue to use a browser-local preference.
+The preference is updated through authenticated `PUT /api/v1/auth/locale` and is
+returned in `GET /api/v1/auth/me`. Course metadata and caption locales remain
+separate authoring concerns; content is not automatically translated. New
+verification emails link to the confirmation page described below; verification
+and recovery emails use the currently saved account locale. Verification resend
+remains planned.
 
 
 ## Email verification confirmation
@@ -76,3 +81,21 @@ available after success or failure; verification does not sign the user in.
 Previously queued emails may still point directly to the legacy GET API endpoint.
 Those links retain their original behavior. Verification resend, account preference
 editing, and an explicit policy requiring verified email remain separate TODO items.
+
+## Learner lesson navigation
+
+An authorized lesson response includes its revision's ordered module and lesson
+outline, plus the previous and next accessible lesson identifiers. The lesson
+page renders the outline and previous/next links. A learner with an active
+enrollment sees the assigned revision; visitors see only lessons allowed by the
+published course's public-access or preview policy. Owners and administrators can
+inspect their authorized draft outline. Restricted lesson titles are omitted from
+the outline response.
+
+The learning dashboard's **Continue learning** action prioritizes the last
+unfinished lesson with saved activity, then the first unfinished lesson. If every
+lesson is complete, it links to the latest lesson with progress activity. Courses
+with revoked access do not show the action. This dashboard shortcut does not
+change video-position persistence or debouncing. Cross-device resumption and
+position-save qualification, along with full PLAY-04 acceptance, remain pending
+in the [TODO](../TODO.md).

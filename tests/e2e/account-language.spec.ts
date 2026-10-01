@@ -33,3 +33,55 @@ test('account forms retain input and submit the selected language with translate
     await expect(page.getByRole('status')).toHaveText(error);
   }
 });
+
+test('signed-in interface language follows the account into an isolated browser context', async ({
+  page,
+  browser,
+}) => {
+  const email = 'saved-locale@example.com';
+  const password = 'Saved-locale-password-123';
+  await page.goto('/auth/register');
+  await page.locator('#languageSelect').selectOption('en');
+  await page.locator('#auth [name=email]').fill(email);
+  await page.locator('#auth [name=password]').fill(password);
+  await page.locator('#auth button[type=submit]').click();
+  await expect(page.getByRole('status')).toContainText('Account created');
+
+  await page.goto('/auth/login');
+  await page.locator('#auth [name=email]').fill(email);
+  await page.locator('#auth [name=password]').fill(password);
+  await page.locator('#auth button[type=submit]').click();
+  await expect(page.getByRole('heading', { name: 'My learning' })).toBeVisible();
+  for (const [locale, title] of [
+    ['pt-BR', 'Meu aprendizado'],
+    ['es', 'Mi aprendizaje'],
+  ]) {
+    const saved = page.waitForResponse(
+      response =>
+        response.url().endsWith('/api/v1/auth/locale') && response.request().method() === 'PUT',
+    );
+    await page.locator('#languageSelect').selectOption(locale);
+    expect((await saved).status()).toBe(200);
+    await expect(page.getByRole('heading', { name: title })).toBeVisible();
+    await expect(page.locator('html')).toHaveAttribute('lang', locale);
+  }
+
+  const freshContext = await browser.newContext({
+    baseURL: new URL(page.url()).origin,
+    locale: 'en-US',
+    extraHTTPHeaders: { 'X-Forwarded-For': '10.251.1.25' },
+  });
+  try {
+    const freshPage = await freshContext.newPage();
+    await freshPage.goto('/auth/login');
+    await expect(freshPage.locator('html')).toHaveAttribute('lang', 'en');
+    await freshPage.locator('#auth [name=email]').fill(email);
+    await freshPage.locator('#auth [name=password]').fill(password);
+    await freshPage.locator('#auth button[type=submit]').click();
+    await expect(freshPage.getByRole('heading', { name: 'Mi aprendizaje' })).toBeVisible();
+    await expect(freshPage.locator('#languageSelect')).toHaveValue('es');
+    await expect(freshPage.locator('html')).toHaveAttribute('lang', 'es');
+  } finally {
+    await freshContext.close();
+  }
+});

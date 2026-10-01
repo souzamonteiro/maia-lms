@@ -23,6 +23,13 @@ export class AppError extends Error {
  * Handles AppError instances with known status codes and logs unexpected errors.
  */
 export function errorHandler(err: Error, req: Request, res: Response, _next: NextFunction): void {
+  if ((err as NodeJS.ErrnoException).code === 'ENOSPC') {
+    res.status(507).json({
+      error: 'Storage is full; free disk space and resume the upload.',
+      code: 'UPLOAD_STORAGE_FULL',
+    });
+    return;
+  }
   if ('status' in err && err.status === 413) {
     res.status(413).json({ error: 'Request body too large' });
     return;

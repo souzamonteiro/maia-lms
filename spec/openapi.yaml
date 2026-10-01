@@ -81,6 +81,26 @@ paths:
           description: User profile
         '401':
           description: Session missing or invalid
+  /auth/locale:
+    put:
+      summary: Update the authenticated user's interface language
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [locale]
+              properties:
+                locale:
+                  type: string
+                  enum: [en, pt-BR, es]
+      responses:
+        '200': {description: Persisted locale}
+        '401': {description: Authentication required}
+        '422': {description: Unsupported locale}
   /auth/verify-email:
     get:
       summary: Consume a verification token from a legacy email link
@@ -284,12 +304,12 @@ paths:
           description: Course not published
   /me/enrollments:
     get:
-      summary: My enrollments with required/completed lesson counts
+      summary: My enrollments with required/completed counts and a continuation lesson
       security:
         - cookieAuth: []
       responses:
         '200':
-          description: Enrollment array
+          description: Enrollment array with continue_lesson_id and continue_lesson_title chosen from each assigned revision
   /lessons/{id}:
     parameters:
       - $ref: '#/components/parameters/lessonId'
@@ -297,9 +317,10 @@ paths:
       summary: Authorized lesson body and saved progress
       responses:
         '200':
-          description: Lesson with original body, content_format, render_policy_version, sanitized body_html
-            and saved progress; captions array includes language, label and plain
-            transcript. The admin course detail includes captions_json for editing.
+          description: Lesson with original body, content_format, render_policy_version, sanitized body_html,
+            saved progress, and an access-filtered navigation outline with previous/next
+            lesson identifiers; captions include language, label, and plain transcript.
+            The admin course detail includes captions_json for editing.
         '403':
           description: Enrollment required or wrong revision
   /lessons/{id}/progress:
