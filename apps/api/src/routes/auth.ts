@@ -158,12 +158,13 @@ export function authRouter(db: Database.Database, baseUrl: string): Router {
     try {
       const user = db
         .prepare(
-          'SELECT id, email, role, status, locale, verified_at, created_at FROM users WHERE id = ?',
+          'SELECT id, email, display_name, role, status, locale, verified_at, created_at FROM users WHERE id = ?',
         )
         .get(req.session.userId) as
         | {
             id: string;
             email: string;
+            display_name: string;
             role: string;
             status: string;
             locale: string;
@@ -200,6 +201,75 @@ export function authRouter(db: Database.Database, baseUrl: string): Router {
     },
   );
 
+  router.put(
+    '/profile',
+    requireAuth,
+    validateBody(z.object({ displayName: z.string().trim().min(1).max(100) })),
+    (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const { displayName } = req.body as { displayName: string };
+        db.prepare("UPDATE users SET display_name = ?, updated_at = datetime('now') WHERE id = ?").run(
+          displayName,
+          req.session.userId,
+        );
+        res.json({ displayName });
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
+  router.post(
+    '/change-password',
+    requireAuth,
+    validateBody(
+      z.object({
+        currentPassword: z.string().min(1).max(128),
+        newPassword: z.string().min(8).max(128),
+      }),
+    ),
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const { currentPassword, newPassword } = req.body as {
+          currentPassword: string;
+          newPassword: string;
+        };
+        const user = db
+          .prepare('SELECT password_hash, session_version FROM users WHERE id = ?')
+          .get(req.session.userId) as { password_hash: string; session_version: number } | undefined;
+        if (!user) throw new AppError(401, 'Session invalid', 'AUTH_SESSION_INVALID');
+        if (!(await argon2.verify(user.password_hash, currentPassword)))
+          throw new AppError(401, 'Current password is invalid', 'AUTH_CURRENT_PASSWORD_INVALID');
+        if (await argon2.verify(user.password_hash, newPassword))
+          throw new AppError(422, 'Choose a different password', 'AUTH_PASSWORD_UNCHANGED');
+
+        const passwordHash = await argon2.hash(newPassword, { type: argon2.argon2id });
+        const now = new Date().toISOString();
+        db.transaction(() => {
+          const updated = db
+            .prepare(
+              'UPDATE users SET password_hash = ?, session_version = session_version + 1, updated_at = ? WHERE id = ? AND password_hash = ? AND session_version = ?',
+            )
+            .run(passwordHash, now, req.session.userId, user.password_hash, user.session_version);
+          if (updated.changes !== 1)
+            throw new AppError(409, 'Password changed concurrently', 'AUTH_PASSWORD_CHANGED');
+          db.prepare(
+            "UPDATE email_tokens SET used_at = COALESCE(used_at, ?) WHERE user_id = ? AND kind = 'reset' AND used_at IS NULL",
+          ).run(now, req.session.userId);
+        }).immediate();
+
+        req.session.destroy(err => {
+          if (err) return next(err);
+          res.clearCookie('__Host-sid', { secure: true, httpOnly: true, sameSite: 'lax', path: '/' });
+          res.clearCookie('sid', { path: '/' });
+          res.status(204).end();
+        });
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
   // GET remains compatible with older emails; new UI confirms explicitly via POST.
   const verifyEmail = (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -230,6 +300,46 @@ export function authRouter(db: Database.Database, baseUrl: string): Router {
       next(error);
     }
   };
+
+  router.post('/resend-verification', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const email = (req.body as { email?: unknown }).email;
+      if (typeof email === 'string' && email.length <= 255) {
+        const user = db
+          .prepare(
+            'SELECT id, email, locale FROM users WHERE email_normalized = ? AND verified_at IS NULL AND status = \'active\'',
+          )
+          .get(normalizeEmail(email)) as { id: string; email: string; locale: string } | undefined;
+
+        if (user) {
+          const token = crypto.randomBytes(32).toString('hex');
+          const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+          const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+          const now = new Date().toISOString();
+          const language = ['pt-BR', 'es'].includes(user.locale) ? user.locale : 'en';
+          const verifyUrl = `${baseUrl}/auth/verify-email?lang=${language}&token=${token}`;
+          db.transaction(() => {
+            db.prepare(
+              "UPDATE email_tokens SET used_at = ? WHERE user_id = ? AND kind = 'verify' AND used_at IS NULL",
+            ).run(now, user.id);
+            db.prepare(
+              "INSERT INTO email_tokens (id, user_id, token_hash, kind, expires_at) VALUES (?, ?, ?, 'verify', ?)",
+            ).run(crypto.randomUUID(), user.id, tokenHash, expiresAt);
+            db.prepare(
+              "INSERT INTO outbox (id, event_type, payload) VALUES (?, 'email.send', ?)",
+            ).run(
+              crypto.randomUUID(),
+              JSON.stringify({ to: user.email, ...accountMail(user.locale, 'verify', verifyUrl) }),
+            );
+          }).immediate();
+        }
+      }
+      res.status(204).end();
+    } catch (err) {
+      next(err);
+    }
+  });
+
   router.get('/verify-email', verifyEmail);
   router.post('/verify-email', verifyEmail);
 

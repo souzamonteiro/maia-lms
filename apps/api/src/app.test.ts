@@ -287,7 +287,68 @@ describe('HTTP learning workflow', () => {
       ).status,
     ).toBe(400);
   });
-  it('rechecks suspended accounts and role changes for existing sessions', async () => {
+  it('changes passwords only with the current password and revokes prior sessions and reset tokens', async () => {
+        const user = await account('password-change@example.com');
+        expect(
+          (
+            await request('/api/v1/auth/change-password', 'POST', {
+              currentPassword: password,
+              newPassword: 'Changed-password-123',
+            })
+          ).status,
+        ).toBe(401);
+        const secondSession = await request('/api/v1/auth/login', 'POST', {
+          email: 'password-change@example.com',
+          password,
+        });
+        await request('/api/v1/auth/forgot-password', 'POST', {
+          email: 'password-change@example.com',
+        });
+        const resetMail = db
+          .prepare('SELECT payload FROM outbox ORDER BY rowid DESC LIMIT 1')
+          .get() as { payload: string };
+        const resetToken = JSON.parse(resetMail.payload).text.match(/token=([a-f0-9]+)/)[1];
+
+        const rejected = await request(
+          '/api/v1/auth/change-password',
+          'POST',
+          { currentPassword: 'Wrong-current-password-123', newPassword: 'Changed-password-123' },
+          user.cookie,
+        );
+        expect(rejected.status).toBe(401);
+        expect((await request('/api/v1/auth/me', 'GET', undefined, user.cookie)).status).toBe(200);
+        const unchanged = await request(
+          '/api/v1/auth/change-password',
+          'POST',
+          { currentPassword: password, newPassword: password },
+          user.cookie,
+        );
+        expect(unchanged.status).toBe(422);
+        expect(unchanged.data.code).toBe('AUTH_PASSWORD_UNCHANGED');
+
+        const changed = await request(
+          '/api/v1/auth/change-password',
+          'POST',
+          { currentPassword: password, newPassword: 'Changed-password-123' },
+          user.cookie,
+        );
+        expect(changed.status).toBe(204);
+        expect((await request('/api/v1/auth/me', 'GET', undefined, user.cookie)).status).toBe(401);
+        expect(
+          (await request('/api/v1/auth/me', 'GET', undefined, secondSession.cookie)).status,
+        ).toBe(401);
+        expect(
+          (await request('/api/v1/auth/reset-password', 'POST', {
+            token: resetToken,
+            password: 'Reset-password-456',
+          })).status,
+        ).toBe(400);
+        expect((await request('/api/v1/auth/login', 'POST', {
+          email: 'password-change@example.com',
+          password: 'Changed-password-123',
+        })).status).toBe(200);
+      });
+      it('rechecks suspended accounts and role changes for existing sessions', async () => {
     const admin = await account('admin@example.com', 'admin');
     db.prepare("UPDATE users SET role = 'learner' WHERE id = ?").run(admin.id);
     expect((await request('/api/v1/admin/courses', 'GET', undefined, admin.cookie)).status).toBe(
@@ -1073,6 +1134,59 @@ describe('localized account workflows', () => {
     expect((await request('/api/v1/auth/me', 'GET', undefined, user.cookie)).status).toBe(200);
   });
 });
+
+describe('verification email resend', () => {
+      it('returns the same response for unknown and verified accounts, and resends in the saved locale', async () => {
+        const unknown = await request('/api/v1/auth/resend-verification', 'POST', {
+          email: 'missing-resend@example.com',
+        });
+        expect(unknown.status).toBe(204);
+
+        const registered = await request('/api/v1/auth/register', 'POST', {
+          email: 'resend@example.com',
+          password,
+          locale: 'pt-BR',
+        });
+        expect(registered.status).toBe(201);
+        const before = db
+          .prepare("SELECT token_hash FROM email_tokens WHERE user_id = ? AND kind = 'verify'")
+          .get(registered.data.id) as { token_hash: string };
+        const originalPayload = db
+          .prepare('SELECT payload FROM outbox ORDER BY rowid DESC LIMIT 1')
+          .get() as { payload: string };
+        const originalToken = JSON.parse(originalPayload.payload).text.match(/token=([a-f0-9]+)/)[1];
+
+        const resent = await request('/api/v1/auth/resend-verification', 'POST', {
+          email: 'RESEND@example.com',
+          locale: 'es',
+        });
+        expect(resent.status).toBe(204);
+        const rows = db
+          .prepare('SELECT token_hash, used_at FROM email_tokens WHERE user_id = ? AND kind = \'verify\' ORDER BY rowid')
+          .all(registered.data.id) as { token_hash: string; used_at: string | null }[];
+        expect(rows).toHaveLength(2);
+        expect(rows[0].used_at).toBeTruthy();
+        expect(rows[1].token_hash).not.toBe(before.token_hash);
+        expect(
+          (await request('/api/v1/auth/verify-email', 'POST', { token: originalToken })).data.code,
+        ).toBe('AUTH_TOKEN_USED');
+        const payload = db
+          .prepare('SELECT payload FROM outbox ORDER BY rowid DESC LIMIT 1')
+          .get() as { payload: string };
+        const mail = JSON.parse(payload.payload) as { subject: string; text: string };
+        expect(mail.subject).toBe('Verifique sua conta Maia');
+        expect(mail.text).toContain('/auth/verify-email?lang=pt-BR&token=');
+
+        db.prepare("UPDATE users SET verified_at = datetime('now') WHERE id = ?").run(registered.data.id);
+        const verified = await request('/api/v1/auth/resend-verification', 'POST', {
+          email: 'resend@example.com',
+        });
+        expect(verified.status).toBe(204);
+        expect(
+          db.prepare("SELECT count(*) AS n FROM email_tokens WHERE user_id = ? AND kind = 'verify'").get(registered.data.id),
+        ).toEqual({ n: 2 });
+      });
+  });
 
 describe('account interface language preference', () => {
     it('persists supported locales, rejects unsupported values, and requires authentication', async () => {

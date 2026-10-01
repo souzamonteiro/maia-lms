@@ -81,6 +81,24 @@ paths:
           description: User profile
         '401':
           description: Session missing or invalid
+  /auth/profile:
+    put:
+      summary: Update the authenticated user's private display name
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [displayName]
+              properties:
+                displayName: {type: string, minLength: 1, maxLength: 100}
+      responses:
+        '200': {description: Display name saved}
+        '401': {description: Authentication required}
+        '422': {description: Empty or overlong display name}
   /auth/locale:
     put:
       summary: Update the authenticated user's interface language
@@ -101,6 +119,42 @@ paths:
         '200': {description: Persisted locale}
         '401': {description: Authentication required}
         '422': {description: Unsupported locale}
+  /auth/change-password:
+    post:
+      summary: Change the authenticated user's password
+      description: Requires the current password, rejects reusing it, atomically updates the password and session version, invalidates pending reset tokens, and destroys the current session. Sign in again after success.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword: {type: string, minLength: 1, maxLength: 128}
+                newPassword: {type: string, minLength: 8, maxLength: 128}
+      responses:
+        '204': {description: Password changed; current session destroyed}
+        '401': {description: Authentication required or current password invalid}
+        '409': {description: Password changed concurrently}
+        '422': {description: Invalid password length or unchanged password}
+  /auth/resend-verification:
+    post:
+      summary: Resend an email verification link without account enumeration
+      description: Always returns 204 for missing, unknown, already verified, or pending accounts. Existing unused verification tokens are invalidated; a new token and email use the saved account locale. Subject to the authentication rate limit.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: {type: string, format: email, maxLength: 255}
+      responses:
+        '204': {description: Accepted without disclosing account state}
+        '429': {description: Authentication request limit reached}
   /auth/verify-email:
     get:
       summary: Consume a verification token from a legacy email link

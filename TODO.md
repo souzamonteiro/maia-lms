@@ -265,9 +265,30 @@ entered account-form fields in memory without storing passwords in browser stora
 Recovery still returns the same 204 response for known and unknown addresses; the
 requester's locale cannot override the account's email language. I18N-01 remains
 open for remaining API/email flows and broader translation coverage. I18N-02 still
-needs preference editing/synchronization and translated course metadata. Verification
-feedback/resend and the remaining AUTH-01 workflows are not completed by this delivery.
+needs translated course metadata and explicit fallback. Verification feedback/resend
+and the remaining AUTH-01 workflows are not completed by this delivery.
 No migration or deployment performed.
+
+## Verification email resend — October 1, 2026
+
+AUTH-01 advanced locally: the registration confirmation offers a translated
+verification resend action. The API returns the same 204 for unknown, pending,
+already verified, and suspended accounts; requests use the existing authentication
+rate limit. Resend invalidates prior unused verification links, stores a hash for
+the replacement token, and sends the email in the saved account locale. HTTP tests
+cover non-enumeration, locale selection, and superseded tokens; Chromium tests the
+generic confirmation in all three languages. AUTH-01 remains open for profile
+management, MFA, and other account workflows. No deployment performed.
+
+## Translation catalog completeness check — September 30, 2026
+I18N-01 advanced locally: web unit tests compare the union of translation keys
+across supported locales and check interpolation placeholder parity against English.
+They fail when any locale is missing a key or changes a placeholder signature. The
+initial audit found
+`UPLOAD_STORAGE_FULL` absent from `pt-BR` and duplicated in the English catalog;
+the English, Brazilian Portuguese, and Spanish messages are now assigned to their
+respective catalogs. I18N-01 remains open for broader flow coverage, formatting,
+and missing translation work outside this detected key. No deployment performed.
 
 ## Persisted interface-language preference — September 30, 2026
 
@@ -289,8 +310,11 @@ does not consume its token. Explicit POST confirmation provides pending, success
 invalid, expired, already-used and retry states; switching interface language keeps
 the result without resubmitting. Legacy GET email links remain compatible. Token
 validation, consumption and account verification are atomic, including competing
-requests. Verification resend, profile management, MFA and the remaining account workflows are
-still pending. No migration or deployment performed.
+requests. Verification resend is now available after registration, always returns
+the same response across account states, uses saved account locale, replaces old
+verification tokens, and has translated UI confirmation. AUTH-01 remains open for
+profile management, MFA and the remaining account workflows.
+No migration or deployment performed.
 
 ## Persisted interface language preference — September 30, 2026
 I18N-02 advanced locally: authenticated users can save `en`, `pt-BR`, or `es` as
@@ -341,6 +365,7 @@ Audit status, before the first implementation above:
 | Area | Existing capabilities | Missing capabilities / evidence |
 |---|---|---|
 | Identity | Registration, login, SQLite sessions, recovery/verification, admin bootstrap | User administration, verification resend, profile, MFA; admin creation still needs a real installation test |
+| Identity | Registration, login, SQLite sessions, recovery/verification resend, admin bootstrap | User administration, profile, MFA; admin creation still needs a real installation test |
 | Languages | `en`, `pt-BR`, `es`, selector, detection, and local persistence | API errors/emails, account preference, formatting, tests, and form protection when switching languages; [i18n.js](apps/web/public/i18n.js) |
 | Authoring | Form for title, summary, modules, and lessons | Text `textarea` only; no media, Markdown, cover, assisted reordering, or autosave; [app.js](apps/web/public/app.js) |
 | Content | `body` displayed with HTML escaping | No Markdown rendering; `lessonSchema` requires text and does not accept `kind`/`mediaId`; [courses.ts](apps/api/src/routes/courses.ts) |
@@ -523,6 +548,16 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   account states, and explicit unverified-email policy; administrator MFA with
   recovery. Dependencies: I18N-01, ADMIN-01. Acceptance: used/expired tokens,
   unavailable SMTP, and lost second factors have verifiable recovery paths.
+  Partial local delivery: verification confirmation/resend, localized account
+  emails, interface-language preference, private display-name editing, and
+  emails, interface-language preference, private display-name editing, and
+  authenticated password change with current-password verification, session
+  revocation, and reset-token invalidation.
+  A private display name is editable in My learning; public instructor profiles,
+  broader profile management, MFA, verified-email policy, and remaining
+  failure/recovery workflows are still open. The account-security browser test verifies labels
+    failure/recovery workflows are still open. The account-security browser test verifies
+    labels and confirmation-mismatch feedback in en, pt-BR, and es.
 - [ ] **ADMIN-02 — Enrollments, grants, and audit.**
   Dashboard for enrollments, progress, manual grants/revocation with reasons,
   history, and support handling. Dependencies: BASE-01, ADMIN-01. Acceptance:
@@ -605,6 +640,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
 ## P1 — reliability, protection, and full launch
 
 - [ ] **DATA-01 — Strengthen SQLite invariants.**
+  Partial: migrations 017–018 prevent progress, enrollment-revision, and
+  lesson-module changes from crossing the enrollment's assigned revision, and
+  constrain progress positions to non-negative integers. Quiz/payment/certificate
+  invariants remain open.
   Validate cross-references among revisions/media/courses and uniqueness of final
   quizzes, active issuance, and payment identifiers before enabling workflows.
   At the audit, `UNIQUE(revision_id, lesson_id)` allowed multiple quizzes with NULL

@@ -156,6 +156,8 @@ async function catalog() {
   }
 }
 async function auth(kind) {
+    if (kind === 'login' && new URLSearchParams(location.search).has('passwordChanged'))
+      notify(t('passwordChangeSuccess'));
   // Keep credentials only in the current DOM; never persist them to browser storage.
   const previous = app.querySelector('#auth');
   const values = previous ? new FormData(previous) : null;
@@ -179,7 +181,25 @@ async function auth(kind) {
     if (reset) payload.token = new URLSearchParams(location.search).get('token');
     await api(`/auth/${kind}`, 'POST', payload);
     if (kind === 'login') location.href = '/my-learning';
-    else if (kind === 'register') notify(t('registerSuccess'));
+    else if (kind === 'register') {
+      notify(t('registerSuccess'));
+      const resend = document.createElement('button');
+      resend.type = 'button';
+      resend.className = 'secondary';
+      resend.textContent = t('resendVerification');
+      resend.addEventListener('click', async () => {
+        resend.disabled = true;
+        try {
+          await api('/auth/resend-verification', 'POST', { email: payload.email });
+          message.textContent = t('resendVerificationAccepted');
+          resend.remove();
+        } catch (error) {
+          notify(error);
+          resend.disabled = false;
+        }
+      });
+      message.append(document.createElement('br'), resend);
+    }
     else if (reset) {
       app.innerHTML = `<h1>${t('passwordUpdatedTitle')}</h1><a href="/auth/login">${t('signIn')}</a>`;
     } else notify(t('forgotPasswordSuccess'));
@@ -235,7 +255,25 @@ async function learning() {
     return;
   }
   const courses = await api('/me/enrollments');
-  app.innerHTML = `<h1>${t('myLearningTitle')}</h1>${courses.length ? courses.map(c => `<article class="card"><h2><a href="/courses/${e(c.slug)}">${e(c.title)}</a></h2><p>${t('lessonsProgress', { completed: c.completed_lessons, required: c.required_lessons })}${c.state === 'revoked' ? t('revokedAccess') : ''}.</p><progress value="${c.completed_lessons}" max="${Math.max(1, c.required_lessons)}" aria-label="${t('courseProgressAria')}"></progress>${c.state !== 'revoked' && c.continue_lesson_id ? `<p><a class="button" href="/lessons/${e(c.continue_lesson_id)}">${t('continueCourse')}</a></p>` : ''}</article>`).join('') : `<p>${t('nextLearningPrefix')}<a href="/courses">${t('coursesCatalog')}</a>.</p>`}`;
+  app.innerHTML = `<h1>${t('myLearningTitle')}</h1>${courses.length ? courses.map(c => `<article class="card"><h2><a href="/courses/${e(c.slug)}">${e(c.title)}</a></h2><p>${t('lessonsProgress', { completed: c.completed_lessons, required: c.required_lessons })}${c.state === 'revoked' ? t('revokedAccess') : ''}.</p><progress value="${c.completed_lessons}" max="${Math.max(1, c.required_lessons)}" aria-label="${t('courseProgressAria')}"></progress>${c.state !== 'revoked' && c.continue_lesson_id ? `<p><a class="button" href="/lessons/${e(c.continue_lesson_id)}">${t('continueCourse')}</a></p>` : ''}</article>`).join('') : `<p>${t('nextLearningPrefix')}<a href="/courses">${t('coursesCatalog')}</a>.</p>`}<section class="account-security"><h2>${t('accountSecurity')}</h2><form id="change-password"><label>${t('currentPassword')}<input name="currentPassword" type="password" autocomplete="current-password" required minlength="8" maxlength="128"></label><label>${t('newPassword')}<input name="newPassword" type="password" autocomplete="new-password" required minlength="8" maxlength="128"></label><label>${t('confirmPassword')}<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="8" maxlength="128"></label><button type="submit">${t('changePassword')}</button></form></section>`;
+    app.insertAdjacentHTML(
+      'beforeend',
+      `<section class="account-profile"><h2>${t('accountProfile')}</h2><form id="account-profile"><label>${t('displayName')}<input name="displayName" value="${e(me.display_name ?? '')}" maxlength="100" required></label><button type="submit">${t('saveProfile')}</button></form></section>`,
+    );
+  bindForm('#change-password', async data => {
+    const payload = Object.fromEntries(data);
+    if (payload.newPassword !== payload.confirmPassword) throw new Error(t('passwordsDoNotMatch'));
+    await api('/auth/change-password', 'POST', {
+      currentPassword: payload.currentPassword,
+      newPassword: payload.newPassword,
+    });
+    location.href = '/auth/login?passwordChanged=1';
+  });
+  bindForm('#account-profile', async data => {
+    const result = await api('/auth/profile', 'PUT', Object.fromEntries(data));
+    me.display_name = result.displayName;
+    notify(t('profileSaved'));
+  });
 }
 async function admin() {
   if (!me || !['admin', 'author'].includes(me.role)) throw new Error(t('adminAccessRestricted'));
@@ -296,12 +334,20 @@ async function main() {
 languageSelect.addEventListener('change', async () => {
   const nextLocale = languageSelect.value;
   const previousLocale = locale;
+  const passwordForm = document.querySelector('#change-password');
+  const passwordValues = passwordForm ? new FormData(passwordForm) : null;
   languageSelect.disabled = true;
   try {
     if (me) await api('/auth/locale', 'PUT', { locale: nextLocale });
     locale = nextLocale;
     storeLocale(locale);
     await main();
+    if (passwordValues) {
+      for (const name of ['currentPassword', 'newPassword', 'confirmPassword']) {
+        const field = app.querySelector(`#change-password [name=${name}]`);
+        if (field) field.value = passwordValues.get(name) || '';
+      }
+    }
   } catch (error) {
     languageSelect.value = previousLocale;
     notify(error);

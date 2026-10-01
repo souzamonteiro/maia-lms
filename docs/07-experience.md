@@ -61,6 +61,20 @@ verification emails link to the confirmation page described below; verification
 and recovery emails use the currently saved account locale. Verification resend
 remains planned.
 
+Signed-in learners can change their password from the account-security section of
+Signed-in users can update a private display name from **My learning**. It is not a
+public instructor profile or a replacement for the separate instructor presentation
+fields on a course. The profile form is available in English, Brazilian Portuguese,
+and Spanish.
+
+Signed-in learners can change their password from the account-security section of
+**My learning** by confirming the current password and entering the new password
+twice. The API rejects an incorrect current password and reuse of the existing
+password. A successful change revokes all existing sessions and pending reset
+tokens, then requires a new sign-in. Form labels, mismatch feedback, and completion
+tokens, then requires a new sign-in. Form labels, mismatch feedback, and completion
+confirmation are tested in English, Brazilian Portuguese, and Spanish.
+
 
 ## Email verification confirmation
 
@@ -77,6 +91,12 @@ A transient network/server failure or rate limit offers a retry. Reloading a
 successfully used link reports that it has already been used after confirmation.
 No token or email address is displayed in the page body. The sign-in link remains
 available after success or failure; verification does not sign the user in.
+
+After registration, the user can request a replacement verification email. The
+resend endpoint invalidates outstanding verification links and issues a new
+single-use token in the account's saved locale. Known, unknown, already-verified,
+and suspended accounts receive the same 204 response. Requests are rate-limited;
+the browser displays generic confirmation and does not disclose account state.
 
 Previously queued emails may still point directly to the legacy GET API endpoint.
 Those links retain their original behavior. Verification resend, account preference

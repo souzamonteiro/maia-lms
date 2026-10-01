@@ -33,7 +33,24 @@ const translations = {
     forgotPassword: 'Forgot my password',
     registerSuccess:
       'Account created. Check your verification email and sign in to start learning.',
+    resendVerification: 'Resend verification email',
+    resendVerificationAccepted:
+      'If the account needs verification, a new email will be sent shortly.',
+    resendVerification: 'Resend verification email',
+    resendVerificationAccepted:
+      'If the account needs verification, a new email will be sent shortly.',
     passwordUpdatedTitle: 'Password updated',
+      changePassword: 'Change password',
+      currentPassword: 'Current password',
+      newPassword: 'New password',
+      confirmPassword: 'Confirm new password',
+      passwordChangeSuccess: 'Password changed. Sign in again with your new password.',
+      passwordsDoNotMatch: 'The new passwords do not match.',
+    accountSecurity: 'Account security',
+      accountProfile: 'Profile',
+      displayName: 'Display name',
+      saveProfile: 'Save profile',
+      profileSaved: 'Profile saved.',
     forgotPasswordSuccess: 'If the email is registered, we will send a recovery link.',
     backToCourses: '← Courses',
     enrolledBadge: 'You are enrolled in this course.',
@@ -124,7 +141,21 @@ const translations = {
     signIn: 'Entrar',
     forgotPassword: 'Esqueci minha senha',
     registerSuccess: 'Conta criada. Confira o e-mail de verificação e entre para estudar.',
+        resendVerification: 'Reenviar e-mail de verificação',
+        resendVerificationAccepted:
+          'Se a conta precisar de verificação, um novo e-mail será enviado em breve.',
     passwordUpdatedTitle: 'Senha atualizada',
+      changePassword: 'Alterar senha',
+      currentPassword: 'Senha atual',
+      newPassword: 'Nova senha',
+      confirmPassword: 'Confirme a nova senha',
+      passwordChangeSuccess: 'Senha alterada. Entre novamente com sua nova senha.',
+      passwordsDoNotMatch: 'As novas senhas não coincidem.',
+    accountSecurity: 'Segurança da conta',
+      accountProfile: 'Perfil',
+      displayName: 'Nome de exibição',
+      saveProfile: 'Salvar perfil',
+      profileSaved: 'Perfil salvo.',
     forgotPasswordSuccess: 'Se o e-mail estiver cadastrado, enviaremos um link de recuperação.',
     backToCourses: '← Cursos',
     enrolledBadge: 'Você está matriculado neste curso.',
@@ -216,7 +247,21 @@ const translations = {
     forgotPassword: 'Olvidé mi contraseña',
     registerSuccess:
       'Cuenta creada. Revisa el correo de verificación e inicia sesión para empezar a estudiar.',
+    resendVerification: 'Reenviar correo de verificación',
+    resendVerificationAccepted:
+      'Si la cuenta necesita verificación, enviaremos un nuevo correo en breve.',
     passwordUpdatedTitle: 'Contraseña actualizada',
+      changePassword: 'Cambiar contraseña',
+      currentPassword: 'Contraseña actual',
+      newPassword: 'Nueva contraseña',
+      confirmPassword: 'Confirma la nueva contraseña',
+      passwordChangeSuccess: 'Contraseña cambiada. Inicia sesión con tu nueva contraseña.',
+      passwordsDoNotMatch: 'Las nuevas contraseñas no coinciden.',
+    accountSecurity: 'Seguridad de la cuenta',
+      accountProfile: 'Perfil',
+      displayName: 'Nombre para mostrar',
+      saveProfile: 'Guardar perfil',
+      profileSaved: 'Perfil guardado.',
     forgotPasswordSuccess: 'Si el correo está registrado, enviaremos un enlace de recuperación.',
     backToCourses: '← Cursos',
     enrolledBadge: 'Estás inscrito en este curso.',
@@ -473,6 +518,24 @@ Object.assign(translations['es'], {
   allCourses: 'Ver todos los cursos',
 });
 
+export function missingTranslationKeys(locale) {
+  const allKeys = new Set(Object.values(translations).flatMap(catalog => Object.keys(catalog)));
+  return [...allKeys].filter(key => !Object.hasOwn(translations[locale] ?? {}, key)).sort();
+}
+
+export function translationPlaceholderMismatches(locale) {
+  const catalog = translations[locale] ?? {};
+  const placeholders = value => [...value.matchAll(/\{(\w+)\}/g)].map(match => match[1]).sort();
+  return Object.keys(translations.en)
+    .filter(key => Object.hasOwn(catalog, key))
+    .filter(
+      key =>
+        JSON.stringify(placeholders(catalog[key])) !==
+        JSON.stringify(placeholders(translations.en[key])),
+    )
+    .sort();
+}
+
 export function translate(locale, key, values = {}) {
   const template = translations[locale]?.[key] ?? translations.en[key] ?? key;
   return template.replace(/\{(\w+)\}/g, (_, name) => values[name] ?? '');
@@ -533,12 +596,8 @@ Object.assign(translations['en'], {
   videoCANCELLED: 'Cancelled',
   wrongVideoFile: 'This file differs from the uploaded chunks.',
   uploadInterrupted: 'Upload interrupted. Select the same file and resume.',
-      UPLOAD_STORAGE_FULL:
-        'Storage is full. Free disk space, then select the same file and resume the upload.',
-      UPLOAD_STORAGE_FULL:
-        'O armazenamento está cheio. Libere espaço em disco e selecione o mesmo arquivo para retomar o envio.',
-      UPLOAD_STORAGE_FULL:
-        'El almacenamiento está lleno. Libera espacio en disco y selecciona el mismo archivo para reanudar la carga.',
+  UPLOAD_STORAGE_FULL:
+    'Storage is full. Free disk space, then select the same file and resume the upload.',
   uploadPaused: 'Paused. Select the same file to resume.',
   playbackSpeed: 'Playback speed',
   videoPlaybackError: 'Video unavailable. Check your connection and access, then reload.',
@@ -565,6 +624,8 @@ Object.assign(translations['pt-BR'], {
   videoCANCELLED: 'Cancelado',
   wrongVideoFile: 'Este arquivo difere dos blocos enviados.',
   uploadInterrupted: 'Envio interrompido. Selecione o mesmo arquivo e retome.',
+  UPLOAD_STORAGE_FULL:
+    'O armazenamento está cheio. Libere espaço em disco e selecione o mesmo arquivo para retomar o envio.',
   uploadPaused: 'Pausado. Selecione o mesmo arquivo para retomar.',
   playbackSpeed: 'Velocidade de reprodução',
   videoPlaybackError: 'Vídeo indisponível. Confira a conexão e o acesso e recarregue.',
@@ -591,6 +652,8 @@ Object.assign(translations['es'], {
   videoCANCELLED: 'Cancelado',
   wrongVideoFile: 'Este archivo difiere de los bloques enviados.',
   uploadInterrupted: 'Carga interrumpida. Selecciona el mismo archivo y reanuda.',
+  UPLOAD_STORAGE_FULL:
+    'El almacenamiento está lleno. Libera espacio en disco y selecciona el mismo archivo para reanudar la carga.',
   uploadPaused: 'En pausa. Selecciona el mismo archivo para reanudar.',
   playbackSpeed: 'Velocidad de reproducción',
   videoPlaybackError: 'Vídeo no disponible. Comprueba conexión y acceso y recarga.',
@@ -1100,6 +1163,9 @@ Object.assign(translations.en, {
   AUTH_TOKEN_EXPIRED: 'This link has expired. Request a new link.',
   AUTH_RESET_INVALID: 'Use a valid reset link and enter your new password.',
   AUTH_PASSWORD_LENGTH: 'Your password must contain 8 to 128 characters.',
+  AUTH_CURRENT_PASSWORD_INVALID: 'The current password is incorrect.',
+  AUTH_PASSWORD_UNCHANGED: 'Choose a password different from your current one.',
+  AUTH_PASSWORD_CHANGED: 'Your password changed in another request. Sign in again.',
 });
 Object.assign(translations['pt-BR'], {
   AUTH_EMAIL_EXISTS: 'Este e-mail já está cadastrado. Entre ou redefina sua senha.',
@@ -1111,6 +1177,9 @@ Object.assign(translations['pt-BR'], {
   AUTH_TOKEN_EXPIRED: 'Este link expirou. Solicite um novo link.',
   AUTH_RESET_INVALID: 'Use um link de recuperação válido e informe sua nova senha.',
   AUTH_PASSWORD_LENGTH: 'Sua senha deve conter de 8 a 128 caracteres.',
+  AUTH_CURRENT_PASSWORD_INVALID: 'A senha atual está incorreta.',
+  AUTH_PASSWORD_UNCHANGED: 'Escolha uma senha diferente da atual.',
+  AUTH_PASSWORD_CHANGED: 'Sua senha foi alterada em outra solicitação. Entre novamente.',
 });
 Object.assign(translations.es, {
   AUTH_EMAIL_EXISTS: 'Este correo ya está registrado. Inicia sesión o restablece tu contraseña.',
@@ -1122,6 +1191,9 @@ Object.assign(translations.es, {
   AUTH_TOKEN_EXPIRED: 'Este enlace ha caducado. Solicita un enlace nuevo.',
   AUTH_RESET_INVALID: 'Usa un enlace de recuperación válido e introduce tu nueva contraseña.',
   AUTH_PASSWORD_LENGTH: 'Tu contraseña debe contener entre 8 y 128 caracteres.',
+  AUTH_CURRENT_PASSWORD_INVALID: 'La contraseña actual es incorrecta.',
+  AUTH_PASSWORD_UNCHANGED: 'Elige una contraseña diferente de la actual.',
+  AUTH_PASSWORD_CHANGED: 'Tu contraseña cambió en otra solicitud. Inicia sesión de nuevo.',
 });
 
 Object.assign(translations.en, {

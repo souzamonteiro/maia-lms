@@ -26,6 +26,44 @@ it('upgrades an existing published text course without changing enrollments, pro
   }finally{db.close();}
 });
 
+it('adds an empty private display name to existing accounts', () => {
+    const db = new Database(':memory:');
+    try {
+      db.exec('CREATE TABLE schema_migrations(version TEXT PRIMARY KEY, applied_at TEXT)');
+      for (const file of [
+        '001_initial_schema',
+        '002_learning',
+        '003_outbox_leases',
+        '004_authoring',
+        '005_video_uploads',
+        '006_attachments',
+        '007_captions',
+        '008_render_policy',
+        '009_upload_activity',
+        '010_course_covers',
+        '011_course_prerequisites',
+        '012_course_instructor_terms',
+        '013_course_trailers',
+        '014_course_categories',
+      ]) {
+        db.exec(readFileSync(`migrations/${file}.sql`, 'utf8'));
+        db.prepare('INSERT INTO schema_migrations(version) VALUES (?)').run(file);
+      }
+      db.prepare(
+        "INSERT INTO users(id,email,email_normalized,password_hash) VALUES('legacy-user','legacy@example.com','legacy@example.com','hash')",
+      ).run();
+
+      runMigrations(db);
+
+      expect(db.prepare('SELECT display_name FROM users WHERE id=?').get('legacy-user')).toEqual({
+        display_name: '',
+      });
+      expect(db.pragma('foreign_key_check')).toEqual([]);
+    } finally {
+      db.close();
+    }
+  });
+
 it('pins existing Markdown to policy 1 without changing published content', () => {
   const db = new Database(':memory:');
   try {

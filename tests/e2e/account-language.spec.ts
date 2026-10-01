@@ -23,6 +23,14 @@ test('account forms retain input and submit the selected language with translate
     await page.locator('#auth button[type=submit]').click();
     expect((await sent).postDataJSON().locale).toBe(locale);
     await expect(page.getByRole('status')).toContainText(success);
+        await page.getByRole('button', { name: /resend verification|reenviar e-mail|reenviar correo/i }).click();
+        await expect(page.getByRole('status')).toContainText(
+          locale === 'en'
+            ? 'If the account needs verification'
+            : locale === 'pt-BR'
+              ? 'Se a conta precisar de verificação'
+              : 'Si la cuenta necesita verificación',
+        );
     expect(
       await page.evaluate(() => JSON.stringify(localStorage) + JSON.stringify(sessionStorage)),
     ).not.toContain(password);

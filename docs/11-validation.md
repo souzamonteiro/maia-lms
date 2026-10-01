@@ -1,4 +1,9 @@
 No deployment was performed.
+
+The account-security E2E was extended to switch among en, pt-BR, and es, verify the
+localized password-field labels and mismatch feedback, then complete the change in
+pt-BR. Its focused rerun passed. Full-suite validation for the current delivery is
+recorded after the final runs below.
 # Validation record — 2026-09-27
 
 Local validation of the MVP delivery, using Node.js 24.18.1:
@@ -366,9 +371,7 @@ again after adding the three-language dashboard assertions. Three focused unit
 tests cover pause during an in-flight save, interval throttling, and visitor
 no-write behavior. No deployment or device/browser qualification beyond Chromium
 was performed.
-
 ## Persisted interface-language preference — September 30, 2026
-
 The HTTP suite verifies authenticated locale updates for en, pt-BR, and es, checks
 that `GET /auth/me` returns each saved value, rejects unsupported locales, and
 rejects anonymous updates. The Chromium account-language suite passes both workflows;
@@ -376,9 +379,21 @@ it confirms signed-in selector changes are persisted and a fresh browser context
 with an English browser locale adopts the account's Spanish preference after login.
 It also verifies recovery emails use the saved account locale even when a different
 locale is supplied with the request. Focused validation passed: 31 API tests and two
-Chromium workflows. The complete real-media suite passed all 80 automated tests and
+Chromium workflows. The complete real-media suite passed all 81 automated tests and
 all 15 Chromium workflows; build, lint, OpenAPI parsing, and `git diff --check` passed.
 No deployment was performed.
+
+## Translation catalog completeness — September 30, 2026
+
+A web unit test now checks that the union of interface-message keys is defined for
+each supported locale and checks interpolation placeholders against English. Its
+first run found `UPLOAD_STORAGE_FULL` missing from
+pt-BR and repeated in the English catalog. The key is now defined in the en,
+pt-BR, and es catalogs, and the focused completeness test passes. Build and lint
+passed; the full real-media suite passed 81 tests and the Chromium suite passed 15
+workflows. This guard checks key presence and placeholder parity; it does not
+establish translation quality or complete all product flows in each language. No
+deployment was performed.
 
 ## Recoverable full-disk upload failure — September 30, 2026
 
@@ -419,3 +434,49 @@ recovery behavior, not an actually full production filesystem. The focused video
 Chromium suite passed both workflows, including the localized 507 message, successful
 retry, and clearance of the old notice. The complete real-media suite passed 78 tests
 and all 14 Chromium workflows; build and lint passed. No deployment was performed.
+
+## Verification email resend — October 1, 2026
+
+The API suite verifies that unknown, pending, and already-verified accounts receive
+the same 204 response; a resend invalidates the prior unused token and uses the
+saved pt-BR locale despite a conflicting request locale. The account-language
+browser workflow exercises the resend control and generic confirmation in en,
+pt-BR, and es. The focused API suite passed 32 tests, and both focused account
+Chromium workflows passed. The existing authentication limiter covers this route.
+The full real-media suite passed 82 tests and all 15 Chromium workflows; build,
+lint, OpenAPI parsing, and `git diff --check` passed. SMTP delivery and deployment
+were not performed.
+
+## Private account display name — October 1, 2026
+
+Migration 016 adds a blank, private `users.display_name` for existing accounts. API
+tests verify empty defaults, authenticated ownership, whitespace trimming, length
+and empty-value rejection, and that email/role data remains unchanged. The account
+security Chromium flow saves a display name in pt-BR and verifies it after a fresh
+login. It is an account-only field, not a public instructor profile. No deployment
+was performed.
+
+Migration 016 also passed the complete migration/integration suite. The full
+real-media run passed 86 tests; the full Chromium run passed all 16 workflows.
+Build, lint, profile-path OpenAPI validation, and `git diff --check` passed. No
+deployment was performed.
+
+## Authenticated password change — October 1, 2026
+
+The API tests verify that unauthenticated requests, wrong current passwords, and
+reusing the existing password are rejected; successful changes revoke current and
+parallel sessions and invalidate outstanding reset tokens. The account-security
+Chromium flow checks confirmation mismatch feedback, successful change, forced
+sign-in, rejection of the old password, and acceptance of the new password. The
+focused HTTP suite passed 33 tests and the focused browser workflow passed.
+
+## Lesson progress revision integrity — October 1, 2026
+
+Migration 017 adds SQLite triggers that preserve revision agreement when progress
+is inserted or reassigned, an enrollment revision changes, or a lesson moves to a
+different module. The focused migration test verifies valid progress remains intact
+and invalid cross-revision inserts and updates fail without changing the stored
+row. Migration 018 also rejects negative and fractional progress positions through
+direct database writes. Build and lint passed; the full real-media suite passed 87
+tests across 22 files, and all 16 Chromium workflows passed. No deployment or
+production migration was performed for those validations.

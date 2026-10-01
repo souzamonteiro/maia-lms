@@ -4,7 +4,7 @@ SQLite stores UUIDs as TEXT, UTC timestamps as TEXT (ISO 8601 or SQLite datetime
 
 | Table | Principal fields | Constraints |
 |---|---|---|
-| users | id, email, password_hash, verified_at, status, locale, session_version | unique normalized email; no plaintext credentials |
+| users | id, email, display_name, password_hash, verified_at, status, locale, session_version | unique normalized email; private display name; no plaintext credentials |
 | http_sessions | sid, data, expires_at | SQLite session store; expires_at in Unix milliseconds; signed cookie rotated on login |
 | sessions | original reserved schema | not used by the runtime |
 | courses | id, slug, access_mode, status, locale, author_id, current_revision_id, published_revision_id | unique slug; controlled transitions |
@@ -15,7 +15,7 @@ SQLite stores UUIDs as TEXT, UTC timestamps as TEXT (ISO 8601 or SQLite datetime
 | prices | id, course_id, currency, amount_minor, active_from, active_to | order snapshots price; historical rows retained |
 | enrollments | id, user_id, course_id, revision_id, state, enrolled_at | unique user/course; entitlement not inferred from row alone |
 | entitlements | id, enrollment_id, source_type, source_id, starts_at, ends_at, revoked_at | active access derived from interval/revocation |
-| lesson_progress | enrollment_id, lesson_id, position_seconds, completed_at | unique enrollment/lesson |
+| lesson_progress | enrollment_id, lesson_id, position_seconds, completed_at | unique enrollment/lesson; non-negative integer position; triggers preserve lesson/enrollment revision agreement |
 | quizzes | id, revision_id, lesson_id?, pass_percent, max_attempts | one final quiz per revision |
 | questions | id, quiz_id, prompt, choices_json, correct_choice_keys, points | answer keys never returned with public payload |
 | attempts | id, enrollment_id, quiz_id, revision_id, started_at, submitted_at, score, pass | attempts bounded, immutable submission |
@@ -41,6 +41,7 @@ Published course revisions bind a consistent set of modules, lessons, quiz and c
 - Refund: record provider result, revoke or adjust entitlement by policy and audit, never delete billing history.
 
 Use SQL constraints plus domain checks; reject inconsistent cross-course lesson references. Treat deletions as policy-driven retention/anonymization tasks and preserve legally required transaction evidence.
+Use SQL constraints plus domain checks; reject inconsistent cross-course lesson references. Migration 017 enforces revision agreement when progress is inserted or reassigned, an enrollment revision changes, or a lesson moves to another module. Migration 018 rejects negative or non-integer progress positions, including writes that bypass API validation. Treat deletions as policy-driven retention/anonymization tasks and preserve legally required transaction evidence.
 
 ## Implementation boundary
 
@@ -135,3 +136,11 @@ expose `categories` objects. Incremental saves copy unchanged assignments. Catal
 filtering uses only `published_revision_id`, while enrolled learners retain their
 assigned revision's associations. Category names/slugs are global metadata, not
 revision snapshots, and updates to them apply immediately.
+
+## Private account display name — migration 016
+
+Migration 016 adds `users.display_name TEXT NOT NULL DEFAULT ''`; existing accounts
+retain their identity, sessions, enrollments, and progress. `PUT /api/v1/auth/profile`
+updates only the authenticated user's value, trims surrounding whitespace, and
+accepts 1–100 characters. `GET /api/v1/auth/me` returns it. The field is private
+account data, not a public instructor profile or course instructor presentation.
