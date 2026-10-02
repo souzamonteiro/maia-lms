@@ -8,7 +8,7 @@ Implement Mercado Pago hosted Checkout Pro first, with Pix availability verified
 
 ## State machine
 
-Order: CREATED → CHECKOUT_PENDING → PAID / EXPIRED / CANCELED; PAID → PARTIALLY_REFUNDED / REFUNDED / CHARGEBACK. A late or repeated notification reconciles against provider state; invalid backward transitions are logged for review. One course order captures immutable price, currency, account and promotion snapshot. Enrollment grant is based on confirmed provider capture/approved payment, not browser redirect, callback claims, or mere order approval.
+Order: CREATED → CHECKOUT_PENDING → PAID / EXPIRED / CANCELED; PAID → PARTIALLY_REFUNDED / REFUNDED / CHARGEBACK. Migration 035 enforces these transitions in SQLite, allows idempotent same-state writes, and permits a late authoritative confirmation to move EXPIRED/CANCELED to PAID. A late or repeated notification must still be reconciled against provider state; the trigger does not perform reconciliation. One course order captures immutable price, currency, account and promotion snapshot. Enrollment grant is based on confirmed provider capture/approved payment, not browser redirect, callback claims, or mere order approval.
 
 ```mermaid
 sequenceDiagram
@@ -26,7 +26,7 @@ sequenceDiagram
   L->>A: View course
 ```
 
-Persist provider event ID and raw payload reference; verify webhook signature using provider-specific documented method and raw body, apply rate limits, then fetch authoritative state if required. Acknowledge fast and process idempotently. Reconciliation job checks pending and recently paid orders for missed webhooks and mismatches. Provider retries must not duplicate grants. Handle payment pending (especially Pix), expiry, duplicate checkout attempts, partial refunds, disputes and delayed reversals. Alert on unprocessed events and paid-without-entitlement cases.
+Persist provider event ID and raw payload reference; verify webhook signature using provider-specific documented method and raw body, apply rate limits, then fetch authoritative state if required. Acknowledge fast and process idempotently. Reconciliation job checks pending and recently paid orders for missed webhooks and mismatches. Provider retries must not duplicate grants. Handle payment pending (especially Pix), expiry, duplicate checkout attempts, partial refunds, disputes and delayed reversals. Non-null provider checkout IDs are unique per provider; this database invariant does not validate how the provider creates or returns those identifiers. The database reserves pending plus approved refund amounts against the order snapshot and prevents the total from exceeding it; rejected refunds do not reserve the limit. Before enabling refunds, reconciliation must also verify the provider-captured amount. Alert on unprocessed events and paid-without-entitlement cases.
 
 Use provider-required idempotency headers for create/refund with stable per-attempt keys; never regenerate the key for a network retry of the same operation. Keep secret keys server-side and rotate them. Separate sandbox and production credentials and webhook endpoints.
 

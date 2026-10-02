@@ -59,9 +59,8 @@ returned in `GET /api/v1/auth/me`. Course metadata and caption locales remain
 separate authoring concerns; content is not automatically translated. New
 verification emails link to the confirmation page described below; verification
 and recovery emails use the currently saved account locale. Verification resend
-remains planned.
+is available after registration; recovery requests invalidate earlier reset links.
 
-Signed-in learners can change their password from the account-security section of
 Signed-in users can update a private display name from **My learning**. It is not a
 public instructor profile or a replacement for the separate instructor presentation
 fields on a course. The profile form is available in English, Brazilian Portuguese,
@@ -72,8 +71,19 @@ Signed-in learners can change their password from the account-security section o
 twice. The API rejects an incorrect current password and reuse of the existing
 password. A successful change revokes all existing sessions and pending reset
 tokens, then requires a new sign-in. Form labels, mismatch feedback, and completion
-tokens, then requires a new sign-in. Form labels, mismatch feedback, and completion
 confirmation are tested in English, Brazilian Portuguese, and Spanish.
+
+## Administrator account management
+
+Administrators can open **Manage users** to search by email or display name, filter
+by role or status, and page through accounts. Each account shows its role, status,
+interface language, email-verification state, and registration date; credential
+material is never returned. Administrators can suspend/reactivate accounts and
+assign the learner, author, or admin role. Worker assignment is not available.
+Actual status and role changes are audited and invalidate existing sessions;
+same-value updates are idempotent. Administrators cannot suspend themselves,
+demote themselves, or remove the last active administrator. Public instructor
+profiles and administrative bootstrap/reset workflows remain separate work.
 
 
 ## Email verification confirmation
@@ -99,8 +109,9 @@ and suspended accounts receive the same 204 response. Requests are rate-limited;
 the browser displays generic confirmation and does not disclose account state.
 
 Previously queued emails may still point directly to the legacy GET API endpoint.
-Those links retain their original behavior. Verification resend, account preference
-editing, and an explicit policy requiring verified email remain separate TODO items.
+Those links retain their original behavior. Profile management beyond the private
+display name, MFA, and an explicit policy requiring verified email remain separate
+TODO items.
 
 ## Learner lesson navigation
 

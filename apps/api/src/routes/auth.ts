@@ -359,6 +359,10 @@ export function authRouter(db: Database.Database, baseUrl: string): Router {
 
       if (user) {
         db.transaction(() => {
+          const now = new Date().toISOString();
+          db.prepare(
+            "UPDATE email_tokens SET used_at = ? WHERE user_id = ? AND kind = 'reset' AND used_at IS NULL",
+          ).run(now, user.id);
           const tokenId = crypto.randomUUID();
           const token = crypto.randomBytes(32).toString('hex');
           const tokenHash = crypto.createHash('sha256').update(token).digest('hex');

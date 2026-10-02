@@ -23,6 +23,7 @@ export function createWebApp(): express.Application {
     '/admin',
     '/admin/home',
     '/admin/categories',
+    '/admin/users',
   ]) {
     app.get(route, (_req, res) => res.render('home.njk', { title: 'Learn with Maia' }));
   }

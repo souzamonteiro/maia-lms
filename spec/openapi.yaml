@@ -268,6 +268,82 @@ paths:
       responses:
         '200':
           description: Array of id, slug, name and description; all categories are public, including unused categories. Names are authored text shared across interface languages.
+  /admin/users:
+    get:
+      summary: Search and paginate user accounts (administrator only)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: q
+          in: query
+          schema: {type: string, maxLength: 100}
+        - name: role
+          in: query
+          schema: {type: string, enum: [learner, author, admin, worker]}
+        - name: status
+          in: query
+          schema: {type: string, enum: [active, suspended]}
+        - name: limit
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 100, default: 50}
+        - name: offset
+          in: query
+          schema: {type: integer, minimum: 0, default: 0}
+      responses:
+        '200':
+          description: Paginated accounts with email, display name, role, status, locale, verification date, and creation date; credentials and password hashes are never returned.
+        '403': {description: Administrator required}
+        '422': {description: Invalid search, filter, or pagination value}
+  /admin/users/{id}/status:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    patch:
+      summary: Suspend or reactivate an account (administrator only)
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: {type: string, enum: [active, suspended]}
+      responses:
+        '200': {description: Updated account id, role, and status; changes invalidate existing sessions and are audited}
+        '403': {description: Administrator required}
+        '404': {description: ADMIN_USER_NOT_FOUND}
+        '409': {description: ADMIN_SELF_SUSPEND or ADMIN_LAST_ACTIVE; setting the current status is idempotent}
+        '422': {description: Invalid account id or status}
+  /admin/users/{id}/role:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    patch:
+      summary: Change a user role (administrator only)
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role: {type: string, enum: [learner, author, admin]}
+      responses:
+        '200': {description: Updated account role; changes invalidate existing sessions and are audited}
+        '403': {description: Administrator required}
+        '404': {description: ADMIN_USER_NOT_FOUND}
+        '409': {description: ADMIN_SELF_ROLE_CHANGE or ADMIN_LAST_ACTIVE; setting the current role is idempotent}
+        '422': {description: Invalid account id or role; worker cannot be assigned administratively}
   /admin/categories:
     get:
       summary: List categories with version and references_count (administrator only)

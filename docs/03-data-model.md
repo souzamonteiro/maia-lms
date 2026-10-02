@@ -7,24 +7,25 @@ SQLite stores UUIDs as TEXT, UTC timestamps as TEXT (ISO 8601 or SQLite datetime
 | users | id, email, display_name, password_hash, verified_at, status, locale, session_version | unique normalized email; private display name; no plaintext credentials |
 | http_sessions | sid, data, expires_at | SQLite session store; expires_at in Unix milliseconds; signed cookie rotated on login |
 | sessions | original reserved schema | not used by the runtime |
-| courses | id, slug, access_mode, status, locale, author_id, current_revision_id, published_revision_id | unique slug; controlled transitions |
-| course_revisions | id, course_id, title, summary, slug, access_mode, locale, learning_outcomes, policy_json, published_at | immutable once published |
+| courses | id, slug, access_mode, status, locale, author_id, current_revision_id, published_revision_id | unique slug; revision pointers must reference revisions owned by this course; controlled transitions |
+| course_revisions | id, course_id, title, summary, slug, access_mode, locale, learning_outcomes, policy_json, cover_file_id, trailer_video_id, published_at | immutable once published; cover/trailer uploads belong to course and match media kind |
 | modules | id, revision_id, sort_order, title | unique revision/order |
-| lessons | id, module_id, title, sort_order, kind, media_id, body, content_format, is_required, is_preview | unique module/order; preview explicit |
+| lessons | id, module_id, title, sort_order, kind, video_id, body, content_format, is_required, is_preview | unique module/order; video must belong to revision's course and have video media kind; preview explicit |
+| course_attachments | id, revision_id, lesson_id?, upload_id, title, description, sort_order | upload must be an attachment belonging to revision's course; optional lesson must belong to revision; unique position within each revision/lesson list |
 | assets | id, owner_id, kind, storage_key, status, metadata_json | private key; controlled processing |
 | prices | id, course_id, currency, amount_minor, active_from, active_to | order snapshots price; historical rows retained |
-| enrollments | id, user_id, course_id, revision_id, state, enrolled_at | unique user/course; entitlement not inferred from row alone |
-| entitlements | id, enrollment_id, source_type, source_id, starts_at, ends_at, revoked_at | active access derived from interval/revocation |
+| enrollments | id, user_id, course_id, revision_id, state, enrolled_at | unique user/course; assignment immutable; revision must belong to course; entitlement not inferred from row alone |
+| entitlements | id, enrollment_id, source_type, source_id, starts_at, ends_at, revoked_at | order source must match enrollment user/course; active access derived from interval/revocation |
 | lesson_progress | enrollment_id, lesson_id, position_seconds, completed_at | unique enrollment/lesson; non-negative integer position; triggers preserve lesson/enrollment revision agreement |
-| quizzes | id, revision_id, lesson_id?, pass_percent, max_attempts | one final quiz per revision |
-| questions | id, quiz_id, prompt, choices_json, correct_choice_keys, points | answer keys never returned with public payload |
-| attempts | id, enrollment_id, quiz_id, revision_id, started_at, submitted_at, score, pass | attempts bounded, immutable submission |
-| attempt_answers | attempt_id, question_id, selected_keys, awarded_points | score calculated on server |
-| orders | id, user_id, course_id, price_snapshot, currency, provider, state, idempotency_key | immutable amount/owner/course |
-| provider_payments | id, order_id, provider_payment_id, state, raw_ref | unique provider/payment ID |
+| quizzes | id, revision_id, lesson_id?, pass_percent, max_attempts, time_limit_seconds? | integer pass percent 1–100; positive integer attempt limit; optional positive integer time limit; one final quiz per revision; settings freeze when attempts exist |
+| questions | id, quiz_id, prompt, choices_json, correct_choice_keys, points, sort_order | positive integer points; non-negative integer unique sort position; definition freezes when attempts exist; answer keys never returned with public payload |
+| attempts | id, enrollment_id, quiz_id, revision_id, started_at, submitted_at, score, pass | enrollment, quiz, and attempt revisions agree; max_attempts enforced per enrollment/quiz; submitted rows immutable; API flow/grading still require QUIZ-02 |
+| attempt_answers | attempt_id, question_id, selected_keys, awarded_points | question belongs to attempt quiz; awarded points are an integer from zero to question points; answer rows freeze on submission; score calculation still requires QUIZ-02 |
+| orders | id, user_id, course_id, price_snapshot, currency, provider, state, idempotency_key, provider_checkout_id | positive integer price; immutable commercial snapshot; checkout ID unique per provider; lifecycle transitions constrained |
+| provider_payments | id, order_id, provider_payment_id, state, raw_ref | provider payment ID unique within provider |
 | webhook_events | id, provider, external_event_id, payload_hash, processed_at, status | unique provider/event ID |
-| refunds | id, order_id, provider_ref, amount_minor, status | audit partial/full outcomes |
-| certificates | id, enrollment_id, public_code, payload_hash, issued_at, revoked_at, reason | unique code; one active per completion policy |
+| refunds | id, order_id, provider_ref, amount_minor, status | provider refund ID unique within provider; positive integer amount; pending+approved total capped at order snapshot |
+| certificates | id, enrollment_id, supersedes_id?, public_code, confirmed_name, payload_hash, issued_at, revoked_at, reason | supersession links a revoked prior certificate from same enrollment; public code at least 32 characters; unique code; one active per enrollment; revocation reason required; snapshot immutable; history retained |
 | promotions | id, slot, course_id, starts_at, ends_at, priority | bounded placement, audited |
 | home_settings | id=1, version | optimistic concurrency for editorial changes |
 | audit_events | id, actor_id, action, subject_type, subject_id, occurred_at, metadata | append-only privileged actions |
@@ -40,8 +41,34 @@ Published course revisions bind a consistent set of modules, lessons, quiz and c
 - Certificate issue: lock enrollment, verify progress and passing attempt, ensure unique issued record, queue PDF generation.
 - Refund: record provider result, revoke or adjust entitlement by policy and audit, never delete billing history.
 
-Use SQL constraints plus domain checks; reject inconsistent cross-course lesson references. Treat deletions as policy-driven retention/anonymization tasks and preserve legally required transaction evidence.
-Use SQL constraints plus domain checks; reject inconsistent cross-course lesson references. Migration 017 enforces revision agreement when progress is inserted or reassigned, an enrollment revision changes, or a lesson moves to another module. Migration 018 rejects negative or non-integer progress positions, including writes that bypass API validation. Treat deletions as policy-driven retention/anonymization tasks and preserve legally required transaction evidence.
+Use SQL constraints plus domain checks; reject inconsistent cross-course references. Migrations 017–030 add revision, media, progress, assessment, order, and provider-reference integrity checks; these do not implement quiz grading or checkout/refund policy. Migration 031 limits each enrollment to one non-revoked certificate and allows reissue after revocation. It does not repair pre-existing duplicate active certificates. Migration 032 blocks audit-event updates and deletes; retention/anonymization still requires an explicit policy and process. Migration 033 caps pending plus approved refunds at the order's price snapshot; rejected refunds do not reserve the cap. This is not reconciliation against provider-captured funds. Migration 034 ensures non-null checkout references are unique within a provider while allowing multiple orders without a checkout ID. It does not validate the provider contract. Migration 035 restricts order state transitions to the documented lifecycle and allows a late authoritative payment confirmation to move an expired/canceled order to paid. It does not perform provider reconciliation. Migration 036 freezes attempt rows and their answers after submission; migration 037 freezes quiz settings and questions once attempts exist. Migration 038 validates integer quiz thresholds/limits, question points/order, and per-question awarded-point bounds. Migration 039 enforces the attempt cap per enrollment/quiz and prevents deleting attempts to regain quota. Migration 040 supports an optional positive time limit per quiz, derives the deadline from immutable `started_at`, and rejects answer writes and submission after expiry. Migration 041 freezes enrollment identity/course/revision assignment, and migration 042 freezes module/lesson structure for any revision assigned to learners. Editing enrolled content must create a new revision; migrating existing learners to it requires an explicit policy. These constraints still do not implement API attempt start, grading semantics, or expired-result handling. Treat other deletions as policy-driven retention tasks and preserve legally required transaction evidence.
+
+Migration 041 makes enrollment ownership, course, and assigned revision immutable
+after creation while leaving `state` mutable for access revocation. Migration 042
+blocks module/lesson inserts, updates, and deletes in revisions already assigned to
+learners; authoring must create a new revision. Moving existing learners to a newer
+revision requires a future explicit migration policy and workflow.
+
+Migration 043 makes an issued certificate's identity, code, payload hash, and
+issue time immutable, and prevents deleting certificate history. Revocation time
+and reason remain mutable for administrative revocation records; reissuance creates
+a new certificate after revoking the old one.
+
+Migration 045 requires a non-empty reason when a certificate is marked revoked.
+Migration 046 requires revocation time to be at or after issuance, prevents
+clearing it or moving it backward, and allows later timestamps. Neither migration
+records which administrator performed the action or replaces an audited
+revocation workflow.
+
+Migration 047 adds an optional immutable supersession link from a replacement
+certificate to a revoked predecessor for the same enrollment; a predecessor can
+have at most one direct successor. This stores lineage but does not implement the
+reissue UI or public history view.
+
+Migration 044 rejects new or updated public codes shorter than 32 characters; this
+is only a minimum-length safeguard, not proof that code generation is random or
+unpredictable. Generation, rate limiting, and public verification remain separate
+CERT-02 work.
 
 ## Implementation boundary
 

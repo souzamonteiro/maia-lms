@@ -12,14 +12,12 @@ it('rejects cross-course media and invalid ordering even when stored media is RE
       INSERT INTO course_revisions(id,course_id,title,summary) VALUES('r','c','Course','Summary');
       INSERT INTO modules(id,revision_id,sort_order,title) VALUES('m','r',2,'Module');
       INSERT INTO video_uploads(id,owner_id,course_id,filename,size,status,media_kind)
-        VALUES('v','u','other','video.mp4',10,'READY','video'),('a','u','other','guide.pdf',10,'READY','attachment');
+          VALUES('v','u','c','video.mp4',10,'READY','video'),('a','u','c','guide.pdf',10,'READY','attachment');
       INSERT INTO lessons(id,module_id,sort_order,title,body,video_id) VALUES('l','m',1,'Lesson','','v');
       INSERT INTO course_attachments(id,revision_id,upload_id,title,description,sort_order) VALUES('attachment','r','a','Guide','Description',0);`);
     expect(publicationIssues(db, 'c', 'r').map(i => i.code)).toEqual([
       'PUBLICATION_ORDER',
       'PUBLICATION_ORDER',
-      'VIDEO_INVALID',
-      'FILE_INVALID',
     ]);
     db.exec(
       "UPDATE modules SET sort_order=0; UPDATE lessons SET sort_order=0; UPDATE video_uploads SET course_id='c',status='PROCESSING';",

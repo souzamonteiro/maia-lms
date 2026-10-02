@@ -543,21 +543,28 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Dependency: existing identity. Acceptance: administrators delegate authorship in
   the dashboard; authors cannot change another author/account; access changes
   invalidate the relevant sessions.
+  Partial local delivery: administrators can search/filter/paginate accounts in
+  the dashboard and suspend/reactivate them. State changes bump session_version
+  and write audit events; self-suspension and suspension of the last active admin
+  are rejected, and expired HTML sessions return to sign-in. Administrators can
+  also delegate learner, author, and admin roles; worker assignment, self-demotion,
+  and demotion of the last active admin are rejected. Role changes invalidate
+  sessions and are audited. Public instructor profiles and remaining
+  bootstrap/reset workflows are open.
 - [ ] **AUTH-01 — Complete account workflows.**
   Profile, password changes, verification resend/feedback, localized recovery,
   account states, and explicit unverified-email policy; administrator MFA with
   recovery. Dependencies: I18N-01, ADMIN-01. Acceptance: used/expired tokens,
   unavailable SMTP, and lost second factors have verifiable recovery paths.
   Partial local delivery: verification confirmation/resend, localized account
-  emails, interface-language preference, private display-name editing, and
-  emails, interface-language preference, private display-name editing, and
-  authenticated password change with current-password verification, session
-  revocation, and reset-token invalidation.
+  and recovery emails, interface-language preference, private display-name
+  editing, and authenticated password changes. Recovery requests invalidate
+  earlier reset links; successful password changes revoke sessions and pending
+  reset tokens.
   A private display name is editable in My learning; public instructor profiles,
   broader profile management, MFA, verified-email policy, and remaining
-  failure/recovery workflows are still open. The account-security browser test verifies labels
-    failure/recovery workflows are still open. The account-security browser test verifies
-    labels and confirmation-mismatch feedback in en, pt-BR, and es.
+  failure/recovery workflows are still open. The account-security browser test
+  verifies labels and confirmation-mismatch feedback in en, pt-BR, and es.
 - [ ] **ADMIN-02 — Enrollments, grants, and audit.**
   Dashboard for enrollments, progress, manual grants/revocation with reasons,
   history, and support handling. Dependencies: BASE-01, ADMIN-01. Acceptance:
@@ -579,6 +586,15 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Atomic start/submission, limits, duplicate handling, deadlines, and result feedback.
   Dependency: QUIZ-01. Acceptance: manipulated, repeated, concurrent, or cross-course
   answers cannot produce a passing result; accepted submissions become immutable.
+  Partial data-layer protection: migrations 026 and 036 bind attempts/answers to
+  their enrollment, revision, and quiz, then freeze attempts and answer rows after
+  `submitted_at`; migration 037 freezes quiz/question definitions once an attempt
+  exists; migration 038 validates positive integer attempt limits and question
+  points/order, and bounds awarded points per question; migration 039 enforces
+  `max_attempts` per enrollment/quiz and retains attempt history; migration 040
+  supports an optional per-quiz time limit and rejects writes/submission after it.
+  Atomic API start, deadline configuration UX, grading semantics, and expired-result
+  handling remain open.
 - [ ] **LEARN-01 — Consistent completion policy.**
   Snapshot required lessons/grades/attempts per revision, server-side calculation,
   and idempotent completion. Dependencies: PLAY-04, QUIZ-02. Acceptance: dashboard
@@ -630,20 +646,54 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   with minimal data and valid/revoked status; learner certificates screen.
   Dependencies: CERT-01, JOB-01. Acceptance: QR opens the canonical URL, PDF text
   remains readable, workers can retry without duplicate issuance, and lookup does
-  not enumerate identities.
+  not enumerate identities. Partial data-layer safeguard: migration 044 rejects
+  newly assigned public codes shorter than 32 characters; cryptographic code
+  generation, rate limiting, and public verification remain open.
 - [ ] **CERT-03 — Revocation and reissuance.**
   Dashboard and private reason, new document when needed, link to the previous one,
   and preservation of old-code lookups. Dependencies: CERT-02, ADMIN-02.
   Acceptance: revoked documents remain verifiable as revoked; only authorized
   administrators can reissue, with auditable history.
+  Partial data-layer protection: migrations 031 and 043 limit active issuance,
+  preserve issued identity/code/hash snapshots, and retain revoked certificate
+  history; migration 045 requires a non-empty reason when revoking; migration 046
+  makes revocation timestamps irreversible and monotonic; migration 047 links a
+  reissued certificate to its revoked predecessor. Revocation/reissue UI, public
+  verification, and actor audit workflow remain open.
 
 ## P1 — reliability, protection, and full launch
 
 - [ ] **DATA-01 — Strengthen SQLite invariants.**
   Partial: migrations 017–018 prevent progress, enrollment-revision, and
   lesson-module changes from crossing the enrollment's assigned revision, and
-  constrain progress positions to non-negative integers. Quiz/payment/certificate
-  invariants remain open.
+  constrain progress positions to non-negative integers. Migration 019 ensures
+  each enrollment's course matches its revision's owner; migration 020 applies the
+  same ownership rule to current/published course revision pointers; migration 021
+  binds lesson videos to their revision's course and video media kind; migration
+  022 applies course and media-kind checks to revision covers and trailers; migration
+  023 validates attachment ownership and optional lesson/revision associations;
+  migration 024 prevents duplicate attachment positions within each list; migration
+  025 binds lesson quizzes to lessons in the same revision.
+  Migration 026 binds attempts to the enrollment/quiz revision and answers to
+  questions from the attempted quiz; migration 027 prevents duplicate question
+  positions within a quiz. Migration 028 requires an order-backed entitlement to
+  reference a matching order for the enrollment's user and course; migration 029
+  enforces a positive price and immutable order snapshot terms. Migration 030
+  deduplicates provider payment/refund references per provider and requires
+  positive integer refund amounts; migration 031 permits at most one non-revoked
+  certificate per enrollment; migration 032 makes audit events append-only.
+  Migration 033 caps combined pending/approved refunds at the order price snapshot;
+  provider capture reconciliation and refund policy remain open. Migration 034
+  prevents duplicate non-null checkout IDs within one provider; migration 035
+  constrains order state transitions while allowing late confirmed payment.
+  Migration 036 makes submitted attempts and their answer rows immutable; migration
+  037 freezes quiz/question definitions after attempt start; migration 038 adds
+  numeric bounds for quiz settings and question scoring fields; migration 039
+  enforces the configured attempt cap per enrollment and quiz; migration 040
+  adds optional timed-attempt enforcement; migration 041 makes enrollment
+  user/course/revision assignment immutable while preserving mutable access state;
+  migration 042 freezes modules/lessons once their revision has enrolled learners.
+  Quiz/payment/certificate invariants remain open.
   Validate cross-references among revisions/media/courses and uniqueness of final
   quizzes, active issuance, and payment identifiers before enabling workflows.
   At the audit, `UNIQUE(revision_id, lesson_id)` allowed multiple quizzes with NULL

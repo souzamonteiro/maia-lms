@@ -17,6 +17,7 @@ import { categoriesRouter } from './routes/categories.js';
 import { coursesRouter } from './routes/courses.js';
 import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
+import { adminUsersRouter } from './routes/admin-users.js';
 import { errorHandler } from './middleware/error-handler.js';
 
 export function createApp(db: Database.Database, config: Config): express.Application {
@@ -80,6 +81,10 @@ export function createApp(db: Database.Database, config: Config): express.Applic
         { role: typeof req.session.role; status: string; session_version: number } | undefined;
       if (!user || user.status !== 'active' || user.session_version !== req.session.version) {
         req.session.destroy(() => {});
+        if (!req.path.startsWith('/api/') && req.accepts('html')) {
+          res.redirect(302, '/auth/login');
+          return;
+        }
         res.status(401).json({ error: 'Session expired' });
         return;
       }
@@ -139,6 +144,7 @@ export function createApp(db: Database.Database, config: Config): express.Applic
   // ── API routes ────────────────────────────────────────────────
   app.use('/api/v1/auth', authLimiter, authRouter(db, config.PUBLIC_BASE_URL));
 
+  app.use('/api/v1', adminUsersRouter(db));
   app.use('/api/v1', categoriesRouter(db));
   app.use('/api/v1', coursesRouter(db));
   app.use('/api/v1', homeRouter(db));

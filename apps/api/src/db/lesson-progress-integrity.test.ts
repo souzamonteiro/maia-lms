@@ -14,6 +14,7 @@ it('enforces lesson progress revision and position invariants', () => {
       VALUES ('course-a','course-a','user'),('course-b','course-b','user');
       INSERT INTO course_revisions(id,course_id,title,summary)
       VALUES ('revision-a','course-a','Course A','Summary A'),
+              ('revision-a2','course-a','Course A v2','Summary A v2'),
              ('revision-b','course-b','Course B','Summary B');
       INSERT INTO modules(id,revision_id,sort_order,title)
       VALUES ('module-a','revision-a',0,'Module A'),
@@ -25,6 +26,41 @@ it('enforces lesson progress revision and position invariants', () => {
       VALUES ('enrollment-a','user','course-a','revision-a'),
              ('enrollment-b','user','course-b','revision-b');
     `);
+
+    expect(() =>
+      db
+        .prepare('INSERT INTO enrollments(id,user_id,course_id,revision_id) VALUES(?,?,?,?)')
+        .run('invalid-enrollment', 'user', 'course-a', 'revision-b'),
+    ).toThrow(/enrollment course revision mismatch/);
+    expect(() =>
+      db.prepare('UPDATE enrollments SET course_id=? WHERE id=?').run('course-b', 'enrollment-a'),
+    ).toThrow(/enrollment assignment is immutable/);
+    expect(() =>
+      db.prepare('UPDATE course_revisions SET course_id=? WHERE id=?').run('course-b', 'revision-a'),
+    ).toThrow(/enrollment course revision mismatch/);
+    expect(() =>
+      db.prepare('UPDATE enrollments SET revision_id=? WHERE id=?').run('revision-a2', 'enrollment-a'),
+    ).toThrow(/enrollment assignment is immutable/);
+    expect(() =>
+      db.prepare('UPDATE enrollments SET course_id=? WHERE id=?').run('course-b', 'enrollment-a'),
+    ).toThrow(/enrollment assignment is immutable/);
+    expect(() =>
+      db.prepare('UPDATE enrollments SET user_id=? WHERE id=?').run('user-b', 'enrollment-a'),
+    ).toThrow(/enrollment assignment is immutable/);
+    expect(() =>
+      db.prepare('UPDATE modules SET title=? WHERE id=?').run('Changed module', 'module-a'),
+    ).toThrow(/enrolled revision structure is immutable/);
+    expect(() =>
+      db.prepare('DELETE FROM lessons WHERE id=?').run('lesson-a'),
+    ).toThrow(/enrolled revision structure is immutable/);
+    expect(() =>
+      db.prepare('INSERT INTO lessons(id,module_id,sort_order,title) VALUES(?,?,?,?)')
+        .run('lesson-late', 'module-a', 1, 'Late lesson'),
+    ).toThrow(/enrolled revision structure is immutable/);
+    expect(() =>
+      db.prepare('INSERT INTO modules(id,revision_id,sort_order,title) VALUES(?,?,?,?)')
+        .run('module-late', 'revision-a', 1, 'Late module'),
+    ).toThrow(/enrolled revision structure is immutable/);
 
     db.prepare(
       'INSERT INTO lesson_progress(enrollment_id,lesson_id,position_seconds) VALUES(?,?,?)',
@@ -50,11 +86,11 @@ it('enforces lesson progress revision and position invariants', () => {
         .run('lesson-b', 'enrollment-a', 'lesson-a'),
     ).toThrow(/lesson progress revision mismatch/);
     expect(() =>
-      db.prepare('UPDATE enrollments SET revision_id=? WHERE id=?').run('revision-b', 'enrollment-a'),
-    ).toThrow(/lesson progress revision mismatch/);
+      db.prepare('UPDATE enrollments SET state=? WHERE id=?').run('revoked', 'enrollment-a'),
+    ).not.toThrow();
     expect(() =>
       db.prepare('UPDATE lessons SET module_id=? WHERE id=?').run('module-b', 'lesson-a'),
-    ).toThrow(/lesson progress revision mismatch/);
+    ).toThrow(/enrolled revision structure is immutable/);
     expect(
       db.prepare('SELECT lesson_id,position_seconds FROM lesson_progress').all(),
     ).toEqual([{ lesson_id: 'lesson-a', position_seconds: 12 }]);

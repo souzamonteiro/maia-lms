@@ -287,6 +287,41 @@ describe('HTTP learning workflow', () => {
       ).status,
     ).toBe(400);
   });
+  it('invalidates older password-reset links when a newer recovery is requested', async () => {
+    await account('reset-reissue@example.com');
+    const issueResetToken = async () => {
+      await request('/api/v1/auth/forgot-password', 'POST', { email: 'reset-reissue@example.com' });
+      const { payload } = db
+        .prepare('SELECT payload FROM outbox ORDER BY rowid DESC LIMIT 1')
+        .get() as { payload: string };
+      return JSON.parse(payload).text.match(/token=([a-f0-9]{64})/)[1] as string;
+    };
+    const oldToken = await issueResetToken();
+    const currentToken = await issueResetToken();
+
+    const oldTokenResult = await request('/api/v1/auth/reset-password', 'POST', {
+      token: oldToken,
+      password: 'First-reset-password-123',
+    });
+    expect(oldTokenResult.status).toBe(400);
+    expect(oldTokenResult.data.code).toBe('AUTH_TOKEN_INVALID');
+    expect(
+      (
+        await request('/api/v1/auth/reset-password', 'POST', {
+          token: currentToken,
+          password: 'Current-reset-password-123',
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await request('/api/v1/auth/reset-password', 'POST', {
+          token: currentToken,
+          password: 'Replayed-reset-password-123',
+        })
+      ).status,
+    ).toBe(400);
+  });
   it('changes passwords only with the current password and revokes prior sessions and reset tokens', async () => {
         const user = await account('password-change@example.com');
         expect(
@@ -1318,5 +1353,159 @@ describe('account interface language preference', () => {
     expect(
       db.prepare('SELECT count(*) AS n FROM email_tokens WHERE used_at IS NOT NULL').get(),
     ).toEqual({ n: 0 });
+  });
+});
+
+describe('administrator account status management', () => {
+  it('lists/searches users and suspends/reactivates with session invalidation and audit', async () => {
+    const admin = await account('users-admin@example.com', 'admin');
+    const learner = await account('managed-learner@example.com');
+    const author = await account('managed-author@example.com', 'author');
+
+    expect((await request('/api/v1/admin/users', 'GET', undefined, learner.cookie)).status).toBe(403);
+    const search = await request('/api/v1/admin/users?q=managed-&limit=1&offset=0', 'GET', undefined, admin.cookie);
+    expect(search.status).toBe(200);
+    expect(search.data.total).toBe(2);
+    expect(search.data.items).toHaveLength(1);
+    expect(search.data.items[0]).not.toHaveProperty('password_hash');
+    expect(search.data.items[0]).not.toHaveProperty('email_normalized');
+    const authors = await request('/api/v1/admin/users?role=author&status=active', 'GET', undefined, admin.cookie);
+    expect(authors.data.items.map((user: { id: string }) => user.id)).toContain(author.id);
+
+    const beforeVersion = (
+      db.prepare('SELECT session_version FROM users WHERE id=?').get(learner.id) as {
+        session_version: number;
+      }
+    ).session_version;
+    const suspended = await request(
+      `/api/v1/admin/users/${learner.id}/status`,
+      'PATCH',
+      { status: 'suspended' },
+      admin.cookie,
+    );
+    expect(suspended.status).toBe(200);
+    expect(suspended.data.status).toBe('suspended');
+    expect((await request('/api/v1/auth/me', 'GET', undefined, learner.cookie)).status).toBe(401);
+    expect(
+      (db.prepare('SELECT session_version FROM users WHERE id=?').get(learner.id) as { session_version: number })
+        .session_version,
+    ).toBe(beforeVersion + 1);
+
+    const repeated = await request(
+      `/api/v1/admin/users/${learner.id}/status`,
+      'PATCH',
+      { status: 'suspended' },
+      admin.cookie,
+    );
+    expect(repeated.status).toBe(200);
+    expect(
+      db.prepare("SELECT count(*) AS n FROM audit_events WHERE subject_id=? AND action='user.suspend'").get(learner.id),
+    ).toEqual({ n: 1 });
+
+    const reactivated = await request(
+      `/api/v1/admin/users/${learner.id}/status`,
+      'PATCH',
+      { status: 'active' },
+      admin.cookie,
+    );
+    expect(reactivated.status).toBe(200);
+    expect((await request('/api/v1/auth/me', 'GET', undefined, learner.cookie)).status).toBe(401);
+    expect(
+      (
+        await request('/api/v1/auth/login', 'POST', {
+          email: 'managed-learner@example.com',
+          password,
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      db.prepare("SELECT count(*) AS n FROM audit_events WHERE subject_id=? AND action='user.reactivate'").get(learner.id),
+    ).toEqual({ n: 1 });
+  });
+
+  it('prevents self-suspension and keeps an active administrator available', async () => {
+    const admin = await account('sole-admin@example.com', 'admin');
+    const selfSuspend = await request(
+      `/api/v1/admin/users/${admin.id}/status`,
+      'PATCH',
+      { status: 'suspended' },
+      admin.cookie,
+    );
+    expect(selfSuspend.status).toBe(409);
+    expect(selfSuspend.data.code).toBe('ADMIN_SELF_SUSPEND');
+
+    const otherAdmin = await account('other-admin@example.com', 'admin');
+    const suspendedOther = await request(
+      `/api/v1/admin/users/${otherAdmin.id}/status`,
+      'PATCH',
+      { status: 'suspended' },
+      admin.cookie,
+    );
+    expect(suspendedOther.status).toBe(200);
+    expect((await request('/api/v1/admin/users', 'GET', undefined, admin.cookie)).status).toBe(200);
+    const selfSuspendAsLastAdmin = await request(
+      `/api/v1/admin/users/${admin.id}/status`,
+      'PATCH',
+      { status: 'suspended' },
+      admin.cookie,
+    );
+    expect(selfSuspendAsLastAdmin.status).toBe(409);
+    expect(selfSuspendAsLastAdmin.data.code).toBe('ADMIN_SELF_SUSPEND');
+  });
+
+  it('delegates learner/author/admin roles, revokes sessions, and protects the last administrator', async () => {
+    const admin = await account('role-admin@example.com', 'admin');
+    const learner = await account('role-target@example.com');
+    const secondAdmin = await account('role-second-admin@example.com', 'admin');
+
+    const delegated = await request(
+      `/api/v1/admin/users/${learner.id}/role`,
+      'PATCH',
+      { role: 'author' },
+      admin.cookie,
+    );
+    expect(delegated.status).toBe(200);
+    expect(delegated.data.role).toBe('author');
+    expect((await request('/api/v1/auth/me', 'GET', undefined, learner.cookie)).status).toBe(401);
+    const authorLogin = await request('/api/v1/auth/login', 'POST', {
+      email: 'role-target@example.com',
+      password,
+    });
+    expect(authorLogin.status).toBe(200);
+    expect(authorLogin.data.role).toBe('author');
+    expect(
+      db.prepare("SELECT count(*) AS n FROM audit_events WHERE subject_id=? AND action='user.role_change'").get(learner.id),
+    ).toEqual({ n: 1 });
+
+    expect(
+      (await request(`/api/v1/admin/users/${secondAdmin.id}/role`, 'PATCH', { role: 'author' }, admin.cookie))
+        .status,
+    ).toBe(200);
+    expect(
+      (
+        await request(`/api/v1/admin/users/${admin.id}/role`, 'PATCH', { role: 'author' }, admin.cookie)
+      ).data.code,
+    ).toBe('ADMIN_SELF_ROLE_CHANGE');
+    expect(
+      (
+        await request(`/api/v1/admin/users/${learner.id}/role`, 'PATCH', { role: 'worker' }, admin.cookie)
+      ).status,
+    ).toBe(422);
+    expect(
+      (
+        await request(`/api/v1/admin/users/${learner.id}/role`, 'PATCH', { role: 'learner' }, admin.cookie)
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await request(`/api/v1/admin/users/${learner.id}/role`, 'PATCH', { role: 'learner' }, admin.cookie)
+      ).status,
+    ).toBe(200);
+    expect(
+      db.prepare("SELECT count(*) AS n FROM audit_events WHERE subject_id=? AND action='user.role_change'").get(learner.id),
+    ).toEqual({ n: 2 });
+    expect(
+      (db.prepare('SELECT role FROM users WHERE id=?').get(secondAdmin.id) as { role: string }).role,
+    ).toBe('author');
   });
 });

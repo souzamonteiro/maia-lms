@@ -1,6 +1,7 @@
 import { mountEmailVerification } from './email-verification.js';
 import { attachPlaybackPositionSaver } from './playback-position.js';
 import { mountCategoryEditor, categoriesDirty } from './category-editor.js';
+import { mountAdminUsers } from './admin-users.js';
 import { coursePresentation } from './course-presentation.js';
 import { icon } from './icons.js';
 import { mountStudio, studioDirty } from './studio.js';
@@ -281,6 +282,9 @@ async function admin() {
   if (location.pathname === '/admin/categories') {
     if (me.role !== 'admin') throw new Error(t('adminAccessRestricted'));
     await mountCategoryEditor(context);
+  } else if (location.pathname === '/admin/users') {
+    if (me.role !== 'admin') throw new Error(t('adminAccessRestricted'));
+    await mountAdminUsers(context);
   } else if (location.pathname === '/admin/home') {
     if (me.role !== 'admin') throw new Error(t('adminAccessRestricted'));
     await mountHomeEditor(context);
@@ -315,7 +319,7 @@ async function main() {
       applyLocale();
     }
     document.querySelector('#account').innerHTML =
-      `${['admin', 'author'].includes(me.role) ? `<a href="/admin">${t('administer')}</a>` : ''}<button id="logout" class="secondary">${icon('signOut')}${t('signOut')}</button>`;
+      `${['admin', 'author'].includes(me.role) ? `<a href="/admin">${t('administer')}</a>` : ''}${me.role === 'admin' ? `<a href="/admin/users">${t('adminUsersTitle')}</a>` : ''}<button id="logout" class="secondary">${icon('signOut')}${t('signOut')}</button>`;
     button('#logout', async () => {
       await api('/auth/logout', 'POST');
       location.href = '/';

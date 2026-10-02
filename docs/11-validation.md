@@ -480,3 +480,303 @@ row. Migration 018 also rejects negative and fractional progress positions throu
 direct database writes. Build and lint passed; the full real-media suite passed 87
 tests across 22 files, and all 16 Chromium workflows passed. No deployment or
 production migration was performed for those validations.
+
+## Enrollment course/revision integrity — October 1, 2026
+
+Migration 019 rejects enrollment inserts and updates when the revision belongs to a
+different course, and prevents moving a referenced revision to another course. The
+focused SQLite test covers each rejected mutation and confirms valid same-course
+enrollment revisions remain subject to the progress invariant. Build and lint passed;
+the full real-media suite passed 87 tests across 22 files, and all 16 Chromium
+workflows passed. No deployment or production migration was performed.
+
+## Course revision pointer integrity — October 1, 2026
+
+Migration 020 rejects course inserts or updates that point `current_revision_id`
+or `published_revision_id` to another course's revision, and prevents reassigning a
+referenced revision to a different course. The focused SQLite test covers invalid
+insert/update paths and verifies existing valid pointers remain unchanged. Build
+and lint passed; the full real-media suite passed 88 tests across 23 files,
+and all 16 Chromium workflows passed. No deployment or production migration was
+performed.
+
+## Lesson video ownership integrity — October 1, 2026
+
+Migration 021 rejects lesson video links to uploads owned by another course or to
+non-video media. It also prevents later course, revision, module, or upload changes
+from invalidating an existing lesson-video relationship. Focused SQLite and
+publication tests passed. Build and lint passed; the full real-media suite passed
+89 tests across 24 files, and all 16 Chromium workflows passed. No deployment or
+production migration was performed.
+
+## Revision cover and trailer integrity — October 1, 2026
+
+Migration 022 enforces same-course ownership and expected media kind for revision
+covers and trailers, and rejects upload changes that would break those links. Its
+focused SQLite test passes valid associations and rejects cross-course/type changes.
+Build and lint passed; the full real-media suite passed 90 tests across 25 files,
+and all 16 Chromium workflows passed. No deployment or production migration was
+performed.
+
+## Attachment ownership and ordering integrity — October 1, 2026
+
+Migration 023 requires attachment uploads to belong to the revision's course and
+have attachment media kind; a lesson-specific attachment must reference a lesson
+in that revision. Triggers also guard later upload, lesson, module, and revision
+changes. Focused SQLite and publication tests passed. Build and lint passed; the
+full real-media suite passed 91 tests across 26 files, and all 16 Chromium
+workflows passed. No deployment or production migration was performed.
+
+Migration 024 prevents duplicate `sort_order` values within a revision's global
+attachment list or a specific lesson's list, while permitting reuse in another
+list. Its focused test covers collisions and valid cross-list reuse. Full
+validation passed: build and lint, 91 tests across 26 files, and all 16 Chromium
+workflows. No deployment or production migration was performed.
+
+## Password-reset link rotation — October 1, 2026
+
+Requesting password recovery now marks any earlier unused reset links as used
+before issuing a new token. A focused API test confirms the prior link is rejected,
+the newest link succeeds, and replay of that link fails. Build and lint passed; the
+full real-media suite passed 92 tests across 26 files, and all 16 Chromium workflows
+passed. No deployment performed.
+
+## Lesson quiz revision integrity — October 1, 2026
+
+Migration 025 requires a lesson-level quiz to reference a lesson in its own
+revision. Final quizzes remain revision-level (`lesson_id IS NULL`). Triggers also
+reject later changes to quiz, lesson, or module revision links that would break
+that relationship. The focused migration test passed, including cross-revision
+insert and update rejection. Build and lint passed; the full real-media suite passed
+92 tests across 26 files, and all 16 Chromium workflows passed. No deployment or
+production migration was performed.
+
+## Assessment attempt reference integrity — October 1, 2026
+
+Migration 026 requires each attempt's enrollment, quiz, and revision to agree, and
+each answer's question to belong to the attempt's quiz. Triggers guard inserts and
+updates that would create cross-revision attempts or cross-quiz answers. The focused
+SQLite migration test passed. These are structural constraints only; attempt
+limiting, grading, and immutable submission remain unimplemented. Build and lint
+passed; the full real-media suite passed 93 tests across 27 files, and all 16
+Chromium workflows passed. No deployment or production migration was performed.
+
+## Assessment question ordering — October 1, 2026
+
+Migration 027 rejects duplicate question `sort_order` values within one quiz on
+insert or update, while allowing separate quizzes to reuse positions. The focused
+quiz migration test passed. Existing question positions are not rewritten; quiz
+authoring and grading remain unimplemented. Build and lint passed; the full
+real-media suite passed 93 tests across 27 files, and all 16 Chromium workflows
+passed. No deployment or production migration was performed.
+
+## Order entitlement reference integrity — October 1, 2026
+
+Migration 028 requires an order-backed entitlement to reference an existing order
+for the enrollment's user and course. It blocks later order identity changes or
+deletion that would break the reference. The focused SQLite test passed for valid
+links and rejected mismatched user/course, missing orders, and invalid order
+updates/deletion. Payment state, checkout, and refund policy are not enforced by
+this migration. Build and lint passed; the full real-media suite passed 94 tests
+across 28 files, and all 16 Chromium workflows passed. No deployment or production
+migration was performed.
+
+## Order snapshot immutability — October 1, 2026
+
+Migration 029 requires a positive integer order price and rejects changes to
+owner, course, price, currency, provider, or idempotency key after creation.
+Operational state and checkout fields remain mutable. Focused SQLite tests passed;
+payment state transitions, checkout, and refund policy remain outside this check.
+Build and lint passed; the full real-media suite passed 94 tests across 28 files,
+and all 16 Chromium workflows passed. No deployment or production migration was
+performed.
+
+## Provider payment and refund identifiers — October 1, 2026
+
+Migration 030 rejects duplicate external payment or refund references within the
+same provider while allowing identifier reuse across different providers. Refund
+amounts must be positive integers. Focused SQLite tests passed for duplicate
+insert/update rejection and valid cross-provider reuse. Cumulative limits are
+covered separately below; provider reconciliation and commercial policy remain
+unimplemented. Build and
+lint passed; the full real-media suite passed 95 tests across 29 files, and all 16
+Chromium workflows passed. No deployment or production migration was performed.
+
+## Active certificate issuance integrity — October 1, 2026
+
+Migration 031 allows at most one non-revoked certificate per enrollment and
+supports reissue after revoking the prior certificate. The trigger approach does
+not rewrite pre-existing duplicate active certificates; those require an explicit
+operational review. The focused SQLite migration test passed.
+Build and lint passed; the full real-media suite passed 96 tests across 30 files,
+and all 16 Chromium workflows passed. No deployment or production migration was
+performed.
+
+## Append-only audit events — October 1, 2026
+
+Migration 032 rejects updates and deletes on `audit_events` while allowing new
+records. The focused SQLite test passed and verifies the original event remains
+unchanged. This is not a retention/anonymization workflow; no audit rows were
+deleted or modified. Build and lint passed; the full real-media suite passed 97
+tests across 31 files, and all 16 Chromium workflows passed. No deployment or
+production migration was performed.
+
+## Cumulative refund snapshot cap — October 1, 2026
+
+Migration 033 prevents pending plus approved refunds from exceeding the order's
+price snapshot; rejected refunds do not reserve the cap. Focused SQLite tests
+passed for exact-limit acceptance and over-limit insert/update/status rejection.
+This does not reconcile against provider-captured amounts or define commercial
+refund policy. Build and lint passed; the full real-media suite passed 97 tests
+across 31 files, and all 16 Chromium workflows passed. No deployment or production
+migration was performed.
+
+## Provider checkout reference uniqueness — October 1, 2026
+
+Migration 034 rejects duplicate non-null checkout IDs within a provider on insert
+or update, while allowing reuse across providers and multiple orders with no
+checkout ID. The focused SQLite migration test passed. Provider contract and
+checkout flow validation remain open. Build and lint passed; the full real-media
+suite passed 98 tests across 32 files, and all 16 Chromium workflows passed. No
+deployment or production migration was performed.
+
+## Order state transition integrity — October 1, 2026
+
+Migration 035 enforces the documented order state graph, permits idempotent
+same-state updates, and allows an authoritative late payment to move an expired
+or canceled order to `PAID`. The focused SQLite migration test passed for allowed
+and rejected transitions. Provider-state reconciliation remains unimplemented.
+Build and lint passed; the full real-media suite passed 98 tests across 32 files,
+and all 16 Chromium workflows passed. No deployment or production migration was
+performed.
+
+## Submitted assessment immutability — October 1, 2026
+
+Migration 036 permits answer edits while an attempt is open, then rejects attempt
+updates and answer inserts, updates, or deletes after `submitted_at` is set. The
+focused SQLite test passed. Runtime submission, grading, attempt limits, and
+feedback remain unimplemented. Build and lint passed; the full real-media suite
+passed 98 tests across 32 files, and all 16 Chromium workflows passed. No
+deployment or production migration was performed.
+
+## Assessment definition snapshot — October 1, 2026
+
+Migration 037 permits editing quiz settings and questions before an attempt
+exists, then rejects quiz-setting changes and question insert/update/delete once
+attempts reference that quiz. The focused SQLite test passed. This protects an
+in-flight attempt's definition but does not create a quiz revisioning or authoring
+workflow; grading and attempt policies remain open. Build and lint passed; the full
+real-media suite passed 98 tests across 32 files, and all 16 Chromium workflows
+passed. No deployment or production migration was performed.
+
+## Assessment numeric bounds — October 1, 2026
+
+Migration 038 requires integer pass percentages and positive integer attempt
+limits, validates question points and order, and bounds awarded points to an
+integer from zero through the question's point value. The focused SQLite test
+passed. It does not define partial-credit or overall-score semantics. Build and
+lint passed; the full real-media suite passed 98 tests across 32 files, and all 16
+Chromium workflows passed. No deployment or production migration was performed.
+
+## Assessment attempt limits — October 1, 2026
+
+Migration 039 enforces `max_attempts` per enrollment and quiz on insert and
+reassignment. Attempt rows cannot be deleted to restore quota. The focused SQLite
+test passed for exact quota use, over-limit rejection, reassignment rejection, and
+history retention. Atomic API start, expiration rules, grading, and feedback remain
+unimplemented. Build and lint passed; the full real-media suite passed 98 tests
+across 32 files, and all 16 Chromium workflows passed. No deployment or production
+migration was performed.
+
+## Timed assessment attempt bounds — October 1, 2026
+
+Migration 040 adds an optional per-quiz positive integer time limit. The deadline is
+derived from immutable `started_at`; answer writes and submission are rejected after
+expiry. The focused SQLite test passed for invalid configuration, frozen settings/
+start time, an expired attempt, and a quiz with no configured deadline. Runtime
+attempt creation and expired-state feedback remain unimplemented. Build and lint
+passed; the full real-media suite passed 98 tests across 32 files, and all 16
+Chromium workflows passed. No deployment or production migration was performed.
+
+## Enrollment assignment integrity — October 2, 2026
+
+Migration 041 prevents changing an enrollment's owner, course, or assigned
+revision after creation, even before progress or attempts exist; access `state`
+remains mutable for revocation. Focused progress and assessment tests passed.
+Moving learners to a newer revision requires an explicit future migration policy.
+Build and lint passed; the full real-media suite passed 98 tests across 32 files,
+and all 16 Chromium workflows passed. No deployment or production migration was
+performed.
+
+## Enrolled revision structure integrity — October 2, 2026
+
+Migration 042 blocks module and lesson insert/update/delete operations once a
+revision has an enrollment, including when no progress exists yet. Focused progress
+and authoring migration tests passed, confirming new/unassigned revisions remain
+editable. Existing learners retain their revision; moving them to a later revision
+requires an explicit migration policy. Build and lint passed; the full real-media
+suite passed 98 tests across 32 files, and all 16 Chromium workflows passed. No
+deployment or production migration was performed.
+
+## Certificate snapshot immutability — October 2, 2026
+
+Migration 043 prevents changing an issued certificate's enrollment, public code,
+confirmed name, payload hash, or issue time, and prevents deleting the historical
+row. Revocation timestamp and reason remain mutable. The focused certificate
+migration test passed, including revoke-then-reissue and rejected snapshot edits.
+
+## Certificate public-code minimum — October 2, 2026
+
+Migration 044 rejects new/updated public certificate codes shorter than 32
+characters; existing codes are not rewritten. The focused certificate test passed.
+Length alone does not guarantee randomness or unpredictability; code generation,
+rate limiting, and public verification remain unimplemented. Build and lint passed;
+the full real-media suite passed 98 tests across 32 files, and all 16 Chromium
+workflows passed. No deployment or production migration was performed.
+
+## Certificate revocation reason integrity — October 2, 2026
+
+Migration 045 requires a non-empty reason whenever a certificate is inserted or
+updated as revoked; active certificates may keep the reason null. The focused
+certificate migration test passed. Actor attribution, authorization, and the
+administrative revocation workflow remain unimplemented. Build and lint passed;
+the full real-media suite passed 98 tests across 32 files, and all 16 Chromium
+workflows passed. No deployment or production migration was performed.
+
+## Irreversible certificate revocation — October 2, 2026
+
+Migration 046 requires revocation time at or after issuance and prevents clearing
+or moving the revocation timestamp backward. Later timestamps and reason corrections
+remain possible. The focused certificate migration test passed; administrative
+authorization and actor-attributed audit remain unimplemented. Build and lint passed;
+the full real-media suite passed 98 tests across 32 files, and all 16 Chromium
+workflows passed. No deployment or production migration was performed.
+
+## Certificate supersession lineage — October 2, 2026
+
+Migration 047 adds an optional immutable `supersedes_id` link for reissued
+certificates. The predecessor must be revoked, belong to the same enrollment, and
+may have only one direct successor. The focused certificate migration test passed.
+The reissue interface, public lineage display, and actor-attributed audit remain
+unimplemented. Build and lint passed; the full real-media suite passed 98 tests
+across 32 files, and all 16 Chromium workflows passed. No deployment or production
+migration was performed.
+
+## Administrator account management and role delegation — October 2, 2026
+
+Administrators can search/filter and paginate user accounts, then suspend or
+reactivate an account, and assign learner, author, or admin roles. Tests verify
+credentials are excluded from listings, actual changes increment `session_version`
+and invalidate existing sessions, reactivation permits a new login, and audit
+events are written once per actual change. Self-suspension, self-demotion, and
+removing the last active administrator are rejected; worker role assignment is
+unavailable. Build and lint passed; OpenAPI YAML parsed; the full real-media suite
+passed 101 tests across 32 files, and all 17 Chromium workflows passed. No
+deployment or production database changes were made.
+
+The account-management UI is now available at `/admin/users`. Its Chromium flow
+searches for a learner, suspends the account, verifies the existing browser is
+redirected to sign-in, reactivates the account, confirms a fresh login works,
+assigns the author role, verifies session invalidation again, and confirms a fresh
+author session receives author navigation. Public instructor profiles and
+administrative bootstrap/reset workflows remain open.
