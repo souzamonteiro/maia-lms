@@ -358,7 +358,7 @@ async function refreshList() {
   list.innerHTML = courses
     .map(
       c =>
-        `<article class="card"><h2>${e(c.title)}</h2><p>${e(c.status)}${c.published_revision_id && c.current_revision_id !== c.published_revision_id ? ` · ${t('unpublishedChanges')}` : ''}</p><div class="actions"><button data-edit="${c.id}">${icon('edit')}${t('edit')}</button>${me.role === 'admin' ? `<button data-publish="${c.id}" data-revision="${c.current_revision_id}">${icon('publish')}${t('publish')}</button><button data-archive="${c.id}" class="secondary">${icon('archive')}${t('archive')}</button>` : ''}<a href="/courses/${c.id}">${t('view')}</a></div></article>`,
+        `<article class="card"><h2>${e(c.title)}</h2><p>${e(c.status)}${c.published_revision_id && c.current_revision_id !== c.published_revision_id ? ` · ${t('unpublishedChanges')}` : ''}</p><div class="actions"><button data-edit="${c.id}">${icon('edit')}${t('edit')}</button>${me.role === 'admin' ? `<button data-publish="${c.id}" data-revision="${c.current_revision_id}">${icon('publish')}${t('publish')}</button><button data-archive="${c.id}" class="secondary">${icon('archive')}${t('archive')}</button>` : c.status === 'DRAFT' ? `<button data-review="${c.id}" data-revision="${c.current_revision_id}">${icon('publish')}${t('submitForReview')}</button>` : ''}<a href="/courses/${c.id}">${t('view')}</a></div></article>`,
     )
     .join('');
 }
@@ -604,13 +604,13 @@ export async function mountStudio(ctx) {
         persist();
         await mountStudio(ctx);
         document.querySelector('#editor').scrollIntoView();
-      } else if (target.dataset.publish || target.dataset.archive) {
+      } else if (target.dataset.publish || target.dataset.archive || target.dataset.review) {
         if (state.dirty) {
           notify(t('saveBeforePublish'));
           return;
         }
-        const id = target.dataset.publish || target.dataset.archive;
-        if (target.dataset.publish) {
+        const id = target.dataset.publish || target.dataset.archive || target.dataset.review;
+        if (target.dataset.publish || target.dataset.review) {
           const revision = state.id === id ? state.revisionId : target.dataset.revision;
           const check = await api(`/admin/courses/${id}/publication-check?revisionId=${revision}`);
           if (!check.ready) {
@@ -618,11 +618,10 @@ export async function mountStudio(ctx) {
             return;
           }
         }
-        await api(
-          `/admin/courses/${id}/${target.dataset.publish ? 'publish' : 'archive'}`,
-          'POST',
-          { expectedRevisionId: state.id === id ? state.revisionId : target.dataset.revision },
-        );
+        const action = target.dataset.review ? 'review' : target.dataset.publish ? 'publish' : 'archive';
+        await api(`/admin/courses/${id}/${action}`, 'POST', {
+          expectedRevisionId: state.id === id ? state.revisionId : target.dataset.revision,
+        });
         await refreshList();
       }
     } catch (error) {

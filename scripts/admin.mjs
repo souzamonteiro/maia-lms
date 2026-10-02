@@ -32,17 +32,30 @@ try {
       throw new Error(
         'Account already exists; refusing to overwrite credentials or promote it implicitly. Pass --reset to change its password.',
       );
-    db.prepare("UPDATE users SET password_hash = ?, role = 'admin' WHERE id = ?").run(
-      hash,
-      existing.id,
-    );
+    db.transaction(() => {
+      db.prepare(
+        "UPDATE users SET password_hash = ?, role = 'admin', session_version = session_version + 1, updated_at = datetime('now') WHERE id = ?",
+      ).run(hash, existing.id);
+      db.prepare(
+        "INSERT INTO audit_events (id, action, subject_type, subject_id, metadata) VALUES (?, 'admin.account_reset', 'user', ?, ?)",
+      ).run(randomUUID(), existing.id, JSON.stringify({ role: 'admin' }));
+    })();
     console.log('Administrator password reset.');
   } else {
-    db.prepare(
-      "INSERT INTO users (id, email, email_normalized, password_hash, role, verified_at) VALUES (?, ?, ?, ?, 'admin', ?)",
-    ).run(randomUUID(), email, email, hash, new Date().toISOString());
+    const id = randomUUID();
+    db.transaction(() => {
+      db.prepare(
+        "INSERT INTO users (id, email, email_normalized, password_hash, role, verified_at) VALUES (?, ?, ?, ?, 'admin', ?)",
+      ).run(id, email, email, hash, new Date().toISOString());
+      db.prepare(
+        "INSERT INTO audit_events (id, action, subject_type, subject_id, metadata) VALUES (?, 'admin.bootstrap', 'user', ?, '{}')",
+      ).run(randomUUID(), id);
+    })();
     console.log('Administrator created.');
   }
+} catch (error) {
+  console.error(error instanceof Error ? error.message : 'Administrator command failed.');
+  process.exitCode = 1;
 } finally {
   db.close();
 }

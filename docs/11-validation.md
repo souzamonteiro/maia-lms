@@ -778,5 +778,57 @@ The account-management UI is now available at `/admin/users`. Its Chromium flow
 searches for a learner, suspends the account, verifies the existing browser is
 redirected to sign-in, reactivates the account, confirms a fresh login works,
 assigns the author role, verifies session invalidation again, and confirms a fresh
-author session receives author navigation. Public instructor profiles and
-administrative bootstrap/reset workflows remain open.
+author session receives author navigation. Bootstrap/reset validation is recorded
+below.
+
+## Opt-in instructor profiles — October 2, 2026
+
+Migration 048 adds a separate instructor profile with a unique public slug and
+explicit opt-in. Authors and administrators can edit the public name, biography,
+and HTTPS website independently from the private account display name. Public
+lookups contain no account email or user ID and include only published courses;
+course details link to the profile only while it is public. Integration tests
+cover role authorization, private-by-default behavior, HTTPS validation, draft
+filtering, unpublishing, and safe response fields. Build and lint passed; OpenAPI
+YAML parsed; the full real-media suite passed 102 tests across 32 files, and all
+17 Chromium workflows passed. No deployment or production migration was performed.
+
+## Administrator bootstrap and reset — October 2, 2026
+
+The host CLI creates verified administrator accounts transactionally and records
+`admin.bootstrap`. Existing accounts are not changed without explicit `--reset`;
+reset rotates the password, promotes the selected account to admin, increments
+`session_version` to invalidate prior sessions, and records `admin.account_reset`.
+Errors are concise and no default password is introduced. Subprocess integration
+tests cover creation, refusal to overwrite, password rotation, role, session
+version, and audit records. Build and lint passed; the full real-media suite
+passed 104 tests across 33 files, and all 17 Chromium workflows passed. OpenAPI
+YAML and `git diff --check` passed. No deployment or production database changes
+were made.
+
+## Administrator enrollment support — October 2, 2026
+
+Administrators can search enrollments by learner email, course title, or slug,
+review current entitlement and required-lesson progress, grant access to published
+courses, revoke access with a required reason, and inspect chronological audit
+history. Re-grants reuse an existing enrollment and preserve progress and prior
+entitlements. Duplicate active grants and repeated revocations do not add duplicate
+access-change events. The focused API integration test covers authorization,
+history, access restoration, and persistence; Chromium covers the support UI.
+Build and lint passed; OpenAPI YAML parsed; the full real-media suite passed 105
+tests across 33 files, and all 18 Chromium workflows passed. No deployment or
+production database changes were made.
+
+## Course publication review — October 2, 2026
+
+Authors can submit an owned draft for review after the shared publication
+checklist passes. The API requires the expected current revision, writes a
+`course.submit_review` audit event, is idempotent for an already-reviewed course,
+and rejects submissions from non-owners or invalid course states. Administrators
+publish the reviewed course through the existing publication validator. Direct
+administrator publication remains compatible. API integration and Chromium tests
+cover ownership, checklist failure, stale-state protection, review, and publish.
+Build and lint passed; OpenAPI YAML parsed; the full real-media suite passed 107
+tests across 33 files, and all 19 Chromium workflows passed. Urgent withdrawal,
+scheduling, and notifications remain unimplemented; no deployment or production
+database changes were made.

@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures';
 
-test('administrator searches, suspends, and reactivates a user account', async ({ page, browser }) => {
+test('administrator manages accounts and an author publishes a public profile', async ({ page, browser }) => {
   const email = `managed-${Date.now()}@example.com`;
   const password = 'Managed-user-password-123';
 
@@ -55,6 +55,23 @@ test('administrator searches, suspends, and reactivates a user account', async (
   await learnerPage.getByLabel('Password', { exact: true }).fill(password);
   await learnerPage.getByRole('button', { name: 'Continue', exact: true }).click();
   await expect(learnerPage.getByRole('link', { name: 'Administer', exact: true })).toBeVisible();
+  await learnerPage.goto('/my-learning');
+  const profileForm = learnerPage.locator('#instructor-profile');
+  await profileForm.getByLabel('Profile address', { exact: true }).fill('managed-instructor');
+  await profileForm.getByLabel('Public name', { exact: true }).fill('Managed Instructor');
+  await profileForm.getByLabel('Biography', { exact: true }).fill('A public teaching biography.');
+  await profileForm.getByLabel('Website (HTTPS)', { exact: true }).fill('https://example.com/teacher');
+  await profileForm.getByLabel('Publish this profile', { exact: true }).check();
+  await profileForm.getByRole('button', { name: 'Save profile', exact: true }).click();
+  await expect(learnerPage.getByRole('link', { name: 'View instructor profile', exact: true })).toBeVisible();
+  await learnerPage.goto('/instructors/managed-instructor');
+  await expect(learnerPage.getByRole('heading', { name: 'Managed Instructor' })).toBeVisible();
+  await expect(learnerPage.getByText('A public teaching biography.')).toBeVisible();
+  await expect(learnerPage.getByRole('link', { name: 'Visit website', exact: true })).toHaveAttribute(
+    'href',
+    'https://example.com/teacher',
+  );
+  await expect(learnerPage.locator('body')).not.toContainText(email);
 
   await learnerContext.close();
 });

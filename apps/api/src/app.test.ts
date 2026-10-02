@@ -1509,3 +1509,264 @@ describe('administrator account status management', () => {
     ).toBe('author');
   });
 });
+
+describe('public instructor profiles', () => {
+  it('allows authors to opt in and exposes only public profile fields and published courses', async () => {
+    const learner = await account('profile-learner@example.com');
+    expect(
+      (await request('/api/v1/auth/instructor-profile', 'GET', undefined, learner.cookie)).status,
+    ).toBe(403);
+
+    const author = await account('profile-author@example.com', 'author');
+    expect(
+      (await request('/api/v1/auth/instructor-profile', 'GET', undefined, author.cookie)).data,
+    ).toBeNull();
+    const admin = await account('profile-admin@example.com', 'admin');
+    const profile = {
+      slug: 'ada-lovelace',
+      displayName: 'Ada Lovelace',
+      bio: 'An educator and software engineer.',
+      websiteUrl: 'https://example.com/ada',
+      isPublic: false,
+    };
+    expect(
+      (
+        await request(
+          '/api/v1/auth/instructor-profile',
+          'PUT',
+          { ...profile, websiteUrl: 'http://example.com/ada' },
+          author.cookie,
+        )
+      ).status,
+    ).toBe(422);
+    expect(
+      (
+        await request('/api/v1/auth/instructor-profile', 'PUT', profile, author.cookie)
+      ).status,
+    ).toBe(200);
+    expect((await request('/api/v1/instructors/ada-lovelace')).status).toBe(404);
+
+    const created = await request(
+      '/api/v1/admin/courses',
+      'POST',
+      draft('profile-published-course'),
+      author.cookie,
+    );
+    expect(created.status).toBe(201);
+    const draftCreated = await request(
+      '/api/v1/admin/courses',
+      'POST',
+      draft('profile-draft-course'),
+      author.cookie,
+    );
+    expect(draftCreated.status).toBe(201);
+
+    expect(
+      (
+        await request('/api/v1/auth/instructor-profile', 'PUT', { ...profile, isPublic: true }, author.cookie)
+      ).status,
+    ).toBe(200);
+    const publicProfile = await request('/api/v1/instructors/ada-lovelace');
+    expect(publicProfile.status).toBe(200);
+    expect(publicProfile.data).toMatchObject({
+      slug: profile.slug,
+      display_name: profile.displayName,
+      bio: profile.bio,
+      website_url: profile.websiteUrl,
+      courses: [],
+    });
+    expect(publicProfile.data).not.toHaveProperty('user_id');
+    expect(publicProfile.data).not.toHaveProperty('email');
+
+    expect(
+      (
+        await request(`/api/v1/admin/courses/${created.data.id}/publish`, 'POST', {}, admin.cookie)
+      ).status,
+    ).toBe(200);
+    const withCourse = await request('/api/v1/instructors/ada-lovelace');
+    expect(withCourse.data.courses).toEqual([
+      expect.objectContaining({ slug: 'profile-published-course', title: 'Curso de teste' }),
+    ]);
+    expect(
+      (await request('/api/v1/courses/profile-published-course')).data.instructor_profile_slug,
+    ).toBe('ada-lovelace');
+    expect(JSON.stringify(withCourse.data)).not.toContain('profile-author@example.com');
+    expect(
+      (
+        await request(
+          '/api/v1/auth/instructor-profile',
+          'PUT',
+          { ...profile, isPublic: false },
+          author.cookie,
+        )
+      ).status,
+    ).toBe(200);
+    expect((await request('/api/v1/instructors/ada-lovelace')).status).toBe(404);
+  });
+});
+
+describe('administrator enrollment support', () => {
+  it('grants, revokes, and restores access with reasons while retaining progress and history', async () => {
+    const admin = await account('enrollment-admin@example.com', 'admin');
+    const author = await account('enrollment-author@example.com', 'author');
+    const learner = await account('enrollment-target@example.com');
+    const course = await publish(admin.cookie, 'admin-support-course');
+    const grant = {
+      email: 'ENROLLMENT-TARGET@example.com',
+      courseSlug: 'admin-support-course',
+      reason: 'Support approved access after enrollment issue.',
+    };
+
+    expect(
+      (await request('/api/v1/admin/enrollments/grant', 'POST', grant, author.cookie)).status,
+    ).toBe(403);
+    const created = await request('/api/v1/admin/enrollments/grant', 'POST', grant, admin.cookie);
+    expect(created.status).toBe(201);
+    expect(created.data.state).toBe('active');
+    const enrollmentId = created.data.id as string;
+    db.prepare(
+      'INSERT INTO lesson_progress(enrollment_id,lesson_id,position_seconds,completed_at) VALUES(?,?,12,datetime(\'now\'))',
+    ).run(enrollmentId, course.lessonId);
+
+    expect(
+      (
+        await request('/api/v1/admin/enrollments/grant', 'POST', grant, admin.cookie)
+      ).data.code,
+    ).toBe('ADMIN_GRANT_ALREADY_ACTIVE');
+    const listing = await request('/api/v1/admin/enrollments?q=enrollment-target', 'GET', undefined, admin.cookie);
+    expect(listing.data.total).toBe(1);
+    expect(listing.data.items[0]).toMatchObject({
+      id: enrollmentId,
+      email: 'enrollment-target@example.com',
+      course_slug: 'admin-support-course',
+      state: 'active',
+      completed_lessons: 1,
+    });
+
+    const revoked = await request(
+      `/api/v1/admin/enrollments/${enrollmentId}/revoke`,
+      'PATCH',
+      { reason: 'Access paused at learner request.' },
+      admin.cookie,
+    );
+    expect(revoked.data).toEqual({ id: enrollmentId, state: 'revoked', changed: true });
+    expect(
+      (
+        await request(`/api/v1/admin/enrollments/${enrollmentId}/revoke`, 'PATCH', {
+          reason: 'Duplicate request for idempotency.',
+        }, admin.cookie)
+      ).data.changed,
+    ).toBe(false);
+
+    const restored = await request('/api/v1/admin/enrollments/grant', 'POST', grant, admin.cookie);
+    expect(restored.data.id).toBe(enrollmentId);
+    expect(
+      db.prepare('SELECT count(*) AS total FROM enrollments WHERE id=?').get(enrollmentId),
+    ).toEqual({ total: 1 });
+    expect(
+      db.prepare('SELECT count(*) AS total FROM lesson_progress WHERE enrollment_id=?').get(enrollmentId),
+    ).toEqual({ total: 1 });
+    expect(
+      db.prepare("SELECT count(*) AS total FROM entitlements WHERE enrollment_id=? AND source_type='admin'").get(enrollmentId),
+    ).toEqual({ total: 2 });
+
+    const history = await request(
+      `/api/v1/admin/enrollments/${enrollmentId}/history`,
+      'GET',
+      undefined,
+      admin.cookie,
+    );
+    expect(history.data.items.map((item: { action: string }) => item.action)).toEqual([
+      'enrollment.grant',
+      'enrollment.revoke',
+      'enrollment.grant',
+    ]);
+    expect(history.data.items[0].metadata).toContain(grant.reason);
+    expect(history.data.items[1].metadata).toContain('Access paused at learner request.');
+    expect((await request(`/api/v1/lessons/${course.lessonId}`, 'GET', undefined, learner.cookie)).status).toBe(200);
+  });
+});
+
+describe('course publication review', () => {
+  it('submits a ready owned draft for review and allows an administrator to publish it', async () => {
+    const admin = await account('review-admin@example.com', 'admin');
+    const author = await account('review-author@example.com', 'author');
+    const otherAuthor = await account('review-other-author@example.com', 'author');
+    const created = await request(
+      '/api/v1/admin/courses',
+      'POST',
+      draft('review-ready-course'),
+      author.cookie,
+    );
+    expect(created.status).toBe(201);
+    const courseId = created.data.id as string;
+    const revisionId = created.data.current_revision_id as string;
+
+    const wrongOwner = await request(
+      `/api/v1/admin/courses/${courseId}/review`,
+      'POST',
+      { expectedRevisionId: revisionId },
+      otherAuthor.cookie,
+    );
+    expect(wrongOwner.status).toBe(403);
+
+    const submitted = await request(
+      `/api/v1/admin/courses/${courseId}/review`,
+      'POST',
+      { expectedRevisionId: revisionId },
+      author.cookie,
+    );
+    expect(submitted.status).toBe(200);
+    expect(submitted.data.status).toBe('REVIEW');
+    expect(
+      (
+        await request(`/api/v1/admin/courses/${courseId}/review`, 'POST', {
+          expectedRevisionId: revisionId,
+        }, author.cookie)
+      ).status,
+    ).toBe(200);
+    expect(
+      db.prepare("SELECT count(*) AS total FROM audit_events WHERE subject_id=? AND action='course.submit_review'").get(courseId),
+    ).toEqual({ total: 1 });
+
+    const learner = await account('review-learner@example.com');
+    expect((await request(`/api/v1/courses/${courseId}`, 'GET', undefined, learner.cookie)).status).toBe(404);
+    const published = await request(`/api/v1/admin/courses/${courseId}/publish`, 'POST', {
+      expectedRevisionId: revisionId,
+    }, admin.cookie);
+    expect(published.status).toBe(200);
+    expect(published.data.status).toBe('PUBLISHED');
+    expect((await request('/api/v1/courses/review-ready-course')).status).toBe(200);
+  });
+
+  it('does not submit a course that fails the publication checklist', async () => {
+    const author = await account('review-incomplete@example.com', 'author');
+    const created = await request(
+      '/api/v1/admin/courses',
+      'POST',
+      draft('review-incomplete-course'),
+      author.cookie,
+    );
+    expect(created.status).toBe(201);
+    const detail = await request(
+      `/api/v1/admin/courses/${created.data.id}`,
+      'GET',
+      undefined,
+      author.cookie,
+    );
+    const lessonId = detail.data.modules[0].lessons[0].id as string;
+    db.prepare('UPDATE lessons SET body=? WHERE id=?').run('', lessonId);
+    const result = await request(
+      `/api/v1/admin/courses/${created.data.id}/review`,
+      'POST',
+      { expectedRevisionId: created.data.current_revision_id },
+      author.cookie,
+    );
+    expect(result.status).toBe(422);
+    expect(result.data.issues).toBeDefined();
+    expect(
+      (db.prepare('SELECT status FROM courses WHERE id=?').get(created.data.id) as { status: string })
+        .status,
+    ).toBe('DRAFT');
+  });
+});

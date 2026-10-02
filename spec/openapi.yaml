@@ -99,6 +99,47 @@ paths:
         '200': {description: Display name saved}
         '401': {description: Authentication required}
         '422': {description: Empty or overlong display name}
+  /auth/instructor-profile:
+    get:
+      summary: Get the authenticated author's public profile settings
+      security:
+        - cookieAuth: []
+      responses:
+        '200': {description: Saved profile settings, or null when not configured}
+        '403': {description: Author or administrator role required}
+    put:
+      summary: Save and optionally publish the authenticated author's profile
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [slug, displayName, isPublic]
+              properties:
+                slug: {type: string, minLength: 3, maxLength: 80, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'}
+                displayName: {type: string, minLength: 1, maxLength: 100}
+                bio: {type: string, maxLength: 5000}
+                websiteUrl: {type: string, format: uri, description: HTTPS URLs only}
+                isPublic: {type: boolean}
+      responses:
+        '200': {description: Saved profile settings}
+        '403': {description: Author or administrator role required}
+        '409': {description: INSTRUCTOR_PROFILE_SLUG_TAKEN}
+        '422': {description: INSTRUCTOR_PROFILE_INVALID}
+  /instructors/{slug}:
+    parameters:
+      - name: slug
+        in: path
+        required: true
+        schema: {type: string}
+    get:
+      summary: Get an opted-in public instructor profile and published courses
+      responses:
+        '200': {description: Public profile fields and published courses; no account email or user ID}
+        '404': {description: Instructor profile not found or not public}
   /auth/locale:
     put:
       summary: Update the authenticated user's interface language
@@ -344,6 +385,88 @@ paths:
         '404': {description: ADMIN_USER_NOT_FOUND}
         '409': {description: ADMIN_SELF_ROLE_CHANGE or ADMIN_LAST_ACTIVE; setting the current role is idempotent}
         '422': {description: Invalid account id or role; worker cannot be assigned administratively}
+  /admin/enrollments:
+    get:
+      summary: Search and paginate enrollments with progress and access state (administrator only)
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: q
+          in: query
+          schema: {type: string, maxLength: 100}
+        - name: state
+          in: query
+          schema: {type: string, enum: [active, revoked]}
+        - name: limit
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 100, default: 50}
+        - name: offset
+          in: query
+          schema: {type: integer, minimum: 0, default: 0}
+      responses:
+        '200': {description: Enrollment summaries with learner/course, progress, state, and current entitlement status}
+        '403': {description: Administrator required}
+        '422': {description: Invalid search, state, or pagination value}
+  /admin/enrollments/grant:
+    post:
+      summary: Grant access to a published course (administrator only)
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, courseSlug, reason]
+              properties:
+                email: {type: string, format: email}
+                courseSlug: {type: string}
+                reason: {type: string, minLength: 5, maxLength: 1000}
+      responses:
+        '201': {description: Active enrollment; existing enrollment/progress history is retained}
+        '403': {description: Administrator required}
+        '404': {description: ADMIN_GRANT_USER_NOT_FOUND or ADMIN_GRANT_COURSE_NOT_FOUND}
+        '409': {description: ADMIN_GRANT_ALREADY_ACTIVE}
+        '422': {description: Invalid email, course address, or reason}
+  /admin/enrollments/{id}/revoke:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    patch:
+      summary: Revoke enrollment access without deleting enrollment or progress (administrator only)
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: {type: string, minLength: 5, maxLength: 1000}
+      responses:
+        '200': {description: Enrollment state; repeated revocation is idempotent and does not duplicate audit events}
+        '403': {description: Administrator required}
+        '404': {description: ADMIN_ENROLLMENT_NOT_FOUND}
+        '422': {description: Invalid enrollment id or reason}
+  /admin/enrollments/{id}/history:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    get:
+      summary: Read append-only access grant/revocation history (administrator only)
+      security:
+        - cookieAuth: []
+      responses:
+        '200': {description: Chronologically ordered enrollment audit events, including actor and reason metadata}
+        '403': {description: Administrator required}
+        '404': {description: ADMIN_ENROLLMENT_NOT_FOUND}
   /admin/categories:
     get:
       summary: List categories with version and references_count (administrator only)
@@ -881,6 +1004,27 @@ paths:
                   format: uuid
                   description: Recommended concurrency guard; optional for legacy
                     clients
+  /admin/courses/{id}/review:
+    parameters:
+      - $ref: '#/components/parameters/courseId'
+    post:
+      summary: Submit an owned, ready draft for administrator review
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedRevisionId]
+              properties:
+                expectedRevisionId: {type: string, format: uuid}
+      responses:
+        '200': {description: Course moved to REVIEW; repeated submission is idempotent}
+        '403': {description: Course owner or administrator required}
+        '409': {description: DRAFT_CONFLICT or COURSE_REVIEW_STATE_INVALID}
+        '422': {description: Publication checklist failed}
   /admin/courses/{id}/archive:
     parameters:
       - $ref: '#/components/parameters/courseId'

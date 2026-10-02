@@ -18,6 +18,8 @@ import { coursesRouter } from './routes/courses.js';
 import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
 import { adminUsersRouter } from './routes/admin-users.js';
+import { adminEnrollmentsRouter } from './routes/admin-enrollments.js';
+import { instructorProfilesRouter } from './routes/instructor-profiles.js';
 import { errorHandler } from './middleware/error-handler.js';
 
 export function createApp(db: Database.Database, config: Config): express.Application {
@@ -145,6 +147,8 @@ export function createApp(db: Database.Database, config: Config): express.Applic
   app.use('/api/v1/auth', authLimiter, authRouter(db, config.PUBLIC_BASE_URL));
 
   app.use('/api/v1', adminUsersRouter(db));
+  app.use('/api/v1', adminEnrollmentsRouter(db));
+  app.use('/api/v1', instructorProfilesRouter(db));
   app.use('/api/v1', categoriesRouter(db));
   app.use('/api/v1', coursesRouter(db));
   app.use('/api/v1', homeRouter(db));

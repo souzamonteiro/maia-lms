@@ -83,7 +83,34 @@ assign the learner, author, or admin role. Worker assignment is not available.
 Actual status and role changes are audited and invalidate existing sessions;
 same-value updates are idempotent. Administrators cannot suspend themselves,
 demote themselves, or remove the last active administrator. Public instructor
-profiles and administrative bootstrap/reset workflows remain separate work.
+profiles are opt-in and edited separately from the private account display name.
+Their public page contains only the chosen public name, biography, HTTPS website,
+and published courses; unlisted profiles return not found. Course pages link to
+the profile only when it is public. Administrative bootstrap/reset workflows
+remain separate work.
+
+## Course review
+
+An author can submit an owned draft from the studio after the publication checklist
+passes. The request includes the draft revision ID, so stale editor state cannot be
+submitted silently. The course enters **REVIEW** and records an audit event; an
+administrator can publish it after review. Direct administrator publishing remains
+available for existing operational workflows. Archiving still closes discovery and
+new enrollment while preserving authorized access for existing learners; it is not
+an urgent withdrawal. A separate emergency withdrawal that invalidates old lesson
+and media URLs remains unimplemented.
+
+## Enrollment support
+
+Administrators can open **Manage enrollments** to search by learner email, course
+title, or course address, and inspect the enrollment state, current entitlement,
+and required-lesson progress. A manual grant requires a published course and a
+reason. Revocation also requires a reason and preserves the enrollment, progress,
+and earlier entitlements; the enrollment state prevents further access. Re-grant
+reactivates the existing enrollment rather than creating a second record. The
+history view presents grant/revocation audit events in insertion order when events
+share the same stored timestamp. Provider payment reconciliation is not part of
+this support workflow.
 
 
 ## Email verification confirmation

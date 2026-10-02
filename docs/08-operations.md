@@ -64,7 +64,7 @@ By default, the command does not replace existing accounts. To reset the passwor
 sudo ./scripts/create-admin.sh your-email@example.com --reset
 ```
 
-There is no default password. Create authors through a controlled database administration procedure; the current interface creates learners and courses but does not manage user roles.
+The explicit `--reset` operation rotates the password, ensures the selected account has the administrator role, increments its session version to invalidate existing sign-ins, and records an `admin.account_reset` audit event. Without `--reset`, an existing account is left unchanged and the command prints a concise error. Initial creation records `admin.bootstrap`. There is no default password. After sign-in, administrators can delegate learner, author, and administrator roles from **Manage users**; the worker role cannot be assigned there.
 
 ## VPS and TLS — the maia-chat pattern
 

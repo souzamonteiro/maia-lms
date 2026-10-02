@@ -13,6 +13,7 @@ export function createWebApp(): express.Application {
     '/',
     '/courses',
     '/courses/:slug',
+    '/instructors/:slug',
     '/lessons/:id',
     '/auth/login',
     '/auth/register',
@@ -24,6 +25,7 @@ export function createWebApp(): express.Application {
     '/admin/home',
     '/admin/categories',
     '/admin/users',
+    '/admin/enrollments',
   ]) {
     app.get(route, (_req, res) => res.render('home.njk', { title: 'Learn with Maia' }));
   }

@@ -537,7 +537,7 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   translated metadata with explicit fallback. Dependencies: BASE-02, I18N-01.
   Acceptance: selecting Spanish in the interface neither reclassifies a Portuguese
   course nor promises automatic video translation; preferences persist across devices.
-- [ ] **ADMIN-01 — User and author management.**
+- [x] **ADMIN-01 — User and author management (local implementation).**
   Listing/search, roles, suspension/reactivation, public instructor profiles, and
   auditing; administrative bootstrap/reset with specific errors and no default passwords.
   Dependency: existing identity. Acceptance: administrators delegate authorship in
@@ -549,8 +549,13 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   are rejected, and expired HTML sessions return to sign-in. Administrators can
   also delegate learner, author, and admin roles; worker assignment, self-demotion,
   and demotion of the last active admin are rejected. Role changes invalidate
-  sessions and are audited. Public instructor profiles and remaining
-  bootstrap/reset workflows are open.
+  sessions and are audited. Authors/admins can opt into a public instructor
+  profile with a unique address, public name, biography, and HTTPS website; public
+  pages expose only published courses and never account email/private display
+  name. The host bootstrap/reset command creates verified administrators without
+  default passwords; explicit resets rotate credentials, promote the selected
+  account to admin, invalidate sessions, and write audit events. ADMIN-01 is
+  implemented locally; production runbook execution remains an operator task.
 - [ ] **AUTH-01 — Complete account workflows.**
   Profile, password changes, verification resend/feedback, localized recovery,
   account states, and explicit unverified-email policy; administrator MFA with
@@ -561,19 +566,32 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   editing, and authenticated password changes. Recovery requests invalidate
   earlier reset links; successful password changes revoke sessions and pending
   reset tokens.
-  A private display name is editable in My learning; public instructor profiles,
-  broader profile management, MFA, verified-email policy, and remaining
+  A private display name is editable in My learning; broader profile management,
+  MFA, verified-email policy, and remaining
   failure/recovery workflows are still open. The account-security browser test
   verifies labels and confirmation-mismatch feedback in en, pt-BR, and es.
 - [ ] **ADMIN-02 — Enrollments, grants, and audit.**
   Dashboard for enrollments, progress, manual grants/revocation with reasons,
   history, and support handling. Dependencies: BASE-01, ADMIN-01. Acceptance:
   authorized, audited operations change access without deleting history or requiring manual SQL.
+  Partial local delivery: administrators can search enrollments by learner email,
+  course title, or slug, inspect required-lesson progress and current access,
+  manually grant access to a published course, revoke enrollment access with a
+  reason, and inspect chronological audit history. Re-granting reuses the existing
+  enrollment and preserves progress; duplicate active grants and repeated revokes
+  do not create duplicate access-change events. Commerce reconciliation, grants
+  tied to provider support, and broader operational reporting remain open.
 - [ ] **ADMIN-03 — Publication, review, and urgent withdrawal.**
   DRAFT → REVIEW → PUBLISHED workflow, checklist, optional scheduling, and notifications;
   distinguish archiving (preserves access) from urgent access withdrawal.
   Dependencies: EDIT-05, ADMIN-02. Acceptance: each transition's rules are tested;
   urgent withdrawal leaves no access through old URLs/media grants.
+  Partial local delivery: authors can submit an owned DRAFT for review only when
+  the publication checklist passes; the revision is checked optimistically and the
+  transition is audited. Administrators can then publish; direct admin publication
+  remains available for compatibility. Review scheduling/notifications and a
+  distinct urgent-withdrawal path that invalidates old lesson/media access remain
+  open. Ordinary ARCHIVED behavior preserves existing enrollment access.
 
 ## P1 — assessments and completion
 

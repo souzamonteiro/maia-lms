@@ -2,6 +2,7 @@ import { mountEmailVerification } from './email-verification.js';
 import { attachPlaybackPositionSaver } from './playback-position.js';
 import { mountCategoryEditor, categoriesDirty } from './category-editor.js';
 import { mountAdminUsers } from './admin-users.js';
+import { mountAdminEnrollments } from './admin-enrollments.js';
 import { coursePresentation } from './course-presentation.js';
 import { icon } from './icons.js';
 import { mountStudio, studioDirty } from './studio.js';
@@ -261,6 +262,28 @@ async function learning() {
       'beforeend',
       `<section class="account-profile"><h2>${t('accountProfile')}</h2><form id="account-profile"><label>${t('displayName')}<input name="displayName" value="${e(me.display_name ?? '')}" maxlength="100" required></label><button type="submit">${t('saveProfile')}</button></form></section>`,
     );
+    if (['author', 'admin'].includes(me.role)) {
+      const profile = await api('/auth/instructor-profile');
+      app.insertAdjacentHTML(
+        'beforeend',
+        `<section class="account-profile"><h2>${t('instructorProfile')}</h2><p>${t('instructorProfilePrivacy')}</p><form id="instructor-profile"><label>${t('instructorProfileAddress')}<input name="slug" value="${e(profile?.slug ?? '')}" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" minlength="3" maxlength="80" required></label><label>${t('instructorProfileName')}<input name="displayName" value="${e(profile?.display_name ?? me.display_name ?? '')}" maxlength="100" required></label><label>${t('instructorProfileBio')}<textarea name="bio" maxlength="5000">${e(profile?.bio ?? '')}</textarea></label><label>${t('instructorProfileWebsite')}<input name="websiteUrl" type="url" maxlength="500" value="${e(profile?.website_url ?? '')}"></label><label><input name="isPublic" type="checkbox" ${profile?.is_public ? 'checked' : ''}>${t('instructorProfilePublish')}</label><button type="submit">${t('saveProfile')}</button></form>${profile?.is_public ? `<p><a href="/instructors/${e(profile.slug)}">${t('viewInstructorProfile')}</a></p>` : ''}</section>`,
+      );
+      bindForm('#instructor-profile', async data => {
+        const saved = await api('/auth/instructor-profile', 'PUT', {
+          slug: data.get('slug'),
+          displayName: data.get('displayName'),
+          bio: data.get('bio'),
+          websiteUrl: data.get('websiteUrl'),
+          isPublic: data.get('isPublic') === 'on',
+        });
+        notify(t('instructorProfileSaved'));
+        if (saved.is_public)
+          document.querySelector('#instructor-profile')?.insertAdjacentHTML(
+            'afterend',
+            `<p><a href="/instructors/${e(saved.slug)}">${t('viewInstructorProfile')}</a></p>`,
+          );
+      });
+    }
   bindForm('#change-password', async data => {
     const payload = Object.fromEntries(data);
     if (payload.newPassword !== payload.confirmPassword) throw new Error(t('passwordsDoNotMatch'));
@@ -285,6 +308,9 @@ async function admin() {
   } else if (location.pathname === '/admin/users') {
     if (me.role !== 'admin') throw new Error(t('adminAccessRestricted'));
     await mountAdminUsers(context);
+  } else if (location.pathname === '/admin/enrollments') {
+    if (me.role !== 'admin') throw new Error(t('adminAccessRestricted'));
+    await mountAdminEnrollments(context);
   } else if (location.pathname === '/admin/home') {
     if (me.role !== 'admin') throw new Error(t('adminAccessRestricted'));
     await mountHomeEditor(context);
@@ -294,6 +320,10 @@ async function home() {
   const selection = await api('/home');
   const hero = selection.hero[0];
   app.innerHTML = `<section class="hero"><p class="eyebrow">Maia Learn</p><h1>${hero ? e(hero.title) : t('heroTitle')}</h1>${hero ? coverImage(hero) : ''}<p>${hero ? e(hero.summary) : t('heroText')}</p>${hero ? `<a class="button" href="/courses/${e(hero.slug)}">${t('viewCourse')}</a>` : ''}</section>${['featured', 'recommended'].map(slot => (selection[slot].length ? `<section><h2>${t(slot === 'featured' ? 'homeFeatured' : 'homeRecommended')}</h2>${cards(selection[slot])}</section>` : '')).join('')}<a class="button" href="/courses">${t('allCourses')}</a>`;
+}
+async function instructor(slug) {
+  const profile = await api(`/instructors/${encodeURIComponent(slug)}`);
+  app.innerHTML = `<a href="/courses">${t('backToCourses')}</a><h1>${e(profile.display_name)}</h1>${profile.bio ? `<div class="plain-content">${e(profile.bio)}</div>` : ''}${profile.website_url ? `<p><a href="${e(profile.website_url)}" target="_blank" rel="noopener noreferrer">${t('instructorProfileWebsiteLink')}</a></p>` : ''}<section><h2>${t('instructorCourses')}</h2>${cards(profile.courses)}</section>`;
 }
 window.addEventListener('beforeunload', event => {
   if (
@@ -319,7 +349,7 @@ async function main() {
       applyLocale();
     }
     document.querySelector('#account').innerHTML =
-      `${['admin', 'author'].includes(me.role) ? `<a href="/admin">${t('administer')}</a>` : ''}${me.role === 'admin' ? `<a href="/admin/users">${t('adminUsersTitle')}</a>` : ''}<button id="logout" class="secondary">${icon('signOut')}${t('signOut')}</button>`;
+      `${['admin', 'author'].includes(me.role) ? `<a href="/admin">${t('administer')}</a>` : ''}${me.role === 'admin' ? `<a href="/admin/users">${t('adminUsersTitle')}</a><a href="/admin/enrollments">${t('adminEnrollmentsTitle')}</a>` : ''}<button id="logout" class="secondary">${icon('signOut')}${t('signOut')}</button>`;
     button('#logout', async () => {
       await api('/auth/logout', 'POST');
       location.href = '/';
@@ -329,6 +359,7 @@ async function main() {
   if (location.pathname === '/auth/verify-email') mountEmailVerification({ app, api, t });
   else if (parts[0] === 'auth') await auth(parts[1]);
   else if (parts[0] === 'courses' && parts[1]) await detail(parts[1]);
+  else if (parts[0] === 'instructors' && parts[1]) await instructor(parts[1]);
   else if (parts[0] === 'lessons') await lesson(parts[1]);
   else if (parts[0] === 'my-learning') await learning();
   else if (parts[0] === 'admin') await admin();

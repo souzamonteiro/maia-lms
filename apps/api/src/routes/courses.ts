@@ -521,10 +521,37 @@ export function coursesRouter(db: Database.Database): Router {
       .set('Cache-Control', 'private, no-store')
       .json({ revisionId, ready: issues.length === 0, issues });
   });
+  router.post('/admin/courses/:id/review', requireRole('admin', 'author'), (req, res) => {
+    const expectedRevisionId = z.string().uuid().parse(req.body.expectedRevisionId);
+    const saved = db
+      .transaction(() => {
+        const c = course(req.params.id);
+        assertOwner(c, req.session.userId, req.session.role);
+        if (expectedRevisionId !== c.current_revision_id)
+          throw new AppError(409, 'Draft changed. Reload before submitting for review.', 'DRAFT_CONFLICT');
+        if (c.status === 'REVIEW') return c;
+        if (c.status !== 'DRAFT')
+          throw new AppError(409, 'Only draft courses can be submitted for review', 'COURSE_REVIEW_STATE_INVALID');
+        const issues = publicationIssues(db, c.id, c.current_revision_id);
+        if (issues.length)
+          throw new AppError(422, 'Draft is not ready for review', issues[0].code, issues);
+        db.prepare(
+          "UPDATE courses SET status='REVIEW',updated_at=datetime('now') WHERE id=?",
+        ).run(c.id);
+        db.prepare(
+          "INSERT INTO audit_events(id,actor_id,action,subject_type,subject_id,metadata) VALUES(?,?,'course.submit_review','course',?,?)",
+        ).run(randomUUID(), req.session.userId, c.id, JSON.stringify({ revisionId: c.current_revision_id }));
+        return course(c.id);
+      })
+      .immediate();
+    res.json(saved);
+  });
   router.post('/admin/courses/:id/publish', requireRole('admin'), (req, res) => {
     const saved = db
       .transaction(() => {
         const c = course(req.params.id);
+        if (c.status === 'ARCHIVED')
+          throw new AppError(409, 'Archived courses cannot be published', 'COURSE_ARCHIVED');
         if (req.body.expectedRevisionId && req.body.expectedRevisionId !== c.current_revision_id)
           throw new AppError(409, 'Draft changed. Reload before publishing.', 'DRAFT_CONFLICT');
         const issues = publicationIssues(db, c.id, c.current_revision_id);
@@ -572,6 +599,14 @@ export function coursesRouter(db: Database.Database): Router {
       ...revision,
       slug: editing ? revision.slug : c.slug,
       revision_id: revisionId,
+      instructor_profile_slug:
+        !editing && c.status === 'PUBLISHED'
+          ? (
+              db
+                .prepare('SELECT slug FROM instructor_profiles WHERE user_id=? AND is_public=1')
+                .get(c.author_id) as { slug: string } | undefined
+            )?.slug ?? null
+          : null,
       categories: revisionCategories(db, revisionId),
       attachments: attachmentList(db, revisionId, null),
       enrollment: e ?? null,
