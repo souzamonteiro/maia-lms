@@ -33,7 +33,7 @@ export function homeRouter(db: Database.Database): Router {
   router.get('/home', (_req, res) => {
     const rows = db
       .prepare(
-        `SELECT c.id, c.slug, c.access_mode, c.locale, r.title, r.summary, r.cover_file_id, r.cover_alt, c.published_revision_id, p.slot FROM promotions p JOIN courses c ON c.id = p.course_id JOIN course_revisions r ON r.id = c.published_revision_id WHERE c.status = 'PUBLISHED' AND julianday(p.starts_at) <= julianday('now') AND (p.ends_at IS NULL OR julianday(p.ends_at) > julianday('now')) ORDER BY p.priority, p.id`,
+        `SELECT c.id, c.slug, c.access_mode, c.locale, r.title, r.summary, r.cover_file_id, r.cover_alt, c.published_revision_id, p.slot FROM promotions p JOIN courses c ON c.id = p.course_id JOIN course_revisions r ON r.id = c.published_revision_id WHERE c.status = 'PUBLISHED' AND c.withdrawn_at IS NULL AND julianday(p.starts_at) <= julianday('now') AND (p.ends_at IS NULL OR julianday(p.ends_at) > julianday('now')) ORDER BY p.priority, p.id`,
       )
       .all() as { slot: string }[];
     res.json(Object.fromEntries(slots.map(slot => [slot, rows.filter(row => row.slot === slot)])));
@@ -53,7 +53,7 @@ export function homeRouter(db: Database.Database): Router {
         if (
           !db
             .prepare(
-              "SELECT id FROM courses WHERE id = ? AND status = 'PUBLISHED' AND published_revision_id IS NOT NULL",
+              "SELECT id FROM courses WHERE id = ? AND status = 'PUBLISHED' AND published_revision_id IS NOT NULL AND withdrawn_at IS NULL",
             )
             .get(i.courseId)
         )

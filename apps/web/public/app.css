@@ -60,6 +60,69 @@ h2 {
   padding: 55px 0;
   max-width: 740px;
 }
+.certificate-verification {
+  max-width: 760px;
+  margin: 40px auto;
+  padding: 32px;
+  background: white;
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--green);
+  border-radius: 8px;
+}
+.certificate-verification h1 {
+  margin-top: 0;
+  font-size: 36px;
+  letter-spacing: 0;
+}
+.certificate-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  padding: 5px 12px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+.certificate-status.is-valid {
+  color: #145b3d;
+  background: #e4f0e8;
+}
+.certificate-status.is-revoked {
+  color: #812b2b;
+  background: #fae8e5;
+}
+.certificate-facts {
+  margin: 28px 0 0;
+  border-top: 1px solid var(--line);
+}
+.certificate-facts div {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.65fr) minmax(0, 1.35fr);
+  gap: 20px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+.certificate-facts dt {
+  color: #4b6260;
+  font-weight: 700;
+}
+.certificate-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .certificate-verification {
+    margin: 20px 0;
+    padding: 22px;
+  }
+  .certificate-verification h1 {
+    font-size: 30px;
+  }
+  .certificate-facts div {
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+}
 .eyebrow {
   letter-spacing: 2px;
   font-size: 13px;
@@ -150,6 +213,52 @@ form.auth {
 }
 .lesson {
   max-width: 850px;
+}
+.lesson-quiz {
+  max-width: 850px;
+  margin: 28px 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  background: white;
+}
+.quiz-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 10px 0;
+  font-weight: 400;
+}
+.quiz-choice input {
+  flex: 0 0 auto;
+  margin: 3px 0 0;
+}
+.quiz-authoring {
+  max-width: 850px;
+  margin: 28px 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  background: white;
+}
+.quiz-choice-row {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.6fr) minmax(180px, 2fr) auto auto;
+  gap: 10px;
+  align-items: end;
+  margin: 12px 0;
+}
+.quiz-correct-choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+}
+.quiz-correct-choice input {
+  width: auto;
+}
+@media (max-width: 700px) {
+  .quiz-choice-row {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 .lesson-outline {
   display: block;

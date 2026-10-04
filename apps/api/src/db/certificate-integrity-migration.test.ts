@@ -18,15 +18,48 @@ it('allows one active certificate per enrollment and supports revoke-then-reissu
       INSERT INTO enrollments(id,user_id,course_id,revision_id)
       VALUES ('enrollment-a','user','course-a','revision-a'),
              ('enrollment-b','user','course-b','revision-b');
-      INSERT INTO certificates(id,enrollment_id,public_code,confirmed_name,payload_hash)
-            VALUES ('certificate-old','enrollment-a','public-code-old-00000000000000000001','Learner','hash-old');
     `);
 
-    const addCertificate = db.prepare(
-      'INSERT INTO certificates(id,enrollment_id,public_code,confirmed_name,payload_hash,revoked_at,supersedes_id) VALUES(?,?,?,?,?,?,?)',
+    const insertCertificate = db.prepare(
+      'INSERT INTO certificates(id,enrollment_id,public_code,confirmed_name,payload_hash,revoked_at,supersedes_id,payload_json,disclosure_hash,disclosure_consented_at,disclosure_version) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
+    );
+    const addCertificate = (
+      id: string,
+      enrollmentId: string,
+      publicCode: string,
+      confirmedName: string,
+      payloadHash: string,
+      revokedAt: string | null,
+      supersedesId: string | null,
+    ) => insertCertificate.run(
+      id,
+      enrollmentId,
+      publicCode,
+      confirmedName,
+      payloadHash,
+      revokedAt,
+      supersedesId,
+      '{}',
+      'a'.repeat(64),
+      new Date().toISOString(),
+      'certificate-disclosure-v1',
+    );
+    addCertificate(
+      'certificate-old',
+      'enrollment-a',
+      'public-code-old-00000000000000000001',
+      'Learner',
+      'hash-old',
+      null,
+      null,
     );
     expect(() =>
-      addCertificate.run('certificate-duplicate', 'enrollment-a', 'public-code-duplicate-0000000002', 'Learner', 'hash-2', null, null),
+      db.prepare(
+        'INSERT INTO certificates(id,enrollment_id,public_code,confirmed_name,payload_hash) VALUES(?,?,?,?,?)',
+      ).run('certificate-missing-snapshot', 'enrollment-b', 'public-code-missing-snapshot-000001', 'Learner', 'hash-missing'),
+    ).toThrow(/new certificates require an immutable consented payload snapshot/);
+    expect(() =>
+      addCertificate('certificate-duplicate', 'enrollment-a', 'public-code-duplicate-0000000002', 'Learner', 'hash-2', null, null),
     ).toThrow(/active certificate already exists for enrollment/);
     expect(() =>
       db.prepare('UPDATE certificates SET revoked_at=datetime(\'now\'),reason=NULL WHERE id=?').run('certificate-old'),
@@ -40,7 +73,7 @@ it('allows one active certificate per enrollment and supports revoke-then-reissu
       'certificate-old',
     );
     expect(() =>
-      addCertificate.run('certificate-new', 'enrollment-a', 'public-code-new-00000000000000000002', 'Learner', 'hash-new', null, 'certificate-old'),
+      addCertificate('certificate-new', 'enrollment-a', 'public-code-new-00000000000000000002', 'Learner', 'hash-new', null, 'certificate-old'),
     ).not.toThrow();
     expect(
       db.prepare('SELECT supersedes_id FROM certificates WHERE id=?').get('certificate-new'),
@@ -49,13 +82,13 @@ it('allows one active certificate per enrollment and supports revoke-then-reissu
       db.prepare('UPDATE certificates SET supersedes_id=? WHERE id=?').run(null, 'certificate-new'),
     ).toThrow(/certificate supersession reference is immutable/);
     expect(() =>
-      addCertificate.run('certificate-branch', 'enrollment-a', 'public-code-branch-00000000000000003', 'Learner', 'hash-branch', null, 'certificate-old'),
+      addCertificate('certificate-branch', 'enrollment-a', 'public-code-branch-00000000000000003', 'Learner', 'hash-branch', null, 'certificate-old'),
     ).toThrow(/invalid certificate supersession reference/);
     expect(() =>
-      addCertificate.run('certificate-wrong-enrollment', 'enrollment-b', 'public-code-wrong-00000000000000004', 'Learner', 'hash-wrong', null, 'certificate-old'),
+      addCertificate('certificate-wrong-enrollment', 'enrollment-b', 'public-code-wrong-00000000000000004', 'Learner', 'hash-wrong', null, 'certificate-old'),
     ).toThrow(/invalid certificate supersession reference/);
     expect(() =>
-      addCertificate.run('certificate-short-code', 'enrollment-b', 'short', 'Learner', 'hash-short', null, null),
+      addCertificate('certificate-short-code', 'enrollment-b', 'short', 'Learner', 'hash-short', null, null),
     ).toThrow(/certificate public code is too short/);
     expect(() =>
       db.prepare('UPDATE certificates SET revoked_at=NULL WHERE id=?').run('certificate-old'),
@@ -75,6 +108,12 @@ it('allows one active certificate per enrollment and supports revoke-then-reissu
     expect(() =>
       db.prepare('UPDATE certificates SET payload_hash=? WHERE id=?').run('rewritten-hash', 'certificate-old'),
     ).toThrow(/certificate snapshot is immutable/);
+    expect(() =>
+      db.prepare('UPDATE certificates SET payload_json=? WHERE id=?').run('{"edited":true}', 'certificate-old'),
+    ).toThrow(/certificate snapshot is immutable/);
+    expect(() =>
+      db.prepare('UPDATE certificates SET disclosure_consented_at=? WHERE id=?').run('2099-01-01T00:00:00Z', 'certificate-old'),
+    ).toThrow(/certificate snapshot is immutable/);
     expect(() => db.prepare('DELETE FROM certificates WHERE id=?').run('certificate-old')).toThrow(
       /certificate history is retained/,
     );
@@ -82,7 +121,7 @@ it('allows one active certificate per enrollment and supports revoke-then-reissu
       db.prepare('UPDATE certificates SET reason=? WHERE id=?').run('Corrected reason', 'certificate-old'),
     ).not.toThrow();
     expect(() =>
-      addCertificate.run('certificate-other-enrollment', 'enrollment-b', 'public-code-other-00000000000000000003', 'Learner', 'hash-other', null, null),
+      addCertificate('certificate-other-enrollment', 'enrollment-b', 'public-code-other-00000000000000000003', 'Learner', 'hash-other', null, null),
     ).not.toThrow();
     expect(
       db.prepare('SELECT id,revoked_at FROM certificates WHERE enrollment_id=? ORDER BY id').all('enrollment-a'),

@@ -19,6 +19,9 @@ import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
 import { adminUsersRouter } from './routes/admin-users.js';
 import { adminEnrollmentsRouter } from './routes/admin-enrollments.js';
+import { assessmentsRouter } from './routes/assessments.js';
+import { certificatesRouter } from './routes/certificates.js';
+import { adminCertificatesRouter } from './routes/admin-certificates.js';
 import { instructorProfilesRouter } from './routes/instructor-profiles.js';
 import { errorHandler } from './middleware/error-handler.js';
 
@@ -148,6 +151,9 @@ export function createApp(db: Database.Database, config: Config): express.Applic
 
   app.use('/api/v1', adminUsersRouter(db));
   app.use('/api/v1', adminEnrollmentsRouter(db));
+  app.use('/api/v1', assessmentsRouter(db));
+  app.use('/api/v1', certificatesRouter(db, config));
+  app.use('/api/v1', adminCertificatesRouter(db));
   app.use('/api/v1', instructorProfilesRouter(db));
   app.use('/api/v1', categoriesRouter(db));
   app.use('/api/v1', coursesRouter(db));

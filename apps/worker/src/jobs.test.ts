@@ -57,4 +57,39 @@ describe('outbox worker', () => {
       db.close();
     }
   });
+
+  it('dispatches certificate generation jobs and retries them without acknowledging failed work', async () => {
+    const db = new Database(':memory:');
+    runMigrations(db);
+    try {
+      db.prepare("INSERT INTO outbox(id,event_type,payload) VALUES('certificate-job','certificate.generate',?)")
+        .run(JSON.stringify({ certificateId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }));
+      let calls = 0;
+      const handlers = {
+        'certificate.generate': async (payload: unknown, attempt: number) => {
+          calls++;
+          expect(payload).toEqual({ certificateId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' });
+          expect(attempt).toBe(calls);
+          if (calls === 1) throw new Error('Temporary PDF failure');
+        },
+      };
+      const email = { send: async () => {} };
+
+      expect(await pollOnce(db, email, 1, handlers)).toBe(1);
+      expect(db.prepare("SELECT processed_at,last_error,attempts FROM outbox WHERE id='certificate-job'").get()).toMatchObject({
+        processed_at: null,
+        last_error: 'Failed to process certificate.generate',
+        attempts: 1,
+      });
+      db.exec("UPDATE outbox SET available_at=datetime('now','-1 minute') WHERE id='certificate-job'");
+      expect(await pollOnce(db, email, 1, handlers)).toBe(1);
+      expect(db.prepare("SELECT processed_at,last_error,attempts FROM outbox WHERE id='certificate-job'").get()).toMatchObject({
+        processed_at: expect.any(String),
+        last_error: null,
+        attempts: 2,
+      });
+    } finally {
+      db.close();
+    }
+  });
 });

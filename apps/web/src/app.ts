@@ -9,6 +9,10 @@ export function createWebApp(): express.Application {
   nunjucks.configure(path.join(directory, '../views'), { autoescape: true, express: app });
   app.set('view engine', 'njk');
   app.use('/static', express.static(path.join(directory, '../public')));
+  app.get('/certificates/verify/:code', (_req, res) => {
+    res.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+    res.render('home.njk', { title: 'Certificate verification' });
+  });
   for (const route of [
     '/',
     '/courses',
@@ -26,6 +30,7 @@ export function createWebApp(): express.Application {
     '/admin/categories',
     '/admin/users',
     '/admin/enrollments',
+    '/admin/certificates',
   ]) {
     app.get(route, (_req, res) => res.render('home.njk', { title: 'Learn with Maia' }));
   }

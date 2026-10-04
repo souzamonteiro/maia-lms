@@ -589,18 +589,29 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Partial local delivery: authors can submit an owned DRAFT for review only when
   the publication checklist passes; the revision is checked optimistically and the
   transition is audited. Administrators can then publish; direct admin publication
-  remains available for compatibility. Review scheduling/notifications and a
-  distinct urgent-withdrawal path that invalidates old lesson/media access remain
-  open. Ordinary ARCHIVED behavior preserves existing enrollment access.
+  remains available for compatibility. Administrators can urgently withdraw a
+  published or archived course with a required reason; migration 049 stores an
+  immutable withdrawal marker, and the action is audited. Existing course/lesson,
+  video, caption, cover, attachment, enrollment-grant, and progress-write routes
+  recheck the marker, while enrollment/progress history is preserved. Archived
+  courses continue to preserve access unless separately withdrawn. Scheduling and
+  learner notifications remain open; ADMIN-03 is otherwise operational locally.
 
 ## P1 — assessments and completion
 
-- [ ] **QUIZ-01 — Assessment builder and versioning.**
+- [x] **QUIZ-01 — Assessment builder and versioning.**
   Single/multiple-choice questions, scoring, passing grade, attempts, lesson/final
   assessments, and preview. Dependencies: BASE-01, EDIT-03. Acceptance: authors build
   assessments in the dashboard; answer keys never appear in learner payloads;
   new revisions do not change old answers/attempt policies.
-- [ ] **QUIZ-02 — Server-side attempts and grading.**
+  Delivered locally: author/admin API and studio builder configure lesson/final
+  quizzes, questions, keyed choices, scoring, pass threshold, attempt limit,
+  randomization, optional time limit, and explanations on the current draft revision.
+  Definitions are audit-logged and freeze after the first attempt; learner reads
+  omit answer keys. Publication validates configured quizzes, and author preview
+  shows unsaved content without saving or publishing. API and Chromium coverage
+  passed. Server attempt/submission concurrency is tracked separately under QUIZ-02.
+- [x] **QUIZ-02 — Server-side attempts and grading.**
   Atomic start/submission, limits, duplicate handling, deadlines, and result feedback.
   Dependency: QUIZ-01. Acceptance: manipulated, repeated, concurrent, or cross-course
   answers cannot produce a passing result; accepted submissions become immutable.
@@ -611,12 +622,42 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   points/order, and bounds awarded points per question; migration 039 enforces
   `max_attempts` per enrollment/quiz and retains attempt history; migration 040
   supports an optional per-quiz time limit and rejects writes/submission after it.
-  Atomic API start, deadline configuration UX, grading semantics, and expired-result
-  handling remain open.
+  Delivered locally: enrolled learners can start/resume an open attempt,
+  retrieve its private state, and submit answers for server-side grading from the
+  lesson player. The player renders choices, restores an open attempt after reload,
+  and displays the server's score/pass result and remaining attempts. Starts
+  use an immediate transaction, concurrent starts converge on one open attempt,
+  answer question/choice IDs are validated, the score/pass result is computed from
+  server-held keys, duplicate submissions return the stored result, and expired
+  deadlines return a stable error without partial answer writes. Expired open
+  attempts remain counted but are not resumed, so remaining configured attempts
+  can still start. Lesson-player selections auto-save without scoring, restore on
+  resume/reload, and are graded only on final submission. Learners can review
+  their submitted score/pass history for their own enrollment revision without
+  answer selections or keys. Submitted feedback now marks selected and correct
+  choices and can include an author explanation; this feedback is only returned
+  after submission. Expired unsubmitted attempts appear in private history as
+  consumed, ungraded attempts without answer feedback. Focused API coverage submits
+  conflicting answers concurrently to one attempt and verifies both requests
+  converge on the same persisted result with one answer row. Additional high-volume
+  stress runs and richer deadline recovery UX are operational follow-up, not open
+  functional acceptance criteria.
 - [ ] **LEARN-01 — Consistent completion policy.**
   Snapshot required lessons/grades/attempts per revision, server-side calculation,
   and idempotent completion. Dependencies: PLAY-04, QUIZ-02. Acceptance: dashboard
   and certificates use the same decision; revoked access and failed assessments prevent issuance.
+  Partial local delivery: migration 051 adds a monotonic enrollment `completed_at`;
+  migration 052 backfills and freezes the required lesson/quiz ID snapshots for
+  existing enrollments, and new enrollments capture the same lists transactionally.
+  One server policy requires at least one snapshotted required lesson, all those
+  lessons complete, every snapshotted quiz passed, and active non-withdrawn
+  entitlement. Lesson-completion writes and quiz submissions reevaluate atomically;
+  repeated updates preserve the original completion timestamp. `/me/enrollments`
+  exposes `completion_ready` and the learner dashboard marks recorded completion.
+  Certificate eligibility and record issuance now use this same completion policy;
+  they store an immutable certificate payload and consent snapshot. PLAY-04 device
+  qualification remains an open dependency, so LEARN-01 remains open until that
+  learner resumption/navigation path is qualified.
 
 ## P1 — sales and payments
 
@@ -659,29 +700,78 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   snapshot identity/course/workload/issuer. Dependencies: LEARN-01, AUTH-01, and
   PAY-04 for paid courses. Acceptance: concurrent requests produce one valid issuance;
   subsequent profile/course edits do not rewrite the document.
-- [ ] **CERT-02 — PDF, QR, and public verification.**
+  - [x] Authenticated preflight checks active access, course withdrawal, completion,
+    verified email, confirmed name/consent, and active-certificate state; returns
+    the exact public disclosure fields and a versioned hash.
+  - [x] Transactional issuance rechecks eligibility, requires consent bound to the
+    latest disclosure hash, and generates a 256-bit opaque code.
+  - [x] Immutable learner/course/workload/instructor snapshot, payload hash,
+    consent timestamp/version, and append-only audit event are stored. Concurrent
+    requests and retries return the same active issuance; later profile/revision
+    edits cannot rewrite that snapshot.
+  - [ ] Decide institutional issuer policy and connect paid-course reversal rules
+    from PAY-04 before treating issuance as production-ready. Locally, workload is
+    the published revision's declared minutes and issuer is its instructor name.
+- [x] **CERT-02 — PDF, QR, and public verification.**
   Asynchronous generation, authorized download, opaque code, public verification
   with minimal data and valid/revoked status; learner certificates screen.
   Dependencies: CERT-01, JOB-01. Acceptance: QR opens the canonical URL, PDF text
   remains readable, workers can retry without duplicate issuance, and lookup does
-  not enumerate identities. Partial data-layer safeguard: migration 044 rejects
-  newly assigned public codes shorter than 32 characters; cryptographic code
-  generation, rate limiting, and public verification remain open.
-- [ ] **CERT-03 — Revocation and reissuance.**
+  not enumerate identities.
+  - [x] Anonymous API lookup and learner-facing verification page show only the
+    approved snapshot fields and current valid/revoked status in en, pt-BR, and es.
+    Unknown/malformed and legacy-without-snapshot codes share a generic 404; API
+    lookup is limited, `noindex`, and `no-store`.
+  - [x] Queue PDF generation atomically with issuance; worker retries through the
+    leased outbox and stores a private PDF with selectable text and an embedded QR
+    linking to the canonical HTTPS verification URL.
+  - [x] Provide owner/admin-authorized PDF download; pending artifacts return a
+    stable not-ready response. Migration 044 rejects public codes shorter than 32
+    characters; issuance generates 256-bit codes.
+  - [x] Add the learner's certificate screen to list status and download ready PDFs.
+  All functional acceptance criteria are implemented and covered locally. Production
+  rollout still depends on confirming CERT-01 issuer/payment policy and deploying
+  the worker/storage configuration.
+- [x] **CERT-03 — Revocation and reissuance.**
   Dashboard and private reason, new document when needed, link to the previous one,
   and preservation of old-code lookups. Dependencies: CERT-02, ADMIN-02.
   Acceptance: revoked documents remain verifiable as revoked; only authorized
   administrators can reissue, with auditable history.
+  - [x] Admin-only search/list, reasoned revocation, one-time reissue of a revoked
+    certificate, and private lineage/history view are available in `/admin/certificates`.
+  - [x] Reissue preserves the consented public snapshot, assigns a fresh opaque
+    code, links to its predecessor, queues a new PDF, and records both lifecycle
+    audit events with the acting administrator.
+  - [x] Old codes remain publicly verifiable as revoked; duplicate successor or
+    reissue while an active certificate exists is rejected.
+  Public verification intentionally remains minimal and does not reveal private
+  reasons or lineage; the admin history links predecessors/successors and their
+  preserved verification codes without exposing that relationship publicly.
   Partial data-layer protection: migrations 031 and 043 limit active issuance,
   preserve issued identity/code/hash snapshots, and retain revoked certificate
   history; migration 045 requires a non-empty reason when revoking; migration 046
   makes revocation timestamps irreversible and monotonic; migration 047 links a
-  reissued certificate to its revoked predecessor. Revocation/reissue UI, public
-  verification, and actor audit workflow remain open.
+  reissued certificate to its revoked predecessor. Public verification intentionally
+  keeps private reasons and lineage hidden. Production policy and worker rollout
+  conditions are tracked under CERT-01/CERT-02, not as unfinished CERT-03 behavior.
 
 ## P1 — reliability, protection, and full launch
 
 - [ ] **DATA-01 — Strengthen SQLite invariants.**
+  - [x] Enforce assessment result-state consistency: open attempts have no result;
+    submitted attempts carry a 0–100 integer score and a binary pass flag
+    (migration 056, covered by focused direct-SQL integrity tests).
+  - [x] Enforce outbox retry counters as non-negative integers and keep active
+    lease, processed timestamp, and retry-count states consistent (migration 057;
+    tested for valid claim/failure/success and invalid direct-SQL combinations).
+  - [x] Keep retry counts monotonic, processed jobs terminal, and lease acquisition
+    coupled to exactly one attempt increment (migration 060; focused tests cover
+    failed reopen, lease theft, invalid completion, and normal retry transitions).
+  - [x] Require entitlement start/end timestamps to parse and any finite end to be
+    strictly later than its start (migration 058; tested for insert and update).
+  - [x] Restrict upload status changes to the processing lifecycle, recovery,
+    retry, or cancellation paths; READY/CANCELLED remain terminal (migration 059,
+    with publication/media fixtures following the real transitions).
   Partial: migrations 017–018 prevent progress, enrollment-revision, and
   lesson-module changes from crossing the enrollment's assigned revision, and
   constrain progress positions to non-negative integers. Migration 019 ensures
@@ -711,13 +801,19 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   adds optional timed-attempt enforcement; migration 041 makes enrollment
   user/course/revision assignment immutable while preserving mutable access state;
   migration 042 freezes modules/lessons once their revision has enrolled learners.
-  Quiz/payment/certificate invariants remain open.
-  Validate cross-references among revisions/media/courses and uniqueness of final
-  quizzes, active issuance, and payment identifiers before enabling workflows.
-  At the audit, `UNIQUE(revision_id, lesson_id)` allowed multiple quizzes with NULL
-  lesson_id; certificates lacked uniqueness per issuance policy. Dependencies:
-  BASE-02 and QUIZ/PAY/CERT design. Acceptance: migrations and concurrency tests
-  prevent invalid states without relying exclusively on prior code checks.
+  Quiz invariants now include one final quiz per revision, same-revision lesson
+  ownership, immutable definitions after attempts start, bounded attempt/scoring
+  settings, and immutable submitted attempts/answers. Certificate invariants include
+  one active certificate per enrollment, long unique public codes, immutable payload
+  and consent snapshots, required consent data for new issuances, revocation rules,
+  and valid supersession lineage. Payment invariants cover order snapshots, provider
+  identifiers, refund bounds, and state transitions, while provider reconciliation
+  and refund policy remain open. Further audit/rollout safety still depends on
+  BASE-02 and the end-to-end QUIZ/PAY/CERT workflows; keep the parent open until those
+  dependencies and the full invariant matrix are validated. Migration 056 requires
+  an open attempt to have no score/pass and a submitted attempt to have an integer
+  score in 0–100 plus an integer pass flag; focused tests cover invalid direct-SQL
+  states while preserving the existing deadline and immutable-submission checks.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:

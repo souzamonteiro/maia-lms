@@ -117,5 +117,44 @@ export function publicationIssues(
       issues.push({ code: 'FILE_INVALID', ...location });
     else if (attachment.status !== 'READY') issues.push({ code: 'FILE_NOT_READY', ...location });
   }
+  const lessonLocations = new Map<string, { moduleTitle: string; lessonTitle: string }>();
+  for (const module of modules) {
+    const lessons = db
+      .prepare('SELECT id,title FROM lessons WHERE module_id=?')
+      .all(module.id) as Array<{ id: string; title: string }>;
+    for (const lesson of lessons)
+      lessonLocations.set(lesson.id, { moduleTitle: module.title, lessonTitle: lesson.title });
+  }
+  const quizzes = db
+    .prepare('SELECT id,lesson_id FROM quizzes WHERE revision_id=? ORDER BY lesson_id IS NOT NULL,lesson_id,id')
+    .all(revisionId) as Array<{ id: string; lesson_id: string | null }>;
+  for (const quiz of quizzes) {
+    const location = quiz.lesson_id ? lessonLocations.get(quiz.lesson_id) : undefined;
+    const context = location ? { ...location } : {};
+    const questions = db
+      .prepare('SELECT choices_json,correct_choice_keys FROM questions WHERE quiz_id=? ORDER BY sort_order,id')
+      .all(quiz.id) as Array<{ choices_json: string; correct_choice_keys: string }>;
+    if (!questions.length) {
+      issues.push({ code: 'QUIZ_EMPTY', ...context });
+      continue;
+    }
+    for (const question of questions) {
+      try {
+        const choices = JSON.parse(question.choices_json) as Array<{ key?: unknown; text?: unknown }>;
+        const correctKeys = JSON.parse(question.correct_choice_keys) as unknown;
+        const keys = choices.map(choice => choice.key);
+        const validChoices = Array.isArray(choices) && choices.length >= 2 && choices.length <= 10 &&
+          choices.every(choice => typeof choice.key === 'string' && choice.key.trim().length > 0 &&
+            typeof choice.text === 'string' && choice.text.trim().length > 0) &&
+          new Set(keys).size === keys.length;
+        const validAnswers = Array.isArray(correctKeys) && correctKeys.length > 0 &&
+          new Set(correctKeys).size === correctKeys.length &&
+          correctKeys.every(key => typeof key === 'string' && keys.includes(key));
+        if (!validChoices || !validAnswers) issues.push({ code: 'QUIZ_INVALID', ...context });
+      } catch {
+        issues.push({ code: 'QUIZ_INVALID', ...context });
+      }
+    }
+  }
   return issues;
 }

@@ -67,14 +67,35 @@ reissue UI or public history view.
 
 Migration 044 rejects new or updated public codes shorter than 32 characters; this
 is only a minimum-length safeguard, not proof that code generation is random or
-unpredictable. Generation, rate limiting, and public verification remain separate
-CERT-02 work.
+unpredictable. Random code generation, rate-limited public verification, and
+asynchronous private PDF/QR generation are implemented; the learner's certificate
+screen remains separate CERT-02 work.
 
 ## Implementation boundary
 
 The runtime currently uses users, http_sessions, email_tokens, courses, course_revisions, modules, lessons, enrollments, entitlements, lesson_progress, promotions, home_settings, audit_events and outbox. Other tables reserve the planned product model; their presence is not evidence of implemented payment, quiz or certificate flows. The invariants for those extensions above must be implemented and tested before exposing their endpoints. SQLite does not support row-level `FOR UPDATE`; use short `IMMEDIATE` transactions and database constraints.
 
 Migration 002 adds lesson titles, session versioning and the actual session store; migration 003 adds worker lease tokens. Never modify an applied migration to upgrade an existing database. Migration 004 adds separate editable/public revision pointers, revision metadata snapshots, plain/markdown content format and home concurrency state. Course edits create a new editable revision without changing published status or metadata; publication atomically promotes that revision. Existing enrollments keep their revision and entitlement. Legacy content defaults to plain and is never implicitly interpreted as Markdown. Archiving closes public discovery/enrollment while preserving existing access.
+
+Migration 049 adds `courses.withdrawn_at` and `withdrawal_reason` for urgent withdrawal, distinct from `ARCHIVED`. The marker/reason are immutable after setting and require a nonblank reason; the API records the actor and reason in append-only audit history. Authorization is rechecked against the marker at course, lesson, video, caption, cover, attachment, grant, and progress-write routes. Withdrawal preserves the enrollment, entitlement, and lesson-progress rows while preventing those entitlements from authorizing further learner access.
+
+Migration 050 adds optional `questions.explanation` text, defaulting to empty for existing quiz definitions. It belongs to the revision-bound immutable question snapshot and is returned only with submitted-attempt feedback; active quiz and attempt payloads omit explanations and correctness markers.
+
+Migration 051 adds monotonic `enrollments.completed_at`. Migration 052 adds immutable JSON snapshots of required lesson IDs and quiz IDs to each enrollment, backfilling existing enrollments from their assigned revision. New free or admin-granted enrollments capture the lists transactionally. Migration 053 backfills `completed_at` for legacy enrollments only if those snapshots are satisfied and active access remains. Completion readiness uses the snapshots rather than later revision definitions: there must be at least one required lesson, each snapshotted lesson must be complete, every snapshotted quiz must have a passing attempt, and entitlement must currently be active on a non-withdrawn course. Progress writes and quiz submissions reevaluate the policy in their immediate transaction. The completion timestamp remains historical if access is later revoked; `completion_ready` separately reflects current access. Migration 054 adds an immutable JSON certificate payload, reviewed disclosure hash/version, and consent timestamp for newly issued records; legacy certificate rows are not backfilled with invented consent or snapshots. Issuance snapshots learner name, assigned-revision title/slug, publisher-declared workload minutes, instructor name as issuer, completion time, issue time, code, and valid status.
+
+Migration 055 adds certificate PDF state (`UNAVAILABLE`, `PENDING`, `READY`, `FAILED`), private storage key, and non-sensitive processing error. Historical certificates remain `UNAVAILABLE`; new issuance queues `certificate.generate` in the same transaction as the certificate and audit record. The worker creates a PDF/QR at a deterministic private key, and retries reuse an already-written artifact. Only the certificate owner or an administrator can download a `READY` artifact; public verification continues to expose the immutable data snapshot, never the PDF or private processing state.
+
+Migration 056 constrains assessment attempt result shape: open attempts require `score` and `pass` to remain null; submitted attempts require an integer score percentage in 0–100 and an integer pass flag in {0,1}. This complements submitted-row immutability by preventing invalid result states at insert/update time, including direct SQL writes.
+
+Migration 057 protects outbox processing state: retry count must remain a non-negative integer; a lease requires an unprocessed job and at least one claim; and a processed job cannot retain a lease. Normal worker claim, retry release, and completion transitions remain valid.
+
+Migration 060 makes outbox lifecycle monotonic: attempts cannot decrease, acquiring/replacing a lease advances exactly one attempt, a lease can only be released with a failure or completion recorded, and `processed_at` cannot be cleared or rewritten. This prevents SQL-level job reopening, lease theft, and completion without a claimed worker.
+
+Migration 058 requires entitlement `starts_at` to be parseable and, when present, `ends_at` to be parseable and strictly later. Open-ended grants remain valid; malformed, zero-length, or reversed windows cannot be inserted or updated.
+
+Migration 059 constrains upload status changes to `UPLOADING → QUEUED/CANCELLED`, `QUEUED → PROCESSING`, `PROCESSING → READY/FAILED` (including same-state lease recovery), and `FAILED → QUEUED` retry. Idempotent same-state writes are allowed; READY and CANCELLED are terminal. Fixture setup and test updates follow this worker/API lifecycle.
+
+Migration 051 adds monotonic `enrollments.completed_at`. Server completion policy is derived from the enrollment's immutable revision: at least one required lesson, every required lesson completed, every quiz in that revision passed by this enrollment, and active entitlement on a non-withdrawn course. Progress writes and quiz submissions reevaluate in their immediate transaction. Access withdrawal does not erase completion history; current entitlement remains a separate eligibility check for any future certificate issuance.
 
 ## MP4 video — migration 005
 

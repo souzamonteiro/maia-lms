@@ -77,7 +77,7 @@ test('Markdown draft, language switching, autosave, safe preview, conflicts and 
   await expect(page.locator('.course-presentation')).toContainText('Teaches <b>programming</b>');
   await expect(page.locator('.course-presentation b')).toHaveCount(0);
   await expect(page.locator('.course-presentation')).toContainText('Free access to these lessons');
-  await expect(page.locator('.course-presentation')).toContainText('Certificates are not currently issued');
+  await expect(page.locator('.course-presentation')).toContainText('does not certify professional competence');
   await expect(page.locator('.course-presentation script')).toHaveCount(0);
   await page.goto(`/lessons/${old}`);
   await expect(page.locator('.lesson-body h1')).toHaveText('Hello');

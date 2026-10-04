@@ -3,6 +3,11 @@ import Database from 'better-sqlite3';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { once } from 'node:events';
+import { createHash, randomUUID } from 'node:crypto';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { processCertificatePdf } from '../../worker/src/certificate-pdf.js';
 import { createApp } from './app.js';
 import { runMigrations } from './db/migrate.js';
 import { loadConfig } from './config.js';
@@ -10,6 +15,7 @@ import { loadConfig } from './config.js';
 let db: Database.Database;
 let server: Server;
 let base: string;
+let storageRoot: string;
 const password = 'Strong-test-password-123';
 async function request(
   path: string,
@@ -69,7 +75,8 @@ beforeEach(async () => {
   db = new Database(':memory:');
   db.pragma('foreign_keys = ON');
   runMigrations(db);
-  server = createApp(db, loadConfig()).listen(0, '127.0.0.1');
+  storageRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'maia-api-test-storage-'));
+  server = createApp(db, { ...loadConfig(), STORAGE_ROOT: storageRoot }).listen(0, '127.0.0.1');
   await once(server, 'listening');
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
@@ -81,6 +88,7 @@ afterEach(async () => {
     );
   }
   db?.close();
+  if (storageRoot) fs.rmSync(storageRoot, { recursive: true, force: true });
 });
 
 describe('HTTP learning workflow', () => {
@@ -790,6 +798,77 @@ describe('publication checklist', () => {
         )
       ).status,
     ).toBe(200);
+  });
+
+  it('blocks publication when a configured quiz is empty or has an invalid answer key', async () => {
+    const admin = await account('quiz-check-admin@example.com', 'admin');
+    const created = await request(
+      '/api/v1/admin/courses',
+      'POST',
+      draft('quiz-check-course'),
+      admin.cookie,
+    );
+    expect(created.status).toBe(201);
+    const courseId = created.data.id as string;
+    const revisionId = created.data.current_revision_id as string;
+    const detail = await request(`/api/v1/admin/courses/${courseId}`, 'GET', undefined, admin.cookie);
+    const lessonId = detail.data.modules[0].lessons[0].id as string;
+    const quiz = await request(
+      `/api/v1/admin/courses/${courseId}/quiz`,
+      'PUT',
+      {
+        expectedRevisionId: revisionId,
+        lessonId,
+        questions: [
+          {
+            prompt: 'Select the correct answer.',
+            choices: [{ key: 'a', text: 'A' }, { key: 'b', text: 'B' }],
+            correctChoiceKeys: ['b'],
+          },
+        ],
+      },
+      admin.cookie,
+    );
+    expect(quiz.status).toBe(200);
+    db.prepare('DELETE FROM questions WHERE quiz_id=?').run(quiz.data.id);
+    const quizUrl = `/api/v1/admin/courses/${courseId}/publication-check?revisionId=${revisionId}`;
+    const empty = await request(quizUrl, 'GET', undefined, admin.cookie);
+    expect(empty.data.issues).toContainEqual({
+      code: 'QUIZ_EMPTY',
+      moduleTitle: 'Primeiro módulo',
+      lessonTitle: 'Primeira aula',
+    });
+    expect(
+      (
+        await request(`/api/v1/admin/courses/${courseId}/publish`, 'POST', { expectedRevisionId: revisionId }, admin.cookie)
+      ).status,
+    ).toBe(422);
+
+    db.prepare(
+      'INSERT INTO questions(id,quiz_id,prompt,choices_json,correct_choice_keys,points,sort_order) VALUES(?,?,?,?,?,?,?)',
+    ).run(
+      randomUUID(),
+      quiz.data.id,
+      'Select the correct answer.',
+      '[{"key":"a","text":"A"},{"key":"b","text":"B"}]',
+      '["missing"]',
+      1,
+      0,
+    );
+    const invalid = await request(quizUrl, 'GET', undefined, admin.cookie);
+    expect(invalid.data.issues).toContainEqual({
+      code: 'QUIZ_INVALID',
+      moduleTitle: 'Primeiro módulo',
+      lessonTitle: 'Primeira aula',
+    });
+    const blocked = await request(
+      `/api/v1/admin/courses/${courseId}/publish`,
+      'POST',
+      { expectedRevisionId: revisionId },
+      admin.cookie,
+    );
+    expect(blocked.status).toBe(422);
+    expect((await request(`/api/v1/admin/courses/${courseId}`, 'GET', undefined, admin.cookie)).data.status).toBe('DRAFT');
   });
 });
 
@@ -1768,5 +1847,1017 @@ describe('course publication review', () => {
       (db.prepare('SELECT status FROM courses WHERE id=?').get(created.data.id) as { status: string })
         .status,
     ).toBe('DRAFT');
+  });
+});
+
+describe('urgent course withdrawal', () => {
+  it('invalidates existing learner URLs but retains enrollment and progress history', async () => {
+    const admin = await account('withdraw-admin@example.com', 'admin');
+    const learner = await account('withdraw-learner@example.com');
+    const course = await publish(admin.cookie, 'urgent-withdraw-course');
+    await request(`/api/v1/courses/${course.id}/enroll`, 'POST', {}, learner.cookie);
+    const enrollment = db
+      .prepare('SELECT id FROM enrollments WHERE user_id=? AND course_id=?')
+      .get(learner.id, course.id) as { id: string };
+    db.prepare(
+      'INSERT INTO lesson_progress(enrollment_id,lesson_id,position_seconds,completed_at) VALUES(?,?,20,datetime(\'now\'))',
+    ).run(enrollment.id, course.lessonId);
+    expect((await request(`/api/v1/lessons/${course.lessonId}`, 'GET', undefined, learner.cookie)).status).toBe(200);
+
+    const missingReason = await request(
+      `/api/v1/admin/courses/${course.id}/withdraw`,
+      'POST',
+      { reason: 'no' },
+      admin.cookie,
+    );
+    expect(missingReason.status).toBe(422);
+    expect(
+      (
+        await request(
+          `/api/v1/admin/courses/${course.id}/withdraw`,
+          'POST',
+          { reason: 'Urgent legal review requested.' },
+          learner.cookie,
+        )
+      ).status,
+    ).toBe(403);
+
+    const withdrawn = await request(
+      `/api/v1/admin/courses/${course.id}/withdraw`,
+      'POST',
+      { reason: 'Urgent legal review requested.' },
+      admin.cookie,
+    );
+    expect(withdrawn.status).toBe(200);
+    expect(withdrawn.data.withdrawn_at).toBeTruthy();
+    expect(withdrawn.data.withdrawal_reason).toBe('Urgent legal review requested.');
+    expect((await request(`/api/v1/courses/${course.id}`, 'GET', undefined, learner.cookie)).status).toBe(404);
+    expect((await request(`/api/v1/lessons/${course.lessonId}`, 'GET', undefined, learner.cookie)).status).toBe(404);
+    expect(
+      (
+        await request(
+          `/api/v1/lessons/${course.lessonId}/progress`,
+          'PUT',
+          { positionSeconds: 30 },
+          learner.cookie,
+        )
+      ).status,
+    ).toBe(404);
+    expect((await request(`/api/v1/courses/${course.id}/enroll`, 'POST', {}, learner.cookie)).status).toBe(409);
+    expect((await request('/api/v1/courses')).data.some((item: { id: string }) => item.id === course.id)).toBe(false);
+
+    const repeated = await request(
+      `/api/v1/admin/courses/${course.id}/withdraw`,
+      'POST',
+      { reason: 'A repeated request must not replace the original reason.' },
+      admin.cookie,
+    );
+    expect(repeated.data.withdrawal_reason).toBe('Urgent legal review requested.');
+    expect(
+      db.prepare("SELECT count(*) AS total FROM audit_events WHERE subject_id=? AND action='course.urgent_withdrawal'").get(course.id),
+    ).toEqual({ total: 1 });
+    expect(
+      db.prepare('SELECT count(*) AS total FROM enrollments WHERE id=?').get(enrollment.id),
+    ).toEqual({ total: 1 });
+    expect(
+      db.prepare('SELECT count(*) AS total FROM lesson_progress WHERE enrollment_id=?').get(enrollment.id),
+    ).toEqual({ total: 1 });
+    const learnerEnrollments = await request('/api/v1/me/enrollments', 'GET', undefined, learner.cookie);
+    expect(learnerEnrollments.data).toHaveLength(1);
+    expect(learnerEnrollments.data[0].course_withdrawn_at).toBeTruthy();
+    expect((await request(`/api/v1/courses/${course.id}`, 'GET', undefined, admin.cookie)).status).toBe(200);
+    const republish = await request(
+      `/api/v1/admin/courses/${course.id}/publish`,
+      'POST',
+      {},
+      admin.cookie,
+    );
+    expect(republish.status).toBe(409);
+    expect(republish.data.code).toBe('COURSE_WITHDRAWN');
+  });
+});
+
+describe('quiz authoring and learner payloads', () => {
+  it('lets the owner configure a draft quiz and never exposes correct choices to learners', async () => {
+    const admin = await account('quiz-admin@example.com', 'admin');
+    const author = await account('quiz-author@example.com', 'author');
+    const otherAuthor = await account('quiz-other@example.com', 'author');
+    const learner = await account('quiz-learner@example.com');
+    const created = await request(
+      '/api/v1/admin/courses',
+      'POST',
+      draft('quiz-owner-course'),
+      author.cookie,
+    );
+    expect(created.status).toBe(201);
+    const courseId = created.data.id as string;
+    const revisionId = created.data.current_revision_id as string;
+    const detail = await request(`/api/v1/admin/courses/${courseId}`, 'GET', undefined, author.cookie);
+    const lessonId = detail.data.modules[0].lessons[0].id as string;
+    const definition = {
+      expectedRevisionId: revisionId,
+      lessonId,
+      passPercent: 75,
+      maxAttempts: 4,
+      randomizeQuestions: true,
+      timeLimitSeconds: 120,
+      questions: [
+        {
+          prompt: 'Which option is correct?',
+          explanation: 'The second option matches the documented rule.',
+          choices: [
+            { key: 'a', text: 'First answer' },
+            { key: 'b', text: 'Second answer' },
+          ],
+          correctChoiceKeys: ['b'],
+          points: 3,
+        },
+      ],
+    };
+    const forbidden = await request(
+      `/api/v1/admin/courses/${courseId}/quiz`,
+      'PUT',
+      definition,
+      otherAuthor.cookie,
+    );
+    expect(forbidden.status).toBe(403);
+    const invalid = await request(
+      `/api/v1/admin/courses/${courseId}/quiz`,
+      'PUT',
+      { ...definition, questions: [{ ...definition.questions[0], correctChoiceKeys: ['missing'] }] },
+      author.cookie,
+    );
+    expect(invalid.status).toBe(422);
+
+    const saved = await request(
+      `/api/v1/admin/courses/${courseId}/quiz`,
+      'PUT',
+      definition,
+      author.cookie,
+    );
+    expect(saved.status).toBe(200);
+    expect(saved.data.questions[0].correct_choice_keys).toEqual(['b']);
+    expect(saved.data.questions[0].explanation).toBe('The second option matches the documented rule.');
+    const authorQuizzes = await request(
+      `/api/v1/admin/courses/${courseId}/quizzes?revisionId=${revisionId}`,
+      'GET',
+      undefined,
+      author.cookie,
+    );
+    expect(authorQuizzes.status).toBe(200);
+    expect(authorQuizzes.data).toHaveLength(1);
+    expect(authorQuizzes.data[0].questions[0].correct_choice_keys).toEqual(['b']);
+    expect(
+      (
+        await request('/api/v1/quizzes/' + saved.data.id, 'GET', undefined, learner.cookie)
+      ).status,
+    ).toBe(404);
+
+    expect(
+      (
+        await request(`/api/v1/admin/courses/${courseId}/publish`, 'POST', { expectedRevisionId: revisionId }, admin.cookie)
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await request(`/api/v1/courses/${courseId}/enroll`, 'POST', {}, learner.cookie)
+      ).status,
+    ).toBe(200);
+    const learnerQuiz = await request(
+      `/api/v1/quizzes/${saved.data.id}`,
+      'GET',
+      undefined,
+      learner.cookie,
+    );
+    expect(learnerQuiz.status).toBe(200);
+    expect(learnerQuiz.data).toMatchObject({
+      pass_percent: 75,
+      max_attempts: 4,
+      randomize_questions: true,
+      time_limit_seconds: 120,
+      questions: [
+        {
+          prompt: 'Which option is correct?',
+          choices: [{ key: 'a', text: 'First answer' }, { key: 'b', text: 'Second answer' }],
+          points: 3,
+        },
+      ],
+    });
+    expect(learnerQuiz.data.questions[0]).not.toHaveProperty('correct_choice_keys');
+    expect(learnerQuiz.data.questions[0]).not.toHaveProperty('explanation');
+    expect(JSON.stringify(learnerQuiz.data)).not.toContain('"b"]');
+
+    const started = await request(
+      `/api/v1/quizzes/${saved.data.id}/attempts`,
+      'POST',
+      {},
+      learner.cookie,
+    );
+    expect(started.status).toBe(201);
+    expect(started.data.questions[0]).not.toHaveProperty('correct_choice_keys');
+    expect(started.data.questions[0]).not.toHaveProperty('explanation');
+    expect(started.data.remaining_attempts).toBe(3);
+    const resumed = await request(
+      `/api/v1/quizzes/${saved.data.id}/attempts`,
+      'POST',
+      {},
+      learner.cookie,
+    );
+    expect(resumed.status).toBe(200);
+    expect(resumed.data.id).toBe(started.data.id);
+    const questionId = learnerQuiz.data.questions[0].id as string;
+    expect(
+      (
+        await request(`/api/v1/attempts/${started.data.id}/answers`, 'PUT', {
+          answers: [{ questionId, selectedKeys: ['not-a-choice'] }],
+        }, learner.cookie)
+      ).data.code,
+    ).toBe('QUIZ_CHOICE_INVALID');
+    const savedAnswers = await request(
+      `/api/v1/attempts/${started.data.id}/answers`,
+      'PUT',
+      { answers: [{ questionId, selectedKeys: ['a'] }] },
+      learner.cookie,
+    );
+    expect(savedAnswers.status).toBe(200);
+    expect(savedAnswers.data.questions[0].selected_keys).toEqual(['a']);
+    expect(
+      db.prepare('SELECT awarded_points FROM attempt_answers WHERE attempt_id=? AND question_id=?').get(
+        started.data.id,
+        questionId,
+      ),
+    ).toEqual({ awarded_points: 0 });
+    expect(
+      (
+        await request(`/api/v1/attempts/${started.data.id}`, 'GET', undefined, otherAuthor.cookie)
+      ).status,
+    ).toBe(404);
+    expect(
+      (
+        await request(`/api/v1/attempts/${started.data.id}/submit`, 'PUT', {
+          answers: [{ questionId: randomUUID(), selectedKeys: ['b'] }],
+        }, learner.cookie)
+      ).data.code,
+    ).toBe('QUIZ_QUESTION_INVALID');
+    expect(
+      (
+        await request(`/api/v1/attempts/${started.data.id}/submit`, 'PUT', {
+          answers: [{ questionId, selectedKeys: ['not-a-choice'] }],
+        }, learner.cookie)
+      ).data.code,
+    ).toBe('QUIZ_CHOICE_INVALID');
+    const submitted = await request(
+      `/api/v1/attempts/${started.data.id}/submit`,
+      'PUT',
+      { answers: [{ questionId, selectedKeys: ['b'] }] },
+      learner.cookie,
+    );
+    expect(submitted.status).toBe(200);
+    expect(submitted.data).toMatchObject({ score: 3, pass: true, already_submitted: false });
+    expect(submitted.data.answers[0]).toMatchObject({
+      explanation: 'The second option matches the documented rule.',
+      choices: [
+        expect.objectContaining({ key: 'a', correct: false, selected: false }),
+        expect.objectContaining({ key: 'b', correct: true, selected: true }),
+      ],
+    });
+    expect(submitted.data.answers).toEqual([
+      expect.objectContaining({
+        question_id: questionId,
+        explanation: 'The second option matches the documented rule.',
+        awarded_points: 3,
+        possible_points: 3,
+        choices: [
+          expect.objectContaining({ key: 'a', correct: false, selected: false }),
+          expect.objectContaining({ key: 'b', correct: true, selected: true }),
+        ],
+      }),
+    ]);
+    const repeatedSubmission = await request(
+      `/api/v1/attempts/${started.data.id}/submit`,
+      'PUT',
+      { answers: [{ questionId, selectedKeys: ['a'] }] },
+      learner.cookie,
+    );
+    expect(repeatedSubmission.data).toMatchObject({ score: 3, pass: true, already_submitted: true });
+    expect(
+      (
+        await request(`/api/v1/attempts/${started.data.id}/answers`, 'PUT', {
+          answers: [{ questionId, selectedKeys: ['a'] }],
+        }, learner.cookie)
+      ).data.code,
+    ).toBe('QUIZ_ATTEMPT_SUBMITTED');
+    expect(
+      db.prepare('SELECT count(*) AS count FROM attempt_answers WHERE attempt_id=?').get(started.data.id),
+    ).toEqual({ count: 1 });
+    const results = await request(
+      `/api/v1/quizzes/${saved.data.id}/results`,
+      'GET',
+      undefined,
+      learner.cookie,
+    );
+    expect(results.status).toBe(200);
+    expect(results.data.items).toEqual([
+      expect.objectContaining({
+        id: started.data.id,
+        score: 3,
+        total_points: 3,
+        pass: true,
+        answers: [expect.objectContaining({
+          explanation: 'The second option matches the documented rule.',
+          choices: expect.arrayContaining([
+            expect.objectContaining({ key: 'b', correct: true, selected: true }),
+          ]),
+        })],
+      }),
+    ]);
+    expect(JSON.stringify(results.data)).not.toContain('correct_choice_keys');
+    expect(JSON.stringify(results.data)).not.toContain('selected_keys');
+    expect(
+      (
+        await request(`/api/v1/quizzes/${saved.data.id}/results`, 'GET', undefined, otherAuthor.cookie)
+      ).status,
+    ).toBe(403);
+    const concurrentStarts = await Promise.all([
+      request(`/api/v1/quizzes/${saved.data.id}/attempts`, 'POST', {}, learner.cookie),
+      request(`/api/v1/quizzes/${saved.data.id}/attempts`, 'POST', {}, learner.cookie),
+    ]);
+    expect(concurrentStarts.map(result => result.data.id)).toEqual([
+      concurrentStarts[0].data.id,
+      concurrentStarts[0].data.id,
+    ]);
+    expect(
+      db.prepare('SELECT count(*) AS count FROM attempts WHERE enrollment_id=? AND quiz_id=?').get(
+        db.prepare('SELECT id FROM enrollments WHERE user_id=? AND course_id=?').get(learner.id, courseId).id,
+        saved.data.id,
+      ),
+    ).toEqual({ count: 2 });
+    const concurrentSubmissions = await Promise.all([
+      request(
+        `/api/v1/attempts/${concurrentStarts[0].data.id}/submit`,
+        'PUT',
+        { answers: [{ questionId, selectedKeys: ['a'] }] },
+        learner.cookie,
+      ),
+      request(
+        `/api/v1/attempts/${concurrentStarts[0].data.id}/submit`,
+        'PUT',
+        { answers: [{ questionId, selectedKeys: ['b'] }] },
+        learner.cookie,
+      ),
+    ]);
+    expect(concurrentSubmissions.map(result => result.status)).toEqual([200, 200]);
+    expect(concurrentSubmissions.map(result => result.data.already_submitted).sort()).toEqual([
+      false,
+      true,
+    ]);
+    expect(concurrentSubmissions[0].data).toMatchObject({
+      id: concurrentStarts[0].data.id,
+      score: concurrentSubmissions[1].data.score,
+      pass: concurrentSubmissions[1].data.pass,
+      submitted_at: concurrentSubmissions[1].data.submitted_at,
+      answers: concurrentSubmissions[1].data.answers,
+    });
+    expect(
+      db.prepare('SELECT count(*) AS count FROM attempt_answers WHERE attempt_id=?').get(
+        concurrentStarts[0].data.id,
+      ),
+    ).toEqual({ count: 1 });
+    await request(`/api/v1/quizzes/${saved.data.id}/attempts`, 'POST', {}, learner.cookie);
+    await request(`/api/v1/attempts/${(await request(`/api/v1/quizzes/${saved.data.id}/attempts`, 'POST', {}, learner.cookie)).data.id}/submit`, 'PUT', { answers: [] }, learner.cookie);
+    const finalAvailableAttempt = await request(
+      `/api/v1/quizzes/${saved.data.id}/attempts`,
+      'POST',
+      {},
+      learner.cookie,
+    );
+    expect(finalAvailableAttempt.status).toBe(201);
+    expect(
+      (
+        await request(
+          `/api/v1/attempts/${finalAvailableAttempt.data.id}/submit`,
+          'PUT',
+          { answers: [] },
+          learner.cookie,
+        )
+      ).status,
+    ).toBe(200);
+    const exhausted = await request(
+      `/api/v1/quizzes/${saved.data.id}/attempts`,
+      'POST',
+      {},
+      learner.cookie,
+    );
+    expect(exhausted.status).toBe(409);
+    expect(exhausted.data.code).toBe('QUIZ_ATTEMPTS_EXHAUSTED');
+
+    const revisedDraft = await request(
+      `/api/v1/admin/courses/${courseId}`,
+      'GET',
+      undefined,
+      author.cookie,
+    );
+    const revised = await request(
+      `/api/v1/admin/courses/${courseId}`,
+      'PUT',
+      { ...draft('quiz-owner-course'), title: 'Second course revision', expectedRevisionId: revisedDraft.data.current_revision_id },
+      author.cookie,
+    );
+    expect(revised.status).toBe(200);
+    expect(
+      (
+        await request(
+          `/api/v1/admin/courses/${courseId}/publish`,
+          'POST',
+          { expectedRevisionId: revised.data.current_revision_id },
+          admin.cookie,
+        )
+      ).status,
+    ).toBe(200);
+    const oldRevisionQuiz = await request(
+      `/api/v1/quizzes/${saved.data.id}`,
+      'GET',
+      undefined,
+      learner.cookie,
+    );
+    expect(oldRevisionQuiz.status).toBe(200);
+    expect(oldRevisionQuiz.data.revision_id).toBe(revisionId);
+
+    const secondRevisionDetail = await request(
+      `/api/v1/admin/courses/${courseId}`,
+      'GET',
+      undefined,
+      author.cookie,
+    );
+    const thirdRevision = await request(
+      `/api/v1/admin/courses/${courseId}`,
+      'PUT',
+      {
+        ...draft('quiz-owner-course'),
+        title: 'Third course revision',
+        expectedRevisionId: secondRevisionDetail.data.current_revision_id,
+      },
+      author.cookie,
+    );
+    expect(thirdRevision.status).toBe(200);
+    const thirdDetail = await request(
+      `/api/v1/admin/courses/${courseId}`,
+      'GET',
+      undefined,
+      author.cookie,
+    );
+    const nextDefinition = await request(
+      `/api/v1/admin/courses/${courseId}/quiz`,
+      'PUT',
+      {
+        ...definition,
+        expectedRevisionId: thirdRevision.data.current_revision_id,
+        lessonId: thirdDetail.data.modules[0].lessons[0].id,
+      },
+      author.cookie,
+    );
+    expect(nextDefinition.status).toBe(200);
+    expect(nextDefinition.data.revision_id).toBe(thirdRevision.data.current_revision_id);
+  });
+});
+
+describe('quiz attempt deadlines', () => {
+  it('rejects a submission after the immutable attempt deadline without changing the attempt', async () => {
+    const admin = await account('deadline-admin@example.com', 'admin');
+    const learner = await account('deadline-learner@example.com');
+    const course = await request(
+      '/api/v1/admin/courses',
+      'POST',
+      draft('deadline-course'),
+      admin.cookie,
+    );
+    expect(course.status).toBe(201);
+    const detail = await request(`/api/v1/admin/courses/${course.data.id}`, 'GET', undefined, admin.cookie);
+    const revisionId = detail.data.current_revision_id as string;
+    const lessonId = detail.data.modules[0].lessons[0].id as string;
+    const configured = await request(
+      `/api/v1/admin/courses/${course.data.id}/quiz`,
+      'PUT',
+      {
+        expectedRevisionId: revisionId,
+        lessonId,
+        timeLimitSeconds: 60,
+        questions: [
+          {
+            prompt: 'Deadline question',
+            choices: [{ key: 'yes', text: 'Yes' }, { key: 'no', text: 'No' }],
+            correctChoiceKeys: ['yes'],
+          },
+        ],
+      },
+      admin.cookie,
+    );
+    expect(configured.status).toBe(200);
+    await request(`/api/v1/admin/courses/${course.data.id}/publish`, 'POST', {}, admin.cookie);
+    await request(`/api/v1/courses/${course.data.id}/enroll`, 'POST', {}, learner.cookie);
+    const enrollment = db
+      .prepare('SELECT id FROM enrollments WHERE user_id=? AND course_id=?')
+      .get(learner.id, course.data.id) as { id: string };
+    const attemptId = randomUUID();
+    db.prepare(
+      "INSERT INTO attempts(id,enrollment_id,quiz_id,revision_id,seed,started_at) VALUES(?,?,?,?,?,datetime('now','-2 minutes'))",
+    ).run(attemptId, enrollment.id, configured.data.id, revisionId, randomUUID());
+    const restarted = await request(
+      `/api/v1/quizzes/${configured.data.id}/attempts`,
+      'POST',
+      {},
+      learner.cookie,
+    );
+    expect(restarted.status).toBe(201);
+    expect(restarted.data.id).not.toBe(attemptId);
+    const result = await request(
+      `/api/v1/attempts/${attemptId}/submit`,
+      'PUT',
+      { answers: [] },
+      learner.cookie,
+    );
+    expect(result.status).toBe(409);
+    expect(result.data.code).toBe('QUIZ_DEADLINE_EXPIRED');
+    expect(
+      db.prepare('SELECT submitted_at,score,pass FROM attempts WHERE id=?').get(attemptId),
+    ).toEqual({ submitted_at: null, score: null, pass: null });
+    expect(
+      db.prepare('SELECT count(*) AS count FROM attempt_answers WHERE attempt_id=?').get(attemptId),
+    ).toEqual({ count: 0 });
+    const history = await request(
+      `/api/v1/quizzes/${configured.data.id}/results`,
+      'GET',
+      undefined,
+      learner.cookie,
+    );
+    expect(history.data.items).toContainEqual(
+      expect.objectContaining({
+        id: attemptId,
+        expired: true,
+        submitted_at: null,
+        score: null,
+        pass: false,
+        answers: [],
+      }),
+    );
+  });
+});
+
+describe('revision completion policy', () => {
+  it('completes only after required lessons and revision quizzes pass, and records completion once', async () => {
+    const admin = await account('completion-admin@example.com', 'admin');
+    const learner = await account('completion-learner@example.com');
+    const courseDraft = draft('completion-policy-course');
+    courseDraft.modules[0].lessons.push({
+      title: 'Second required lesson',
+      body: 'Second lesson body',
+      required: true,
+      preview: false,
+    });
+    const created = await request(
+      '/api/v1/admin/courses',
+      'POST',
+      courseDraft,
+      admin.cookie,
+    );
+    expect(created.status).toBe(201);
+    const detail = await request(`/api/v1/admin/courses/${created.data.id}`, 'GET', undefined, admin.cookie);
+    const revisionId = detail.data.current_revision_id as string;
+    const lessons = detail.data.modules[0].lessons as Array<{ id: string }>;
+    const configured = await request(
+      `/api/v1/admin/courses/${created.data.id}/quiz`,
+      'PUT',
+      {
+        expectedRevisionId: revisionId,
+        lessonId: null,
+        passPercent: 70,
+        maxAttempts: 3,
+        questions: [{
+          prompt: 'Which choice passes?',
+          choices: [{ key: 'no', text: 'No' }, { key: 'yes', text: 'Yes' }],
+          correctChoiceKeys: ['yes'],
+        }],
+      },
+      admin.cookie,
+    );
+    expect(configured.status).toBe(200);
+    expect(
+      (
+        await request(`/api/v1/admin/courses/${created.data.id}/publish`, 'POST', { expectedRevisionId: revisionId }, admin.cookie)
+      ).status,
+    ).toBe(200);
+    expect((await request(`/api/v1/courses/${created.data.id}/enroll`, 'POST', {}, learner.cookie)).status).toBe(200);
+    const enrollment = db
+      .prepare('SELECT id,required_lesson_ids_snapshot,quiz_ids_snapshot FROM enrollments WHERE user_id=? AND course_id=?')
+      .get(learner.id, created.data.id) as {
+      id: string;
+      required_lesson_ids_snapshot: string;
+      quiz_ids_snapshot: string;
+    };
+    expect(JSON.parse(enrollment.required_lesson_ids_snapshot)).toEqual(lessons.map(lesson => lesson.id));
+    expect(JSON.parse(enrollment.quiz_ids_snapshot)).toEqual([configured.data.id]);
+    db.prepare('INSERT INTO quizzes(id,revision_id,lesson_id) VALUES(?,?,?)')
+      .run(randomUUID(), revisionId, lessons[0].id);
+    expect(() => db.prepare('UPDATE enrollments SET quiz_ids_snapshot=? WHERE id=?')
+      .run('[]', enrollment.id)).toThrow(/completion requirements are immutable/);
+    const enrollmentBefore = (await request('/api/v1/me/enrollments', 'GET', undefined, learner.cookie)).data[0];
+    expect(enrollmentBefore.completed_at).toBeNull();
+    expect(enrollmentBefore.completion_ready).toBe(false);
+
+    for (const lesson of lessons) {
+      expect(
+        (
+          await request(`/api/v1/lessons/${lesson.id}/progress`, 'PUT', { complete: true }, learner.cookie)
+        ).status,
+      ).toBe(200);
+    }
+    const lessonsDone = (await request('/api/v1/me/enrollments', 'GET', undefined, learner.cookie)).data[0];
+    expect(lessonsDone.completed_lessons).toBe(2);
+    expect(lessonsDone.completion_ready).toBe(false);
+    expect(lessonsDone.completed_at).toBeNull();
+
+    const failedAttempt = await request(
+      `/api/v1/quizzes/${configured.data.id}/attempts`,
+      'POST',
+      {},
+      learner.cookie,
+    );
+    const questionId = failedAttempt.data.questions[0].id as string;
+    await request(
+      `/api/v1/attempts/${failedAttempt.data.id}/submit`,
+      'PUT',
+      { answers: [{ questionId, selectedKeys: ['no'] }] },
+      learner.cookie,
+    );
+    const quizFailed = (await request('/api/v1/me/enrollments', 'GET', undefined, learner.cookie)).data[0];
+    expect(quizFailed.completion_ready).toBe(false);
+    expect(quizFailed.completed_at).toBeNull();
+
+    const passingAttempt = await request(
+      `/api/v1/quizzes/${configured.data.id}/attempts`,
+      'POST',
+      {},
+      learner.cookie,
+    );
+    await request(
+      `/api/v1/attempts/${passingAttempt.data.id}/submit`,
+      'PUT',
+      { answers: [{ questionId, selectedKeys: ['yes'] }] },
+      learner.cookie,
+    );
+    const completed = (await request('/api/v1/me/enrollments', 'GET', undefined, learner.cookie)).data[0];
+    expect(completed.completion_ready).toBe(true);
+    expect(completed.completed_at).toBeTruthy();
+    const completedAt = completed.completed_at;
+
+    await request(`/api/v1/lessons/${lessons[0].id}/progress`, 'PUT', { positionSeconds: 12 }, learner.cookie);
+    const repeated = (await request('/api/v1/me/enrollments', 'GET', undefined, learner.cookie)).data[0];
+    expect(repeated.completed_at).toBe(completedAt);
+    expect(repeated.completion_ready).toBe(true);
+    db.prepare("UPDATE entitlements SET revoked_at=datetime('now') WHERE enrollment_id=(SELECT id FROM enrollments WHERE user_id=? AND course_id=?)")
+      .run(learner.id, created.data.id);
+    const revoked = (await request('/api/v1/me/enrollments', 'GET', undefined, learner.cookie)).data[0];
+    expect(revoked.completed_at).toBe(completedAt);
+    expect(revoked.completion_ready).toBe(false);
+  });
+});
+
+describe('certificate eligibility preflight', () => {
+  it('reports missing requirements and issues one immutable certificate for concurrent requests', async () => {
+    const admin = await account('certificate-check-admin@example.com', 'admin');
+    const learner = await account('certificate-check-learner@example.com');
+    const created = await request(
+      '/api/v1/admin/courses',
+      'POST',
+      {
+        ...draft('certificate-check-course'),
+        durationMinutes: 90,
+        instructorName: 'Maia Academy',
+      },
+      admin.cookie,
+    );
+    expect(created.status).toBe(201);
+    const course = await request(
+      `/api/v1/admin/courses/${created.data.id}/publish`,
+      'POST',
+      {},
+      admin.cookie,
+    );
+    expect(course.status).toBe(200);
+    const publicCourse = await request('/api/v1/courses/certificate-check-course');
+    const courseId = created.data.id as string;
+    const lessonId = publicCourse.data.modules[0].lessons[0].id as string;
+    await request(`/api/v1/courses/${courseId}/enroll`, 'POST', {}, learner.cookie);
+    const enrollment = db
+      .prepare('SELECT id FROM enrollments WHERE user_id=? AND course_id=?')
+      .get(learner.id, courseId) as { id: string };
+
+    const invalidInput = await request(
+      '/api/v1/me/certificates/eligibility',
+      'POST',
+      { enrollmentId: enrollment.id, confirmedName: '', disclosureConsent: false },
+      learner.cookie,
+    );
+    expect(invalidInput.status).toBe(422);
+
+    const before = await request(
+      '/api/v1/me/certificates/eligibility',
+      'POST',
+      { enrollmentId: enrollment.id, confirmedName: 'Ada Lovelace', disclosureConsent: true },
+      learner.cookie,
+    );
+    expect(before.status).toBe(200);
+    expect(before.data.eligible).toBe(false);
+    expect(before.data.reasons).toEqual(
+      expect.arrayContaining(['CERTIFICATE_COMPLETION_REQUIRED', 'CERTIFICATE_EMAIL_UNVERIFIED']),
+    );
+    const blockedIssue = await request(
+      '/api/v1/me/certificates',
+      'POST',
+      {
+        enrollmentId: enrollment.id,
+        confirmedName: 'Ada Lovelace',
+        disclosureConsent: true,
+        acceptedDisclosureHash: before.data.disclosureHash,
+      },
+      learner.cookie,
+    );
+    expect(blockedIssue.status).toBe(409);
+    expect(blockedIssue.data.reasons).toContain('CERTIFICATE_COMPLETION_REQUIRED');
+
+    db.prepare("UPDATE users SET verified_at=datetime('now') WHERE id=?").run(learner.id);
+    db.prepare(
+      'INSERT INTO lesson_progress(enrollment_id,lesson_id,position_seconds,completed_at) VALUES(?,?,0,datetime(\'now\'))',
+    ).run(enrollment.id, lessonId);
+    db.prepare('UPDATE enrollments SET completed_at=datetime(\'now\') WHERE id=?').run(enrollment.id);
+
+    const eligible = await request(
+      '/api/v1/me/certificates/eligibility',
+      'POST',
+      { enrollmentId: enrollment.id, confirmedName: 'Ada Lovelace', disclosureConsent: true },
+      learner.cookie,
+    );
+    expect(eligible.status).toBe(200);
+    expect(eligible.data).toMatchObject({
+      eligible: true,
+      enrollmentId: enrollment.id,
+      confirmedName: 'Ada Lovelace',
+      disclosureConsent: true,
+      disclosureVersion: 'certificate-disclosure-v1',
+      disclosurePayload: {
+        confirmedName: 'Ada Lovelace',
+        courseTitle: 'Curso de teste',
+        courseSlug: 'certificate-check-course',
+        workloadMinutes: 90,
+        issuerName: 'Maia Academy',
+      },
+      reasons: [],
+      existingCertificate: null,
+      issuesCertificate: false,
+    });
+    expect(eligible.data.disclosureHash).toMatch(/^[a-f0-9]{64}$/);
+
+    const issuanceRequest = {
+      enrollmentId: enrollment.id,
+      confirmedName: 'Ada Lovelace',
+      disclosureConsent: true,
+      acceptedDisclosureHash: eligible.data.disclosureHash,
+    };
+    const staleDisclosure = await request(
+      '/api/v1/me/certificates',
+      'POST',
+      { ...issuanceRequest, acceptedDisclosureHash: 'f'.repeat(64) },
+      learner.cookie,
+    );
+    expect(staleDisclosure.status).toBe(409);
+    expect(staleDisclosure.data.code).toBe('CERTIFICATE_DISCLOSURE_CHANGED');
+    const issuanceResults = await Promise.all([
+      request('/api/v1/me/certificates', 'POST', issuanceRequest, learner.cookie),
+      request('/api/v1/me/certificates', 'POST', issuanceRequest, learner.cookie),
+    ]);
+    expect(issuanceResults.map(result => result.status).sort()).toEqual([200, 201]);
+    const issuedCertificates = issuanceResults.map(result => result.data.certificate);
+    expect(issuedCertificates[0].id).toBe(issuedCertificates[1].id);
+    expect(issuedCertificates[0].publicCode).toBe(issuedCertificates[1].publicCode);
+    expect(issuedCertificates[0].pdfStatus).toBe('PENDING');
+    expect(issuedCertificates[0].payload).toMatchObject({
+      confirmedName: 'Ada Lovelace',
+      courseTitle: 'Curso de teste',
+      workloadMinutes: 90,
+      issuerName: 'Maia Academy',
+      status: 'valid',
+    });
+
+    const storedCertificate = db
+      .prepare(
+        'SELECT payload_json,payload_hash,disclosure_hash,disclosure_consented_at,disclosure_version FROM certificates WHERE id=?',
+      )
+      .get(issuedCertificates[0].id) as {
+      payload_json: string;
+      payload_hash: string;
+      disclosure_hash: string;
+      disclosure_consented_at: string;
+      disclosure_version: string;
+    };
+    expect(storedCertificate.payload_hash).toBe(createHash('sha256').update(storedCertificate.payload_json).digest('hex'));
+    expect(storedCertificate.disclosure_hash).toBe(eligible.data.disclosureHash);
+    expect(storedCertificate.disclosure_consented_at).toBeTruthy();
+    expect(storedCertificate.disclosure_version).toBe('certificate-disclosure-v1');
+    expect(() =>
+      db.prepare('UPDATE certificates SET payload_json=? WHERE id=?').run('{}', issuedCertificates[0].id),
+    ).toThrow(/certificate snapshot is immutable/);
+    expect(() =>
+      db.prepare('UPDATE certificates SET disclosure_version=? WHERE id=?').run('rewritten', issuedCertificates[0].id),
+    ).toThrow(/certificate snapshot is immutable/);
+    expect(db.prepare('SELECT count(*) AS count FROM certificates WHERE enrollment_id=?').get(enrollment.id)).toEqual({ count: 1 });
+    expect(
+      db.prepare("SELECT count(*) AS count FROM audit_events WHERE subject_id=? AND action='certificate.issue'").get(issuedCertificates[0].id),
+    ).toEqual({ count: 1 });
+    const generationJob = db
+      .prepare("SELECT payload FROM outbox WHERE event_type='certificate.generate'")
+      .get() as { payload: string };
+    expect(JSON.parse(generationJob.payload)).toEqual({ certificateId: issuedCertificates[0].id });
+    expect(
+      (await request(`/api/v1/me/certificates/${issuedCertificates[0].id}/pdf`, 'GET', undefined, learner.cookie)).status,
+    ).toBe(409);
+    const anotherLearner = await account('certificate-check-other@example.com');
+    const certificateList = await request('/api/v1/me/certificates', 'GET', undefined, learner.cookie);
+    expect(certificateList.status).toBe(200);
+    expect(certificateList.data).toEqual([
+      expect.objectContaining({
+        id: issuedCertificates[0].id,
+        courseTitle: 'Curso de teste',
+        status: 'valid',
+        pdfStatus: 'PENDING',
+        verificationPath: `/certificates/verify/${issuedCertificates[0].publicCode}`,
+        downloadPath: null,
+      }),
+    ]);
+    expect(JSON.stringify(certificateList.data)).not.toContain('payloadHash');
+    expect((await request('/api/v1/me/certificates', 'GET', undefined, anotherLearner.cookie)).data).toEqual([]);
+    expect(
+      (await request(`/api/v1/me/certificates/${issuedCertificates[0].id}/pdf`, 'GET', undefined, anotherLearner.cookie)).status,
+    ).toBe(404);
+
+    await processCertificatePdf(
+      db,
+      storageRoot,
+      loadConfig().PUBLIC_BASE_URL,
+      JSON.parse(generationJob.payload) as unknown,
+      1,
+    );
+    const pdfResponse = await fetch(`${base}/api/v1/me/certificates/${issuedCertificates[0].id}/pdf`, {
+      headers: { Cookie: learner.cookie },
+    });
+    expect(pdfResponse.status).toBe(200);
+    expect(pdfResponse.headers.get('content-type')).toBe('application/pdf');
+    expect(pdfResponse.headers.get('cache-control')).toBe('private, no-store');
+    const downloadedPdf = Buffer.from(await pdfResponse.arrayBuffer());
+    expect(downloadedPdf.subarray(0, 5).toString()).toBe('%PDF-');
+    const readyCertificateList = await request('/api/v1/me/certificates', 'GET', undefined, learner.cookie);
+    expect(readyCertificateList.data[0]).toMatchObject({
+      status: 'valid',
+      pdfStatus: 'READY',
+      downloadPath: `/api/v1/me/certificates/${issuedCertificates[0].id}/pdf`,
+    });
+    await request('/api/v1/me/certificates', 'POST', issuanceRequest, learner.cookie);
+    expect(db.prepare('SELECT count(*) AS count FROM certificates WHERE enrollment_id=?').get(enrollment.id)).toEqual({ count: 1 });
+
+    const verifyUrl = `/api/v1/certificates/verify/${issuedCertificates[0].publicCode}`;
+    const validVerification = await request(verifyUrl);
+    expect(validVerification.status).toBe(200);
+    expect(validVerification.data).toMatchObject({
+      learnerName: 'Ada Lovelace',
+      courseTitle: 'Curso de teste',
+      workloadMinutes: 90,
+      issuerName: 'Maia Academy',
+      status: 'valid',
+    });
+    expect(Object.keys(validVerification.data).sort()).toEqual(
+      ['courseTitle', 'issuedAt', 'issuerName', 'learnerName', 'status', 'workloadMinutes'].sort(),
+    );
+    expect(validVerification.response.headers.get('x-robots-tag')).toBe('noindex, nofollow, noarchive');
+    expect(validVerification.response.headers.get('cache-control')).toBe('no-store');
+
+    const unknownVerification = await request(`/api/v1/certificates/verify/${'Z'.repeat(43)}`);
+    expect(unknownVerification.status).toBe(404);
+    expect(unknownVerification.data.code).toBe('CERTIFICATE_NOT_FOUND');
+    const malformedVerification = await request('/api/v1/certificates/verify/invalid');
+    expect(malformedVerification.status).toBe(404);
+    expect(malformedVerification.data.code).toBe('CERTIFICATE_NOT_FOUND');
+
+    const deniedRevocation = await request(
+      `/api/v1/admin/certificates/${issuedCertificates[0].id}/revoke`,
+      'PATCH',
+      { reason: 'Learner must not revoke' },
+      learner.cookie,
+    );
+    expect(deniedRevocation.status).toBe(403);
+    expect((await request('/api/v1/admin/certificates', 'GET', undefined, learner.cookie)).status).toBe(403);
+    const adminCertificateSearch = await request(
+      '/api/v1/admin/certificates?q=certificate-check-learner&status=valid',
+      'GET',
+      undefined,
+      admin.cookie,
+    );
+    expect(adminCertificateSearch.status).toBe(200);
+    expect(adminCertificateSearch.data.items).toEqual([
+      expect.objectContaining({ id: issuedCertificates[0].id, email: 'certificate-check-learner@example.com' }),
+    ]);
+    const revokedByAdmin = await request(
+      `/api/v1/admin/certificates/${issuedCertificates[0].id}/revoke`,
+      'PATCH',
+      { reason: 'Corrected issuer record' },
+      admin.cookie,
+    );
+    expect(revokedByAdmin.status).toBe(200);
+    expect(revokedByAdmin.data).toMatchObject({ status: 'revoked', changed: true });
+    const repeatedRevocation = await request(
+      `/api/v1/admin/certificates/${issuedCertificates[0].id}/revoke`,
+      'PATCH',
+      { reason: 'Repeated request reason' },
+      admin.cookie,
+    );
+    expect(repeatedRevocation.data).toMatchObject({ status: 'revoked', changed: false });
+    const revokedVerification = await request(verifyUrl);
+    expect(revokedVerification.status).toBe(200);
+    expect(revokedVerification.data.status).toBe('revoked');
+    expect(revokedVerification.data).not.toHaveProperty('reason');
+    expect(
+      (await request('/api/v1/me/certificates', 'GET', undefined, learner.cookie)).data[0],
+    ).toMatchObject({ status: 'revoked', pdfStatus: 'READY' });
+
+    const publicCodeBeforeReissue = issuedCertificates[0].publicCode as string;
+    const reissued = await request(
+      `/api/v1/admin/certificates/${issuedCertificates[0].id}/reissue`,
+      'POST',
+      { reason: 'Reissue corrected record' },
+      admin.cookie,
+    );
+    expect(reissued.status).toBe(201);
+    expect(reissued.data.certificate).toMatchObject({
+      enrollmentId: enrollment.id,
+      supersedesId: issuedCertificates[0].id,
+      pdfStatus: 'PENDING',
+      payload: {
+        confirmedName: 'Ada Lovelace',
+        courseTitle: 'Curso de teste',
+        workloadMinutes: 90,
+        issuerName: 'Maia Academy',
+        status: 'valid',
+      },
+    });
+    expect(reissued.data.certificate.publicCode).not.toBe(publicCodeBeforeReissue);
+    expect(
+      (await request(`/api/v1/certificates/verify/${publicCodeBeforeReissue}`)).data.status,
+    ).toBe('revoked');
+    expect(
+      (await request(`/api/v1/certificates/verify/${reissued.data.certificate.publicCode}`)).data.status,
+    ).toBe('valid');
+    expect(
+      (await request(
+        `/api/v1/admin/certificates/${issuedCertificates[0].id}/reissue`,
+        'POST',
+        { reason: 'Duplicate reissue' },
+        admin.cookie,
+      )).data.code,
+    ).toBe('ADMIN_CERTIFICATE_ALREADY_SUPERSEDED');
+    const certificateHistory = await request(
+      `/api/v1/admin/certificates/${issuedCertificates[0].id}/history`,
+      'GET',
+      undefined,
+      admin.cookie,
+    );
+    expect(certificateHistory.status).toBe(200);
+    expect(certificateHistory.data.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: issuedCertificates[0].id, successor_id: reissued.data.certificate.id }),
+        expect.objectContaining({ id: reissued.data.certificate.id, supersedes_id: issuedCertificates[0].id }),
+      ]),
+    );
+    expect(certificateHistory.data.events.map((event: { action: string }) => event.action)).toEqual(
+      expect.arrayContaining(['certificate.revoke', 'certificate.reissue', 'certificate.superseded']),
+    );
+    expect(
+      certificateHistory.data.events
+        .filter((event: { action: string }) => ['certificate.revoke', 'certificate.reissue', 'certificate.superseded'].includes(event.action))
+        .every((event: { actor_id: string }) => event.actor_id === admin.id),
+    ).toBe(true);
+    const rateLimitedVerification = await Promise.all(
+      Array.from({ length: 20 }, () => request(`/api/v1/certificates/verify/${'Z'.repeat(43)}`)),
+    );
+    expect(rateLimitedVerification.some(result => result.status === 429)).toBe(true);
+    expect(rateLimitedVerification.find(result => result.status === 429)?.response.headers.get('ratelimit-limit')).toBe('20');
+
+    expect(
+      (
+        await request(
+          '/api/v1/me/certificates/eligibility',
+          'POST',
+          { enrollmentId: enrollment.id, confirmedName: 'Ada Lovelace', disclosureConsent: true },
+          anotherLearner.cookie,
+        )
+      ).status,
+    ).toBe(404);
   });
 });

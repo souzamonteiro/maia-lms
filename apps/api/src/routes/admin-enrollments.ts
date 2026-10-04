@@ -4,6 +4,7 @@ import type Database from 'better-sqlite3';
 import { z } from 'zod';
 import { requireRole } from '../middleware/auth.js';
 import { AppError } from '../middleware/error-handler.js';
+import { captureCompletionRequirements } from '../services/completion.js';
 
 const listQuery = z.object({
   q: z.string().trim().max(100).default(''),
@@ -51,9 +52,9 @@ export function adminEnrollmentsRouter(db: Database.Database): Router {
            WHERE m.revision_id=e.revision_id AND l.is_required=1) AS required_lessons,
           (SELECT count(*) FROM lesson_progress p JOIN lessons l ON l.id=p.lesson_id
            WHERE p.enrollment_id=e.id AND p.completed_at IS NOT NULL AND l.is_required=1) AS completed_lessons,
-          EXISTS (SELECT 1 FROM entitlements t WHERE t.enrollment_id=e.id AND t.revoked_at IS NULL
+          (c.withdrawn_at IS NULL AND EXISTS (SELECT 1 FROM entitlements t WHERE t.enrollment_id=e.id AND t.revoked_at IS NULL
             AND julianday(t.starts_at)<=julianday('now')
-            AND (t.ends_at IS NULL OR julianday(t.ends_at)>julianday('now'))) AS has_entitlement
+            AND (t.ends_at IS NULL OR julianday(t.ends_at)>julianday('now')))) AS has_entitlement
          FROM enrollments e JOIN users u ON u.id=e.user_id JOIN courses c ON c.id=e.course_id
          JOIN course_revisions r ON r.id=e.revision_id ${where}
          ORDER BY e.enrolled_at DESC,e.id LIMIT ? OFFSET ?`,
@@ -72,7 +73,7 @@ export function adminEnrollmentsRouter(db: Database.Database): Router {
           .get(email) as { id: string } | undefined;
         if (!user) throw new AppError(404, 'User not found', 'ADMIN_GRANT_USER_NOT_FOUND');
         const course = db
-          .prepare("SELECT id,published_revision_id FROM courses WHERE slug=? AND status='PUBLISHED'")
+          .prepare("SELECT id,published_revision_id FROM courses WHERE slug=? AND status='PUBLISHED' AND withdrawn_at IS NULL")
           .get(courseSlug) as { id: string; published_revision_id: string | null } | undefined;
         if (!course?.published_revision_id)
           throw new AppError(404, 'Published course not found', 'ADMIN_GRANT_COURSE_NOT_FOUND');
@@ -93,9 +94,10 @@ export function adminEnrollmentsRouter(db: Database.Database): Router {
 
         if (!enrollment) {
           const id = randomUUID();
+          const completionRequirements = captureCompletionRequirements(db, course.published_revision_id);
           db.prepare(
-            'INSERT INTO enrollments(id,user_id,course_id,revision_id) VALUES(?,?,?,?)',
-          ).run(id, user.id, course.id, course.published_revision_id);
+            'INSERT INTO enrollments(id,user_id,course_id,revision_id,required_lesson_ids_snapshot,quiz_ids_snapshot) VALUES(?,?,?,?,?,?)',
+          ).run(id, user.id, course.id, course.published_revision_id, completionRequirements.requiredLessonIds, completionRequirements.quizIds);
           enrollment = { id, state: 'active' };
         } else {
           db.prepare("UPDATE enrollments SET state='active' WHERE id=?").run(enrollment.id);

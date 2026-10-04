@@ -3,6 +3,7 @@ import { showCoursePreview } from './course-preview.js';
 import { mountStudioLayout, enableStudioDrag } from './studio-layout.js';
 import { mountAttachments, readAttachments } from './attachment-editor.js';
 import { mountVideoEditor } from './video-editor.js';
+import { mountQuizEditor } from './quiz-editor.js';
 import { icon, iconButton } from './icons.js';
 // Author studio. Draft recovery is scoped to the signed-in account.
 let state;
@@ -10,6 +11,7 @@ let timer;
 let pending;
 let context;
 let refreshLayout;
+let refreshQuizEditor;
 const emptyLesson = () => ({
   title: '',
   body: '',
@@ -138,6 +140,7 @@ async function save(manual) {
       if (title) title.textContent = context.t('editCourseTitle');
       state.dirty = JSON.stringify(state.payload) !== sent;
       persist();
+      await refreshQuizEditor?.();
       await refreshList();
       status(state.dirty ? 'savedLocally' : 'draftSaved');
     } catch (error) {
@@ -358,7 +361,7 @@ async function refreshList() {
   list.innerHTML = courses
     .map(
       c =>
-        `<article class="card"><h2>${e(c.title)}</h2><p>${e(c.status)}${c.published_revision_id && c.current_revision_id !== c.published_revision_id ? ` · ${t('unpublishedChanges')}` : ''}</p><div class="actions"><button data-edit="${c.id}">${icon('edit')}${t('edit')}</button>${me.role === 'admin' ? `<button data-publish="${c.id}" data-revision="${c.current_revision_id}">${icon('publish')}${t('publish')}</button><button data-archive="${c.id}" class="secondary">${icon('archive')}${t('archive')}</button>` : c.status === 'DRAFT' ? `<button data-review="${c.id}" data-revision="${c.current_revision_id}">${icon('publish')}${t('submitForReview')}</button>` : ''}<a href="/courses/${c.id}">${t('view')}</a></div></article>`,
+        `<article class="card"><h2>${e(c.title)}</h2><p>${e(c.withdrawn_at ? t('courseUrgentlyWithdrawn') : c.status)}${c.published_revision_id && c.current_revision_id !== c.published_revision_id ? ` · ${t('unpublishedChanges')}` : ''}${c.withdrawal_reason ? `<br>${e(c.withdrawal_reason)}` : ''}</p><div class="actions"><button data-edit="${c.id}">${icon('edit')}${t('edit')}</button>${me.role === 'admin' ? `${!c.withdrawn_at ? `<button data-publish="${c.id}" data-revision="${c.current_revision_id}">${icon('publish')}${t('publish')}</button>` : ''}<button data-archive="${c.id}" class="secondary">${icon('archive')}${t('archive')}</button>${c.published_revision_id && !c.withdrawn_at ? `<button data-withdraw="${c.id}" data-revision="${c.current_revision_id}" class="secondary">${t('courseUrgentWithdraw')}</button>` : ''}` : c.status === 'DRAFT' ? `<button data-review="${c.id}" data-revision="${c.current_revision_id}">${icon('publish')}${t('submitForReview')}</button>` : ''}<a href="/courses/${c.id}">${t('view')}</a></div></article>`,
     )
     .join('');
 }
@@ -435,6 +438,7 @@ export async function mountStudio(ctx) {
   clearTimeout(timer);
   if (pending) await pending;
   refreshLayout = null;
+  refreshQuizEditor = null;
   context = ctx;
   const { app, t, me, notify, api } = ctx;
   if (!state || state.userId !== me.id) {
@@ -453,6 +457,15 @@ export async function mountStudio(ctx) {
   }
   app.innerHTML = `<h1>${t('adminPublishTitle')}</h1><p>${t('studioDescription')}</p>${me.role === 'admin' ? `<div class="actions"><a href="/admin/home">${t('editHome')}</a><a href="/admin/categories">${t('manageCategories')}</a></div>` : ''}<div id="admin-list"></div><h2 id="editor-title">${state.id ? t('editCourseTitle') : t('newCourseTitle')}</h2><div class="actions"><button type="button" id="new-course" class="secondary">${icon('add')}${t('newCourseTitle')}</button><button type="button" id="reload-course" class="secondary" ${state.id ? '' : 'hidden'}>${icon('reloadDraft')}${t('reloadDraft')}</button></div><form id="editor"><section id="course-settings"><fieldset id="course-categories"><legend>${t('categories')}</legend><p>${t('courseCategoriesHelp')}</p>${categories.map(c => `<label><input type="checkbox" name="categoryId" value="${ctx.e(c.id)}" ${categoryIds.includes(c.id) ? 'checked' : ''}> ${ctx.e(c.name)}</label>`).join('') || `<p>${t('noCategories')}</p>`}</fieldset><label>${t('title')}<input name="title" required minlength="3" maxlength="255"></label><label>${t('courseSlugLabel')}<input name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" minlength="3" maxlength="100"></label><label>${t('summary')}<textarea name="summary" required minlength="10" maxlength="1000"></textarea></label><label>${t('instructorName')}<textarea name="instructorName" maxlength="200"></textarea></label><label>${t('instructorBio')}<textarea name="instructorBio" maxlength="5000"></textarea></label><label>${t('accessTerms')}<textarea name="accessTerms" maxlength="5000"></textarea></label><label>${t('certificateTerms')}<textarea name="certificateTerms" maxlength="5000"></textarea></label><p class="muted">${t('presentationTermsHelp')}</p><label>${t('learningOutcomes')}<textarea name="learningOutcomes" maxlength="5000"></textarea></label><label>${t('prerequisites')}<textarea name="prerequisites" maxlength="5000"></textarea></label><label>${t('courseLevel')}<select name="level"><option value="">${t('notSpecified')}</option><option value="beginner">${t('levelBeginner')}</option><option value="intermediate">${t('levelIntermediate')}</option><option value="advanced">${t('levelAdvanced')}</option></select></label><label>${t('courseWorkload')}<input name="durationMinutes" type="number" min="1" max="60000" step="1"></label><label>${t('access')}<select name="accessMode" aria-label="${t('access')}"><option value="OPEN_FREE">${t('accessOpenOption')}</option><option value="ENROLLED_FREE">${t('accessEnrolledOption')}</option></select></label><label>${t('courseLanguage')}<select name="locale"><option value="en">English</option><option value="pt-BR">Português</option><option value="es">Español</option></select></label><label>${t('coverAlt')}<input name="coverAlt" maxlength="300"></label><section id="course-cover"></section><p>${t('trailerHelp')}</p><section id="course-trailer"></section><section id="course-attachments"></section></section><div id="modules"></div><div class="actions"><button type="button" id="add-module" class="secondary">${icon('add')}${t('addModule')}</button><button type="button" id="preview-course">${icon('previewContent')}${t('draftPreview')}</button><button type="submit">${icon('saveDraft')}${t('saveDraft')}</button></div><p id="save-status" role="status" aria-live="polite"></p></form>`;
   const form = document.querySelector('#editor');
+  const quizEditorHost = document.createElement('div');
+  quizEditorHost.id = 'quiz-editor-host';
+  app.append(quizEditorHost);
+  refreshQuizEditor = mountQuizEditor(quizEditorHost, {
+    ...ctx,
+    courseId: state.id,
+    getRevisionId: () => state.revisionId,
+    isDirty: () => state.dirty || state.conflict || !state.id,
+  });
   for (const name of [
     'title',
     'slug',
@@ -604,12 +617,24 @@ export async function mountStudio(ctx) {
         persist();
         await mountStudio(ctx);
         document.querySelector('#editor').scrollIntoView();
-      } else if (target.dataset.publish || target.dataset.archive || target.dataset.review) {
+      } else if (target.dataset.publish || target.dataset.archive || target.dataset.review || target.dataset.withdraw) {
         if (state.dirty) {
           notify(t('saveBeforePublish'));
           return;
         }
-        const id = target.dataset.publish || target.dataset.archive || target.dataset.review;
+        const id = target.dataset.publish || target.dataset.archive || target.dataset.review || target.dataset.withdraw;
+        if (target.dataset.withdraw) {
+          const reason = prompt(t('courseUrgentWithdrawPrompt'));
+          if (reason === null) return;
+          if (reason.trim().length < 5) {
+            notify(t('courseUrgentWithdrawReasonInvalid'));
+            return;
+          }
+          await api(`/admin/courses/${id}/withdraw`, 'POST', { reason });
+          await refreshList();
+          notify(t('courseUrgentlyWithdrawnNotice'));
+          return;
+        }
         if (target.dataset.publish || target.dataset.review) {
           const revision = state.id === id ? state.revisionId : target.dataset.revision;
           const check = await api(`/admin/courses/${id}/publication-check?revisionId=${revision}`);

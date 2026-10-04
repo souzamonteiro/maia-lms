@@ -21,7 +21,7 @@ export function attachmentsRouter(db: Database.Database, config: Config): Router
     void (async () => {
       const row = db
         .prepare(
-          `SELECT r.id AS revision_id,c.id AS course_id,c.author_id,c.status,c.published_revision_id,v.filename,v.output_key
+          `SELECT r.id AS revision_id,c.id AS course_id,c.author_id,c.status,c.published_revision_id,c.withdrawn_at,v.filename,v.output_key
         FROM courses c JOIN course_revisions r ON r.course_id=c.id JOIN video_uploads v ON v.id=r.cover_file_id AND v.course_id=c.id
         WHERE (c.id=? OR c.slug=?) AND r.id=COALESCE(?,c.published_revision_id) AND v.status='READY' AND v.media_kind='attachment'`,
         )
@@ -36,14 +36,16 @@ export function attachmentsRouter(db: Database.Database, config: Config): Router
             author_id: string;
             status: string;
             published_revision_id: string;
+            withdrawn_at: string | null;
             filename: string;
             output_key: string;
           }
         | undefined;
       if (!row || !/\.(png|jpe?g)$/i.test(row.filename)) throw new AppError(404, 'Cover not found');
       const owner = req.session.role === 'admin' || req.session.userId === row.author_id;
+      if (row.withdrawn_at && !owner) throw new AppError(404, 'Cover not found');
       const publicAccess =
-        row.status === 'PUBLISHED' && row.revision_id === row.published_revision_id;
+        !row.withdrawn_at && row.status === 'PUBLISHED' && row.revision_id === row.published_revision_id;
       const enrolled = db
         .prepare(
           `SELECT e.id FROM enrollments e JOIN entitlements t ON t.enrollment_id=e.id
@@ -76,7 +78,7 @@ export function attachmentsRouter(db: Database.Database, config: Config): Router
     void (async () => {
       const a = db
         .prepare(
-          `SELECT a.revision_id,a.lesson_id,v.output_key,v.filename,c.id AS course_id,c.author_id,c.status,c.access_mode,c.published_revision_id,l.is_preview FROM course_attachments a JOIN course_revisions r ON r.id=a.revision_id JOIN courses c ON c.id=r.course_id JOIN video_uploads v ON v.id=a.upload_id AND v.course_id=c.id LEFT JOIN lessons l ON l.id=a.lesson_id WHERE a.id=? AND v.status='READY' AND v.media_kind='attachment'`,
+          `SELECT a.revision_id,a.lesson_id,v.output_key,v.filename,c.id AS course_id,c.author_id,c.status,c.access_mode,c.published_revision_id,c.withdrawn_at,l.is_preview FROM course_attachments a JOIN course_revisions r ON r.id=a.revision_id JOIN courses c ON c.id=r.course_id JOIN video_uploads v ON v.id=a.upload_id AND v.course_id=c.id LEFT JOIN lessons l ON l.id=a.lesson_id WHERE a.id=? AND v.status='READY' AND v.media_kind='attachment'`,
         )
         .get(req.params.id) as
         | {
@@ -89,15 +91,17 @@ export function attachmentsRouter(db: Database.Database, config: Config): Router
             status: string;
             access_mode: string;
             published_revision_id: string;
+            withdrawn_at: string | null;
             is_preview: number;
           }
         | undefined;
       if (!a) throw new AppError(404, 'Attachment not found');
+      const owner = req.session.role === 'admin' || req.session.userId === a.author_id;
+      if (a.withdrawn_at && !owner) throw new AppError(404, 'Attachment not found');
       const publicAccess =
-        a.status === 'PUBLISHED' &&
+        !a.withdrawn_at && a.status === 'PUBLISHED' &&
         a.revision_id === a.published_revision_id &&
         (a.access_mode === 'OPEN_FREE' || a.is_preview === 1);
-      const owner = req.session.role === 'admin' || req.session.userId === a.author_id;
       const entitled = db
         .prepare(
           `SELECT e.id FROM enrollments e JOIN entitlements t ON t.enrollment_id=e.id WHERE e.user_id=? AND e.course_id=? AND e.revision_id=? AND e.state='active' AND t.revoked_at IS NULL AND julianday(t.starts_at)<=julianday('now') AND (t.ends_at IS NULL OR julianday(t.ends_at)>julianday('now'))`,

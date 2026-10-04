@@ -94,7 +94,7 @@ export function instructorProfilesRouter(db: Database.Database): Router {
             c.access_mode,r.cover_file_id,r.cover_alt FROM courses c
          JOIN course_revisions r ON r.id=c.published_revision_id
          WHERE c.author_id=(SELECT user_id FROM instructor_profiles WHERE slug=? AND is_public=1)
-           AND c.status='PUBLISHED'
+           AND c.status='PUBLISHED' AND c.withdrawn_at IS NULL
          ORDER BY c.created_at DESC,c.id DESC`,
       )
       .all(profile.slug);

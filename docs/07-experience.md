@@ -97,8 +97,49 @@ submitted silently. The course enters **REVIEW** and records an audit event; an
 administrator can publish it after review. Direct administrator publishing remains
 available for existing operational workflows. Archiving still closes discovery and
 new enrollment while preserving authorized access for existing learners; it is not
-an urgent withdrawal. A separate emergency withdrawal that invalidates old lesson
-and media URLs remains unimplemented.
+an urgent withdrawal. An administrator can separately withdraw a published or
+archived course with a required reason. The immutable marker immediately blocks
+learner access through existing course/lesson URLs and video, caption, cover, and
+attachment routes, and prevents further progress writes; enrollment and progress
+history remain intact. The course is hidden from public discovery and cannot be
+republished through the normal publication route. Owner/admin inspection remains
+available. The learner dashboard keeps the historical enrollment and progress but
+does not show dead course or continue links. Scheduled publication and learner
+notifications are still pending.
+
+## Assessment definition API
+
+Authors and administrators can save a lesson or final quiz to the current
+unpublished course revision with prompts, keyed choices, points, pass threshold,
+attempt limit, question randomization, and optional time limit. Definitions are tied to that revision and
+cannot be edited after an attempt exists. Enrolled learners can read the quiz for
+their assigned course revision; the learner API omits correct-answer keys. A basic
+studio builder can edit the final quiz or a lesson quiz, including questions,
+choices, answer keys, scoring settings, and deadlines. Preview remains
+available as a local dialog that shows unsaved author content and marks correct
+choices; it does not save or publish. Publication readiness validates configured quizzes have questions
+and consistent choice/answer-key data; quizzes remain optional for older/course types
+that do not use assessments. In the lesson player, enrolled learners
+can start or resume an open attempt, select choices, submit once, and see the
+server-graded score/pass result and remaining attempts. An open attempt can be
+resumed after page reload, and selections auto-save without applying a score until
+final submission. Private score/pass history is scoped to the learner's
+enrollment and revision. After submission, a review panel marks selected and
+correct choices and displays the author's explanation; active attempts and quiz
+payloads never reveal these details. Expired unsubmitted attempts appear in the
+private history as consumed, ungraded attempts without feedback; starting another
+attempt remains subject to the configured attempt limit.
+
+Enrolled learners can start or resume one open attempt for a quiz. The attempt
+response omits answer keys and includes the deadline and remaining attempt count.
+Starting again resumes a still-open, unexpired attempt. An expired attempt remains
+in history and consumes one configured attempt, but it does not prevent starting a
+remaining attempt.
+Submission validates that every question and choice belongs to that quiz, grades
+on the server, stores the score/pass result atomically, and treats repeat submit as
+returning the original result. An expired deadline is rejected without writing
+answers. The player still has no quiz interaction UI, partial-answer recovery, or
+explanation of which submitted answers were correct.
 
 ## Enrollment support
 
@@ -111,6 +152,45 @@ reactivates the existing enrollment rather than creating a second record. The
 history view presents grant/revocation audit events in insertion order when events
 share the same stored timestamp. Provider payment reconciliation is not part of
 this support workflow.
+
+## Course completion
+
+The learner dashboard uses one server-derived completion policy for the assigned
+revision: at least one required lesson must exist, all required lessons must be
+marked complete, and every quiz in that revision must have a passing submission
+for that enrollment. The server records `completed_at` once, when these conditions
+are first met while the learner has active access to a non-withdrawn course.
+Repeated progress updates do not change the timestamp. If access is later revoked,
+the historical completion timestamp remains, but `completion_ready` becomes false
+for current eligibility checks. Eligibility and record issuance are separate
+certificate steps described below.
+
+## Certificate eligibility
+
+The authenticated learner can run a read-only eligibility check for one of their
+enrollments by supplying the name to print and explicitly consenting to disclosure.
+The server checks active access, non-withdrawn course state, recorded completion,
+verified email, publisher-declared workload, revision instructor, and whether a
+non-revoked certificate already exists. It returns stable reasons and the public
+disclosure fields with a versioned hash. Issuance requires that exact hash, then
+rechecks eligibility and writes an immutable snapshot plus audit event atomically.
+Concurrent submissions and retries return the same active certificate. The snapshot
+uses revision instructor as issuer and revision workload minutes; institutional
+issuer policy remains to be confirmed. Anonymous API verification is available at
+`/api/v1/certificates/verify/{code}`, with a localized public page at
+`/certificates/verify/{code}`. Both disclose only the approved snapshot fields and
+current status. A worker generates a private PDF with selectable text and a QR
+linking to the canonical verification page; the learner or an administrator can
+download it once ready. “My learning” lists each issued certificate, its validity
+and PDF processing status, the public verification link, and a download action only
+when the private PDF is ready.
+
+Administrators can search certificate records, revoke an active certificate with
+a private reason, reissue a revoked snapshot once, and inspect enrollment lineage
+and actor-attributed lifecycle audit events at `/admin/certificates`. Reissue keeps
+the predecessor's code verifiable as revoked and creates a linked successor with
+a fresh code and PDF job. Public verification remains deliberately minimal and
+does not expose the private reason or lineage details.
 
 
 ## Email verification confirmation

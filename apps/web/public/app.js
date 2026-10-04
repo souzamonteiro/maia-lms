@@ -3,6 +3,7 @@ import { attachPlaybackPositionSaver } from './playback-position.js';
 import { mountCategoryEditor, categoriesDirty } from './category-editor.js';
 import { mountAdminUsers } from './admin-users.js';
 import { mountAdminEnrollments } from './admin-enrollments.js';
+import { mountAdminCertificates } from './admin-certificates.js';
 import { coursePresentation } from './course-presentation.js';
 import { icon } from './icons.js';
 import { mountStudio, studioDirty } from './studio.js';
@@ -224,7 +225,96 @@ async function lesson(id) {
   const l = await api(`/lessons/${encodeURIComponent(id)}`);
   const outline = `<nav class="lesson-outline" aria-label="${t('courseOutline')}">${l.navigation.modules.map(m => `<section><h2>${e(m.title)}</h2><ol>${m.lessons.map(item => `<li><a href="/lessons/${e(item.id)}"${item.id === id ? ' aria-current="page"' : ''}>${e(item.title)}</a></li>`).join('')}</ol></section>`).join('')}</nav>`;
   const lessonNavigation = `<nav class="lesson-navigation" aria-label="${t('lessonNavigation')}">${l.navigation.previous_lesson_id ? `<a rel="prev" href="/lessons/${e(l.navigation.previous_lesson_id)}">${t('previousLesson')}</a>` : '<span></span>'}${l.navigation.next_lesson_id ? `<a rel="next" href="/lessons/${e(l.navigation.next_lesson_id)}">${t('nextLesson')}</a>` : '<span></span>'}</nav>`;
-  app.innerHTML = `<a href="/courses/${e(l.course_id)}">${t('backToCourse')}</a>${outline}<article class="lesson"><h1>${e(l.title)}</h1><div class="lesson-body prose">${l.video_id ? `<video id="lesson-video" controls playsinline preload="metadata" poster="/api/v1/lessons/${e(id)}/poster" src="/api/v1/lessons/${e(id)}/video">${(l.captions || []).map(c => `<track kind="captions" srclang="${e(c.language)}" label="${e(c.label)}" src="/api/v1/lessons/${e(id)}/captions/${e(c.language)}">`).join('')}</video><label>${t('playbackSpeed')}<select id="playback-speed"><option>0.75</option><option selected>1</option><option>1.25</option><option>1.5</option><option>2</option></select></label><p id="video-error" role="status"></p>` : ''}${l.body_html}</div>${attachmentCards(l.attachments)}${(l.captions || []).map(c => `<details><summary>${t('transcript')} — ${e(c.label)}</summary><div class="plain-content">${e(c.transcript)}</div></details>`).join('')}</article>${lessonNavigation}${me ? `<button id="complete">${l.progress?.completed_at ? t('lessonCompleted') : t('markComplete')}</button>` : `<p>${t('signInToTrackProgress')}</p>`}`;
+  const quizPanel = l.quiz_id && l.can_track_progress
+    ? `<section class="lesson-quiz" id="lesson-quiz"><h2>${t('quizTitle')}</h2><p>${t('quizPrivacy')}</p><p id="quiz-status" role="status" aria-live="polite"></p><div id="quiz-content"><button type="button" id="quiz-start">${t('quizStart')}</button></div><section id="quiz-results" aria-live="polite"></section></section>`
+    : '';
+  app.innerHTML = `<a href="/courses/${e(l.course_id)}">${t('backToCourse')}</a>${outline}<article class="lesson"><h1>${e(l.title)}</h1><div class="lesson-body prose">${l.video_id ? `<video id="lesson-video" controls playsinline preload="metadata" poster="/api/v1/lessons/${e(id)}/poster" src="/api/v1/lessons/${e(id)}/video">${(l.captions || []).map(c => `<track kind="captions" srclang="${e(c.language)}" label="${e(c.label)}" src="/api/v1/lessons/${e(id)}/captions/${e(c.language)}">`).join('')}</video><label>${t('playbackSpeed')}<select id="playback-speed"><option>0.75</option><option selected>1</option><option>1.25</option><option>1.5</option><option>2</option></select></label><p id="video-error" role="status"></p>` : ''}${l.body_html}</div>${attachmentCards(l.attachments)}${(l.captions || []).map(c => `<details><summary>${t('transcript')} — ${e(c.label)}</summary><div class="plain-content">${e(c.transcript)}</div></details>`).join('')}</article>${quizPanel}${lessonNavigation}${me ? `<button id="complete">${l.progress?.completed_at ? t('lessonCompleted') : t('markComplete')}</button>` : `<p>${t('signInToTrackProgress')}</p>`}`;
+  if (quizPanel) {
+    const content = document.querySelector('#quiz-content');
+    const status = document.querySelector('#quiz-status');
+    const results = document.querySelector('#quiz-results');
+    const loadResults = async () => {
+      const history = await api(`/quizzes/${l.quiz_id}/results`);
+      results.innerHTML = history.items.length
+        ? `<h3>${t('quizResultHistory')}</h3><ol>${history.items.map((item, index) => `<li>${t('quizResultAttempt', { number: history.items.length - index })}: ${item.expired ? t('quizAttemptExpired') : `${item.pass ? t('quizPassed') : t('quizFailed')} · ${t('quizScore', { score: item.score, total: item.total_points })}`}${item.submitted_at ? ` · ${e(new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(item.submitted_at)))}` : ''}${feedbackMarkup(item.answers)}</li>`).join('')}</ol>`
+        : '';
+    };
+    const feedbackMarkup = answers => answers?.length
+      ? `<details class="quiz-feedback"><summary>${t('quizReviewAnswers')}</summary><ol>${answers.map(answer => `<li><p>${e(answer.prompt)} · ${t('quizQuestionScore', { score: answer.awarded_points, total: answer.possible_points })}</p><ul>${answer.choices.map(choice => `<li>${e(choice.text)}${choice.selected ? ` · ${t('quizYourAnswer')}` : ''}${choice.correct ? ` · ${t('quizCorrectAnswer')}` : ''}</li>`).join('')}</ul>${answer.explanation ? `<p class="plain-content"><strong>${t('quizExplanation')}:</strong> ${e(answer.explanation)}</p>` : ''}</li>`).join('')}</ol></details>`
+      : '';
+    const showResult = (attempt, totalPoints) => {
+      status.textContent = attempt.pass ? t('quizPassed') : t('quizFailed');
+      content.innerHTML = `<p>${t('quizScore', { score: attempt.score ?? 0, total: totalPoints })}</p><p>${t('quizAttemptsRemaining', { count: attempt.remaining_attempts })}</p>${feedbackMarkup(attempt.answers)}${attempt.remaining_attempts > 0 ? `<button type="button" id="quiz-start-next">${t('quizTryAgain')}</button>` : ''}`;
+      document.querySelector('#quiz-start-next')?.addEventListener('click', () => startAttempt().catch(notify));
+    };
+    const renderAttempt = attempt => {
+      const totalPoints = attempt.questions.reduce((sum, question) => sum + question.points, 0);
+      if (attempt.submitted_at) {
+        showResult(attempt, totalPoints);
+        return;
+      }
+      status.textContent = attempt.deadline_at
+        ? t('quizDeadline', { deadline: new Intl.DateTimeFormat(locale, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(attempt.deadline_at)) })
+        : t('quizAttemptInProgress');
+      content.innerHTML = `<form id="quiz-answer-form">${attempt.questions.map((question, index) => `<fieldset><legend>${index + 1}. ${e(question.prompt)} (${e(question.points)} ${t('quizPoints')})</legend>${question.choices.map(choice => `<label class="quiz-choice"><input type="checkbox" name="${e(question.id)}" value="${e(choice.key)}" ${question.selected_keys.includes(choice.key) ? 'checked' : ''}>${e(choice.text)}</label>`).join('')}</fieldset>`).join('')}<button type="submit">${t('quizSubmit')}</button></form>`;
+      const answerForm = content.querySelector('#quiz-answer-form');
+      const collectAnswers = () => attempt.questions.map(question => ({
+        questionId: question.id,
+        selectedKeys: [...answerForm.querySelectorAll('input:checked')]
+          .filter(input => input.name === question.id)
+          .map(input => input.value),
+      }));
+      let answerSave = Promise.resolve();
+      answerForm.addEventListener('change', () => {
+        const answers = collectAnswers();
+        status.textContent = t('quizSavingAnswers');
+        answerSave = answerSave
+          .catch(() => {})
+          .then(() => api(`/attempts/${attempt.id}/answers`, 'PUT', { answers }))
+          .then(() => { status.textContent = t('quizAnswersSaved'); })
+          .catch(error => { notify(error); status.textContent = t('quizAnswerSaveFailed'); });
+      });
+      answerForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        const submit = event.currentTarget.querySelector('button[type=submit]');
+        submit.disabled = true;
+        answerForm.querySelectorAll('input').forEach(input => { input.disabled = true; });
+        try {
+          await answerSave;
+          const answers = collectAnswers();
+          const result = await api(`/attempts/${attempt.id}/submit`, 'PUT', { answers });
+          showResult({ ...result, remaining_attempts: attempt.remaining_attempts }, totalPoints);
+          await loadResults();
+        } catch (error) {
+          notify(error);
+          answerForm.querySelectorAll('input').forEach(input => { input.disabled = false; });
+          if (error.code === 'QUIZ_DEADLINE_EXPIRED') {
+            content.innerHTML = `<p role="alert">${e(error.message)}</p><button type="button" id="quiz-start-next">${t('quizStart')}</button>`;
+            document.querySelector('#quiz-start-next').addEventListener('click', () => startAttempt().catch(notify));
+            await loadResults();
+          } else submit.disabled = false;
+        }
+      });
+    };
+    const startAttempt = async () => {
+      const button = content.querySelector('button');
+      if (button) button.disabled = true;
+      status.textContent = t('quizStarting');
+      try {
+        const attempt = await api(`/quizzes/${l.quiz_id}/attempts`, 'POST');
+        renderAttempt(attempt);
+      } catch (error) {
+        status.textContent = error.message;
+        if (error.code === 'QUIZ_ATTEMPTS_EXHAUSTED') await loadResults();
+        content.innerHTML = error.code === 'QUIZ_ATTEMPTS_EXHAUSTED'
+          ? `<p role="status">${t('quizNoAttempts')}</p>`
+          : `<button type="button" id="quiz-start">${t('quizRetryStart')}</button>`;
+        document.querySelector('#quiz-start')?.addEventListener('click', () => startAttempt().catch(notify));
+      }
+    };
+    loadResults().catch(notify);
+    content.querySelector('#quiz-start').addEventListener('click', () => startAttempt().catch(notify));
+  }
   const video = document.querySelector('#lesson-video');
   if (video) {
     video.addEventListener('loadedmetadata', () => {
@@ -257,7 +347,8 @@ async function learning() {
     return;
   }
   const courses = await api('/me/enrollments');
-  app.innerHTML = `<h1>${t('myLearningTitle')}</h1>${courses.length ? courses.map(c => `<article class="card"><h2><a href="/courses/${e(c.slug)}">${e(c.title)}</a></h2><p>${t('lessonsProgress', { completed: c.completed_lessons, required: c.required_lessons })}${c.state === 'revoked' ? t('revokedAccess') : ''}.</p><progress value="${c.completed_lessons}" max="${Math.max(1, c.required_lessons)}" aria-label="${t('courseProgressAria')}"></progress>${c.state !== 'revoked' && c.continue_lesson_id ? `<p><a class="button" href="/lessons/${e(c.continue_lesson_id)}">${t('continueCourse')}</a></p>` : ''}</article>`).join('') : `<p>${t('nextLearningPrefix')}<a href="/courses">${t('coursesCatalog')}</a>.</p>`}<section class="account-security"><h2>${t('accountSecurity')}</h2><form id="change-password"><label>${t('currentPassword')}<input name="currentPassword" type="password" autocomplete="current-password" required minlength="8" maxlength="128"></label><label>${t('newPassword')}<input name="newPassword" type="password" autocomplete="new-password" required minlength="8" maxlength="128"></label><label>${t('confirmPassword')}<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="8" maxlength="128"></label><button type="submit">${t('changePassword')}</button></form></section>`;
+  const certificates = await api('/me/certificates');
+  app.innerHTML = `<h1>${t('myLearningTitle')}</h1>${courses.length ? courses.map(c => `<article class="card"><h2>${c.course_withdrawn_at ? e(c.title) : `<a href="/courses/${e(c.slug)}">${e(c.title)}</a>`}</h2><p>${t('lessonsProgress', { completed: c.completed_lessons, required: c.required_lessons })}${c.completed_at ? ` · ${t('courseCompleted')}` : ''}${c.state === 'revoked' ? t('revokedAccess') : ''}${c.course_withdrawn_at ? ` · ${t('courseWithdrawnFromLearning')}` : ''}.</p><progress value="${c.completed_lessons}" max="${Math.max(1, c.required_lessons)}" aria-label="${t('courseProgressAria')}"></progress>${c.state !== 'revoked' && !c.course_withdrawn_at && !c.completed_at && c.continue_lesson_id ? `<p><a class="button" href="/lessons/${e(c.continue_lesson_id)}">${t('continueCourse')}</a></p>` : ''}</article>`).join('') : `<p>${t('nextLearningPrefix')}<a href="/courses">${t('coursesCatalog')}</a>.</p>`}<section class="learner-certificates"><h2>${t('myCertificatesTitle')}</h2>${certificates.length ? certificates.map(certificate => `<article class="card certificate-entry"><div><h3>${e(certificate.courseTitle)}</h3><p>${t(certificate.status === 'revoked' ? 'certificateStatusRevoked' : 'certificateStatusValid')} · ${t(`certificatePdf${certificate.pdfStatus}`)}</p><p>${t('certificateIssuedAt')}: <time datetime="${e(certificate.issuedAt)}">${e(new Date(certificate.issuedAt).toLocaleDateString(locale))}</time></p></div><div class="actions"><a href="${e(certificate.verificationPath)}">${t('certificateViewVerification')}</a>${certificate.downloadPath ? `<a class="button" href="${e(certificate.downloadPath)}">${t('certificateDownloadPdf')}</a>` : ''}</div></article>`).join('') : `<p>${t('myCertificatesEmpty')}</p>`}</section><section class="account-security"><h2>${t('accountSecurity')}</h2><form id="change-password"><label>${t('currentPassword')}<input name="currentPassword" type="password" autocomplete="current-password" required minlength="8" maxlength="128"></label><label>${t('newPassword')}<input name="newPassword" type="password" autocomplete="new-password" required minlength="8" maxlength="128"></label><label>${t('confirmPassword')}<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="8" maxlength="128"></label><button type="submit">${t('changePassword')}</button></form></section>`;
     app.insertAdjacentHTML(
       'beforeend',
       `<section class="account-profile"><h2>${t('accountProfile')}</h2><form id="account-profile"><label>${t('displayName')}<input name="displayName" value="${e(me.display_name ?? '')}" maxlength="100" required></label><button type="submit">${t('saveProfile')}</button></form></section>`,
@@ -311,6 +402,9 @@ async function admin() {
   } else if (location.pathname === '/admin/enrollments') {
     if (me.role !== 'admin') throw new Error(t('adminAccessRestricted'));
     await mountAdminEnrollments(context);
+  } else if (location.pathname === '/admin/certificates') {
+    if (me.role !== 'admin') throw new Error(t('adminAccessRestricted'));
+    await mountAdminCertificates(context);
   } else if (location.pathname === '/admin/home') {
     if (me.role !== 'admin') throw new Error(t('adminAccessRestricted'));
     await mountHomeEditor(context);
@@ -324,6 +418,16 @@ async function home() {
 async function instructor(slug) {
   const profile = await api(`/instructors/${encodeURIComponent(slug)}`);
   app.innerHTML = `<a href="/courses">${t('backToCourses')}</a><h1>${e(profile.display_name)}</h1>${profile.bio ? `<div class="plain-content">${e(profile.bio)}</div>` : ''}${profile.website_url ? `<p><a href="${e(profile.website_url)}" target="_blank" rel="noopener noreferrer">${t('instructorProfileWebsiteLink')}</a></p>` : ''}<section><h2>${t('instructorCourses')}</h2>${cards(profile.courses)}</section>`;
+}
+async function certificateVerification(code) {
+  app.innerHTML = `<section class="certificate-verification"><p class="eyebrow">${t('certificateVerificationEyebrow')}</p><h1>${t('certificateVerificationTitle')}</h1><p>${t('certificateVerificationIntro')}</p><div role="status" aria-live="polite">${t('loadingCourses')}</div></section>`;
+  try {
+    const certificate = await api(`/certificates/verify/${encodeURIComponent(code)}`);
+    const valid = certificate.status === 'valid';
+    app.innerHTML = `<section class="certificate-verification"><p class="eyebrow">${t('certificateVerificationEyebrow')}</p><h1>${t('certificateVerificationTitle')}</h1><p class="certificate-status ${valid ? 'is-valid' : 'is-revoked'}" role="status"><span aria-hidden="true">${valid ? '✓' : '!'}</span>${t(valid ? 'certificateStatusValid' : 'certificateStatusRevoked')}</p><dl class="certificate-facts"><div><dt>${t('certificateLearnerName')}</dt><dd>${e(certificate.learnerName)}</dd></div><div><dt>${t('certificateCourseTitle')}</dt><dd>${e(certificate.courseTitle)}</dd></div><div><dt>${t('certificateWorkload')}</dt><dd>${e(t('certificateWorkloadValue', { minutes: certificate.workloadMinutes }))}</dd></div><div><dt>${t('certificateIssuer')}</dt><dd>${e(certificate.issuerName)}</dd></div><div><dt>${t('certificateIssuedAt')}</dt><dd><time datetime="${e(certificate.issuedAt)}">${e(new Date(certificate.issuedAt).toLocaleString(locale))}</time></dd></div></dl></section>`;
+  } catch (error) {
+    app.innerHTML = `<section class="certificate-verification"><p class="eyebrow">${t('certificateVerificationEyebrow')}</p><h1>${t('certificateVerificationTitle')}</h1><p class="certificate-status is-revoked" role="status">${error.status === 404 ? t('certificateNotFound') : e(error.message)}</p></section>`;
+  }
 }
 window.addEventListener('beforeunload', event => {
   if (
@@ -349,7 +453,7 @@ async function main() {
       applyLocale();
     }
     document.querySelector('#account').innerHTML =
-      `${['admin', 'author'].includes(me.role) ? `<a href="/admin">${t('administer')}</a>` : ''}${me.role === 'admin' ? `<a href="/admin/users">${t('adminUsersTitle')}</a><a href="/admin/enrollments">${t('adminEnrollmentsTitle')}</a>` : ''}<button id="logout" class="secondary">${icon('signOut')}${t('signOut')}</button>`;
+      `${['admin', 'author'].includes(me.role) ? `<a href="/admin">${t('administer')}</a>` : ''}${me.role === 'admin' ? `<a href="/admin/users">${t('adminUsersTitle')}</a><a href="/admin/enrollments">${t('adminEnrollmentsTitle')}</a><a href="/admin/certificates">${t('adminCertificatesTitle')}</a>` : ''}<button id="logout" class="secondary">${icon('signOut')}${t('signOut')}</button>`;
     button('#logout', async () => {
       await api('/auth/logout', 'POST');
       location.href = '/';
@@ -359,6 +463,8 @@ async function main() {
   if (location.pathname === '/auth/verify-email') mountEmailVerification({ app, api, t });
   else if (parts[0] === 'auth') await auth(parts[1]);
   else if (parts[0] === 'courses' && parts[1]) await detail(parts[1]);
+  else if (parts[0] === 'certificates' && parts[1] === 'verify' && parts[2])
+    await certificateVerification(parts[2]);
   else if (parts[0] === 'instructors' && parts[1]) await instructor(parts[1]);
   else if (parts[0] === 'lessons') await lesson(parts[1]);
   else if (parts[0] === 'my-learning') await learning();

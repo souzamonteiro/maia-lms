@@ -21,9 +21,10 @@ This version provides **free courses with text, Markdown and MP4 video lessons**
 - Persistent SQLite sessions; localized verification/recovery emails, an explicit email confirmation page, and email outbox with worker delivery retries.
 - Opt-in public instructor profiles for authors and administrators, linked from published courses and limited to explicitly public profile fields.
 - Administrator enrollment support for searching progress, granting published-course access, revoking with reasons, and inspecting audit history without deleting enrollment records.
+- Administrator urgent course withdrawal with an audited reason, immediate denial on existing learner and media URLs, and retained enrollment/progress history; distinct from archive.
 - Host and VPS installers, verifiable backups, HTTP tests and browser tests.
 
-**Not yet implemented:** adaptive HLS and a complete media library, quizzes, checkout/webhooks/refunds, certificates, MFA and account export/deletion. Existing tables and some inherited adapters prepare for these stages but do not make them available features. Product documents describe the full vision; [the roadmap](docs/09-roadmap.md) distinguishes the current state.
+**Not yet implemented:** adaptive HLS and a complete media library, checkout/webhooks/refunds, certificates, MFA and account export/deletion. Quiz authoring/preview, safe learner reads, server-side attempts/grading, post-submit explanations/history, and lesson-player partial-answer recovery are partial; see [the roadmap](TODO.md) for remaining assessment work. Existing tables and some inherited adapters prepare for these stages but do not make them available features. Product documents describe the full vision; [the roadmap](docs/09-roadmap.md) distinguishes the current state.
 
 ## Development
 

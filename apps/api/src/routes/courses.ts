@@ -10,6 +10,7 @@ import { attachmentList } from './attachments.js';
 import { captionsSchema, parseCaptions } from '../services/captions.js';
 import { CURRENT_RENDER_POLICY, renderContent } from '../services/content.js';
 import { AppError } from '../middleware/error-handler.js';
+import { captureCompletionRequirements, isEnrollmentComplete, markEnrollmentComplete } from '../services/completion.js';
 
 const attachmentSchema = z.object({
   fileId: z.string().uuid(),
@@ -82,6 +83,8 @@ type Course = {
   access_mode: string;
   current_revision_id: string;
   published_revision_id: string | null;
+  withdrawn_at: string | null;
+  withdrawal_reason: string | null;
   title: string;
   summary: string;
 };
@@ -234,6 +237,7 @@ export function coursesRouter(db: Database.Database): Router {
       .parse(Object.fromEntries(Object.entries(req.query).filter(([, value]) => value !== '')));
     const clauses = [
       "c.status='PUBLISHED'",
+      'c.withdrawn_at IS NULL',
       "(r.title LIKE ? ESCAPE '\\' OR r.summary LIKE ? ESCAPE '\\')",
     ];
     const search = `%${query.q.replace(/[\\%_]/g, character => '\\' + character)}%`;
@@ -552,6 +556,8 @@ export function coursesRouter(db: Database.Database): Router {
         const c = course(req.params.id);
         if (c.status === 'ARCHIVED')
           throw new AppError(409, 'Archived courses cannot be published', 'COURSE_ARCHIVED');
+        if (c.withdrawn_at)
+          throw new AppError(409, 'Urgently withdrawn courses cannot be republished', 'COURSE_WITHDRAWN');
         if (req.body.expectedRevisionId && req.body.expectedRevisionId !== c.current_revision_id)
           throw new AppError(409, 'Draft changed. Reload before publishing.', 'DRAFT_CONFLICT');
         const issues = publicationIssues(db, c.id, c.current_revision_id);
@@ -584,6 +590,26 @@ export function coursesRouter(db: Database.Database): Router {
       `UPDATE courses SET status = 'ARCHIVED', updated_at = datetime('now') WHERE id = ?`,
     ).run(c.id);
     res.json(course(c.id));
+  });
+  router.post('/admin/courses/:id/withdraw', requireRole('admin'), (req, res) => {
+    const { reason } = z.object({ reason: z.string().trim().min(5).max(1000) }).parse(req.body);
+    const saved = db
+      .transaction(() => {
+        const c = course(req.params.id);
+        if (!c.published_revision_id || !['PUBLISHED', 'ARCHIVED'].includes(c.status))
+          throw new AppError(409, 'Only a published course can be withdrawn', 'COURSE_WITHDRAWAL_STATE_INVALID');
+        if (c.withdrawn_at) return c;
+        const now = new Date().toISOString();
+        db.prepare(
+          'UPDATE courses SET withdrawn_at=?,withdrawal_reason=?,updated_at=? WHERE id=?',
+        ).run(now, reason, now, c.id);
+        db.prepare(
+          "INSERT INTO audit_events(id,actor_id,action,subject_type,subject_id,metadata) VALUES(?,?,'course.urgent_withdrawal','course',?,?)",
+        ).run(randomUUID(), req.session.userId, c.id, JSON.stringify({ reason }));
+        return course(c.id);
+      })
+      .immediate();
+    res.json(saved);
   });
   function detail(c: Course, revisionId: string, editing = false, e?: Enrollment) {
     const revision = db
@@ -628,6 +654,7 @@ export function coursesRouter(db: Database.Database): Router {
     const c = course(req.params.id);
     const e = enrollment(req.session.userId, c.id);
     const owner = req.session.role === 'admin' || req.session.userId === c.author_id;
+    if (c.withdrawn_at && !owner) throw new AppError(404, 'Course not found');
     if (c.status !== 'PUBLISHED' && !e && !owner) throw new AppError(404, 'Course not found');
     const revisionId =
       e?.revision_id ?? c.published_revision_id ?? (owner ? c.current_revision_id : null);
@@ -636,7 +663,7 @@ export function coursesRouter(db: Database.Database): Router {
   });
   router.post('/courses/:id/enroll', requireAuth, (req, res) => {
     const c = course(req.params.id);
-    if (c.status !== 'PUBLISHED' || !c.published_revision_id)
+    if (c.status !== 'PUBLISHED' || !c.published_revision_id || c.withdrawn_at)
       throw new AppError(409, 'Course is not accepting enrollments');
     if (c.access_mode === 'PAID') throw new AppError(403, 'Verified payment required');
     const result = db
@@ -650,9 +677,10 @@ export function coursesRouter(db: Database.Database): Router {
           return existing;
         }
         const id = randomUUID();
+        const completionRequirements = captureCompletionRequirements(db, c.published_revision_id!);
         db.prepare(
-          'INSERT INTO enrollments (id, user_id, course_id, revision_id) VALUES (?, ?, ?, ?)',
-        ).run(id, req.session.userId, c.id, c.published_revision_id);
+          'INSERT INTO enrollments (id, user_id, course_id, revision_id, required_lesson_ids_snapshot, quiz_ids_snapshot) VALUES (?, ?, ?, ?, ?, ?)',
+        ).run(id, req.session.userId, c.id, c.published_revision_id, completionRequirements.requiredLessonIds, completionRequirements.quizIds);
         db.prepare(
           `INSERT INTO entitlements (id, enrollment_id, source_type, starts_at) VALUES (?, ?, 'free', ?)`,
         ).run(randomUUID(), id, new Date().toISOString());
@@ -662,10 +690,9 @@ export function coursesRouter(db: Database.Database): Router {
     res.json(result);
   });
   router.get('/me/enrollments', requireAuth, (req, res) => {
-    res.json(
-      db
+    const enrollments = db
         .prepare(
-          `SELECT e.*, c.slug, r.title, continue_lesson.id AS continue_lesson_id,
+          `SELECT e.*, c.slug, c.withdrawn_at AS course_withdrawn_at, r.title, continue_lesson.id AS continue_lesson_id,
       continue_lesson.title AS continue_lesson_title,
       (SELECT count(*) FROM lessons l JOIN modules m ON m.id = l.module_id WHERE m.revision_id = e.revision_id AND l.is_required = 1) AS required_lessons,
       (SELECT count(*) FROM lesson_progress p JOIN lessons l ON l.id = p.lesson_id WHERE p.enrollment_id = e.id AND p.completed_at IS NOT NULL AND l.is_required = 1) AS completed_lessons
@@ -683,13 +710,16 @@ export function coursesRouter(db: Database.Database): Router {
       )
       WHERE e.user_id = ?`,
         )
-        .all(req.session.userId),
-    );
+        .all(req.session.userId) as Array<{ id: string; completed_at: string | null; [key: string]: unknown }>;
+    res.json(enrollments.map(enrollment => ({
+      ...enrollment,
+      completion_ready: isEnrollmentComplete(db, enrollment.id),
+    })));
   });
   router.get('/lessons/:id', (req, res) => {
     const lesson = db
       .prepare(
-        `SELECT l.*, m.revision_id, c.id AS course_id, c.access_mode, c.status, c.author_id, c.published_revision_id FROM lessons l JOIN modules m ON m.id = l.module_id JOIN course_revisions r ON r.id = m.revision_id JOIN courses c ON c.id = r.course_id WHERE l.id = ?`,
+        `SELECT l.*, m.revision_id, c.id AS course_id, c.access_mode, c.status, c.author_id, c.published_revision_id, c.withdrawn_at FROM lessons l JOIN modules m ON m.id = l.module_id JOIN course_revisions r ON r.id = m.revision_id JOIN courses c ON c.id = r.course_id WHERE l.id = ?`,
       )
       .get(req.params.id) as
       | {
@@ -699,6 +729,7 @@ export function coursesRouter(db: Database.Database): Router {
           status: string;
           author_id: string;
           published_revision_id: string | null;
+          withdrawn_at: string | null;
           body: string;
           captions_json: string;
           content_format: 'plain' | 'markdown';
@@ -713,6 +744,7 @@ export function coursesRouter(db: Database.Database): Router {
       lesson.published_revision_id === lesson.revision_id &&
       (lesson.access_mode === 'OPEN_FREE' || lesson.is_preview === 1);
     const owner = req.session.role === 'admin' || req.session.userId === lesson.author_id;
+    if (lesson.withdrawn_at && !owner) throw new AppError(404, 'Lesson not found');
     if (!publicAccess && !owner && (!e || e.revision_id !== lesson.revision_id))
       throw new AppError(403, 'Enrollment required');
     const enrolled = Boolean(e && e.revision_id === lesson.revision_id);
@@ -753,6 +785,12 @@ export function coursesRouter(db: Database.Database): Router {
     }
     res.json({
       ...lesson,
+      quiz_id: (
+        db.prepare('SELECT id FROM quizzes WHERE revision_id=? AND lesson_id=?').get(
+          lesson.revision_id,
+          req.params.id,
+        ) as { id: string } | undefined
+      )?.id ?? null,
       captions_json: undefined,
       captions: JSON.parse(lesson.captions_json).map(
         (c: { language: string; label: string; vtt: string }) => ({
@@ -784,27 +822,32 @@ export function coursesRouter(db: Database.Database): Router {
     const data = UpdateLessonProgressSchema.parse(req.body);
     const lesson = db
       .prepare(
-        `SELECT m.revision_id, r.course_id FROM lessons l JOIN modules m ON m.id = l.module_id JOIN course_revisions r ON r.id = m.revision_id WHERE l.id = ?`,
+        `SELECT m.revision_id, r.course_id, c.withdrawn_at FROM lessons l JOIN modules m ON m.id = l.module_id JOIN course_revisions r ON r.id = m.revision_id JOIN courses c ON c.id=r.course_id WHERE l.id = ?`,
       )
-      .get(req.params.id) as { revision_id: string; course_id: string } | undefined;
+      .get(req.params.id) as
+      | { revision_id: string; course_id: string; withdrawn_at: string | null }
+      | undefined;
     if (!lesson) throw new AppError(404, 'Lesson not found');
+    if (lesson.withdrawn_at) throw new AppError(404, 'Lesson not found');
     const e = enrollment(req.session.userId, lesson.course_id);
     if (!e || e.revision_id !== lesson.revision_id) throw new AppError(403, 'Enrollment required');
-    db.prepare(
-      `INSERT INTO lesson_progress (enrollment_id, lesson_id, position_seconds, completed_at) VALUES (?, ?, ?, ?)
+    const progress = db.transaction(() => {
+      db.prepare(
+        `INSERT INTO lesson_progress (enrollment_id, lesson_id, position_seconds, completed_at) VALUES (?, ?, ?, ?)
       ON CONFLICT(enrollment_id, lesson_id) DO UPDATE SET position_seconds = COALESCE(?, position_seconds), completed_at = COALESCE(excluded.completed_at, completed_at), updated_at = datetime('now')`,
-    ).run(
-      e.id,
-      req.params.id,
-      data.positionSeconds ?? 0,
-      data.complete ? new Date().toISOString() : null,
-      data.positionSeconds ?? null,
-    );
-    res.json(
-      db
+      ).run(
+        e.id,
+        req.params.id,
+        data.positionSeconds ?? 0,
+        data.complete ? new Date().toISOString() : null,
+        data.positionSeconds ?? null,
+      );
+      markEnrollmentComplete(db, e.id);
+      return db
         .prepare('SELECT * FROM lesson_progress WHERE enrollment_id = ? AND lesson_id = ?')
-        .get(e.id, req.params.id),
-    );
+        .get(e.id, req.params.id);
+    }).immediate();
+    res.json(progress);
   });
   return router;
 }

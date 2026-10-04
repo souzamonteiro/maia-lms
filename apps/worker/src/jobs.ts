@@ -8,10 +8,12 @@ const emailSchema = z.object({
   html: z.string().optional(),
   text: z.string(),
 });
+export type OutboxHandlers = Record<string, (payload: unknown, attempt: number) => Promise<void>>;
 export async function pollOnce(
   db: Database.Database,
   email: EmailProvider,
   concurrency = 4,
+  handlers: OutboxHandlers = {},
 ): Promise<number> {
   const lease = randomUUID();
   const rows = db
@@ -36,9 +38,13 @@ export async function pollOnce(
   await Promise.all(
     rows.map(async row => {
       try {
-        if (row.event_type !== 'email.send')
-          throw new Error(`Unsupported event: ${row.event_type}`);
-        await email.send(emailSchema.parse(JSON.parse(row.payload)));
+        if (row.event_type === 'email.send')
+          await email.send(emailSchema.parse(JSON.parse(row.payload)));
+        else {
+          const handler = handlers[row.event_type];
+          if (!handler) throw new Error(`Unsupported event: ${row.event_type}`);
+          await handler(JSON.parse(row.payload) as unknown, row.attempts + 1);
+        }
         db.prepare(
           `UPDATE outbox SET processed_at = datetime('now'), lease_token = NULL, last_error = NULL WHERE id = ? AND lease_token = ?`,
         ).run(row.id, lease);

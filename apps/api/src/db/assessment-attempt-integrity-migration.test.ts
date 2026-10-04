@@ -95,7 +95,7 @@ it('keeps assessment attempts and answers within their enrollment, revision and 
         .run('attempt-b-2', 'question-b', '[]'),
     ).toThrow(/assessment attempt deadline expired/);
     expect(() =>
-      db.prepare('UPDATE attempts SET submitted_at=datetime(\'now\') WHERE id=?').run('attempt-b-2'),
+      db.prepare('UPDATE attempts SET submitted_at=datetime(\'now\'),score=0,pass=0 WHERE id=?').run('attempt-b-2'),
     ).toThrow(/assessment attempt deadline expired/);
     expect(() =>
       db.prepare('UPDATE questions SET points=? WHERE id=?').run(0, 'question-b'),
@@ -143,6 +143,25 @@ it('keeps assessment attempts and answers within their enrollment, revision and 
     expect(() =>
       db.prepare('UPDATE attempt_answers SET selected_keys=? WHERE attempt_id=?').run('["A"]', 'attempt-a'),
     ).not.toThrow();
+    expect(() =>
+      db.prepare('UPDATE attempts SET score=? WHERE id=?').run(40, 'attempt-a'),
+    ).toThrow(/invalid assessment attempt result state/);
+    expect(() =>
+      db.prepare('UPDATE attempts SET submitted_at=?,score=?,pass=? WHERE id=?').run(
+        new Date().toISOString(),
+        101,
+        1,
+        'attempt-a',
+      ),
+    ).toThrow(/invalid assessment attempt result state/);
+    expect(() =>
+      db.prepare('UPDATE attempts SET submitted_at=?,score=?,pass=? WHERE id=?').run(
+        new Date().toISOString(),
+        75,
+        2,
+        'attempt-a',
+      ),
+    ).toThrow(/invalid assessment attempt result state/);
     db.prepare('UPDATE attempts SET submitted_at=datetime(\'now\'),score=100,pass=1 WHERE id=?').run(
       'attempt-a',
     );

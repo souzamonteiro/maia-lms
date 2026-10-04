@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import { NodemailerEmailProvider } from '@maia/providers';
 import { processVideo } from './video-jobs.js';
 import { pollOnce } from './jobs.js';
+import { processCertificatePdf } from './certificate-pdf.js';
 
 if (process.env.NODE_ENV !== 'production' && fs.existsSync('.env')) process.loadEnvFile('.env');
 attachmentScanMode();
@@ -48,7 +49,16 @@ while (running) {
         mediaJob = undefined;
       });
   try {
-    await pollOnce(db, email, concurrency);
+    await pollOnce(db, email, concurrency, {
+      'certificate.generate': (payload, attempt) =>
+        processCertificatePdf(
+          db,
+          process.env.STORAGE_ROOT ?? './data/storage',
+          process.env.PUBLIC_BASE_URL ?? 'https://learn.maiaplatform.org',
+          payload,
+          attempt,
+        ),
+    });
   } catch (error) {
     console.error('Worker poll failed', error instanceof Error ? error.message : 'Unknown error');
   }

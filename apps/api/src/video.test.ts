@@ -311,6 +311,20 @@ it.runIf(process.env.VIDEO_TEST_REAL === '1')(
       (await fetch(url, { headers: { Cookie: learner.cookie, Range: 'bytes=32-63' } })).status,
     ).toBe(403);
     expect((await fetch(captionUrl, { headers: { Cookie: learner.cookie } })).status).toBe(403);
+    db.prepare('UPDATE entitlements SET revoked_at=NULL').run();
+    expect((await fetch(url, { headers: { Cookie: learner.cookie } })).status).toBe(200);
+    expect(
+      (
+        await request(
+          `/api/v1/admin/courses/${c.id}/withdraw`,
+          'POST',
+          { reason: 'Urgent media safety review.' },
+          a.cookie,
+        )
+      ).status,
+    ).toBe(200);
+    expect((await fetch(url, { headers: { Cookie: learner.cookie } })).status).toBe(404);
+    expect((await fetch(captionUrl, { headers: { Cookie: learner.cookie } })).status).toBe(404);
     const invalid = (
       await request(
         '/api/v1/admin/videos',
@@ -416,6 +430,19 @@ it('materials preserve revisions and authorize downloads, including preview and 
   expect((await download(courseFile, learner.cookie)).status).toBe(200);
   db.prepare("UPDATE entitlements SET revoked_at=datetime('now')").run();
   expect((await download(courseFile, learner.cookie)).status).toBe(403);
+  db.prepare('UPDATE entitlements SET revoked_at=NULL').run();
+  expect((await download(courseFile, learner.cookie)).status).toBe(200);
+  expect(
+    (
+      await request(
+        `/api/v1/admin/courses/${course.id}/withdraw`,
+        'POST',
+        { reason: 'Urgent materials safety review.' },
+        author.cookie,
+      )
+    ).status,
+  ).toBe(200);
+  expect((await download(courseFile, learner.cookie)).status).toBe(404);
   const other = (
     await request('/api/v1/admin/courses', 'POST', draft('other-materials'), author.cookie)
   ).data;
@@ -453,6 +480,8 @@ it('keeps covers revision-bound, requires ready images and alt text, and protect
   const upload = (await request('/api/v1/admin/files','POST',{courseId:course.id,filename:'cover.png',size:8},admin.cookie)).data;
   fs.mkdirSync(path.join(directory,'covers'));
   fs.writeFileSync(path.join(directory,'covers','test'),Buffer.from([137,80,78,71,13,10,26,10]));
+  db.prepare("UPDATE video_uploads SET status='QUEUED' WHERE id=?").run(upload.id);
+  db.prepare("UPDATE video_uploads SET status='PROCESSING' WHERE id=?").run(upload.id);
   db.prepare("UPDATE video_uploads SET status='READY',output_key='covers/test' WHERE id=?").run(upload.id);
   let saved = (await request(`/api/v1/admin/courses/${course.id}`,'PUT',{...draft('covers'),coverFileId:upload.id,expectedRevisionId:course.current_revision_id},admin.cookie)).data;
   expect((await request(`/api/v1/admin/courses/${course.id}/publish`,'POST',{},admin.cookie)).data.code).toBe('COVER_INVALID');
@@ -469,6 +498,17 @@ it('keeps covers revision-bound, requires ready images and alt text, and protect
   await request(`/api/v1/admin/courses/${course.id}/publish`,'POST',{},admin.cookie);
   expect((await request(coverPath)).status).toBe(404);
   expect((await request(coverPath,'GET',undefined,learner.cookie)).status).toBe(200);
+  expect(
+    (
+      await request(
+        `/api/v1/admin/courses/${course.id}/withdraw`,
+        'POST',
+        { reason: 'Urgent cover safety review.' },
+        admin.cookie,
+      )
+    ).status,
+  ).toBe(200);
+  expect((await request(coverPath,'GET',undefined,learner.cookie)).status).toBe(404);
   expect(next.current_revision_id).not.toBe(saved.current_revision_id);
   const foreign = (await request('/api/v1/admin/courses','POST',draft('foreign-cover'),other.cookie)).data;
   expect((await request(`/api/v1/admin/courses/${foreign.id}`,'PUT',{...draft('foreign-cover'),coverFileId:upload.id,expectedRevisionId:foreign.current_revision_id},other.cookie)).status).toBe(422);
@@ -484,6 +524,8 @@ it('publishes only the revision trailer with Range support without exposing priv
   fs.mkdirSync(path.join(directory,'trailers'));
   fs.writeFileSync(path.join(directory,'trailers','movie'),'0123456789');
   fs.writeFileSync(path.join(directory,'trailers','poster'),'poster');
+  db.prepare("UPDATE video_uploads SET status='QUEUED' WHERE id=?").run(upload.id);
+  db.prepare("UPDATE video_uploads SET status='PROCESSING' WHERE id=?").run(upload.id);
   db.prepare("UPDATE video_uploads SET status='READY',output_key='trailers/movie',poster_key='trailers/poster' WHERE id=?").run(upload.id);
   const url = `/api/v1/courses/${course.id}/trailer?revisionId=${saved.current_revision_id}`;
   expect((await request(url)).status).toBe(403);

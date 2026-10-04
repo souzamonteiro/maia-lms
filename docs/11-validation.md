@@ -819,6 +819,171 @@ Build and lint passed; OpenAPI YAML parsed; the full real-media suite passed 105
 tests across 33 files, and all 18 Chromium workflows passed. No deployment or
 production database changes were made.
 
+## Certificate eligibility and record issuance — October 3, 2026
+
+The learner-only preflight checks enrollment ownership, active access to a
+non-withdrawn course, recorded completion, verified email, confirmed name,
+publisher-declared workload, and revision instructor. It returns the exact public
+disclosure fields and a versioned hash. Issuance requires explicit consent bound to
+that hash, then rechecks eligibility and atomically stores one certificate with a
+256-bit opaque code, immutable learner/course/workload/instructor payload, consent
+timestamp/version, SHA-256 payload hash, and append-only audit event. Integration
+tests cover blocked and stale-disclosure requests, concurrent requests/retries,
+single issuance/audit, and payload/consent immutability. Migrations 053/054 backfill
+only qualifying completion timestamps and require snapshots for new certificates
+without inventing consent for historical rows. Build and lint passed; the full
+real-media suite passed 115 tests across 34 files, and all 22 Chromium workflows
+passed. OpenAPI YAML and `git diff --check` passed. PDF generation, learner
+certificate UI, and institutional issuer policy remain open. No
+deployment or production database changes were made.
+
+## Public certificate verification API — October 3, 2026
+
+Anonymous `GET /api/v1/certificates/verify/{code}` reads only the immutable
+certificate snapshot and returns learner name, course title, declared workload,
+instructor, issue time, and current valid/revoked status. It does not expose
+enrollment IDs, email, payload/disclosure hashes, or private revocation reasons.
+Malformed, unknown, and legacy certificates without snapshots share the same 404;
+lookups are limited to 20 per minute per client and send `X-Robots-Tag: noindex, nofollow, noarchive` plus `Cache-Control: no-store`. Integration tests cover valid
+and revoked results, privacy fields, generic not-found behavior, and HTTP 429.
+Build/lint passed; OpenAPI parsed; the full real-media suite passed 115 tests across
+34 files. QR, PDF, and the async artifact worker were implemented in the following
+increment. No production migration or deployment was performed.
+
+## Learner-facing certificate verification — October 4, 2026
+
+Added the canonical `/certificates/verify/{code}` page to the existing web shell.
+The page is localized in English, Brazilian Portuguese, and Spanish; renders only
+the API's public snapshot fields; distinguishes valid and revoked certificates;
+and displays a generic not-found message. The HTML response carries `X-Robots-Tag:
+noindex, nofollow, noarchive`; API lookup retains its rate limit and `no-store`
+policy. E2E coverage checks valid, revoked, and missing states plus the `noindex`
+header and ensures private payload fields are not rendered. Build/lint passed, the
+full suite passed 115 tests across 34 files, all 23 Chromium workflows passed, and
+OpenAPI YAML plus `git diff --check` passed. The learner certificate dashboard
+was implemented in a later increment. No deployment or production database changes were made.
+
+## Certificate PDF and QR — October 4, 2026
+
+Migration 055 adds artifact state and a private storage key. Issuance atomically
+queues `certificate.generate`; the leased outbox retries failures, and the worker
+stores a deterministic private PDF containing selectable learner/course/workload/
+issuer/completion details and a QR plus clickable canonical verification URL.
+Retries detect and reuse an artifact already written before a transient failure.
+The authenticated download endpoint permits the certificate owner or an
+administrator, returns `CERTIFICATE_PDF_NOT_READY` until ready, and streams with
+`private, no-store` and `nosniff`. Tests parse the generated PDF to verify readable
+text, confirm private storage/state and idempotent processing, exercise outbox
+retry, and check ready/pending/unauthorized download behavior. Build and lint
+passed; the full suite passed 117 tests across 35 files, all 24 Chromium workflows
+passed, OpenAPI YAML parsed, and `git diff --check` passed. The learner certificate
+list/download screen is covered in the validation entry below. No production
+migration or deployment was performed.
+
+## Learner certificate list — October 4, 2026
+
+`GET /api/v1/me/certificates` lists only certificates owned through the learner's
+enrollments and omits internal hashes. “My learning” displays course/name, current
+valid or revoked status, issue date, and PDF processing state; it links to public
+verification and offers a private download only when the PDF is ready. English,
+Portuguese, and Spanish labels are provided. API integration verifies owner
+isolation and pending/ready/revoked state transitions; Chromium verifies pending
+has no download and ready does. Build/lint passed; the full real-media suite passed
+117 tests across 35 files, all 24 Chromium workflows passed, OpenAPI parsed, and
+`git diff --check` passed. No production deployment was performed.
+
+## Certificate revocation and reissue — October 4, 2026
+
+The admin-only `/admin/certificates` workflow supports search, private-reason
+revocation, one-time reissue of a revoked predecessor, and private lineage/audit
+history with clickable predecessor/successor anchors and verification links for
+each preserved code. Reissue preserves the consented public payload, creates a new 256-bit
+code and PDF job, and records immutable `supersedes_id` plus actor-attributed
+`certificate.reissue`/`certificate.superseded` events. Old public codes remain
+verifiable as revoked; only the replacement is valid. Repeating revoke is
+idempotent; repeated reissue and reissue while an active certificate exists return
+stable conflicts. API coverage verifies role isolation, filtered admin listing,
+reason/audit attribution, lineage, outbox enqueue, and old/new code lookups.
+Chromium verifies the admin revoke/reissue/history and lineage-link workflow. Build/lint passed;
+the full suite passed 117 tests across 35 files, all 25 Chromium workflows passed,
+OpenAPI parsed, and `git diff --check` passed. Public verification intentionally
+does not reveal private reasons or lineage. No production migration or deployment
+was performed.
+
+## Assessment attempt result integrity — October 4, 2026
+
+Migration 056 rejects open attempts carrying a score/pass result and requires
+submitted attempts to store an integer score percentage from 0 through 100 plus a
+binary pass flag. The focused SQLite migration test exercises inconsistent open
+state, out-of-range score, invalid pass flag, and a valid submitted result while
+retaining the existing deadline and immutability assertions. No application route
+behavior changed; this closes a direct-SQL invariant gap under DATA-01. No production
+migration or deployment was performed.
+
+## Outbox retry-state integrity — October 4, 2026
+
+Migration 057 rejects negative or non-integer retry counters, empty/orphan leases,
+leases on processed jobs, and lease claims without a recorded attempt. The focused
+SQLite test also verifies normal unclaimed, active-lease, failed/retryable, and
+processed states. Existing outbox worker tests continue to cover lease exclusion
+and failure backoff. No queue semantics or retry count were changed. Build/lint
+passed; the full real-media suite passed 118 tests across 36 files, all 25 Chromium
+workflows passed, OpenAPI parsed, and `git diff --check` passed. No production
+migration or deployment was performed.
+
+Migration 060 additionally prevents decrementing retry counts, replacing a lease
+without claiming another attempt, releasing a lease without recording failure or
+success, and clearing/re-writing a completed timestamp. The focused direct-SQL test
+accepts claim, failure release, expired-lease reclaim, and success; it rejects job
+reopening and lease theft. Existing worker integration verifies actual backoff and
+retry. No worker semantics changed. Build/lint passed; the full real-media suite
+passed 120 tests across 38 files, all 25 Chromium workflows passed, OpenAPI parsed,
+and `git diff --check` passed. No production migration or deployment occurred.
+
+## Entitlement time-window integrity — October 4, 2026
+
+Migration 058 requires parseable entitlement start times and a parseable optional
+end strictly after the start. The focused SQLite test accepts open-ended and valid
+bounded grants and rejects malformed starts/ends, equal/reversed bounds, and
+updates that would make a window invalid. No entitlement writer or access policy
+changed. Build/lint passed; the full real-media suite passed 119 tests across 37
+files, all 25 Chromium workflows passed, OpenAPI parsed, and `git diff --check`
+passed. No production migration or deployment was performed.
+
+## Video upload state transitions — October 4, 2026
+
+Migration 059 allows only the upload lifecycle transitions used by the API and
+worker: upload to queue/cancel, queue to processing, processing to ready/failure
+(or same-state lease recovery), and failure to retry. READY and CANCELLED are
+terminal, while same-state idempotent writes remain allowed. Focused tests cover
+valid completion, failure/retry, worker recovery, cancellation, and rejected skips
+or terminal rewrites; publication/covers/trailers fixtures now follow legal states.
+Build/lint passed; the full real-media suite passed 120 tests across 38 files, all
+25 Chromium workflows passed, OpenAPI parsed, and `git diff --check` passed. No
+production migration or deployment was performed.
+
+## Expired quiz attempt history — October 3, 2026
+
+Timed-out open attempts now appear in the learner's private quiz history as
+expired and consumed, with no score or answer feedback. Active open attempts
+remain omitted, and starting a replacement still follows the configured attempt
+limit. API integration verifies an expired attempt remains unsubmitted and is
+listed without grading or answer details; build/lint and full-suite validation
+passed: 112 tests across 33 files and 22 Chromium workflows. OpenAPI YAML and
+`git diff --check` passed. No deployment or production database changes were made.
+
+## Post-submit quiz explanations — October 3, 2026
+
+Migration 050 adds optional question explanation text, defaulting to empty for
+existing definitions. Authors edit the text in the revision-bound studio builder.
+Active quiz and attempt payloads omit explanations and correctness markers; the
+server includes selected/correct-choice indicators and explanation text only in
+the submitted result and the enrolled learner's private result history. API tests
+verify the pre-submit redaction and post-submit feedback, and Chromium verifies
+the result review interaction. Build and lint passed; OpenAPI YAML parsed; the
+full real-media suite passed 112 tests across 33 files, and all 22 Chromium
+workflows passed. No deployment or production database changes were made.
+
 ## Course publication review — October 2, 2026
 
 Authors can submit an owned draft for review after the shared publication
@@ -829,6 +994,137 @@ publish the reviewed course through the existing publication validator. Direct
 administrator publication remains compatible. API integration and Chromium tests
 cover ownership, checklist failure, stale-state protection, review, and publish.
 Build and lint passed; OpenAPI YAML parsed; the full real-media suite passed 107
-tests across 33 files, and all 19 Chromium workflows passed. Urgent withdrawal,
-scheduling, and notifications remain unimplemented; no deployment or production
+tests across 33 files, and all 19 Chromium workflows passed. Scheduling and
+notifications remain unimplemented; no deployment or production database changes
+were made.
+
+## Urgent course withdrawal — October 2, 2026
+
+Migration 049 adds an immutable `withdrawn_at` marker and required reason. The
+administrator studio action audits the actor/reason and is idempotent; normal
+publishing cannot restore a withdrawn course. Learner access is rechecked at old
+course, lesson, video, caption, cover, attachment, and progress-write URLs, and
+withdrawn courses leave public discovery and new manual grants. Existing enrollment,
+entitlement, and progress history remains stored; the learner dashboard shows the
+historical entry without broken course/continue links. Real-media tests confirmed
+previously usable video, caption, attachment, and cover URLs are denied after
+withdrawal. Build and lint passed; OpenAPI YAML parsed; the full real-media suite
+passed 108 tests across 33 files, and all 20 Chromium workflows passed. No
+deployment or production database changes were made.
+
+## Quiz definition API — October 3, 2026
+
+Authors/admins can configure lesson or final quizzes on the current unpublished
+revision, including keyed choices, question points/order, pass threshold, attempt
+limit, randomization, and optional time limit. Saves are revision-checked,
+ownership-checked, transactional, and audited; edits are rejected after attempts
+exist. Learner reads require active enrollment and are bound to the enrollment's
+revision, including historical revisions after a newer publication. The learner
+payload omits correct-answer keys. API tests cover owner checks, invalid keys,
+publication/membership gating, answer privacy, and revision preservation. The
+visual builder was added in the following increment; preview remains open.
+Build and lint passed; OpenAPI YAML parsed; the full real-media suite passed 109
+tests across 33 files, and all 20 Chromium workflows passed. No deployment or
+production database changes were made.
+
+## Quiz attempt API — October 3, 2026
+
+Learners can atomically start/resume an open attempt, retrieve private attempt
+state, and submit answers for server-side grading. Concurrent start requests
+converge on one attempt; limits are consumed only after submission. The server
+rejects cross-quiz questions and invalid choices, computes score/pass using
+server-held answer keys, returns the original result on duplicate submission,
+and maps expired deadlines to a stable conflict without committing answers.
+Expired open attempts remain counted but are not resumed, allowing a remaining
+attempt to start.
+Integration coverage includes attempt privacy, ownership, concurrency, limits,
+grading, idempotent submission, expiry rollback, and validated partial-answer
+saves with zero awarded points until final submission. Question explanations are
+stored with the immutable definition and withheld until an attempt is submitted.
+Build and lint passed; OpenAPI YAML parsed; the full real-media suite passed
+110 tests across 33 files, and all 20 Chromium workflows passed. No deployment or
+production database changes were made.
+
+## Lesson-player quiz attempts — October 3, 2026
+
+Enrolled learners can start/resume a lesson quiz in the player, choose options,
+submit once, and see the server-calculated score/pass result plus remaining
+attempts. Choices autosave without grading and restore after reload. Correct-answer
+keys are never sent to the browser. The focused Chromium flow verified start,
+reload/resume with saved selection, submission, grading feedback, and remaining
+count. Build and lint passed; the full real-media suite passed 110 tests across
+33 files, and all 21 Chromium workflows passed. OpenAPI YAML and `git diff --check`
+passed. Answer explanations and prior-result history remain open. No deployment or
+production database changes were made.
+
+## Studio quiz builder — October 3, 2026
+
+The studio now loads quizzes for the current unpublished revision and provides a
+separate builder for final or lesson assessments. Authors/admins can edit settings,
+questions, choices, and correct-choice keys, then save through the revision-checked
+API without triggering course autosave. The E2E flow creates both a final quiz and
+a lesson quiz and verifies the stored definitions. Build and lint passed; the full
+real-media suite passed 112 tests across 33 files, and all 22 Chromium workflows
+passed. OpenAPI YAML and `git diff --check` passed. No deployment or production
 database changes were made.
+
+## Concurrent quiz submission — October 3, 2026
+
+An API integration test submits conflicting answers concurrently to the same open
+attempt. Both requests return the same persisted score, pass state, submission time,
+and feedback; exactly one request reports that it performed the submission, and a
+single immutable answer row remains. This exercises the immediate transaction and
+idempotent retry path, complementing the existing concurrent-start, manipulated
+answer, ownership, and submitted-row immutability tests. Build and lint passed; the
+full real-media suite passed 115 tests across 34 files. No production changes were
+made.
+
+## Quiz publication readiness — October 3, 2026
+
+The shared publication checklist now validates configured quizzes: empty quizzes
+and malformed choices/correct-answer keys block both readiness checks and publish,
+with module/lesson context for author feedback. Quizzes remain optional, so courses
+without assessments retain prior publication behavior. Focused service and API
+integration tests passed, including an assertion that blocked publication leaves
+the course in DRAFT. Build and lint passed; OpenAPI YAML parsed; the full real-media
+suite passed 112 tests across 33 files, and all 22 Chromium workflows passed.
+No production migration or deployment was performed.
+
+## Revision-consistent course completion — October 3, 2026
+
+Migration 051 adds monotonic `enrollments.completed_at`; migration 052 snapshots
+the required lesson and quiz IDs per enrollment, backfilling existing enrollments
+and freezing the snapshots. New enrollments capture them transactionally. A shared
+server policy requires every snapshotted lesson complete, every snapshotted quiz
+passed, and current active entitlement on a non-withdrawn course. Lesson-progress
+writes and quiz submissions reevaluate atomically; completion is recorded once.
+Integration coverage tests incomplete lessons, failed/passed quizzes, later quiz
+additions not changing existing requirements, immutable snapshots, idempotent
+completion, access revocation, and legacy snapshot backfill. Build and lint passed;
+OpenAPI YAML and `git diff --check` passed; the full real-media suite passed 114
+tests across 34 files, and all 22 Chromium workflows passed. Certificate issuance
+eligibility integration remains open; no deployment or production database
+changes were made.
+
+## Quiz author preview — October 3, 2026
+
+The studio has a local author preview dialog for the current unsaved quiz contents.
+It shows prompts, choices, and correct-answer markers, restores focus on close, and
+does not save, publish, or call the learner quiz endpoint. Chromium verifies final
+quiz preview content and correct-choice marking before continuing to save. Build
+and lint passed; the full real-media suite passed 112 tests across 33 files, and
+all 22 Chromium workflows passed. OpenAPI YAML and `git diff --check` passed. No
+deployment or production database changes were made.
+
+## Learner quiz result history — October 3, 2026
+
+An enrolled learner can retrieve submitted result history for a quiz tied to their
+enrollment revision. The response includes attempt timestamp, score, possible
+points, pass status, selected/correct-choice markers, and author explanations;
+open attempts receive none of this feedback. The lesson player displays prior
+results and refreshes history after grading; reload preserves the history. API
+tests cover enrollment isolation, pre-submit redaction, and post-submit feedback;
+Chromium verifies explanations appear only after grading and persist after reload.
+Build/lint, OpenAPI, and diff validation passed; the full real-media suite passed
+112 tests across 33 files, and all 22 Chromium workflows passed. No deployment or
+production database changes were made.

@@ -557,12 +557,190 @@ paths:
           description: Course not published
   /me/enrollments:
     get:
-      summary: My enrollments with required/completed counts and a continuation lesson
+      summary: My enrollments with progress, revision completion state, and a continuation lesson
       security:
         - cookieAuth: []
       responses:
         '200':
-          description: Enrollment array with continue_lesson_id and continue_lesson_title chosen from each assigned revision
+          description: Enrollment array includes continue_lesson_id/title, completed_at (monotonic recorded completion), and completion_ready (current entitlement and required lessons/quizzes satisfy the shared policy) for the assigned revision
+  /certificates/verify/{code}:
+    get:
+      summary: Publicly verify a certificate code
+      description: Anonymous, rate-limited lookup of an issued certificate. Returns only the learner name, course title, declared workload, issuer, issue time, and current valid/revoked status. Invalid and unknown codes share the same not-found response; revoked reasons and internal identifiers are never returned.
+      parameters:
+        - in: path
+          name: code
+          required: true
+          schema: {type: string, pattern: '^[A-Za-z0-9_-]{43}$'}
+      responses:
+        '200':
+          description: Minimal public certificate disclosure
+          headers:
+            X-Robots-Tag:
+              schema: {type: string}
+              description: Always noindex, nofollow, noarchive
+            Cache-Control:
+              schema: {type: string}
+              description: Always no-store so revocation status remains current
+        '404': {description: CERTIFICATE_NOT_FOUND for malformed, unknown, or legacy certificates without a snapshot}
+        '429': {description: RATE_LIMITED}
+  /me/certificates/eligibility:
+    post:
+      summary: Check certificate eligibility for the authenticated learner's enrollment
+      description: Read-only preflight. Requires active non-withdrawn access, server-recorded revision completion, verified email, a confirmed name, explicit disclosure consent, publisher-declared workload, and a revision instructor. Returns the public disclosure fields and hash to bind consent to the reviewed snapshot.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enrollmentId, confirmedName, disclosureConsent]
+              properties:
+                enrollmentId: {type: string, format: uuid}
+                confirmedName: {type: string, minLength: 1, maxLength: 200}
+                disclosureConsent: {type: boolean, const: true}
+      responses:
+        '200': {description: Eligibility result, disclosure preview/hash, and unmet reason codes; no certificate is issued}
+        '401': {description: Authentication required}
+        '404': {description: CERTIFICATE_ENROLLMENT_NOT_FOUND}
+        '422': {description: CERTIFICATE_INPUT_REQUIRED}
+  /me/certificates:
+    post:
+      summary: Issue or idempotently return a certificate for an eligible enrollment
+      description: The caller must submit the hash from the latest eligibility preview with explicit consent. Issuance rechecks policy and atomically stores one immutable payload snapshot, audit event, and certificate.generate job. Returns an existing active certificate on retries. The worker generates a private PDF/QR artifact asynchronously; public verification is provided separately.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enrollmentId, confirmedName, disclosureConsent, acceptedDisclosureHash]
+              properties:
+                enrollmentId: {type: string, format: uuid}
+                confirmedName: {type: string, minLength: 1, maxLength: 200}
+                disclosureConsent: {type: boolean, const: true}
+                acceptedDisclosureHash: {type: string, pattern: '^[a-f0-9A-F]{64}$'}
+      responses:
+        '201': {description: New certificate record and immutable payload snapshot with pdfStatus PENDING}
+        '200': {description: Existing certificate returned idempotently with current pdfStatus}
+        '401': {description: Authentication required}
+        '404': {description: CERTIFICATE_ENROLLMENT_NOT_FOUND}
+        '409': {description: CERTIFICATE_NOT_ELIGIBLE or CERTIFICATE_DISCLOSURE_CHANGED}
+        '422': {description: CERTIFICATE_INPUT_REQUIRED}
+    get:
+      summary: List certificates belonging to the authenticated learner
+      description: Returns learner-owned certificates with public verification paths and private download paths only for ready PDFs.
+      security:
+        - cookieAuth: []
+      responses:
+        '200': {description: Learner-owned certificate list with current validity and PDF states}
+        '401': {description: Authentication required}
+  /me/certificates/{id}/pdf:
+    get:
+      summary: Download an issued certificate PDF
+      description: Authenticated certificate owner (or administrator) only. PDF artifacts are generated asynchronously by the worker and remain private in storage.
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Private PDF attachment
+          content:
+            application/pdf: {schema: {type: string, format: binary}}
+        '401': {description: Authentication required}
+        '404': {description: CERTIFICATE_NOT_FOUND}
+        '409': {description: CERTIFICATE_PDF_NOT_READY}
+  /admin/certificates:
+    get:
+      summary: Search certificates for administrator lifecycle support
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: query
+          name: q
+          schema: {type: string, maxLength: 100}
+        - in: query
+          name: status
+          schema: {type: string, enum: [valid, revoked]}
+        - in: query
+          name: limit
+          schema: {type: integer, minimum: 1, maximum: 100, default: 50}
+        - in: query
+          name: offset
+          schema: {type: integer, minimum: 0, default: 0}
+      responses:
+        '200': {description: Paginated certificate records, private reasons, PDF state, and lineage}
+        '403': {description: Administrator role required}
+  /admin/certificates/{id}/revoke:
+    patch:
+      summary: Revoke an active certificate with a private reason
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: {type: string, minLength: 5, maxLength: 1000}
+      responses:
+        '200': {description: Revoked status; repeating revocation is idempotent}
+        '403': {description: Administrator role required}
+        '404': {description: ADMIN_CERTIFICATE_NOT_FOUND}
+  /admin/certificates/{id}/reissue:
+    post:
+      summary: Reissue a revoked certificate once
+      description: Preserves its public snapshot, creates a fresh opaque code and PDF job, records the immutable supersedes link, and writes actor-attributed audit events. The predecessor remains verifiable as revoked.
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: {type: string, minLength: 5, maxLength: 1000}
+      responses:
+        '201': {description: Replacement certificate and supersedes ID}
+        '403': {description: Administrator role required}
+        '404': {description: ADMIN_CERTIFICATE_NOT_FOUND}
+        '409': {description: ADMIN_CERTIFICATE_MUST_BE_REVOKED, ADMIN_CERTIFICATE_ALREADY_SUPERSEDED, ADMIN_CERTIFICATE_ACTIVE_EXISTS, or ADMIN_CERTIFICATE_SNAPSHOT_REQUIRED}
+  /admin/certificates/{id}/history:
+    get:
+      summary: View a certificate enrollment's lineage and lifecycle audit events
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '200': {description: Certificate records, predecessor/successor links, and actor-attributed events with private reasons}
+        '403': {description: Administrator role required}
+        '404': {description: ADMIN_CERTIFICATE_NOT_FOUND}
   /lessons/{id}:
     parameters:
       - $ref: '#/components/parameters/lessonId'
@@ -962,7 +1140,7 @@ paths:
                       properties:
                         code:
                           type: string
-                          enum: [TRAILER_INVALID, COVER_INVALID, PUBLICATION_EMPTY, PUBLICATION_CONTENT, PUBLICATION_ORDER, VIDEO_INVALID, VIDEO_NOT_READY, FILE_INVALID, FILE_NOT_READY]
+                          enum: [TRAILER_INVALID, COVER_INVALID, PUBLICATION_EMPTY, PUBLICATION_CONTENT, PUBLICATION_ORDER, VIDEO_INVALID, VIDEO_NOT_READY, FILE_INVALID, FILE_NOT_READY, QUIZ_EMPTY, QUIZ_INVALID]
                         moduleTitle: {type: string}
                         lessonTitle: {type: string}
                         attachmentTitle: {type: string}
@@ -989,7 +1167,7 @@ paths:
         '403':
           description: Admin required
         '409':
-          description: Stale expected revision or slug conflict
+          description: Stale expected revision, slug conflict, or COURSE_WITHDRAWN
         '422':
           description: Publication blocked; issues contains the same structured checklist as publication-check. No publication changes are committed.
       requestBody:
@@ -1025,6 +1203,219 @@ paths:
         '403': {description: Course owner or administrator required}
         '409': {description: DRAFT_CONFLICT or COURSE_REVIEW_STATE_INVALID}
         '422': {description: Publication checklist failed}
+  /admin/courses/{id}/quiz:
+    parameters:
+      - $ref: '#/components/parameters/courseId'
+    get:
+      summary: List quiz definitions for the current unpublished course revision
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: revisionId
+          in: query
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '200': {description: Current revision quiz definitions including correct answer keys for authoring}
+        '403': {description: Course owner or administrator required}
+        '404': {description: COURSE_NOT_FOUND}
+        '409': {description: QUIZ_DRAFT_REQUIRED}
+    put:
+      summary: Create or replace a quiz in the current owned unpublished revision (author/admin)
+      description: Quiz definitions are revision-bound and can only be changed before attempts exist. Correct answer keys are returned only by this administrative endpoint.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedRevisionId, questions]
+              properties:
+                expectedRevisionId: {type: string, format: uuid}
+                lessonId: {type: [string, 'null'], format: uuid}
+                passPercent: {type: integer, minimum: 1, maximum: 100, default: 70}
+                maxAttempts: {type: integer, minimum: 1, maximum: 100, default: 3}
+                randomizeQuestions: {type: boolean, default: false}
+                timeLimitSeconds: {type: [integer, 'null'], minimum: 1, maximum: 86400}
+                questions:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items:
+                    type: object
+                    required: [prompt, choices, correctChoiceKeys]
+                    properties:
+                      prompt: {type: string, minLength: 1, maxLength: 5000}
+                      explanation: {type: string, maxLength: 5000, description: Optional rationale revealed only after attempt submission}
+                      choices:
+                        type: array
+                        minItems: 2
+                        maxItems: 10
+                        items:
+                          type: object
+                          required: [key, text]
+                          properties:
+                            key: {type: string, minLength: 1, maxLength: 20}
+                            text: {type: string, minLength: 1, maxLength: 500}
+                      correctChoiceKeys: {type: array, minItems: 1, maxItems: 10, items: {type: string}}
+                      points: {type: integer, minimum: 1, maximum: 1000, default: 1}
+      responses:
+        '200': {description: Saved quiz definition, including answer keys for authoring}
+        '403': {description: Course owner or administrator required}
+        '404': {description: COURSE_NOT_FOUND}
+        '409': {description: QUIZ_DRAFT_REQUIRED, QUIZ_HAS_ATTEMPTS, or COURSE_WITHDRAWN}
+        '422': {description: Invalid quiz definition or QUIZ_LESSON_REVISION_MISMATCH}
+  /admin/quizzes/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    get:
+      summary: Read a quiz in the current unpublished revision for its author or an administrator
+      security:
+        - cookieAuth: []
+      responses:
+        '200': {description: Quiz definition with answer keys}
+        '403': {description: Course owner or administrator required}
+        '404': {description: QUIZ_NOT_FOUND}
+        '409': {description: QUIZ_DRAFT_REQUIRED}
+  /quizzes/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    get:
+      summary: Read a published quiz for an actively enrolled learner
+      description: Returns prompts and choices without correct answer keys. Response is private/no-store.
+      security:
+        - cookieAuth: []
+      responses:
+        '200': {description: Learner-safe quiz definition without correct_choice_keys}
+        '403': {description: Active enrollment required}
+        '404': {description: QUIZ_NOT_FOUND}
+  /quizzes/{id}/attempts:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    post:
+      summary: Start or resume the learner's open attempt for an enrolled quiz
+      description: The write is atomic. Concurrent or repeated start requests resume the same open attempt; submitted attempts consume the configured attempt limit.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, additionalProperties: false}
+      responses:
+        '200': {description: Existing open attempt resumed}
+        '201': {description: New attempt started with server-selected order, deadline, and no answer keys}
+        '403': {description: Active enrollment required}
+        '404': {description: QUIZ_NOT_FOUND}
+        '409': {description: QUIZ_ATTEMPTS_EXHAUSTED}
+  /quizzes/{id}/results:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    get:
+      summary: List the authenticated learner's submitted results and expired attempts for an enrolled quiz
+      description: Private/no-store history includes submitted score, possible points, pass status, timestamps, and post-submit feedback. Expired unsubmitted attempts are marked expired without score or answer feedback. Active open attempts are omitted.
+      security:
+        - cookieAuth: []
+      responses:
+        '200': {description: Submitted results and expired attempt history for this learner and enrollment revision; active open attempts and their answers are omitted}
+        '403': {description: Active enrollment required}
+        '404': {description: QUIZ_NOT_FOUND}
+  /attempts/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    get:
+      summary: Read an owned attempt's current or submitted state
+      security:
+        - cookieAuth: []
+      responses:
+        '200': {description: Private attempt state and learner-safe questions/selections; never includes correct-choice keys}
+        '403': {description: Active enrollment required}
+        '404': {description: QUIZ_ATTEMPT_NOT_FOUND}
+  /attempts/{id}/answers:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    put:
+      summary: Save partial answers for an owned open attempt without grading
+      description: Saves selections for recovery after reload. Score and awarded points remain unset until final submission; duplicate question IDs, foreign questions, invalid choices, submitted attempts, and expired deadlines are rejected.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [answers]
+              properties:
+                answers:
+                  type: array
+                  maxItems: 100
+                  items:
+                    type: object
+                    required: [questionId, selectedKeys]
+                    properties:
+                      questionId: {type: string, format: uuid}
+                      selectedKeys: {type: array, maxItems: 10, items: {type: string}}
+      responses:
+        '200': {description: Private attempt state with saved selections; no answer keys or scoring is exposed}
+        '403': {description: Active enrollment required}
+        '404': {description: QUIZ_ATTEMPT_NOT_FOUND}
+        '409': {description: QUIZ_ATTEMPT_SUBMITTED or QUIZ_DEADLINE_EXPIRED}
+        '422': {description: QUIZ_QUESTION_INVALID, QUIZ_DUPLICATE_ANSWER, or QUIZ_CHOICE_INVALID}
+  /attempts/{id}/submit:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+    put:
+      summary: Atomically grade and submit an attempt
+      description: The server validates question and choice membership, computes points/pass status, and freezes submitted rows. Repeated submission returns the stored result without regrading.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [answers]
+              properties:
+                answers:
+                  type: array
+                  maxItems: 100
+                  items:
+                    type: object
+                    required: [questionId, selectedKeys]
+                    properties:
+                      questionId: {type: string, format: uuid}
+                      selectedKeys: {type: array, maxItems: 10, items: {type: string}}
+      responses:
+        '200': {description: Stored score in points, pass flag, submitted time, already_submitted indicator, and post-submission answer feedback with correctness and explanations}
+        '403': {description: Active enrollment required}
+        '404': {description: QUIZ_ATTEMPT_NOT_FOUND}
+        '409': {description: QUIZ_DEADLINE_EXPIRED}
+        '422': {description: QUIZ_QUESTION_INVALID, QUIZ_DUPLICATE_ANSWER, or QUIZ_CHOICE_INVALID}
   /admin/courses/{id}/archive:
     parameters:
       - $ref: '#/components/parameters/courseId'
@@ -1037,6 +1428,28 @@ paths:
           description: Archived
         '403':
           description: Admin required
+  /admin/courses/{id}/withdraw:
+    parameters:
+      - $ref: '#/components/parameters/courseId'
+    post:
+      summary: Urgently withdraw a published course and revoke learner/media access
+      description: Requires a reason of 5 to 1000 characters. This is distinct from archiving, preserves enrollments/progress, and is irreversible through this API.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: {type: string, minLength: 5, maxLength: 1000}
+      responses:
+        '200': {description: Withdrawal timestamp and reason; repeated requests are idempotent}
+        '403': {description: Administrator required}
+        '409': {description: COURSE_WITHDRAWAL_STATE_INVALID}
+        '422': {description: Invalid or missing withdrawal reason}
   /admin/courses/{id}/preview:
     get:
       summary: Author-only saved draft simulation for learner or visitor access
