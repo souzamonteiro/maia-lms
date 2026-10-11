@@ -776,9 +776,13 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   lesson-module changes from crossing the enrollment's assigned revision, and
   constrain progress positions to non-negative integers. Migration 019 ensures
   each enrollment's course matches its revision's owner; migration 020 applies the
-  same ownership rule to current/published course revision pointers; migration 021
-  binds lesson videos to their revision's course and video media kind; migration
-  022 applies course and media-kind checks to revision covers and trailers; migration
+  same ownership rule to current/published course revision pointers; migration
+  061 prevents deleting and migration 062 prevents renaming a revision still
+  referenced by either course pointer; migrations 063–064 freeze published
+  revision metadata, modules, lessons, attachments, category assignments, quizzes,
+  and questions while leaving drafts editable. Migration 021 binds lesson videos
+  to their revision's course and video media kind; migration 022 applies course
+  and media-kind checks to revision covers and trailers; migration
   023 validates attachment ownership and optional lesson/revision associations;
   migration 024 prevents duplicate attachment positions within each list; migration
   025 binds lesson quizzes to lessons in the same revision.

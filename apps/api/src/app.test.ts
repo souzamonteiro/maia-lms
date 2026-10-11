@@ -986,7 +986,7 @@ describe('paginated course catalog', () => {
       );
       db.prepare('UPDATE courses SET current_revision_id=?,published_revision_id=? WHERE id=?').run(
         id + '-r',
-        id + '-r',
+        i === 105 ? null : id + '-r',
         id,
       );
     }
@@ -2456,8 +2456,10 @@ describe('revision completion policy', () => {
     };
     expect(JSON.parse(enrollment.required_lesson_ids_snapshot)).toEqual(lessons.map(lesson => lesson.id));
     expect(JSON.parse(enrollment.quiz_ids_snapshot)).toEqual([configured.data.id]);
-    db.prepare('INSERT INTO quizzes(id,revision_id,lesson_id) VALUES(?,?,?)')
-      .run(randomUUID(), revisionId, lessons[0].id);
+    expect(() =>
+      db.prepare('INSERT INTO quizzes(id,revision_id,lesson_id) VALUES(?,?,?)')
+        .run(randomUUID(), revisionId, lessons[0].id),
+    ).toThrow(/published course revision is immutable/);
     expect(() => db.prepare('UPDATE enrollments SET quiz_ids_snapshot=? WHERE id=?')
       .run('[]', enrollment.id)).toThrow(/completion requirements are immutable/);
     const enrollmentBefore = (await request('/api/v1/me/enrollments', 'GET', undefined, learner.cookie)).data[0];

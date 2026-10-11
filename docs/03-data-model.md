@@ -95,6 +95,18 @@ Migration 058 requires entitlement `starts_at` to be parseable and, when present
 
 Migration 059 constrains upload status changes to `UPLOADING → QUEUED/CANCELLED`, `QUEUED → PROCESSING`, `PROCESSING → READY/FAILED` (including same-state lease recovery), and `FAILED → QUEUED` retry. Idempotent same-state writes are allowed; READY and CANCELLED are terminal. Fixture setup and test updates follow this worker/API lifecycle.
 
+Migrations 061 and 062 prevent deleting or changing the ID of a course revision
+while it is referenced by either `current_revision_id` or
+`published_revision_id`. This protects the legacy current pointer, which has no
+foreign-key constraint, from becoming orphaned through direct SQL. Revisions can
+still be deleted after both pointers are cleared, subject to their other references.
+
+Migration 063 makes published revision rows immutable and rejects inserts already
+marked published. Publication may set `published_at` only after the course points
+to the revision, matching the API transaction order. Migration 064 freezes modules,
+lessons, attachments, category assignments, quizzes, and questions while a revision
+has been published; new draft revisions remain editable.
+
 Migration 051 adds monotonic `enrollments.completed_at`. Server completion policy is derived from the enrollment's immutable revision: at least one required lesson, every required lesson completed, every quiz in that revision passed by this enrollment, and active entitlement on a non-withdrawn course. Progress writes and quiz submissions reevaluate in their immediate transaction. Access withdrawal does not erase completion history; current entitlement remains a separate eligibility check for any future certificate issuance.
 
 ## MP4 video — migration 005

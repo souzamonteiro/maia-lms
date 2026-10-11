@@ -14,10 +14,10 @@ it('keeps course revision pointers within their owning course', () => {
       VALUES ('course-a','course-a','author'),('course-b','course-b','author');
       INSERT INTO course_revisions(id,course_id,title,summary)
       VALUES ('revision-a','course-a','Course A','Summary A'),
-             ('revision-b','course-b','Course B','Summary B');
+              ('revision-b','course-b','Course B','Summary B'),
+              ('revision-draft','course-a','Draft revision','Draft summary');
     `);
     db.prepare('UPDATE courses SET current_revision_id=? WHERE id=?').run('revision-a', 'course-a');
-    db.prepare('UPDATE courses SET published_revision_id=? WHERE id=?').run('revision-a', 'course-a');
 
     expect(() =>
       db
@@ -33,9 +33,21 @@ it('keeps course revision pointers within their owning course', () => {
     expect(() =>
       db.prepare('UPDATE course_revisions SET course_id=? WHERE id=?').run('course-b', 'revision-a'),
     ).toThrow(/course revision pointer mismatch/);
+    db.prepare('UPDATE courses SET published_revision_id=? WHERE id=?').run('revision-a', 'course-a');
+
+    db.prepare('UPDATE courses SET current_revision_id=? WHERE id=?').run('revision-draft', 'course-a');
+    expect(() =>
+      db.prepare('UPDATE course_revisions SET id=? WHERE id=?').run('revision-renamed', 'revision-draft'),
+    ).toThrow(/course revision pointer mismatch/);
+    expect(() => db.prepare('DELETE FROM course_revisions WHERE id=?').run('revision-draft')).toThrow(
+      /course revision pointer mismatch/,
+    );
+    db.prepare('UPDATE courses SET current_revision_id=NULL WHERE id=?').run('course-a');
+    expect(() => db.prepare('DELETE FROM course_revisions WHERE id=?').run('revision-draft')).not.toThrow();
+
     expect(
       db.prepare('SELECT current_revision_id,published_revision_id FROM courses WHERE id=?').get('course-a'),
-    ).toEqual({ current_revision_id: 'revision-a', published_revision_id: 'revision-a' });
+    ).toEqual({ current_revision_id: null, published_revision_id: 'revision-a' });
   } finally {
     db.close();
   }

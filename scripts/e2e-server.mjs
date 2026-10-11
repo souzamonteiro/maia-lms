@@ -47,7 +47,7 @@ for (let i = 0; i < 13; i++) {
     "INSERT INTO courses(id,slug,author_id,status,access_mode,locale) VALUES(?,?,'e2e-admin','PUBLISHED','OPEN_FREE','en')",
   ).run(id, `catalog-fixture-${i}`);
   db.prepare(
-    "INSERT INTO course_revisions(id,course_id,title,summary,slug,locale,level,access_mode,published_at) VALUES(?,?,?,'Catalog pagination fixture',?,'en','beginner','OPEN_FREE',datetime('now'))",
+    "INSERT INTO course_revisions(id,course_id,title,summary,slug,locale,level,access_mode) VALUES(?,?,?,'Catalog pagination fixture',?,'en','beginner','OPEN_FREE')",
   ).run(revision, id, `Catalog fixture ${String(i).padStart(2, '0')}`, `catalog-fixture-${i}`);
   db.prepare('INSERT INTO modules(id,revision_id,title,sort_order) VALUES(?,?,?,0)').run(
     module,
@@ -62,6 +62,7 @@ for (let i = 0; i < 13; i++) {
     revision,
     id,
   );
+  db.prepare('UPDATE course_revisions SET published_at=datetime(\'now\') WHERE id=?').run(revision);
 }
 db.close();
 if (process.env.VIDEO_TEST_REAL === '1') {

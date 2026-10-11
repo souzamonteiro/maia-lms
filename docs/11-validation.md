@@ -910,6 +910,24 @@ OpenAPI parsed, and `git diff --check` passed. Public verification intentionally
 does not reveal private reasons or lineage. No production migration or deployment
 was performed.
 
+## Course revision publication integrity — October 10, 2026
+
+Migrations 061 and 062 reject direct deletion or ID changes for a revision
+referenced by either the editable current pointer or the published pointer. The
+focused SQLite test verifies that an unpublished current draft cannot be renamed or
+deleted while referenced and can be deleted after its pointer is cleared. No
+authoring or publication behavior changed. The focused migration test passed; no
+production migration or deployment was performed.
+
+Migrations 063 and 064 close the direct-SQL publication gap: a published revision's
+metadata and its modules, lessons, attachments, category assignments, quiz
+definitions, and questions cannot be changed or deleted. The focused test verifies
+the actual publication ordering (public pointer first, `published_at` second),
+rejects metadata and child-content edits, and confirms draft edits still work. No
+authoring or publication route behavior changed. Build and lint passed; the full
+suite passed 121 tests across 39 files, and all 25 Chromium workflows passed. No
+production migration or deployment was performed.
+
 ## Assessment attempt result integrity — October 4, 2026
 
 Migration 056 rejects open attempts carrying a score/pass result and requires
