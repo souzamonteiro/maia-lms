@@ -238,7 +238,7 @@ export function certificatesRouter(db: Database.Database, config: Config): Route
       throw new AppError(422, 'Provide a confirmed name and explicit disclosure consent', 'CERTIFICATE_INPUT_REQUIRED');
 
     const userId = req.session.userId;
-    if (!userId) throw new AppError(401, 'Authentication required');
+    if (!userId) throw new AppError(401, 'Authentication required', 'AUTH_REQUIRED');
     const state = certificateState(db, userId, input.data.enrollmentId, input.data.confirmedName);
     if (!state) throw new AppError(404, 'Enrollment not found', 'CERTIFICATE_ENROLLMENT_NOT_FOUND');
 
@@ -266,7 +266,7 @@ export function certificatesRouter(db: Database.Database, config: Config): Route
       throw new AppError(422, 'Provide a confirmed name, explicit disclosure consent, and the reviewed disclosure hash', 'CERTIFICATE_INPUT_REQUIRED');
 
     const userId = req.session.userId;
-    if (!userId) throw new AppError(401, 'Authentication required');
+    if (!userId) throw new AppError(401, 'Authentication required', 'AUTH_REQUIRED');
     const result = db
       .transaction(() => {
         const state = certificateState(

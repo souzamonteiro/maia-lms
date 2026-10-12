@@ -968,10 +968,9 @@ describe('paginated course catalog', () => {
     );
     for (let i = 0; i < 106; i++) {
       const id = `catalog-${String(i).padStart(3, '0')}`;
-      db.prepare("INSERT INTO courses(id,slug,author_id,status) VALUES(?,?,'catalog-user',?)").run(
+      db.prepare("INSERT INTO courses(id,slug,author_id,status) VALUES(?,?,'catalog-user','DRAFT')").run(
         id,
         id,
-        i === 105 ? 'DRAFT' : 'PUBLISHED',
       );
       db.prepare(
         'INSERT INTO course_revisions(id,course_id,title,summary,locale,level,access_mode) VALUES(?,?,?,?,?,?,?)',
@@ -984,9 +983,12 @@ describe('paginated course catalog', () => {
         i % 2 ? 'advanced' : 'beginner',
         i % 2 ? 'ENROLLED_FREE' : 'OPEN_FREE',
       );
-      db.prepare('UPDATE courses SET current_revision_id=?,published_revision_id=? WHERE id=?').run(
+      if (i !== 105)
+        db.prepare("UPDATE course_revisions SET published_at=datetime('now') WHERE id=?").run(id + '-r');
+      db.prepare('UPDATE courses SET current_revision_id=?,published_revision_id=?,status=? WHERE id=?').run(
         id + '-r',
         i === 105 ? null : id + '-r',
+        i === 105 ? 'DRAFT' : 'PUBLISHED',
         id,
       );
     }

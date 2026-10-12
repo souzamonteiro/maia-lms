@@ -31,15 +31,15 @@ export function errorHandler(err: Error, req: Request, res: Response, _next: Nex
     return;
   }
   if ('status' in err && err.status === 413) {
-    res.status(413).json({ error: 'Request body too large' });
+    res.status(413).json({ error: 'Request body too large', code: 'API_REQUEST_TOO_LARGE' });
     return;
   }
   if (err instanceof ZodError) {
-    res.status(422).json({ error: 'Invalid input', issues: err.issues });
+    res.status(422).json({ error: 'Invalid input', code: 'API_INVALID_INPUT', issues: err.issues });
     return;
   }
   if (err instanceof SyntaxError && 'body' in err) {
-    res.status(400).json({ error: 'Invalid JSON' });
+    res.status(400).json({ error: 'Invalid JSON', code: 'API_INVALID_JSON' });
     return;
   }
   if (err instanceof AppError) {
@@ -60,5 +60,5 @@ export function errorHandler(err: Error, req: Request, res: Response, _next: Nex
     correlationId: req.headers['x-correlation-id'],
   });
 
-  res.status(500).json({ error: 'Internal server error' });
+  res.status(500).json({ error: 'Internal server error', code: 'API_INTERNAL_ERROR' });
 }

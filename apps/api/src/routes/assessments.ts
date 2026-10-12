@@ -57,7 +57,7 @@ export function assessmentsRouter(db: Database.Database): Router {
       | undefined;
     if (!course) throw new AppError(404, 'Course not found', 'COURSE_NOT_FOUND');
     if (req.session.role !== 'admin' && req.session.userId !== course.author_id)
-      throw new AppError(403, 'Insufficient permissions');
+      throw new AppError(403, 'Insufficient permissions', 'API_FORBIDDEN');
     const revisionId = z.string().uuid().parse(req.query.revisionId);
     if (
       course.withdrawn_at ||
@@ -90,7 +90,7 @@ export function assessmentsRouter(db: Database.Database): Router {
           | undefined;
         if (!course) throw new AppError(404, 'Course not found', 'COURSE_NOT_FOUND');
         if (req.session.role !== 'admin' && req.session.userId !== course.author_id)
-          throw new AppError(403, 'Insufficient permissions');
+          throw new AppError(403, 'Insufficient permissions', 'API_FORBIDDEN');
         if (course.withdrawn_at)
           throw new AppError(409, 'Withdrawn courses cannot be edited', 'COURSE_WITHDRAWN');
         if (!['DRAFT', 'PUBLISHED'].includes(course.status) || course.current_revision_id !== input.expectedRevisionId || course.current_revision_id === course.published_revision_id)
@@ -166,7 +166,7 @@ export function assessmentsRouter(db: Database.Database): Router {
       | undefined;
     if (!quiz) throw new AppError(404, 'Quiz not found', 'QUIZ_NOT_FOUND');
     if (req.session.role !== 'admin' && req.session.userId !== quiz.author_id)
-      throw new AppError(403, 'Insufficient permissions');
+      throw new AppError(403, 'Insufficient permissions', 'API_FORBIDDEN');
     if (!['DRAFT', 'PUBLISHED'].includes(quiz.status) || quiz.current_revision_id !== quiz.revision_id || quiz.current_revision_id === quiz.published_revision_id)
       throw new AppError(409, 'Only the current draft quiz can be edited', 'QUIZ_DRAFT_REQUIRED');
     res.json(readQuiz(db, id, true));
@@ -186,7 +186,7 @@ export function assessmentsRouter(db: Database.Database): Router {
            AND (t.ends_at IS NULL OR julianday(t.ends_at)>julianday('now')) LIMIT 1`,
       )
       .get(req.session.userId, row.course_id, row.revision_id);
-    if (!enrollment) throw new AppError(403, 'Enrollment required');
+    if (!enrollment) throw new AppError(403, 'Enrollment required', 'ENROLLMENT_REQUIRED');
     res.set('Cache-Control', 'private, no-store').json(readQuiz(db, id, false));
   });
 
@@ -204,7 +204,7 @@ export function assessmentsRouter(db: Database.Database): Router {
            AND (t.ends_at IS NULL OR julianday(t.ends_at)>julianday('now')) LIMIT 1`,
       )
       .get(req.session.userId, quiz.course_id, quiz.revision_id) as { id: string } | undefined;
-    if (!enrollment) throw new AppError(403, 'Enrollment required');
+    if (!enrollment) throw new AppError(403, 'Enrollment required', 'ENROLLMENT_REQUIRED');
     const items = db
       .prepare(
         `SELECT a.id,a.quiz_id,a.started_at,a.submitted_at,a.score,a.pass,q.time_limit_seconds,
@@ -279,7 +279,7 @@ export function assessmentsRouter(db: Database.Database): Router {
                AND (t.ends_at IS NULL OR julianday(t.ends_at)>julianday('now')) LIMIT 1`,
           )
           .get(req.session.userId, quiz.course_id, quiz.revision_id) as { id: string } | undefined;
-        if (!enrollment) throw new AppError(403, 'Enrollment required');
+        if (!enrollment) throw new AppError(403, 'Enrollment required', 'ENROLLMENT_REQUIRED');
 
         const existing = db
           .prepare(
@@ -491,7 +491,7 @@ function ownedAttempt(db: Database.Database, attemptId: string, userId: string):
   const access = db
     .prepare("SELECT 1 FROM enrollments e JOIN courses c ON c.id=e.course_id JOIN entitlements t ON t.enrollment_id=e.id WHERE e.id=? AND e.state='active' AND c.withdrawn_at IS NULL AND t.revoked_at IS NULL AND julianday(t.starts_at)<=julianday('now') AND (t.ends_at IS NULL OR julianday(t.ends_at)>julianday('now')) LIMIT 1")
     .get(attempt.enrollment_id);
-  if (!access) throw new AppError(403, 'Enrollment required');
+  if (!access) throw new AppError(403, 'Enrollment required', 'ENROLLMENT_REQUIRED');
   return attempt;
 }
 

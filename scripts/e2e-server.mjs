@@ -44,7 +44,7 @@ for (let i = 0; i < 13; i++) {
     revision = randomUUID(),
     module = randomUUID();
   db.prepare(
-    "INSERT INTO courses(id,slug,author_id,status,access_mode,locale) VALUES(?,?,'e2e-admin','PUBLISHED','OPEN_FREE','en')",
+    "INSERT INTO courses(id,slug,author_id,status,access_mode,locale) VALUES(?,?,'e2e-admin','DRAFT','OPEN_FREE','en')",
   ).run(id, `catalog-fixture-${i}`);
   db.prepare(
     "INSERT INTO course_revisions(id,course_id,title,summary,slug,locale,level,access_mode) VALUES(?,?,?,'Catalog pagination fixture',?,'en','beginner','OPEN_FREE')",
@@ -57,12 +57,12 @@ for (let i = 0; i < 13; i++) {
   db.prepare(
     "INSERT INTO lessons(id,module_id,title,body,sort_order) VALUES(?,?,'Lesson','Text',0)",
   ).run(randomUUID(), module);
-  db.prepare('UPDATE courses SET current_revision_id=?,published_revision_id=? WHERE id=?').run(
+  db.prepare('UPDATE course_revisions SET published_at=datetime(\'now\') WHERE id=?').run(revision);
+  db.prepare("UPDATE courses SET current_revision_id=?,published_revision_id=?,status='PUBLISHED' WHERE id=?").run(
     revision,
     revision,
     id,
   );
-  db.prepare('UPDATE course_revisions SET published_at=datetime(\'now\') WHERE id=?').run(revision);
 }
 db.close();
 if (process.env.VIDEO_TEST_REAL === '1') {

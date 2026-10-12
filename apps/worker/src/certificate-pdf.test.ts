@@ -18,10 +18,10 @@ it('generates a private PDF with readable certificate fields and an embedded ver
       INSERT INTO users(id,email,email_normalized,password_hash)
       VALUES('pdf-user','pdf@example.com','pdf@example.com','hash');
       INSERT INTO courses(id,slug,author_id) VALUES('pdf-course','pdf-course','pdf-user');
-      INSERT INTO course_revisions(id,course_id,title,summary)
-      VALUES('pdf-revision','pdf-course','The Analytical Engine','Course summary');
-      INSERT INTO enrollments(id,user_id,course_id,revision_id)
-      VALUES('pdf-enrollment','pdf-user','pdf-course','pdf-revision');
+      INSERT INTO course_revisions(id,course_id,title,summary,duration_minutes,instructor_name)
+      VALUES('pdf-revision','pdf-course','The Analytical Engine','Course summary',90,'Maia Academy');
+      INSERT INTO enrollments(id,user_id,course_id,revision_id,completed_at)
+      VALUES('pdf-enrollment','pdf-user','pdf-course','pdf-revision','2026-10-03T10:00:00.000Z');
     `);
     const publicCode = 'A'.repeat(43);
     const snapshot = {

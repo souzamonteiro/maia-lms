@@ -33,8 +33,8 @@ export function videosRouter(
     const row = db
       .prepare('SELECT * FROM video_uploads WHERE id = ? AND media_kind = ?')
       .get(id, mediaKind) as Upload | undefined;
-    if (!row) throw new AppError(404, 'Video not found');
-    if (row.owner_id !== user && role !== 'admin') throw new AppError(403, 'Video access denied');
+    if (!row) throw new AppError(404, 'Video not found', 'VIDEO_NOT_FOUND');
+    if (row.owner_id !== user && role !== 'admin') throw new AppError(403, 'Video access denied', 'VIDEO_ACCESS_DENIED');
     return row;
   }
   router.get(`${endpoint}`, requireRole('author', 'admin'), (req, res) => {
@@ -71,7 +71,7 @@ export function videosRouter(
       const course = db.prepare('SELECT author_id FROM courses WHERE id=?').get(v.courseId) as
         { author_id: string } | undefined;
       if (!course || (req.session.role !== 'admin' && course.author_id !== req.session.userId))
-        throw new AppError(403, 'Course access denied');
+        throw new AppError(403, 'Course access denied', 'COURSE_ACCESS_DENIED');
       const usage = db
         .prepare(
           "SELECT COALESCE(sum(size),0) AS bytes FROM video_uploads WHERE owner_id=? AND status != 'CANCELLED'",
@@ -116,7 +116,7 @@ export function videosRouter(
         if (!Number.isSafeInteger(offset) || offset !== v.offset || v.status !== 'UPLOADING')
           throw new AppError(409, 'Upload offset changed', 'UPLOAD_CONFLICT');
         if (!Buffer.isBuffer(req.body) || !req.body.length || offset + req.body.length > v.size)
-          throw new AppError(422, 'Invalid chunk');
+          throw new AppError(422, 'Invalid chunk', 'UPLOAD_CHUNK_INVALID');
         const key = `uploads/${v.id}/${randomUUID()}`;
         await store.putPrivate(key, req.body, 'application/octet-stream');
         try {
@@ -148,7 +148,7 @@ export function videosRouter(
   router.post(`${endpoint}/:id/complete`, requireRole('author', 'admin'), (req, res) => {
     const v = owned(req.params.id, req.session.userId, req.session.role);
     if (v.offset !== v.size || !['UPLOADING', 'QUEUED', 'PROCESSING', 'READY'].includes(v.status))
-      throw new AppError(409, 'Upload incomplete');
+      throw new AppError(409, 'Upload incomplete', 'UPLOAD_INCOMPLETE');
     db.prepare("UPDATE video_uploads SET status='QUEUED' WHERE id=? AND status='UPLOADING'").run(
       v.id,
     );
@@ -156,7 +156,7 @@ export function videosRouter(
   });
   router.post(`${endpoint}/:id/retry`, requireRole('author', 'admin'), (req, res) => {
     const v = owned(req.params.id, req.session.userId, req.session.role);
-    if (v.status !== 'FAILED') throw new AppError(409, 'Video is not failed');
+    if (v.status !== 'FAILED') throw new AppError(409, 'Video is not failed', 'UPLOAD_RETRY_STATE_INVALID');
     db.prepare("UPDATE video_uploads SET status='QUEUED',error=NULL WHERE id=?").run(v.id);
     res.json({ status: 'QUEUED' });
   });
@@ -164,7 +164,7 @@ export function videosRouter(
     void (async () => {
       const v = owned(req.params.id, req.session.userId, req.session.role);
       if (!['UPLOADING', 'CANCELLED'].includes(v.status))
-        throw new AppError(409, 'Only incomplete uploads can be cancelled');
+        throw new AppError(409, 'Only incomplete uploads can be cancelled', 'UPLOAD_CANCEL_STATE_INVALID');
       db.prepare("UPDATE video_uploads SET status='CANCELLED' WHERE id=?").run(v.id);
       const rows = db
         .prepare('SELECT storage_key FROM video_chunks WHERE upload_id=?')

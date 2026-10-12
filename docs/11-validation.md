@@ -330,7 +330,19 @@ all three languages, retained form input while switching languages, and absence 
 the entered password from local/session storage. Existing reset tests still verify
 single-use tokens and session revocation. Real SMTP delivery was not exercised;
 these tests validate the transactional outbox payloads and browser behavior.
-No new migration or deployment performed. I18N-01, I18N-02 and AUTH-01 remain partial.
+No new migration or deployment performed. I18N-02 and AUTH-01 remain partial.
+
+## I18N-01 localized API errors and formatting — October 11, 2026
+
+API and middleware failures now carry stable codes for localized display, including
+authentication, authorization, validation, request parsing, rate limits, course,
+lesson, enrollment, media, and upload states. Translation parity and placeholders
+are tested for `en`, `pt-BR`, and `es`; numeric translation values, catalog page
+counts, dates, and currency use locale-aware formatters. A Chromium regression
+switches the admin user list date through all three locales. Full validation passed:
+126 tests across 40 files, build/lint, and all 26 Chromium workflows. I18N-01 is
+complete locally; I18N-02 course-language authoring/metadata and AUTH-01's remaining
+account/MFA workflows remain separate open items. No deployment was performed.
 
 ## Email verification confirmation — September 30, 2026
 
@@ -910,6 +922,21 @@ OpenAPI parsed, and `git diff --check` passed. Public verification intentionally
 does not reveal private reasons or lineage. No production migration or deployment
 was performed.
 
+## BASE-02 isolated prototype restore rehearsal — October 11, 2026
+
+A new file-backed test creates a representative database at prototype migrations
+001–003, writes accounts/authentication records, a published course and draft,
+legacy media references, enrollment, entitlement, progress, and markup-like lesson
+text, then backs it up to a second temporary SQLite file and runs all later
+migrations twice. It verifies preserved identities/access/progress/content,
+published-pointer backfill, legacy `plain` rendering, editorial promotions, home
+settings, `integrity_check`, and `foreign_key_check`. The test passes. No actual
+prototype database exists in the workspace (`data/` contains only storage files),
+so BASE-02 remains open pending the same isolated rehearsal against a user-provided
+prototype database copy. The focused migration test passed all four cases; the full
+suite passed 123 tests across 40 files, build and lint passed, and `git diff --check`
+was clean. No production database was accessed or changed.
+
 ## Course revision publication integrity — October 10, 2026
 
 Migrations 061 and 062 reject direct deletion or ID changes for a revision
@@ -918,6 +945,15 @@ focused SQLite test verifies that an unpublished current draft cannot be renamed
 deleted while referenced and can be deleted after its pointer is cleared. No
 authoring or publication behavior changed. The focused migration test passed; no
 production migration or deployment was performed.
+
+## Published course pointer presence — October 11, 2026
+
+Migration 067 rejects inserts or updates that leave a `PUBLISHED` course without
+a same-course revision marked published. Direct-SQL tests cover clearing the public
+pointer and attempting to point at a draft; catalog fixtures now follow the valid
+draft-to-published sequence. The focused pointer/catalog tests passed. Build and
+lint passed; the full suite passed 122 tests across 40 files, and all 25 Chromium
+workflows passed. No production migration or deployment was performed.
 
 Migrations 063 and 064 close the direct-SQL publication gap: a published revision's
 metadata and its modules, lessons, attachments, category assignments, quiz
@@ -928,6 +964,23 @@ authoring or publication route behavior changed. Build and lint passed; the full
 suite passed 121 tests across 39 files, and all 25 Chromium workflows passed. No
 production migration or deployment was performed.
 
+Migration 065 rejects assigning `published_revision_id` to a same-course draft
+revision. The course publication transaction now writes `published_at` before
+switching the public pointer; both changes remain atomic. The direct-SQL pointer
+test and 12 publication API tests passed. Build and lint passed; the full suite
+passed 121 tests across 39 files, and all 25 Chromium workflows passed. One
+Chromium run had a transient registration-page timeout in the learner flow; the
+isolated test and the complete rerun passed. No production migration or deployment
+was performed.
+
+Migration 066 rejects updating or deleting a media upload used by a published
+revision, protecting video/artifact keys and metadata from direct SQL rewrites.
+The focused test covers output key, poster key, duration, and deletion after the
+READY video is published in a lesson. Build and lint passed; the full suite passed
+122 tests across 40 files, and all 25 Chromium workflows passed, including real
+video playback and published attachment download. No production migration or
+deployment was performed.
+
 ## Assessment attempt result integrity — October 4, 2026
 
 Migration 056 rejects open attempts carrying a score/pass result and requires
@@ -937,6 +990,97 @@ state, out-of-range score, invalid pass flag, and a valid submitted result while
 retaining the existing deadline and immutability assertions. No application route
 behavior changed; this closes a direct-SQL invariant gap under DATA-01. No production
 migration or deployment was performed.
+
+## Course status transitions — October 11, 2026
+
+Migration 068 rejects direct-SQL transitions outside the review, publication, and
+archive state machine. The focused test rejects `PUBLISHED → DRAFT`, accepts
+`PUBLISHED → ARCHIVED`, and rejects republishing an archived course; same-state
+writes remain idempotent. Build and lint passed; the full suite passed 122 tests
+across 40 files, and all 25 Chromium workflows passed. No production migration or
+deployment was performed.
+
+## Urgent withdrawal state — October 11, 2026
+
+Migration 069 rejects setting `withdrawn_at` on a draft or on a course without a
+valid published revision pointer, while preserving withdrawal for published and
+archived courses. The focused direct-SQL test verifies both draft rejection and a
+valid published-course withdrawal. Build and lint passed; the full suite passed
+122 tests across 40 files, and all 25 Chromium workflows passed. No production
+migration or deployment was performed.
+
+## Enrollment availability invariant — October 11, 2026
+
+Migration 070 rejects new enrollment rows for `REVIEW`, `ARCHIVED`, and withdrawn
+courses, and requires a `PUBLISHED` course to use its exact public revision. The
+focused direct-SQL test accepts the active public revision and rejects draft
+assignment, archived status, and urgent withdrawal. Existing enrollments remain
+unchanged. Build and lint passed; the full suite passed 122 tests across 40 files,
+and all 25 Chromium workflows passed. No production migration or deployment was
+performed.
+
+## Entitlement provenance — October 11, 2026
+
+Migration 071 makes `enrollment_id`, `source_type`, and `source_id` immutable on
+entitlements. The focused SQL test reproduces relabeling an order-backed grant as
+free and verifies the write is rejected. Order-reference integrity and entitlement
+time-window tests pass together. Build and lint passed; the full suite passed 122
+tests across 40 files, and all 25 Chromium workflows passed, including admin grant
+and revoke. No production migration or deployment was performed.
+
+## Course ownership — October 11, 2026
+
+Migration 072 rejects changing `courses.author_id` after creation. The focused
+direct-SQL test verifies an attempted transfer to another author is denied. Build
+and lint passed; the full suite passed 122 tests across 40 files, and all 25
+Chromium workflows passed. No production migration or deployment was performed.
+
+## Certificate issuance lifecycle — October 11, 2026
+
+Migration 073 rejects inserting a certificate with `revoked_at` already set,
+requiring issuance to begin active and revocation to occur through the guarded
+update lifecycle. The certificate regression test covers this direct-SQL bypass
+alongside valid revoke-then-reissue. Build and lint passed; the full suite passed
+122 tests across 40 files, and all 25 Chromium workflows passed, including
+certificate revoke/reissue and history. No production migration or deployment was
+performed.
+
+## Certificate timestamp integrity — October 11, 2026
+
+Migration 074 rejects unparseable certificate issuance and revocation timestamps.
+The certificate test verifies malformed `issued_at` and `revoked_at` inputs fail,
+while valid issuance, monotonic revocation, and reissue continue to pass. Build and
+lint passed; the full suite passed 122 tests across 40 files, and all 25 Chromium
+workflows passed. No production migration or deployment was performed.
+
+## Certificate payload shape — October 11, 2026
+
+Migration 075 rejects valid JSON that is not a verification-ready certificate
+object, including missing display fields or a payload code that does not match the
+row's public code. The certificate fixture now mirrors the endpoint payload. Build
+and lint passed; the full suite passed 122 tests across 40 files, and all 25
+Chromium workflows passed, including issuance, reissue, verification, and PDF
+download. No production migration or deployment was performed.
+
+## Certificate payload row consistency — October 11, 2026
+
+Migration 076 rejects certificate inserts where payload `confirmedName` or
+`issuedAt` disagrees with the immutable row columns. Direct-SQL coverage reproduces
+a conflicting learner name and a conflicting issuance timestamp; valid issuance
+and reissue fixtures remain consistent. Build and lint passed; the full suite
+passed 122 tests across 40 files, and all 25 Chromium workflows passed, including
+certificate reissue and PDF delivery. No production migration or deployment was
+performed.
+
+## Certificate payload revision consistency — October 11, 2026
+
+Migration 077 requires the payload's course title, workload, instructor, and
+completion time to match the enrollment's assigned revision and completion row.
+Direct-SQL tests reject each of these four mismatches while valid issue/reissue
+fixtures pass. The PDF worker fixture now mirrors the assigned revision and
+completion snapshot. Build and lint passed; the full suite passed 122 tests across
+40 files, and all 25 Chromium workflows passed. No production migration or
+deployment was performed.
 
 ## Outbox retry-state integrity — October 4, 2026
 

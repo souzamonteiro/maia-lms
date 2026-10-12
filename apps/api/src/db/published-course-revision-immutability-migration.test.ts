@@ -29,18 +29,16 @@ it('rejects direct updates to published course revision metadata', () => {
       VALUES('quiz','revision','lesson');
       INSERT INTO questions(id,quiz_id,prompt,choices_json,correct_choice_keys)
       VALUES('question','quiz','Prompt','[]','[]');
+      UPDATE course_revisions SET published_at=datetime('now') WHERE id='revision';
       UPDATE courses SET current_revision_id='revision',published_revision_id='revision',status='PUBLISHED'
       WHERE id='course';
-    `);
-    expect(() =>
-      db.prepare('UPDATE course_revisions SET title=? WHERE id=?').run('Rewritten title', 'revision'),
-    ).toThrow(/published course revision is immutable/);
-    db.exec(`
-      UPDATE course_revisions SET published_at=datetime('now') WHERE id='revision';
     `);
 
     expect(() =>
       db.prepare('UPDATE course_revisions SET title=? WHERE id=?').run('Rewritten title', 'revision'),
+    ).toThrow(/published course revision is immutable/);
+    expect(() =>
+      db.prepare('UPDATE course_revisions SET published_at=NULL WHERE id=?').run('revision'),
     ).toThrow(/published course revision is immutable/);
     expect(() => db.prepare('DELETE FROM course_revisions WHERE id=?').run('revision')).toThrow(
       /published course revision is immutable/,

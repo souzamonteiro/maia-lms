@@ -1,4 +1,6 @@
-export async function mountAdminUsers({ app, api, t, e, notify }) {
+import { formatDate } from './i18n.js';
+
+export async function mountAdminUsers({ app, api, t, e, notify, locale }) {
   const state = { q: '', role: '', status: '', limit: 25, offset: 0 };
   app.innerHTML = `<a href="/admin">${t('administer')}</a><h1>${t('adminUsersTitle')}</h1><form id="user-filters" class="user-filters"><label>${t('adminUsersSearch')}<input name="q" type="search" maxlength="100" autocomplete="off"></label><label>${t('adminUsersRole')}<select name="role"><option value="">${t('adminUsersAllRoles')}</option><option value="learner">${t('roleLearner')}</option><option value="author">${t('roleAuthor')}</option><option value="admin">${t('roleAdmin')}</option><option value="worker">${t('roleWorker')}</option></select></label><label>${t('adminUsersStatus')}<select name="status"><option value="">${t('adminUsersAllStatuses')}</option><option value="active">${t('accountActive')}</option><option value="suspended">${t('accountSuspended')}</option></select></label><button type="submit">${t('adminUsersSearchAction')}</button></form><p id="users-summary" role="status" aria-live="polite"></p><div id="users-list" aria-busy="true"></div><nav id="users-pages" aria-label="${t('adminUsersPagination')}"></nav>`;
 
@@ -13,8 +15,7 @@ export async function mountAdminUsers({ app, api, t, e, notify }) {
   const roleLabel = role => t(`role${role[0].toUpperCase()}${role.slice(1)}`);
   const dateLabel = value => {
     if (!value) return t('valueUnavailable');
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? t('valueUnavailable') : new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date);
+    return formatDate(locale, value) ?? t('valueUnavailable');
   };
 
   async function load() {

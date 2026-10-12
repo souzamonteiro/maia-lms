@@ -107,6 +107,69 @@ to the revision, matching the API transaction order. Migration 064 freezes modul
 lessons, attachments, category assignments, quizzes, and questions while a revision
 has been published; new draft revisions remain editable.
 
+Migration 065 requires every non-null `courses.published_revision_id` to reference
+a same-course revision whose `published_at` is set. The API marks the validated
+revision published before switching the pointer, within one transaction, so the
+public catalog cannot be redirected to an unpublished draft through direct SQL.
+
+Migration 066 prevents updating or deleting a video upload referenced by published
+revision content, including lesson video, cover, trailer, and attachment links. This
+keeps artifact keys and media metadata stable after publication; uploads for drafts
+remain mutable through the processing lifecycle.
+
+Migration 067 requires a course with status `PUBLISHED` to have a non-null public
+revision pointer to a same-course revision with `published_at` set. This applies to
+inserts and status/pointer changes; archiving or drafting may retain the historical
+published pointer.
+
+Migration 071 makes an entitlement's enrollment, source type, and source ID
+immutable after creation. This prevents an order-backed grant from being relabeled
+as a free/admin grant or detached from its order through direct SQL. Access-window
+and revocation fields remain mutable under their own invariants.
+
+Migration 072 makes `courses.author_id` immutable after course creation. Ownership
+transfer is not an exposed API workflow; direct SQL cannot silently transfer
+authoring rights to another account.
+
+Migration 073 requires a newly inserted certificate to start active. A revoked
+state can only be reached by updating an issued certificate through the existing
+reason-required, timestamp-monotonic revocation guards.
+
+Migration 074 requires certificate `issued_at` and any non-null `revoked_at` to be
+parseable SQLite timestamps, preventing malformed strings from bypassing chronology
+checks through `julianday()` returning `NULL`.
+
+Migration 075 requires each new certificate payload to be a JSON object with
+non-empty learner/course/instructor text, positive integer workload, parseable
+completion and issuance timestamps, `status: "valid"`, and `publicCode` matching
+the certificate's indexed code. This keeps the immutable snapshot usable by public
+verification and downstream PDF generation.
+
+Migration 076 requires the payload's `confirmedName` and `issuedAt` to equal the
+certificate row's immutable `confirmed_name` and `issued_at`, preventing public,
+administrative, and PDF views from disagreeing about identity or issuance time.
+
+Migration 077 requires payload `courseTitle`, `workloadMinutes`, `issuerName`, and
+`completedAt` to match the enrollment's assigned revision and completion record.
+This prevents direct SQL from issuing a validly shaped but forged certificate
+snapshot for a different course, workload, instructor, or completion date.
+
+Migration 068 enforces the course state machine at the database boundary: `DRAFT`
+may move to `REVIEW`, `PUBLISHED`, or `ARCHIVED`; `REVIEW` may move to `PUBLISHED`
+or `ARCHIVED`; `PUBLISHED` may move to `ARCHIVED`; and `ARCHIVED` is terminal.
+Idempotent same-state writes remain valid. This matches the API's review, publish,
+and archive actions and rejects direct-SQL unpublishing or resurrection.
+
+Migration 069 allows an urgent withdrawal marker only when the course is
+`PUBLISHED` or `ARCHIVED` and its public pointer references a same-course revision
+with `published_at` set. The withdrawal reason remains mandatory and the marker
+remains immutable under migration 049.
+
+Migration 070 rejects new enrollment rows for `REVIEW`, `ARCHIVED`, and urgently
+withdrawn courses. For `PUBLISHED` courses, the enrollment revision must equal the
+valid public revision pointer. Existing enrollment rows remain intact when a
+course is withdrawn.
+
 Migration 051 adds monotonic `enrollments.completed_at`. Server completion policy is derived from the enrollment's immutable revision: at least one required lesson, every required lesson completed, every quiz in that revision passed by this enrollment, and active entitlement on a non-withdrawn course. Progress writes and quiz submissions reevaluate in their immediate transaction. Access withdrawal does not erase completion history; current entitlement remains a separate eligibility check for any future certificate issuance.
 
 ## MP4 video — migration 005

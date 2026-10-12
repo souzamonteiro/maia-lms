@@ -404,6 +404,12 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Dependency: BASE-01. Acceptance: restoring the prototype database in an isolated
   environment preserves accounts, enrollments, progress, and lessons; legacy text
   remains `plain`, without executing previously harmless markup. Do not edit applied migrations.
+  A file-backed synthetic upgrade test now applies the prototype-era migrations to
+  a temporary backup and verifies accounts, sessions/tokens, published and draft
+  revisions, legacy media references, enrollments, entitlements, progress, literal
+  text, promotion slots, repeatability, and SQLite integrity. Keep BASE-02 open:
+  no actual prototype database is present in the workspace for the required isolated
+  data-preservation rehearsal.
 - [x] **EDIT-01 — Markdown editor with toolbar and preview.**
   Headings, bold, italic, lists, links, quotes, code blocks, tables, and images with
   alt text; accessible editing and preview. Dependencies: BASE-01/02.
@@ -526,12 +532,18 @@ does not satisfy a task. Preserve local internationalization changes and prototy
 
 ## P1 — identity, management, and internationalization
 
-- [ ] **I18N-01 — Complete existing internationalization.**
+- [x] **I18N-01 — Complete existing internationalization.**
   Preserve `en`, `pt-BR`, `es`, and existing detection behavior; translate all new
   components, states, validations, emails, and API messages using stable codes;
   format dates/numbers/prices by locale. Dependency: part of every delivery, not a
   later rewrite. Acceptance: the same flows tested in all three languages, missing
   keys detected, and language switching without form loss (EDIT-04).
+  Completed locally: all currently exposed API failures return stable codes with
+  translations in all three locales; translation keys/placeholders are parity-
+  checked; numeric interpolation, catalog pagination, dates, and currency use the
+  selected locale. Browser coverage exercises account, recovery, authoring, catalog,
+  learner, verification, and admin date flows across locales. Currency formatting
+  is ready for price UI; paid pricing/checkout remain PAY-01, not an I18N-01 gap.
 - [ ] **I18N-02 — Separate interface and course languages.**
   Save user preferences, let authors set content/caption locales, and support
   translated metadata with explicit fallback. Dependencies: BASE-02, I18N-01.
@@ -780,8 +792,28 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   061 prevents deleting and migration 062 prevents renaming a revision still
   referenced by either course pointer; migrations 063–064 freeze published
   revision metadata, modules, lessons, attachments, category assignments, quizzes,
-  and questions while leaving drafts editable. Migration 021 binds lesson videos
-  to their revision's course and video media kind; migration 022 applies course
+  and questions while leaving drafts editable; migration 065 requires the public
+  revision pointer to target a revision marked published; migration 066 freezes
+  media upload records referenced by published revisions; migration 067 requires
+  PUBLISHED courses to retain a valid published revision pointer; migration 068
+  restricts course status transitions to the review, publication, and archive flows.
+  Migration 069 permits urgent withdrawal only for published or archived courses
+  with a valid published revision pointer.
+  Migration 070 rejects new enrollment rows for archived, review, or withdrawn
+  courses and validates the exact public revision for published courses.
+  Migration 072 makes course ownership immutable, preventing direct-SQL transfer
+  of authoring rights without an administrative workflow.
+  Migration 073 requires newly inserted certificates to start active; revocation
+  must occur through the existing reasoned, monotonic update lifecycle.
+  Migration 074 rejects malformed certificate issuance and revocation timestamps.
+  Migration 075 requires certificate payloads to be verification-ready objects
+  with typed fields and a public code matching the indexed code.
+  Migration 076 ties the payload's confirmed name and issue timestamp to the
+  corresponding immutable certificate columns.
+  Migration 077 ties course title, workload, issuer and completion time in the
+  payload to the enrollment's assigned revision and completion record.
+  Migration 021 binds lesson videos to their revision's course and video media kind;
+  migration 022 applies course
   and media-kind checks to revision covers and trailers; migration
   023 validates attachment ownership and optional lesson/revision associations;
   migration 024 prevents duplicate attachment positions within each list; migration
@@ -789,7 +821,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Migration 026 binds attempts to the enrollment/quiz revision and answers to
   questions from the attempted quiz; migration 027 prevents duplicate question
   positions within a quiz. Migration 028 requires an order-backed entitlement to
-  reference a matching order for the enrollment's user and course; migration 029
+  reference a matching order for the enrollment's user and course; migration 071
+  makes enrollment/source provenance immutable; migration 029
   enforces a positive price and immutable order snapshot terms. Migration 030
   deduplicates provider payment/refund references per provider and requires
   positive integer refund amounts; migration 031 permits at most one non-revoked

@@ -13,6 +13,7 @@ export function validateBody<T>(schema: ZodSchema<T>) {
     if (!result.success) {
       res.status(422).json({
         error: 'Validation failed',
+        code: 'API_VALIDATION_FAILED',
         issues: result.error.issues.map(i => ({
           path: i.path.join('.'),
           message: i.message,
@@ -33,7 +34,7 @@ export function validateParams<T>(schema: ZodSchema<T>) {
   return (req: Request, res: Response, next: NextFunction): void => {
     const result = schema.safeParse(req.params);
     if (!result.success) {
-      res.status(400).json({ error: 'Invalid parameters' });
+      res.status(400).json({ error: 'Invalid parameters', code: 'API_INVALID_PARAMETERS' });
       return;
     }
     next();
@@ -48,7 +49,7 @@ export function validateQuery<T>(schema: ZodSchema<T>) {
   return (req: Request, res: Response, next: NextFunction): void => {
     const result = schema.safeParse(req.query);
     if (!result.success) {
-      res.status(400).json({ error: 'Invalid query parameters' });
+      res.status(400).json({ error: 'Invalid query parameters', code: 'API_INVALID_QUERY' });
       return;
     }
     next();

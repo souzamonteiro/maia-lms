@@ -41,9 +41,9 @@ export function attachmentsRouter(db: Database.Database, config: Config): Router
             output_key: string;
           }
         | undefined;
-      if (!row || !/\.(png|jpe?g)$/i.test(row.filename)) throw new AppError(404, 'Cover not found');
+      if (!row || !/\.(png|jpe?g)$/i.test(row.filename)) throw new AppError(404, 'Cover not found', 'COVER_NOT_FOUND');
       const owner = req.session.role === 'admin' || req.session.userId === row.author_id;
-      if (row.withdrawn_at && !owner) throw new AppError(404, 'Cover not found');
+      if (row.withdrawn_at && !owner) throw new AppError(404, 'Cover not found', 'COVER_NOT_FOUND');
       const publicAccess =
         !row.withdrawn_at && row.status === 'PUBLISHED' && row.revision_id === row.published_revision_id;
       const enrolled = db
@@ -53,7 +53,7 @@ export function attachmentsRouter(db: Database.Database, config: Config): Router
         AND julianday(t.starts_at)<=julianday('now') AND (t.ends_at IS NULL OR julianday(t.ends_at)>julianday('now'))`,
         )
         .get(req.session.userId ?? '', row.course_id, row.revision_id);
-      if (!owner && !publicAccess && !enrolled) throw new AppError(404, 'Cover not found');
+      if (!owner && !publicAccess && !enrolled) throw new AppError(404, 'Cover not found', 'COVER_NOT_FOUND');
       const stat = await store.stat(row.output_key);
       res.set({
         'Content-Type': /\.png$/i.test(row.filename) ? 'image/png' : 'image/jpeg',
@@ -95,9 +95,9 @@ export function attachmentsRouter(db: Database.Database, config: Config): Router
             is_preview: number;
           }
         | undefined;
-      if (!a) throw new AppError(404, 'Attachment not found');
+      if (!a) throw new AppError(404, 'Attachment not found', 'ATTACHMENT_NOT_FOUND');
       const owner = req.session.role === 'admin' || req.session.userId === a.author_id;
-      if (a.withdrawn_at && !owner) throw new AppError(404, 'Attachment not found');
+      if (a.withdrawn_at && !owner) throw new AppError(404, 'Attachment not found', 'ATTACHMENT_NOT_FOUND');
       const publicAccess =
         !a.withdrawn_at && a.status === 'PUBLISHED' &&
         a.revision_id === a.published_revision_id &&
@@ -107,7 +107,7 @@ export function attachmentsRouter(db: Database.Database, config: Config): Router
           `SELECT e.id FROM enrollments e JOIN entitlements t ON t.enrollment_id=e.id WHERE e.user_id=? AND e.course_id=? AND e.revision_id=? AND e.state='active' AND t.revoked_at IS NULL AND julianday(t.starts_at)<=julianday('now') AND (t.ends_at IS NULL OR julianday(t.ends_at)>julianday('now'))`,
         )
         .get(req.session.userId ?? '', a.course_id, a.revision_id);
-      if (!publicAccess && !owner && !entitled) throw new AppError(403, 'Enrollment required');
+      if (!publicAccess && !owner && !entitled) throw new AppError(403, 'Enrollment required', 'ENROLLMENT_REQUIRED');
       const stat = await store.stat(a.output_key);
       res.set({
         'Content-Type': 'application/octet-stream',

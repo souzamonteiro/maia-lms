@@ -15,7 +15,7 @@ declare module 'express-session' {
  */
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
   if (!req.session?.userId) {
-    res.status(401).json({ error: 'Authentication required' });
+    res.status(401).json({ error: 'Authentication required', code: 'AUTH_REQUIRED' });
     return;
   }
   next();
@@ -28,11 +28,11 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
 export function requireRole(...roles: UserRole[]) {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.session?.userId) {
-      res.status(401).json({ error: 'Authentication required' });
+      res.status(401).json({ error: 'Authentication required', code: 'AUTH_REQUIRED' });
       return;
     }
     if (!roles.includes(req.session.role ?? 'learner')) {
-      res.status(403).json({ error: 'Insufficient permissions' });
+      res.status(403).json({ error: 'Insufficient permissions', code: 'API_FORBIDDEN' });
       return;
     }
     next();

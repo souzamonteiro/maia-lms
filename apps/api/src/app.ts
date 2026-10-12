@@ -90,14 +90,14 @@ export function createApp(db: Database.Database, config: Config): express.Applic
           res.redirect(302, '/auth/login');
           return;
         }
-        res.status(401).json({ error: 'Session expired' });
+        res.status(401).json({ error: 'Session expired', code: 'AUTH_SESSION_EXPIRED' });
         return;
       }
       req.session.role = user.role;
     }
     if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
       if (req.headers.origin && req.headers.origin !== new URL(config.PUBLIC_BASE_URL).origin) {
-        res.status(403).json({ error: 'Invalid origin' });
+        res.status(403).json({ error: 'Invalid origin', code: 'API_INVALID_ORIGIN' });
         return;
       }
       const videoChunk =
@@ -105,7 +105,7 @@ export function createApp(db: Database.Database, config: Config): express.Applic
         /^\/api\/v1\/admin\/(?:videos|files)\/[a-f0-9-]+\/chunks$/.test(req.path) &&
         req.is('application/octet-stream');
       if (!req.is('application/json') && !videoChunk) {
-        res.status(415).json({ error: 'Use application/json' });
+        res.status(415).json({ error: 'Use application/json', code: 'API_JSON_REQUIRED' });
         return;
       }
     }
@@ -120,7 +120,7 @@ export function createApp(db: Database.Database, config: Config): express.Applic
     skip: req => req.method === 'GET' && req.path === '/me',
     standardHeaders: true,
     legacyHeaders: false,
-    message: { error: 'Too many requests, please try again later.' },
+    message: { error: 'Too many requests, please try again later.', code: 'AUTH_RATE_LIMITED' },
   });
 
   const globalLimiter = rateLimit({
@@ -166,7 +166,7 @@ export function createApp(db: Database.Database, config: Config): express.Applic
 
   // ── 404 handler ───────────────────────────────────────────────
   app.use((_req, res) => {
-    res.status(404).json({ error: 'Not found' });
+    res.status(404).json({ error: 'Not found', code: 'API_NOT_FOUND' });
   });
 
   // ── Error handler (must be last) ──────────────────────────────

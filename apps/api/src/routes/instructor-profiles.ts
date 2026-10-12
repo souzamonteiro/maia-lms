@@ -87,7 +87,7 @@ export function instructorProfilesRouter(db: Database.Database): Router {
       .get(req.params.slug) as
       | { slug: string; display_name: string; bio: string; website_url: string | null }
       | undefined;
-    if (!profile) throw new AppError(404, 'Instructor profile not found');
+    if (!profile) throw new AppError(404, 'Instructor profile not found', 'INSTRUCTOR_PROFILE_NOT_FOUND');
     const courses = db
       .prepare(
           `SELECT c.slug AS id,c.slug,r.id AS revision_id,r.title,r.summary,r.locale,

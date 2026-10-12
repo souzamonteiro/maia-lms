@@ -1,12 +1,13 @@
-export async function mountAdminCertificates({ app, api, t, e, notify }) {
+import { formatDate } from './i18n.js';
+
+export async function mountAdminCertificates({ app, api, t, e, notify, locale }) {
   app.innerHTML = `<a href="/admin">${t('administer')}</a><h1>${t('adminCertificatesTitle')}</h1><section><form id="certificate-search" class="user-filters"><label>${t('adminCertificatesSearch')}<input name="q" type="search" maxlength="100"></label><label>${t('adminUsersStatus')}<select name="status"><option value="">${t('adminCertificatesAllStates')}</option><option value="valid">${t('certificateStatusValid')}</option><option value="revoked">${t('certificateStatusRevoked')}</option></select></label><button type="submit">${t('adminUsersSearchAction')}</button></form><p id="certificate-summary" role="status" aria-live="polite"></p><div id="certificate-list" aria-busy="true"></div></section>`;
 
   const search = app.querySelector('#certificate-search');
   const list = app.querySelector('#certificate-list');
   const summary = app.querySelector('#certificate-summary');
   const dateLabel = value => {
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? t('valueUnavailable') : new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date);
+    return formatDate(locale, value) ?? t('valueUnavailable');
   };
 
   async function load() {

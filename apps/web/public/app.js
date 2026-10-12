@@ -8,7 +8,7 @@ import { coursePresentation } from './course-presentation.js';
 import { icon } from './icons.js';
 import { mountStudio, studioDirty } from './studio.js';
 import { mountHomeEditor, homeDirty } from './home-editor.js';
-import { applyTranslations, detectLocale, storeLocale, translate } from './i18n.js';
+import { applyTranslations, detectLocale, formatNumber, storeLocale, translate } from './i18n.js';
 const app = document.querySelector('#app');
 const message = document.querySelector('#message');
 const languageSelect = document.querySelector('#languageSelect');
@@ -152,7 +152,8 @@ async function catalog() {
       query.set('page', String(page));
       return `/courses?${query}`;
     };
-    root.innerHTML = `<p>${t('catalogResults')}: ${new Intl.NumberFormat(locale).format(result.total)}</p>${result.items.length ? cards(result.items) : `<p>${t('catalogEmpty')}</p>`}<nav class="actions" aria-label="${t('catalogPages')}">${result.page > 1 ? `<a href="${e(pageLink(result.page - 1))}">${t('previousPage')}</a>` : ''}<span>${t('catalogPage')} ${result.page} / ${Math.max(1, Math.ceil(result.total / result.pageSize))}</span>${result.page * result.pageSize < result.total ? `<a href="${e(pageLink(result.page + 1))}">${t('nextPage')}</a>` : ''}</nav>`;
+    const pageCount = Math.max(1, Math.ceil(result.total / result.pageSize));
+    root.innerHTML = `<p>${t('catalogResults')}: ${formatNumber(locale, result.total)}</p>${result.items.length ? cards(result.items) : `<p>${t('catalogEmpty')}</p>`}<nav class="actions" aria-label="${t('catalogPages')}">${result.page > 1 ? `<a href="${e(pageLink(result.page - 1))}">${t('previousPage')}</a>` : ''}<span>${t('catalogPage')} ${formatNumber(locale, result.page)} / ${formatNumber(locale, pageCount)}</span>${result.page * result.pageSize < result.total ? `<a href="${e(pageLink(result.page + 1))}">${t('nextPage')}</a>` : ''}</nav>`;
   } catch (error) {
     if (root.isConnected) root.textContent = t('catalogLoadError');
     notify(error);
@@ -392,7 +393,7 @@ async function learning() {
 }
 async function admin() {
   if (!me || !['admin', 'author'].includes(me.role)) throw new Error(t('adminAccessRestricted'));
-  const context = { app, api, t, e, notify, me };
+  const context = { app, api, t, e, notify, me, locale };
   if (location.pathname === '/admin/categories') {
     if (me.role !== 'admin') throw new Error(t('adminAccessRestricted'));
     await mountCategoryEditor(context);

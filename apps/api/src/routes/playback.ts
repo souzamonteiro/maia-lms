@@ -54,9 +54,9 @@ export function playbackRouter(db: Database.Database, config: Config): Router {
               withdrawn_at: string | null;
             }
           | undefined;
-        if (!row) throw new AppError(404, 'Video not available');
+        if (!row) throw new AppError(404, 'Video not available', 'VIDEO_NOT_AVAILABLE');
         const owner = req.session.role === 'admin' || req.session.userId === row.author_id;
-        if (row.withdrawn_at && !owner) throw new AppError(404, 'Video not available');
+        if (row.withdrawn_at && !owner) throw new AppError(404, 'Video not available', 'VIDEO_NOT_AVAILABLE');
         const publicAccess =
           !row.withdrawn_at && row.status === 'PUBLISHED' &&
           row.revision_id === row.published_revision_id &&
@@ -66,12 +66,12 @@ export function playbackRouter(db: Database.Database, config: Config): Router {
             `SELECT e.id FROM enrollments e JOIN entitlements t ON t.enrollment_id=e.id WHERE e.user_id=? AND e.course_id=? AND e.revision_id=? AND e.state='active' AND t.revoked_at IS NULL AND julianday(t.starts_at)<=julianday('now') AND (t.ends_at IS NULL OR julianday(t.ends_at)>julianday('now'))`,
           )
           .get(req.session.userId ?? '', row.course_id, row.revision_id);
-        if (!publicAccess && !owner && !enrolled) throw new AppError(403, 'Enrollment required');
+        if (!publicAccess && !owner && !enrolled) throw new AppError(403, 'Enrollment required', 'ENROLLMENT_REQUIRED');
         if (req.params.language) {
           const caption = (
             JSON.parse(row.captions_json) as { language: string; vtt: string }[]
           ).find(c => c.language === req.params.language);
-          if (!caption) throw new AppError(404, 'Caption not found');
+          if (!caption) throw new AppError(404, 'Caption not found', 'CAPTION_NOT_FOUND');
           res
             .set({
               'Content-Type': 'text/vtt; charset=utf-8',
@@ -82,7 +82,7 @@ export function playbackRouter(db: Database.Database, config: Config): Router {
         }
         const poster = req.path.endsWith('/poster');
         const key = poster ? row.poster_key : row.output_key;
-        if (!key) throw new AppError(404, 'Media not available');
+        if (!key) throw new AppError(404, 'Media not available', 'MEDIA_NOT_AVAILABLE');
         const { size } = await store.stat(key);
         res.set({
           'Accept-Ranges': 'bytes',

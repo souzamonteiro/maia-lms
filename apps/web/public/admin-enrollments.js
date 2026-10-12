@@ -1,12 +1,13 @@
-export async function mountAdminEnrollments({ app, api, t, e, notify }) {
+import { formatDate } from './i18n.js';
+
+export async function mountAdminEnrollments({ app, api, t, e, notify, locale }) {
   app.innerHTML = `<a href="/admin">${t('administer')}</a><h1>${t('adminEnrollmentsTitle')}</h1><section><h2>${t('adminEnrollmentGrantTitle')}</h2><form id="enrollment-grant"><label>${t('adminEnrollmentEmail')}<input name="email" type="email" maxlength="254" required></label><label>${t('adminEnrollmentCourse')}<input name="courseSlug" maxlength="100" required></label><label>${t('adminEnrollmentReason')}<textarea name="reason" minlength="5" maxlength="1000" required></textarea></label><button type="submit">${t('adminEnrollmentGrantAction')}</button></form></section><section><h2>${t('adminEnrollmentListTitle')}</h2><form id="enrollment-search" class="user-filters"><label>${t('adminEnrollmentSearch')}<input name="q" type="search" maxlength="100"></label><label>${t('adminUsersStatus')}<select name="state"><option value="">${t('adminEnrollmentAllStates')}</option><option value="active">${t('adminEnrollmentActive')}</option><option value="revoked">${t('adminEnrollmentRevoked')}</option></select></label><button type="submit">${t('adminUsersSearchAction')}</button></form><p id="enrollment-summary" role="status" aria-live="polite"></p><div id="enrollment-list" aria-busy="true"></div></section>`;
 
   const search = app.querySelector('#enrollment-search');
   const list = app.querySelector('#enrollment-list');
   const summary = app.querySelector('#enrollment-summary');
   const dateLabel = value => {
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? t('valueUnavailable') : new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date);
+    return formatDate(locale, value) ?? t('valueUnavailable');
   };
 
   async function load() {

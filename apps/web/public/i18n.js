@@ -575,9 +575,35 @@ export function translationPlaceholderMismatches(locale) {
     .sort();
 }
 
+export function formatNumber(locale, value, options = {}) {
+  const number = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(number)) return null;
+  const language = translations[locale] ? locale : 'en';
+  return new Intl.NumberFormat(language, options).format(number);
+}
+
+export function formatCurrency(locale, value, currency) {
+  try {
+    return formatNumber(locale, value, { style: 'currency', currency });
+  } catch {
+    return null;
+  }
+}
+
 export function translate(locale, key, values = {}) {
-  const template = translations[locale]?.[key] ?? translations.en[key] ?? key;
-  return template.replace(/\{(\w+)\}/g, (_, name) => values[name] ?? '');
+  const language = translations[locale] ? locale : 'en';
+  const template = translations[language][key] ?? translations.en[key] ?? key;
+  return template.replace(/\{(\w+)\}/g, (_, name) => {
+    const value = values[name];
+    return typeof value === 'number' ? formatNumber(language, value) : (value ?? '');
+  });
+}
+
+export function formatDate(locale, value, options = { dateStyle: 'medium' }) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const language = translations[locale] ? locale : 'en';
+  return new Intl.DateTimeFormat(language, options).format(date);
 }
 
 export function applyTranslations(locale, root = document) {
@@ -1866,4 +1892,118 @@ Object.assign(translations.es, {
   ADMIN_CERTIFICATE_MUST_BE_REVOKED: 'Revoca el certificado actual antes de reemitirlo.',
   ADMIN_CERTIFICATE_ALREADY_SUPERSEDED: 'Este certificado ya tiene un reemplazo.',
   ADMIN_CERTIFICATE_SNAPSHOT_REQUIRED: 'Este certificado antiguo no tiene el snapshot necesario para reemitirlo de forma segura.',
+});
+Object.assign(translations.en, {
+  AUTH_REQUIRED: 'Sign in to continue.',
+  AUTH_SESSION_EXPIRED: 'Your session expired. Sign in again.',
+  AUTH_RATE_LIMITED: 'Too many sign-in attempts. Try again later.',
+  API_FORBIDDEN: 'You do not have permission to do that.',
+  API_REQUEST_TOO_LARGE: 'The request is too large.',
+  API_INVALID_INPUT: 'Check the information and try again.',
+  API_INVALID_JSON: 'The request could not be read.',
+  API_INTERNAL_ERROR: 'Something went wrong. Try again later.',
+  API_VALIDATION_FAILED: 'Some submitted fields are invalid.',
+  API_INVALID_PARAMETERS: 'The request address is invalid.',
+  API_INVALID_QUERY: 'The search options are invalid.',
+  API_INVALID_ORIGIN: 'This request origin is not allowed.',
+  API_JSON_REQUIRED: 'This endpoint requires a JSON request.',
+  API_NOT_FOUND: 'The requested resource was not found.',
+  ENROLLMENT_REQUIRED: 'Enroll in this course to continue.',
+  COVER_NOT_FOUND: 'Course cover not found.',
+  ATTACHMENT_NOT_FOUND: 'Attachment not found.',
+  COURSE_NOT_FOUND: 'Course not found.',
+  COURSE_DUPLICATE_EDIT_UNIT: 'The same course section was included more than once.',
+  COURSE_MODULE_NOT_FOUND: 'Course module not found.',
+  COURSE_LESSON_NOT_FOUND: 'Course lesson not found.',
+  COURSE_NOT_ACCEPTING_ENROLLMENTS: 'This course is not accepting enrollments.',
+  PAYMENT_REQUIRED: 'Verified payment is required to enroll.',
+  ENROLLMENT_ACCESS_REVOKED: 'Access to this enrollment has been revoked.',
+  LESSON_NOT_FOUND: 'Lesson not found.',
+  INSTRUCTOR_PROFILE_NOT_FOUND: 'Instructor profile not found.',
+  VIDEO_NOT_AVAILABLE: 'Video is not available.',
+  CAPTION_NOT_FOUND: 'Caption track not found.',
+  MEDIA_NOT_AVAILABLE: 'Media is not available.',
+  VIDEO_NOT_FOUND: 'Video upload not found.',
+  VIDEO_ACCESS_DENIED: 'You do not have access to this video.',
+  COURSE_ACCESS_DENIED: 'You do not have access to this course.',
+  UPLOAD_CHUNK_INVALID: 'The uploaded chunk is invalid.',
+  UPLOAD_INCOMPLETE: 'The upload is incomplete.',
+  UPLOAD_RETRY_STATE_INVALID: 'Only failed uploads can be retried.',
+  UPLOAD_CANCEL_STATE_INVALID: 'Only incomplete uploads can be cancelled.',
+});
+Object.assign(translations['pt-BR'], {
+  AUTH_REQUIRED: 'Entre para continuar.',
+  AUTH_SESSION_EXPIRED: 'Sua sessão expirou. Entre novamente.',
+  AUTH_RATE_LIMITED: 'Muitas tentativas de entrada. Tente novamente mais tarde.',
+  API_FORBIDDEN: 'Você não tem permissão para fazer isso.',
+  API_REQUEST_TOO_LARGE: 'A solicitação é grande demais.',
+  API_INVALID_INPUT: 'Confira as informações e tente novamente.',
+  API_INVALID_JSON: 'Não foi possível ler a solicitação.',
+  API_INTERNAL_ERROR: 'Ocorreu um erro. Tente novamente mais tarde.',
+  API_VALIDATION_FAILED: 'Alguns campos enviados são inválidos.',
+  API_INVALID_PARAMETERS: 'O endereço da solicitação é inválido.',
+  API_INVALID_QUERY: 'As opções de busca são inválidas.',
+  API_INVALID_ORIGIN: 'A origem desta solicitação não é permitida.',
+  API_JSON_REQUIRED: 'Este endpoint exige uma solicitação JSON.',
+  API_NOT_FOUND: 'O recurso solicitado não foi encontrado.',
+  ENROLLMENT_REQUIRED: 'Matricule-se neste curso para continuar.',
+  COVER_NOT_FOUND: 'Capa do curso não encontrada.',
+  ATTACHMENT_NOT_FOUND: 'Anexo não encontrado.',
+  COURSE_NOT_FOUND: 'Curso não encontrado.',
+  COURSE_DUPLICATE_EDIT_UNIT: 'A mesma seção do curso foi enviada mais de uma vez.',
+  COURSE_MODULE_NOT_FOUND: 'Módulo do curso não encontrado.',
+  COURSE_LESSON_NOT_FOUND: 'Aula do curso não encontrada.',
+  COURSE_NOT_ACCEPTING_ENROLLMENTS: 'Este curso não está aceitando matrículas.',
+  PAYMENT_REQUIRED: 'É necessário confirmar o pagamento para se matricular.',
+  ENROLLMENT_ACCESS_REVOKED: 'O acesso a esta matrícula foi revogado.',
+  LESSON_NOT_FOUND: 'Aula não encontrada.',
+  INSTRUCTOR_PROFILE_NOT_FOUND: 'Perfil do instrutor não encontrado.',
+  VIDEO_NOT_AVAILABLE: 'O vídeo não está disponível.',
+  CAPTION_NOT_FOUND: 'Faixa de legenda não encontrada.',
+  MEDIA_NOT_AVAILABLE: 'A mídia não está disponível.',
+  VIDEO_NOT_FOUND: 'Envio de vídeo não encontrado.',
+  VIDEO_ACCESS_DENIED: 'Você não tem acesso a este vídeo.',
+  COURSE_ACCESS_DENIED: 'Você não tem acesso a este curso.',
+  UPLOAD_CHUNK_INVALID: 'O trecho enviado é inválido.',
+  UPLOAD_INCOMPLETE: 'O envio ainda não foi concluído.',
+  UPLOAD_RETRY_STATE_INVALID: 'Somente envios com falha podem ser repetidos.',
+  UPLOAD_CANCEL_STATE_INVALID: 'Somente envios incompletos podem ser cancelados.',
+});
+Object.assign(translations.es, {
+  AUTH_REQUIRED: 'Inicia sesión para continuar.',
+  AUTH_SESSION_EXPIRED: 'Tu sesión expiró. Inicia sesión de nuevo.',
+  AUTH_RATE_LIMITED: 'Demasiados intentos de inicio de sesión. Inténtalo más tarde.',
+  API_FORBIDDEN: 'No tienes permiso para realizar esta acción.',
+  API_REQUEST_TOO_LARGE: 'La solicitud es demasiado grande.',
+  API_INVALID_INPUT: 'Revisa la información e inténtalo de nuevo.',
+  API_INVALID_JSON: 'No se pudo leer la solicitud.',
+  API_INTERNAL_ERROR: 'Ocurrió un error. Inténtalo más tarde.',
+  API_VALIDATION_FAILED: 'Algunos campos enviados no son válidos.',
+  API_INVALID_PARAMETERS: 'La dirección de la solicitud no es válida.',
+  API_INVALID_QUERY: 'Las opciones de búsqueda no son válidas.',
+  API_INVALID_ORIGIN: 'El origen de esta solicitud no está permitido.',
+  API_JSON_REQUIRED: 'Este endpoint requiere una solicitud JSON.',
+  API_NOT_FOUND: 'No se encontró el recurso solicitado.',
+  ENROLLMENT_REQUIRED: 'Inscríbete en este curso para continuar.',
+  COVER_NOT_FOUND: 'No se encontró la portada del curso.',
+  ATTACHMENT_NOT_FOUND: 'No se encontró el adjunto.',
+  COURSE_NOT_FOUND: 'No se encontró el curso.',
+  COURSE_DUPLICATE_EDIT_UNIT: 'Se envió la misma sección del curso más de una vez.',
+  COURSE_MODULE_NOT_FOUND: 'No se encontró el módulo del curso.',
+  COURSE_LESSON_NOT_FOUND: 'No se encontró la lección del curso.',
+  COURSE_NOT_ACCEPTING_ENROLLMENTS: 'Este curso no acepta nuevas inscripciones.',
+  PAYMENT_REQUIRED: 'Se requiere un pago confirmado para inscribirse.',
+  ENROLLMENT_ACCESS_REVOKED: 'Se revocó el acceso a esta inscripción.',
+  LESSON_NOT_FOUND: 'No se encontró la lección.',
+  INSTRUCTOR_PROFILE_NOT_FOUND: 'No se encontró el perfil del instructor.',
+  VIDEO_NOT_AVAILABLE: 'El video no está disponible.',
+  CAPTION_NOT_FOUND: 'No se encontró la pista de subtítulos.',
+  MEDIA_NOT_AVAILABLE: 'El contenido multimedia no está disponible.',
+  VIDEO_NOT_FOUND: 'No se encontró la carga del video.',
+  VIDEO_ACCESS_DENIED: 'No tienes acceso a este video.',
+  COURSE_ACCESS_DENIED: 'No tienes acceso a este curso.',
+  UPLOAD_CHUNK_INVALID: 'El fragmento cargado no es válido.',
+  UPLOAD_INCOMPLETE: 'La carga está incompleta.',
+  UPLOAD_RETRY_STATE_INVALID: 'Solo se pueden reintentar las cargas fallidas.',
+  UPLOAD_CANCEL_STATE_INVALID: 'Solo se pueden cancelar las cargas incompletas.',
 });

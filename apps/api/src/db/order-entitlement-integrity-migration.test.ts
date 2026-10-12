@@ -42,7 +42,11 @@ it('keeps order-backed entitlements attached to the order owner and course', () 
     ).toThrow(/order entitlement reference mismatch/);
     expect(() =>
       db.prepare('UPDATE entitlements SET source_id=? WHERE id=?').run('order-b', 'entitlement-order-a'),
-    ).toThrow(/order entitlement reference mismatch/);
+    ).toThrow(/entitlement provenance is immutable/);
+    expect(() =>
+      db.prepare("UPDATE entitlements SET source_type='free',source_id=NULL WHERE id=?")
+        .run('entitlement-order-a'),
+    ).toThrow(/entitlement provenance is immutable/);
     expect(() =>
       db.prepare('UPDATE orders SET course_id=? WHERE id=?').run('course-b', 'order-a'),
     ).toThrow(/order snapshot is immutable/);

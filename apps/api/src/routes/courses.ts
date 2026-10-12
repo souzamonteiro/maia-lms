@@ -97,7 +97,7 @@ export function coursesRouter(db: Database.Database): Router {
   function course(id: string): Course {
     const row = db.prepare(`${selectCourse} WHERE c.id = ? OR c.slug = ?`).get(id, id) as
       Course | undefined;
-    if (!row) throw new AppError(404, 'Course not found');
+    if (!row) throw new AppError(404, 'Course not found', 'COURSE_NOT_FOUND');
     return row;
   }
   function enrollment(userId: string | undefined, courseId: string): Enrollment | undefined {
@@ -111,7 +111,7 @@ export function coursesRouter(db: Database.Database): Router {
   }
   function assertOwner(c: Course, userId: string | undefined, role: string | undefined) {
     if (role !== 'admin' && c.author_id !== userId)
-      throw new AppError(403, 'Insufficient permissions');
+      throw new AppError(403, 'Insufficient permissions', 'API_FORBIDDEN');
   }
   function writeRevision(courseId: string, data: z.infer<typeof courseSchema>): string {
     for (const module of data.modules)
@@ -296,7 +296,7 @@ export function coursesRouter(db: Database.Database): Router {
           'CREATION_EXISTS',
         );
       if (db.prepare('SELECT id FROM courses WHERE slug = ?').get(data.slug))
-        throw new AppError(409, 'Slug already exists');
+        throw new AppError(409, 'Slug already exists', 'SLUG_EXISTS');
       db.prepare(
         'INSERT INTO courses (id, slug, access_mode, locale, author_id) VALUES (?, ?, ?, ?, ?)',
       ).run(id, data.slug, data.accessMode, data.locale, req.session.userId);
@@ -490,15 +490,15 @@ export function coursesRouter(db: Database.Database): Router {
             change.unit === 'course'
               ? 'course'
               : `${change.unit}:${change.module}:${change.unit === 'lesson' ? change.lesson : ''}`;
-          if (seen.has(key)) throw new AppError(422, 'Duplicate editing unit');
+          if (seen.has(key)) throw new AppError(422, 'Duplicate editing unit', 'COURSE_DUPLICATE_EDIT_UNIT');
           seen.add(key);
           if (change.unit === 'course') Object.assign(payload, change.value);
           else {
             const module = payload.modules[change.module];
-            if (!module) throw new AppError(422, 'Unknown module');
+            if (!module) throw new AppError(422, 'Unknown module', 'COURSE_MODULE_NOT_FOUND');
             if (change.unit === 'module') module.title = change.title;
             else {
-              if (!module.lessons[change.lesson]) throw new AppError(422, 'Unknown lesson');
+              if (!module.lessons[change.lesson]) throw new AppError(422, 'Unknown lesson', 'COURSE_LESSON_NOT_FOUND');
               module.lessons[change.lesson] = change.value;
             }
           }
@@ -571,11 +571,11 @@ export function coursesRouter(db: Database.Database): Router {
         )
           throw new AppError(409, 'Slug already exists', 'SLUG_EXISTS');
         db.prepare(
-          `UPDATE courses SET status = 'PUBLISHED', published_revision_id = current_revision_id, slug = ?, access_mode = ?, locale = ?, updated_at = datetime('now') WHERE id = ?`,
-        ).run(revision.slug, revision.access_mode, revision.locale, c.id);
-        db.prepare(
           `UPDATE course_revisions SET published_at = COALESCE(published_at, datetime('now')) WHERE id = ?`,
         ).run(c.current_revision_id);
+        db.prepare(
+          `UPDATE courses SET status = 'PUBLISHED', published_revision_id = current_revision_id, slug = ?, access_mode = ?, locale = ?, updated_at = datetime('now') WHERE id = ?`,
+        ).run(revision.slug, revision.access_mode, revision.locale, c.id);
         db.prepare(
           `INSERT INTO audit_events (id, actor_id, action, subject_type, subject_id) VALUES (?, ?, 'course.publish', 'course', ?)`,
         ).run(randomUUID(), req.session.userId, c.id);
@@ -654,18 +654,18 @@ export function coursesRouter(db: Database.Database): Router {
     const c = course(req.params.id);
     const e = enrollment(req.session.userId, c.id);
     const owner = req.session.role === 'admin' || req.session.userId === c.author_id;
-    if (c.withdrawn_at && !owner) throw new AppError(404, 'Course not found');
-    if (c.status !== 'PUBLISHED' && !e && !owner) throw new AppError(404, 'Course not found');
+    if (c.withdrawn_at && !owner) throw new AppError(404, 'Course not found', 'COURSE_NOT_FOUND');
+    if (c.status !== 'PUBLISHED' && !e && !owner) throw new AppError(404, 'Course not found', 'COURSE_NOT_FOUND');
     const revisionId =
       e?.revision_id ?? c.published_revision_id ?? (owner ? c.current_revision_id : null);
-    if (!revisionId) throw new AppError(404, 'Course not found');
+    if (!revisionId) throw new AppError(404, 'Course not found', 'COURSE_NOT_FOUND');
     res.json(detail(c, revisionId, false, e));
   });
   router.post('/courses/:id/enroll', requireAuth, (req, res) => {
     const c = course(req.params.id);
     if (c.status !== 'PUBLISHED' || !c.published_revision_id || c.withdrawn_at)
-      throw new AppError(409, 'Course is not accepting enrollments');
-    if (c.access_mode === 'PAID') throw new AppError(403, 'Verified payment required');
+      throw new AppError(409, 'Course is not accepting enrollments', 'COURSE_NOT_ACCEPTING_ENROLLMENTS');
+    if (c.access_mode === 'PAID') throw new AppError(403, 'Verified payment required', 'PAYMENT_REQUIRED');
     const result = db
       .transaction(() => {
         const existing = db
@@ -673,7 +673,7 @@ export function coursesRouter(db: Database.Database): Router {
           .get(req.session.userId, c.id) as Enrollment | undefined;
         if (existing) {
           if (!enrollment(req.session.userId, c.id))
-            throw new AppError(403, 'Enrollment access revoked');
+            throw new AppError(403, 'Enrollment access revoked', 'ENROLLMENT_ACCESS_REVOKED');
           return existing;
         }
         const id = randomUUID();
@@ -737,16 +737,16 @@ export function coursesRouter(db: Database.Database): Router {
           is_preview: number;
         }
       | undefined;
-    if (!lesson) throw new AppError(404, 'Lesson not found');
+    if (!lesson) throw new AppError(404, 'Lesson not found', 'LESSON_NOT_FOUND');
     const e = enrollment(req.session.userId, lesson.course_id);
     const publicAccess =
       lesson.status === 'PUBLISHED' &&
       lesson.published_revision_id === lesson.revision_id &&
       (lesson.access_mode === 'OPEN_FREE' || lesson.is_preview === 1);
     const owner = req.session.role === 'admin' || req.session.userId === lesson.author_id;
-    if (lesson.withdrawn_at && !owner) throw new AppError(404, 'Lesson not found');
+    if (lesson.withdrawn_at && !owner) throw new AppError(404, 'Lesson not found', 'LESSON_NOT_FOUND');
     if (!publicAccess && !owner && (!e || e.revision_id !== lesson.revision_id))
-      throw new AppError(403, 'Enrollment required');
+      throw new AppError(403, 'Enrollment required', 'ENROLLMENT_REQUIRED');
     const enrolled = Boolean(e && e.revision_id === lesson.revision_id);
     const orderedLessons = db
       .prepare(
@@ -827,10 +827,10 @@ export function coursesRouter(db: Database.Database): Router {
       .get(req.params.id) as
       | { revision_id: string; course_id: string; withdrawn_at: string | null }
       | undefined;
-    if (!lesson) throw new AppError(404, 'Lesson not found');
-    if (lesson.withdrawn_at) throw new AppError(404, 'Lesson not found');
+    if (!lesson) throw new AppError(404, 'Lesson not found', 'LESSON_NOT_FOUND');
+    if (lesson.withdrawn_at) throw new AppError(404, 'Lesson not found', 'LESSON_NOT_FOUND');
     const e = enrollment(req.session.userId, lesson.course_id);
-    if (!e || e.revision_id !== lesson.revision_id) throw new AppError(403, 'Enrollment required');
+    if (!e || e.revision_id !== lesson.revision_id) throw new AppError(403, 'Enrollment required', 'ENROLLMENT_REQUIRED');
     const progress = db.transaction(() => {
       db.prepare(
         `INSERT INTO lesson_progress (enrollment_id, lesson_id, position_seconds, completed_at) VALUES (?, ?, ?, ?)
