@@ -344,6 +344,22 @@ switches the admin user list date through all three locales. Full validation pas
 complete locally; I18N-02 course-language authoring/metadata and AUTH-01's remaining
 account/MFA workflows remain separate open items. No deployment was performed.
 
+## AUTH-01 account workflows — October 12, 2026
+
+Account profile now supports private display-name edits and confirmed email changes;
+the new address is not committed until its single-use token is confirmed, and
+confirmation verifies it and invalidates prior sessions. The explicit policy allows
+unverified users to sign in and learn but blocks certificate issuance until
+verification. MFA tests cover encrypted TOTP setup, password-only challenge without
+session creation, TOTP replay rejection, challenge lockout, one-use recovery codes,
+auditing, and password-plus-factor disable with session invalidation. Email tests
+cover current-password validation, duplicate addresses, old-address retention,
+confirmation, replay/expiry, and session revocation. The outbox worker test covers
+SMTP failure retry; account resend remains generic. Full validation passed 133 tests
+across 41 files, build/lint, and all 28 Chromium workflows, including MFA recovery
+and localized email-change confirmation. Live SMTP delivery and deployed host
+runbook checks were not performed. No deployment occurred.
+
 ## Email verification confirmation — September 30, 2026
 
 Build and lint passed. All 73 automated tests passed with `VIDEO_TEST_REAL=1`,
@@ -1290,3 +1306,212 @@ Chromium verifies explanations appear only after grading and persist after reloa
 Build/lint, OpenAPI, and diff validation passed; the full real-media suite passed
 112 tests across 33 files, and all 22 Chromium workflows passed. No deployment or
 production database changes were made.
+
+## Administrator enrollment support — October 12, 2026
+
+ADMIN-02 is complete locally. The admin enrollment listing now reports effective
+access as unavailable for revoked enrollments, even when historical entitlement
+records remain. API integration coverage confirms unauthorized roles are rejected,
+revoked learners cannot open protected lessons, progress and enrollment history are
+preserved, and re-grants restore access without duplicating the enrollment. The
+Chromium support workflow verifies grant, revoke, and reasoned history. Full
+validation passed 133 tests across 41 files, build/lint, and all 28 Chromium
+workflows. Provider-payment reconciliation and broad operational reporting remain
+out of scope; no production data or deployment was changed.
+
+## Publication scheduling and learner notices — October 12, 2026
+
+ADMIN-03 is complete locally. Migration 081 binds each schedule to a REVIEW course,
+its exact current revision, and the scheduling administrator. Admins can schedule,
+reschedule, or cancel using local date/time; the worker publishes due revisions only
+after rechecking the publication checklist. A failed check clears the schedule and
+records issue codes for correction. Revision edits, archive, cancellation, and early
+publication clear/audit obsolete schedules. New revisions queue localized email
+through the outbox for active learners with verified email; repeated publication of
+the same revision does not duplicate notices, and initial publication has no prior
+enrollees to notify. Tests cover English, pt-BR, and Spanish templates, recipient
+eligibility, schedule lifecycle, and archive-versus-withdrawal access semantics.
+Build/lint passed, all 139 automated tests across 43 files passed, and all 28
+Chromium workflows passed. SMTP delivery was not live-tested; no production
+migration or deployment was performed.
+
+## Media job coordination — October 13, 2026
+
+JOB-01 is complete locally. Migrations 082 and 083 allow queued/processing job
+cancellation and persist bounded processing progress. Media concurrency is controlled
+independently from outbox concurrency. Lease-protected heartbeats renew every 15
+seconds; a simulated-clock test renews through five minutes without reclaim, then
+verifies recovery only after the two-minute heartbeat expiry. Lease-specific output
+keys and conditional commits preserve idempotency. Processing progress is shown in
+the editor, retry resets it, and a real-media workflow verifies READY at 100%. Active
+cancellation keeps chunks until worker abort; stale cancelled leases are reclaimed by
+the sweeper. Tests cover outbox delivery while media jobs remain active, manual retry,
+cancellation, stale recovery, and cleanup safety. Final validation passed 144 tests
+across 45 files, build/lint, and all 28 Chromium workflows. No actual five-minute VPS
+transcode or production deployment was performed; those remain operational
+qualification, not missing worker behavior.
+
+## Paid course pricing and checkout — October 13, 2026
+
+PAY-01 is complete locally. Migration 084 validates immutable revision price
+snapshots; migration 085 stores immutable course revision/title/access-term snapshots
+on orders. The editor accepts integer minor-unit prices and supported currencies,
+the public page formats prices by interface locale, and buyers can create/retry
+idempotent hosted checkout orders and inspect private order status. Browser prices are
+never accepted by the order API. The local Fake provider exercises pending,
+canceled, and approved states; only a matching provider amount/currency and approved
+state create one enrollment/entitlement. Returning to the site alone changes no
+payment or access state. Production checkout remains disabled until PAY-02 webhook
+verification/reconciliation is qualified with a real test account. Full validation
+passed 153 tests across 50 files, build/lint, and all 29 Chromium workflows. No live
+provider, sandbox transaction, or production migration/deployment was performed.
+
+## Provider adapter and signed order webhooks — October 13, 2026
+
+PAY-02 is complete locally against the current Mercado Pago Checkout Pro Orders API
+documentation. Mocked adapter tests verify `POST /v1/orders`, the required stable
+idempotency header, the order lookup endpoint, status normalization, the official
+HMAC manifest and Orders API refund request shape. HTTP integration tests use an
+official-shaped `type=order` event with query `data.id`, preserve the exact raw body,
+verify `x-signature`/`x-request-id`, fetch authoritative provider state, reject
+amount/currency/reference mismatches, retry failed events, detect event-ID payload
+reuse, and grant an entitlement once after approval. Provider-origin headers are
+accepted only on the signed webhook route; altered signatures are rejected.
+No Mercado Pago credentials or test account were available, so no sandbox purchase
+or live webhook delivery was performed. Production checkout stays disabled until an
+operator qualifies the configured test webhook. Build/lint passed, the full suite
+passed 153 tests across 50 files, and all 29 Chromium workflows passed. No payment
+provider was contacted and no deployment occurred.
+
+## Payment confirmation and reconciliation — October 13, 2026
+
+PAY-03 is complete locally. Authoritative status is checked on signed webhook and
+buyer refresh; settlement validates configured seller, external reference, amount
+and currency against the immutable order snapshot. Order/payment state, enrollment,
+entitlement and localized confirmation email are committed transactionally. The
+worker reconciles aged pending orders every minute, and repairs PAID orders missing
+enrollment/active order entitlement after a failed prior commit, with retry backoff.
+Tests cover seller/snapshot mismatch, pending-to-approved transitions, duplicate
+events, out-of-order safety, lost-event reconciliation, orphan recovery, and exactly
+one entitlement/receipt. Full validation passed 155 tests across 51 files, build/lint,
+and all 29 Chromium workflows. No live sandbox transaction/webhook or production
+deployment was performed; checkout remains disabled until operator qualification.
+
+## Refunds, chargebacks, and admin order support — October 13, 2026
+
+PAY-04 is complete locally. Admin order search/status/history exposes order snapshots,
+approved/pending refund totals, and confirmation-email delivery state. Refund requests
+reserve balance before provider calls, persist reason/actor/idempotency identity, and
+retry with the same key. Provider refund records reconcile by provider ID, including
+timed-out local reservations. Partial refunds keep order access and certificates;
+full refunds revoke active entitlements/enrollments and certificates with reasons.
+The documented `order.charged_back` signed webhook and manual admin chargeback path
+apply the same revocation policy and preserve order/certificate audit records. A stale
+approval cannot restore a charged-back or fully refunded order. The Fake provider now
+models cumulative partial/full refunds and stable idempotency results.
+
+Focused API, settlement, provider, and browser tests cover pending/approved/rejected
+refund outcomes, same-key collisions/retries, refund status reconciliation, chargeback
+notification and replay, receipt state, partial-access preservation, full-refund and
+chargeback certificate revocation, and the admin workflow in Chromium. Final
+validation passed 162 tests across 54 files, build/lint, and all 30 Chromium workflows.
+No live Mercado Pago credentials, sandbox purchase/refund/chargeback delivery, or
+production deployment was used; production checkout remains disabled pending PAY-05
+operator qualification.
+
+## Sandbox and production guards — October 16, 2026
+
+PAY-05 local configuration safeguards are implemented, but the item remains blocked
+for external qualification. `MP_ENVIRONMENT` explicitly separates sandbox from
+production; test credentials are not classified by token prefix. Nonproduction
+Mercado Pago configuration rejects production mode, production rejects sandbox mode,
+and enabled checkout requires Mercado Pago plus access token, webhook secret, and
+seller ID. The checkout flag parses literal `true` and `false` values correctly;
+real-provider checkout is blocked in every environment while disabled. Refunds for
+existing orders remain available when new checkout is disabled.
+
+Configuration tests cover default-off behavior, sandbox/production mismatch,
+required credentials, and valid environment combinations. The HTTP integration test
+confirms disabled Mercado Pago checkout returns `PAYMENT_CHECKOUT_NOT_READY` before
+provider checkout is called. Final validation passed 168 tests across 55 files,
+build/lint, and all 31 Chromium workflows. No credentials were available or
+requested, so no sandbox transaction, refund, chargeback delivery, seller verification, tax review,
+or legal/commercial approval was performed. Production checkout remains disabled
+until the owner supplies test credentials through a secret store and a qualified
+responsible party completes the commercial/legal review.
+
+## Adaptive HLS outputs — October 16, 2026
+
+MEDIA-03 is complete locally. Real FFmpeg processing now persists a private HLS VOD
+master playlist, up to 360p/720p variants capped at source resolution, playlists,
+and MPEG-TS segments alongside the MP4/poster. READY is committed only after all
+outputs are stored; stale leases and processing failures remove incomplete outputs.
+The authorized HLS endpoint validates each requested asset path and rechecks the
+lesson's revision, preview/entitlement, owner, and withdrawal state for every
+playlist and segment request. Real-media integration tests fetch the master, variant,
+and segment, then verify revocation/withdrawal rejection. Full validation passed 168
+tests across 55 files, build/lint, and all 31 Chromium workflows. Maia Edge capacity
+and long-duration processing remain operational qualification; PLAY-02 still owns
+browser HLS selection/fallback.
+
+## Media library — October 16, 2026
+
+MEDIA-04 advanced locally with an author/admin media library supporting filename or
+course search, course/type/status filters, pagination, usage counts, and processing
+errors/progress. API results are owner-scoped for authors and omit storage keys; the
+course editor remains the association/replacement workflow. Chromium verifies the
+new direct route and finds a READY inline image in its course. Automated validation
+passed 168 tests across 55 files, build/lint, and all 31 Chromium workflows. Orphan
+collection is not enabled: the owner must define retention first, then cleanup must
+recheck all historical revision references before deleting anything.
+
+## Authorized MP4 and HLS playback — October 17, 2026
+
+PLAY-01 is complete locally. MP4, poster, captions, HLS playlists, and HLS segments
+are served through lesson/revision-scoped routes; each request rechecks public
+preview, active enrollment/entitlement, owner/admin access, and course withdrawal.
+MP4 responses support Range/206/416 and HEAD; HLS assets are path-allowlisted and
+served from private storage. Protected requests use the seven-day HTTP session,
+renewed by the SQLite store and revalidated against current account/session state.
+The real-media test now verifies that a different authenticated account cannot reuse
+copied MP4 or HLS URLs, and that valid access works until revocation/withdrawal.
+
+## Integrated HLS player — October 17, 2026
+
+PLAY-02 advanced locally: the player uses native HLS when supported and the local
+HLS.js bundle where Media Source Extensions are available. The UI exposes automatic
+or manual rendition selection when multiple levels exist, preserves native controls
+for keyboard/seek/volume/fullscreen, and falls back to the authorized MP4 endpoint
+on fatal HLS failure. Loading, media error, speed, and fallback states are localized.
+Chromium E2E validates real multi-rendition trailer playback/quality selection and
+MP4 fallback after an HLS playlist failure. Real Android Chrome, Safari/iOS, and
+long-session playback through deployment renewal have not been qualified; PLAY-02
+remains open for those device/environment acceptance checks. Final local validation
+passed 168 tests across 55 files, build/lint, and all 31 Chromium workflows.
+
+## Learner resumption and completion — October 18, 2026
+
+PLAY-04 is complete locally. Lesson navigation is revision-scoped and preview-aware;
+the dashboard resumes the latest active unfinished lesson, preferring a saved
+position. Playback position writes are throttled to 15 seconds and a pause queues the
+latest position behind any in-flight write. The player restores the saved position
+after media metadata loads, including in a fresh browser context. Completion is
+computed server-side from the enrollment's immutable required-lesson/quiz snapshot;
+position reports do not count as completion. The real-video browser test covers
+pause-save, reload, and isolated-session resumption. Independent Android/Safari and
+long-session VPS qualification remains tracked by PLAY-02.
+
+## Course metadata translations — October 18, 2026
+
+I18N-02 is complete locally. Course revisions store optional en/pt-BR/es translations
+for presentation metadata separately from the source locale. Public catalog search,
+home placements, course detail, enrolled-course lists, instructor course cards, and
+author preview take a separate `displayLocale` and fall back field-by-field to the
+source revision. Authors edit translations in the studio; duplicate/source-language
+entries are rejected, and translations are immutable after publication or enrollment.
+The course-language filter and displayed source locale are not rewritten by the UI
+language. Captions retain their explicit track language; no automatic translation is
+claimed. API tests cover fallback, search, home/profile/learning readers, and immutable
+published revisions; Chromium covers studio editing and interface-language switching.
+Final validation passed 169 tests across 56 files, build/lint, and all 32 Chromium
+workflows.

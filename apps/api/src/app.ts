@@ -6,6 +6,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import session from 'express-session';
 import rateLimit from 'express-rate-limit';
+import type { PaymentProvider } from '@maia/providers';
 import { SQLiteSessionStore } from './db/session-store.js';
 import type Database from 'better-sqlite3';
 import type { Config } from './config.js';
@@ -23,10 +24,18 @@ import { assessmentsRouter } from './routes/assessments.js';
 import { certificatesRouter } from './routes/certificates.js';
 import { adminCertificatesRouter } from './routes/admin-certificates.js';
 import { instructorProfilesRouter } from './routes/instructor-profiles.js';
+import { ordersRouter } from './routes/orders.js';
+import { adminOrdersRouter } from './routes/admin-orders.js';
+import { createPaymentProvider } from './services/payment-provider.js';
 import { errorHandler } from './middleware/error-handler.js';
 
-export function createApp(db: Database.Database, config: Config): express.Application {
+export function createApp(
+  db: Database.Database,
+  config: Config,
+  providerOverride?: PaymentProvider,
+): express.Application {
   const app = express();
+  const paymentProvider = providerOverride ?? createPaymentProvider(config);
   app.set(
     'trust proxy',
     config.TRUST_PROXY.split(',').map(value => value.trim()),
@@ -57,7 +66,13 @@ export function createApp(db: Database.Database, config: Config): express.Applic
   );
 
   // ── Body parsers ──────────────────────────────────────────────
-  app.use(express.json({ limit: '1mb' }));
+  app.use(express.json({
+    limit: '1mb',
+    verify: (req, _res, buffer) => {
+      if ((req.url ?? '').split('?')[0] === '/api/v1/webhooks/mercado-pago')
+        (req as express.Request & { rawBody?: Buffer }).rawBody = Buffer.from(buffer);
+    },
+  }));
   app.use(express.urlencoded({ extended: true, limit: '1mb' }));
   app.use(cookieParser());
 
@@ -96,7 +111,12 @@ export function createApp(db: Database.Database, config: Config): express.Applic
       req.session.role = user.role;
     }
     if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
-      if (req.headers.origin && req.headers.origin !== new URL(config.PUBLIC_BASE_URL).origin) {
+      const signedPaymentWebhook = req.path === '/api/v1/webhooks/mercado-pago';
+      if (
+        req.headers.origin &&
+        req.headers.origin !== new URL(config.PUBLIC_BASE_URL).origin &&
+        !signedPaymentWebhook
+      ) {
         res.status(403).json({ error: 'Invalid origin', code: 'API_INVALID_ORIGIN' });
         return;
       }
@@ -147,16 +167,18 @@ export function createApp(db: Database.Database, config: Config): express.Applic
   app.use(healthRouter(db));
 
   // ── API routes ────────────────────────────────────────────────
-  app.use('/api/v1/auth', authLimiter, authRouter(db, config.PUBLIC_BASE_URL));
+  app.use('/api/v1/auth', authLimiter, authRouter(db, config.PUBLIC_BASE_URL, config.SESSION_SECRET));
 
   app.use('/api/v1', adminUsersRouter(db));
+  app.use('/api/v1', adminOrdersRouter(db, paymentProvider));
+  app.use('/api/v1', ordersRouter(db, config, paymentProvider));
   app.use('/api/v1', adminEnrollmentsRouter(db));
   app.use('/api/v1', assessmentsRouter(db));
   app.use('/api/v1', certificatesRouter(db, config));
   app.use('/api/v1', adminCertificatesRouter(db));
   app.use('/api/v1', instructorProfilesRouter(db));
   app.use('/api/v1', categoriesRouter(db));
-  app.use('/api/v1', coursesRouter(db));
+  app.use('/api/v1', coursesRouter(db, config.PUBLIC_BASE_URL));
   app.use('/api/v1', homeRouter(db));
   app.use('/api/v1', videosRouter(db, config));
   app.use('/api/v1', videosRouter(db, config, 'attachment'));

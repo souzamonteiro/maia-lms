@@ -16,7 +16,8 @@ it('allows valid video upload lifecycle transitions and rejects state skips or t
             ('upload-b','owner','course','b.mp4',10),
             ('upload-c','owner','course','c.mp4',10),
             ('upload-d','owner','course','d.mp4',10),
-            ('upload-e','owner','course','e.mp4',10);
+            ('upload-e','owner','course','e.mp4',10),
+            ('upload-f','owner','course','f.mp4',10);
     `);
 
     const transition = db.prepare('UPDATE video_uploads SET status=? WHERE id=?');
@@ -42,18 +43,24 @@ it('allows valid video upload lifecycle transitions and rejects state skips or t
     expect(() => transition.run('CANCELLED', 'upload-c')).not.toThrow();
 
     transition.run('QUEUED', 'upload-d');
-    expect(() => transition.run('CANCELLED', 'upload-d')).toThrow(/invalid video upload state transition/);
     transition.run('PROCESSING', 'upload-d');
-    expect(() => transition.run('CANCELLED', 'upload-d')).toThrow(/invalid video upload state transition/);
+    expect(() => transition.run('CANCELLED', 'upload-d')).not.toThrow();
 
-    expect(() => transition.run('UPLOADING', 'upload-e')).not.toThrow();
+    transition.run('QUEUED', 'upload-f');
+    expect(() => transition.run('CANCELLED', 'upload-f')).not.toThrow();
+
     expect(db.prepare('SELECT id,status FROM video_uploads ORDER BY id').all()).toEqual([
       { id: 'upload-a', status: 'READY' },
       { id: 'upload-b', status: 'READY' },
       { id: 'upload-c', status: 'CANCELLED' },
-      { id: 'upload-d', status: 'PROCESSING' },
+      { id: 'upload-d', status: 'CANCELLED' },
       { id: 'upload-e', status: 'UPLOADING' },
+      { id: 'upload-f', status: 'CANCELLED' },
     ]);
+    expect(db.prepare('SELECT processing_progress FROM video_uploads WHERE id=?').get('upload-e'))
+      .toEqual({ processing_progress: 0 });
+    expect(() => db.prepare('UPDATE video_uploads SET processing_progress=101 WHERE id=?')
+      .run('upload-e')).toThrow(/CHECK constraint failed/);
   } finally {
     db.close();
   }

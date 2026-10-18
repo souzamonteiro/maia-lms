@@ -16,6 +16,7 @@ type Upload = {
   offset: number;
   status: string;
   output_key: string | null;
+  lease: string | null;
 };
 export function videosRouter(
   db: Database.Database,
@@ -41,11 +42,55 @@ export function videosRouter(
     res.json(
       db
         .prepare(
-          "SELECT id, course_id, filename, size, offset, status, duration, error FROM video_uploads WHERE (owner_id = ? OR ? = 'admin') AND course_id = ? AND media_kind = ? ORDER BY created_at DESC",
+          "SELECT id, course_id, filename, size, offset, status, processing_progress, duration, error FROM video_uploads WHERE (owner_id = ? OR ? = 'admin') AND course_id = ? AND media_kind = ? ORDER BY created_at DESC",
         )
         .all(req.session.userId, req.session.role, String(req.query.courseId ?? ''), mediaKind),
     );
   });
+  if (mediaKind === 'video') {
+    router.get('/admin/media', requireRole('author', 'admin'), (req, res) => {
+      const query = z.object({
+        q: z.string().trim().max(100).default(''),
+        courseId: z.string().uuid().optional(),
+        kind: z.enum(['video', 'attachment']).optional(),
+        status: z.enum(['UPLOADING', 'QUEUED', 'PROCESSING', 'READY', 'FAILED', 'CANCELLED']).optional(),
+        limit: z.coerce.number().int().min(1).max(100).default(50),
+        offset: z.coerce.number().int().min(0).default(0),
+      }).parse(req.query);
+      const conditions = ["(v.owner_id=? OR ?='admin')"];
+      const parameters: Array<string | number> = [req.session.userId!, req.session.role!];
+      if (query.courseId) {
+        conditions.push('v.course_id=?');
+        parameters.push(query.courseId);
+      }
+      if (query.kind) {
+        conditions.push('v.media_kind=?');
+        parameters.push(query.kind);
+      }
+      if (query.status) {
+        conditions.push('v.status=?');
+        parameters.push(query.status);
+      }
+      if (query.q) {
+        const term = `%${query.q}%`;
+        conditions.push('(v.filename LIKE ? COLLATE NOCASE OR c.slug LIKE ? COLLATE NOCASE OR r.title LIKE ? COLLATE NOCASE)');
+        parameters.push(term, term, term);
+      }
+      const where = `WHERE ${conditions.join(' AND ')}`;
+      const from = `FROM video_uploads v JOIN courses c ON c.id=v.course_id
+        LEFT JOIN course_revisions r ON r.id=COALESCE(c.current_revision_id,c.published_revision_id) ${where}`;
+      const total = (db.prepare(`SELECT count(*) AS total ${from}`).get(...parameters) as { total: number }).total;
+      const items = db.prepare(
+        `SELECT v.id,v.media_kind,v.course_id,c.slug AS course_slug,r.title AS course_title,
+          v.filename,v.size,v.offset,v.status,v.processing_progress,v.duration,v.error,v.created_at,
+          (SELECT count(*) FROM course_attachments a WHERE a.upload_id=v.id) AS attachment_references,
+          (SELECT count(*) FROM lessons l WHERE l.video_id=v.id) AS lesson_references,
+          (SELECT count(*) FROM course_revisions cr WHERE cr.cover_file_id=v.id OR cr.trailer_video_id=v.id) AS course_references
+         ${from} ORDER BY v.created_at DESC,v.id LIMIT ? OFFSET ?`,
+      ).all(...parameters, query.limit, query.offset);
+      res.set('Cache-Control', 'private, no-store').json({ items, total, limit: query.limit, offset: query.offset });
+    });
+  }
   router.post(`${endpoint}`, requireRole('author', 'admin'), (req, res) => {
     const v = z
       .object({
@@ -91,6 +136,7 @@ export function videosRouter(
       ...v,
       output_key: undefined,
       poster_key: undefined,
+      hls_key: undefined,
       lease: undefined,
       chunks: db
         .prepare('SELECT offset,size,sha256 FROM video_chunks WHERE upload_id=? ORDER BY offset')
@@ -157,21 +203,35 @@ export function videosRouter(
   router.post(`${endpoint}/:id/retry`, requireRole('author', 'admin'), (req, res) => {
     const v = owned(req.params.id, req.session.userId, req.session.role);
     if (v.status !== 'FAILED') throw new AppError(409, 'Video is not failed', 'UPLOAD_RETRY_STATE_INVALID');
-    db.prepare("UPDATE video_uploads SET status='QUEUED',error=NULL WHERE id=?").run(v.id);
+    db.prepare("UPDATE video_uploads SET status='QUEUED',processing_progress=0,error=NULL WHERE id=?")
+      .run(v.id);
     res.json({ status: 'QUEUED' });
   });
   router.post(`${endpoint}/:id/cancel`, requireRole('author', 'admin'), (req, res, next) => {
     void (async () => {
-      const v = owned(req.params.id, req.session.userId, req.session.role);
-      if (!['UPLOADING', 'CANCELLED'].includes(v.status))
-        throw new AppError(409, 'Only incomplete uploads can be cancelled', 'UPLOAD_CANCEL_STATE_INVALID');
-      db.prepare("UPDATE video_uploads SET status='CANCELLED' WHERE id=?").run(v.id);
-      const rows = db
-        .prepare('SELECT storage_key FROM video_chunks WHERE upload_id=?')
-        .all(v.id) as { storage_key: string }[];
-      for (const row of rows) await store.delete(row.storage_key);
-      db.prepare('DELETE FROM video_chunks WHERE upload_id=?').run(v.id);
-      res.json({ status: 'CANCELLED' });
+      const cancellation = db.transaction(() => {
+        const v = owned(req.params.id, req.session.userId, req.session.role);
+        if (!['UPLOADING', 'QUEUED', 'PROCESSING', 'CANCELLED'].includes(v.status))
+          throw new AppError(409, 'This media job cannot be cancelled', 'UPLOAD_CANCEL_STATE_INVALID');
+        if (v.status !== 'CANCELLED') {
+          const changed = db.prepare(
+            `UPDATE video_uploads SET status='CANCELLED',lease=CASE WHEN status='PROCESSING' THEN lease ELSE NULL END
+             WHERE id=? AND status=?`,
+          ).run(v.id, v.status);
+          if (!changed.changes)
+            throw new AppError(409, 'Media job state changed', 'UPLOAD_CANCEL_STATE_INVALID');
+        }
+        return { id: v.id, waitingForWorker: Boolean(v.lease) };
+      }).immediate();
+
+      if (!cancellation.waitingForWorker) {
+        const rows = db
+          .prepare('SELECT storage_key FROM video_chunks WHERE upload_id=?')
+          .all(cancellation.id) as { storage_key: string }[];
+        for (const row of rows) await store.delete(row.storage_key);
+        db.prepare('DELETE FROM video_chunks WHERE upload_id=?').run(cancellation.id);
+      }
+      res.json({ status: 'CANCELLED', waitingForWorker: cancellation.waitingForWorker });
     })().catch(next);
   });
   return router;

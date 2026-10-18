@@ -84,6 +84,105 @@ test('Markdown draft, language switching, autosave, safe preview, conflicts and 
   await page.screenshot({path:'test-results/markdown-lesson.png',fullPage:true});
 });
 
+test('course metadata translations follow interface language with field-level source fallback', async ({ page }) => {
+  const slug = `localized-course-${Date.now()}`;
+  await page.goto('/auth/login');
+  await page.getByLabel('Email', { exact: true }).fill('admin@example.com');
+  await page.getByLabel('Password', { exact: true }).fill('Admin-test-password-123');
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.getByRole('link', { name: 'Administer', exact: true }).click();
+  await page.locator('[name=title]').fill('Curso base em português');
+  await page.locator('[name=slug]').fill(slug);
+  await page.locator('[name=summary]').fill('Resumo original mantido como fallback.');
+  await page.locator('[name=locale]').selectOption('pt-BR');
+  await page.locator('[name=accessMode]').selectOption('OPEN_FREE');
+  await page.locator('.module-title').fill('Módulo');
+  await page.locator('.lesson-title').fill('Aula');
+  await page.locator('.lesson-content').fill('Conteúdo original.');
+  await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+  await page.getByRole('button', { name: 'Add translation', exact: true }).click();
+  const translation = page.locator('.course-translation').first();
+  await translation.locator('.translation-locale').selectOption('es');
+  await translation.locator('[data-translation-field=title]').fill('Curso base en español');
+  await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+  const card = page.locator('#admin-list article').filter({ hasText: 'Curso base em português' });
+  await card.getByRole('button', { name: 'Publish', exact: true }).click();
+
+  await page.goto(`/courses/${slug}`);
+  await page.locator('#languageSelect').selectOption('es');
+  await expect(page.getByRole('heading', { name: 'Curso base en español' })).toBeVisible();
+  await expect(page.getByText('Resumo original mantido como fallback.')).toBeVisible();
+  await expect(page.locator('.course-presentation')).toContainText('Português');
+
+  await page.locator('#languageSelect').selectOption('en');
+  await expect(page.getByRole('heading', { name: 'Curso base em português' })).toBeVisible();
+  await expect(page.getByText('Resumo original mantido como fallback.')).toBeVisible();
+});
+
+test('author inserts an uploaded lesson image into Markdown and publishes it inline', async ({ page }) => {
+  await page.goto('/auth/login');
+  await page.getByLabel('Email', { exact: true }).fill('admin@example.com');
+  await page.getByLabel('Password', { exact: true }).fill('Admin-test-password-123');
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.getByRole('link', { name: 'Administer', exact: true }).click();
+  await page.locator('[name=title]').fill('Inline image course');
+  await page.locator('[name=slug]').fill(`inline-image-${Date.now()}`);
+  await page.locator('[name=summary]').fill('A course for protected inline image validation.');
+  await page.locator('[name=accessMode]').selectOption('OPEN_FREE');
+  await page.locator('.module-title').fill('Module');
+  await page.locator('.lesson-title').fill('Image lesson');
+  await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+  let courseCard = page.locator('#admin-list article').filter({ hasText: 'Inline image course' });
+  await courseCard.getByRole('button', { name: 'Edit', exact: true }).click();
+
+  const materials = page.locator('.lesson-attachments').first();
+  await materials.locator('.add-attachment').click();
+  const material = materials.locator('.attachment-row').first();
+  await material.locator('.attachment-title').fill('Diagram');
+  await material.locator('.attachment-description').fill('Course diagram embedded in the lesson.');
+  await material.locator('input[type=file]').setInputFiles({
+    name: 'diagram.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j9ioAAAAASUVORK5CYII=',
+      'base64',
+    ),
+  });
+  await material.locator('.upload-video').click();
+  await expect.poll(async () => {
+    const id = await material.getAttribute('data-file-id');
+    if (!id) return null;
+    const response = await page.request.get(`/api/v1/admin/files/${id}`);
+    return (await response.json()).status;
+  }, { timeout: 30000 }).toBe('READY');
+  const insertImage = material.getByRole('button', { name: 'Insert inline image', exact: true });
+  await expect(insertImage).toBeVisible();
+  await insertImage.click();
+  await expect(page.locator('.lesson-content')).toHaveValue(/\/api\/v1\/files\//);
+  await page.getByRole('button', { name: 'Preview content', exact: true }).click();
+  await expect(page.locator('.content-preview img')).toHaveAttribute('alt', 'Diagram');
+
+  await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+  courseCard = page.locator('#admin-list article').filter({ hasText: 'Inline image course' });
+  await courseCard.getByRole('button', { name: 'Publish', exact: true }).click();
+  await expect(courseCard).toContainText('PUBLISHED');
+  const courses = await page.evaluate(async () => (await (await fetch('/api/v1/admin/courses')).json()));
+  const course = courses.find((item: { slug: string }) => item.slug.startsWith('inline-image-'));
+  const detail = await page.request.get(`/api/v1/courses/${course.id}`);
+  const lessonId = (await detail.json()).modules[0].lessons[0].id;
+  await page.goto(`/lessons/${lessonId}`);
+  await expect(page.locator('.lesson-body img')).toHaveAttribute('alt', 'Diagram');
+  await expect.poll(() => page.locator('.lesson-body img').evaluate(image => image.naturalWidth))
+    .toBeGreaterThan(0);
+  await page.goto('/admin/media');
+  await expect(page.getByRole('heading', { name: 'Media library' })).toBeVisible();
+  await page.getByLabel('Search file or course', { exact: true }).fill('diagram.png');
+  await page.getByRole('button', { name: 'Search', exact: true }).click();
+  const mediaItem = page.locator('.media-library-item').filter({ hasText: 'diagram.png' });
+  await expect(mediaItem).toContainText('Ready');
+  await expect(mediaItem).toContainText('Inline image course');
+});
+
 test('recovers a local draft after reload and reorders lessons with keyboard-accessible controls',async({page})=>{
   await page.goto('/auth/login');
   await page.getByLabel('Email',{exact:true}).fill('admin@example.com');

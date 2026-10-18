@@ -19,12 +19,45 @@ const ConfigSchema = z
     MEDIA_SIGNING_KEY: z.string().min(32),
     MP_ACCESS_TOKEN: z.string().optional(),
     MP_WEBHOOK_SECRET: z.string().optional(),
+    MP_SELLER_ID: z.string().optional(),
+    MP_ENVIRONMENT: z.enum(['sandbox', 'production']).default('sandbox'),
+    PAYMENTS_CHECKOUT_ENABLED: z.preprocess(
+      value => {
+        if (typeof value !== 'string') return value;
+        const normalized = value.trim().toLowerCase();
+        if (normalized === 'true') return true;
+        if (normalized === 'false') return false;
+        return value;
+      },
+      z.boolean(),
+    ).default(false),
     MAIL_TRANSPORT: z.string().default('smtp://localhost:1025'),
     MAIL_FROM: z.string().default('noreply@maiaplatform.org'),
     PAYMENT_PROVIDER: z.enum(['mercado_pago', 'fake']).default('fake'),
     WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(20).default(4),
   })
   .superRefine((config, context) => {
+    if (config.PAYMENT_PROVIDER === 'mercado_pago') {
+      const expectedEnvironment = config.NODE_ENV === 'production' ? 'production' : 'sandbox';
+      if (config.MP_ENVIRONMENT !== expectedEnvironment)
+        context.addIssue({
+          code: 'custom',
+          path: ['MP_ENVIRONMENT'],
+          message: `${config.NODE_ENV} must use Mercado Pago ${expectedEnvironment} credentials`,
+        });
+    }
+    if (config.PAYMENTS_CHECKOUT_ENABLED) {
+      if (config.PAYMENT_PROVIDER !== 'mercado_pago')
+        context.addIssue({
+          code: 'custom',
+          path: ['PAYMENT_PROVIDER'],
+          message: 'Enabled checkout requires the Mercado Pago provider',
+        });
+      for (const key of ['MP_ACCESS_TOKEN', 'MP_WEBHOOK_SECRET', 'MP_SELLER_ID'] as const) {
+        if (!config[key])
+          context.addIssue({ code: 'custom', path: [key], message: 'Required when checkout is enabled' });
+      }
+    }
     if (config.NODE_ENV === 'production') {
       if (!config.PUBLIC_BASE_URL.startsWith('https://'))
         context.addIssue({

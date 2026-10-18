@@ -4,6 +4,7 @@ import type Database from 'better-sqlite3';
 import { z } from 'zod';
 import { requireRole } from '../middleware/auth.js';
 import { AppError } from '../middleware/error-handler.js';
+import { localizeCourseMetadata } from '../services/course-metadata.js';
 const slots = ['hero', 'featured', 'recommended'] as const;
 const item = z
   .object({
@@ -30,13 +31,22 @@ export function homeRouter(db: Database.Database): Router {
       )
       .all(),
   });
-  router.get('/home', (_req, res) => {
+  router.get('/home', (req, res) => {
+    const displayLocale = z.enum(['en', 'pt-BR', 'es']).optional().parse(req.query.displayLocale);
     const rows = db
       .prepare(
-        `SELECT c.id, c.slug, c.access_mode, c.locale, r.title, r.summary, r.cover_file_id, r.cover_alt, c.published_revision_id, p.slot FROM promotions p JOIN courses c ON c.id = p.course_id JOIN course_revisions r ON r.id = c.published_revision_id WHERE c.status = 'PUBLISHED' AND c.withdrawn_at IS NULL AND julianday(p.starts_at) <= julianday('now') AND (p.ends_at IS NULL OR julianday(p.ends_at) > julianday('now')) ORDER BY p.priority, p.id`,
+        `SELECT c.id, c.slug, c.access_mode, r.locale AS revision_locale,r.translations_json,
+          r.title,r.summary,r.cover_file_id,r.cover_alt,c.published_revision_id,p.slot
+         FROM promotions p JOIN courses c ON c.id=p.course_id
+         JOIN course_revisions r ON r.id=c.published_revision_id
+         WHERE c.status='PUBLISHED' AND c.withdrawn_at IS NULL
+           AND julianday(p.starts_at)<=julianday('now')
+           AND (p.ends_at IS NULL OR julianday(p.ends_at)>julianday('now'))
+         ORDER BY p.priority,p.id`,
       )
-      .all() as { slot: string }[];
-    res.json(Object.fromEntries(slots.map(slot => [slot, rows.filter(row => row.slot === slot)])));
+      .all() as Array<{ slot: string } & Record<string, unknown>>;
+    const localized = rows.map(row => localizeCourseMetadata(row, displayLocale));
+    res.json(Object.fromEntries(slots.map(slot => [slot, localized.filter(row => row.slot === slot)])));
   });
   router.get('/admin/home', requireRole('admin'), (_req, res) => res.json(settings()));
   router.put('/admin/home', requireRole('admin'), (req, res) => {

@@ -1,0 +1,1 @@
+ALTER TABLE video_uploads ADD COLUMN hls_key TEXT;

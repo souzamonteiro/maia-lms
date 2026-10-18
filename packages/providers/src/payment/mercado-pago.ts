@@ -26,7 +26,8 @@ export class MercadoPagoProvider implements PaymentProvider {
     idempotencyKey: string;
     backUrl: string;
   }): Promise<CheckoutResult> {
-    const response = await fetch(`${MP_API_BASE}/checkout/preferences`, {
+    const amount = (params.amountMinor / 100).toFixed(2);
+    const response = await fetch(`${MP_API_BASE}/v1/orders`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -34,22 +35,27 @@ export class MercadoPagoProvider implements PaymentProvider {
         'X-Idempotency-Key': params.idempotencyKey,
       },
       body: JSON.stringify({
+        type: 'online',
+        processing_mode: 'manual',
+        capture_mode: 'automatic_async',
+        total_amount: amount,
+        external_reference: params.orderId,
         items: [
           {
-            id: params.orderId,
             title: params.courseTitle,
             quantity: 1,
-            unit_price: params.amountMinor / 100,
-            currency_id: params.currency,
+            unit_price: amount,
+            total_amount: amount,
           },
         ],
-        back_urls: {
-          success: params.backUrl,
-          failure: params.backUrl,
-          pending: params.backUrl,
+        config: {
+          online: {
+            success_url: params.backUrl,
+            failure_url: params.backUrl,
+            pending_url: params.backUrl,
+            auto_return: 'approved',
+          },
         },
-        auto_return: 'approved',
-        external_reference: params.orderId,
       }),
     });
 
@@ -58,15 +64,15 @@ export class MercadoPagoProvider implements PaymentProvider {
       throw new Error(`MercadoPago createCheckout failed: ${response.status} ${error}`);
     }
 
-    const data = (await response.json()) as { id: string; init_point: string };
+    const data = (await response.json()) as { id: string; checkout_url: string };
     return {
-      checkoutUrl: data.init_point,
+      checkoutUrl: data.checkout_url,
       providerOrderId: data.id,
     };
   }
 
   async getPayment(providerPaymentId: string): Promise<PaymentState> {
-    const response = await fetch(`${MP_API_BASE}/v1/payments/${providerPaymentId}`, {
+    const response = await fetch(`${MP_API_BASE}/v1/orders/${encodeURIComponent(providerPaymentId)}`, {
       headers: { Authorization: `Bearer ${this.accessToken}` },
     });
 
@@ -77,30 +83,38 @@ export class MercadoPagoProvider implements PaymentProvider {
     const data = (await response.json()) as {
       id: string;
       status: string;
-      transaction_amount: number;
-      currency_id: string;
+      status_detail?: string;
+      total_amount: string;
+      total_paid_amount?: string;
+      currency: string;
+      external_reference?: string;
     };
+    const status = this.normalizeStatus(data.status, data.status_detail);
+    const amount = data.total_paid_amount ?? data.total_amount;
 
     return {
       providerPaymentId: String(data.id),
-      status: this.normalizeStatus(data.status),
-      amountMinor: Math.round(data.transaction_amount * 100),
-      currency: data.currency_id,
+      status,
+      amountMinor: Math.round(Number(amount) * 100),
+      currency: data.currency,
       metadata: data as Record<string, unknown>,
     };
   }
 
-  verifyWebhook(rawBody: Buffer, headers: Record<string, string>): WebhookVerification {
-    // MP signature verification: x-signature header contains ts= and v1=
+  verifyWebhook(
+    rawBody: Buffer,
+    headers: Record<string, string>,
+    dataId = '',
+  ): WebhookVerification {
     const signature = headers['x-signature'] ?? '';
     const requestId = headers['x-request-id'] ?? '';
-    const dataId = this.extractQueryParam(rawBody.toString(), 'data.id') ?? '';
 
-    const tsMatch = signature.match(/ts=(\d+)/);
-    const v1Match = signature.match(/v1=([a-f0-9]+)/);
+    const tsMatch = signature.match(/(?:^|,)ts=(\d+)/);
+    const v1Match = signature.match(/(?:^|,)v1=([a-f0-9]+)/i);
 
-    if (!tsMatch || !v1Match) {
-      return { valid: false, externalEventId: null, payloadHash: '' };
+    const payloadHash = crypto.createHash('sha256').update(rawBody).digest('hex');
+    if (!tsMatch || !v1Match || !requestId || !dataId) {
+      return { valid: false, externalEventId: null, payloadHash };
     }
 
     const manifest = `id:${dataId};request-id:${requestId};ts:${tsMatch[1]};`;
@@ -111,29 +125,47 @@ export class MercadoPagoProvider implements PaymentProvider {
     const valid =
       expectedBuf.length === receivedBuf.length && crypto.timingSafeEqual(expectedBuf, receivedBuf);
 
-    const payloadHash = crypto.createHash('sha256').update(rawBody).digest('hex');
+    let eventId: string | null = null;
+    try {
+      const payload = JSON.parse(rawBody.toString('utf8')) as { id?: string | number };
+      if (payload.id !== undefined) eventId = String(payload.id);
+    } catch {
+      return { valid: false, externalEventId: null, payloadHash };
+    }
 
     return {
       valid,
-      externalEventId: dataId || null,
+      externalEventId: eventId,
       payloadHash,
     };
   }
 
   async refund(params: {
-    providerPaymentId: string;
-    amountMinor: number;
+    providerOrderId: string;
+    transactionId?: string;
+    amountMinor?: number;
     idempotencyKey: string;
   }): Promise<RefundResult> {
-    const response = await fetch(`${MP_API_BASE}/v1/payments/${params.providerPaymentId}/refunds`, {
+    if ((params.amountMinor === undefined) !== (params.transactionId === undefined))
+      throw new Error('Partial order refunds require both a transaction ID and amount');
+    const response = await fetch(
+      `${MP_API_BASE}/v1/orders/${encodeURIComponent(params.providerOrderId)}/refund`,
+      {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this.accessToken}`,
         'X-Idempotency-Key': params.idempotencyKey,
       },
-      body: JSON.stringify({ amount: params.amountMinor / 100 }),
-    });
+      ...(params.amountMinor !== undefined && params.transactionId
+        ? {
+            body: JSON.stringify({
+              transactions: [{ id: params.transactionId, amount: (params.amountMinor / 100).toFixed(2) }],
+            }),
+          }
+        : {}),
+      },
+    );
 
     if (!response.ok) {
       throw new Error(`MercadoPago refund failed: ${response.status}`);
@@ -141,41 +173,31 @@ export class MercadoPagoProvider implements PaymentProvider {
 
     const data = (await response.json()) as {
       id: string;
-      amount: number;
       status: string;
+      transactions?: { refunds?: Array<{ id: string; amount: string; status: string }> };
     };
+    const refunds = data.transactions?.refunds ?? [];
+    const amount = params.amountMinor ?? refunds.reduce((total, refund) => total + Number(refund.amount), 0) * 100;
+    const refundStatus = refunds.at(-1)?.status;
     return {
-      providerRef: String(data.id),
-      amountMinor: Math.round(data.amount * 100),
+      providerRef: refunds.at(-1)?.id ?? String(data.id),
+      amountMinor: Math.round(amount),
       status:
-        data.status === 'approved'
+        (refundStatus === 'processed' || data.status === 'refunded')
           ? 'approved'
-          : data.status === 'pending'
+          : (refundStatus === 'pending' || data.status === 'processing')
             ? 'pending'
             : 'rejected',
     };
   }
 
-  private normalizeStatus(status: string): PaymentState['status'] {
-    const map: Record<string, PaymentState['status']> = {
-      approved: 'approved',
-      pending: 'pending',
-      in_process: 'pending',
-      authorized: 'pending',
-      rejected: 'rejected',
-      cancelled: 'cancelled',
-      refunded: 'refunded',
-      charged_back: 'charged_back',
-    };
-    return map[status] ?? 'rejected';
-  }
-
-  private extractQueryParam(body: string, key: string): string | null {
-    try {
-      const params = new URLSearchParams(body);
-      return params.get(key);
-    } catch {
-      return null;
-    }
+  private normalizeStatus(status: string, detail = ''): PaymentState['status'] {
+    if (status === 'processed' && detail === 'accredited') return 'approved';
+    if (status === 'processed' && detail === 'partially_refunded') return 'partially_refunded';
+    if (status === 'refunded' || (status === 'processed' && detail === 'refunded')) return 'refunded';
+    if (status === 'charged_back' || detail.includes('chargeback')) return 'charged_back';
+    if (status === 'failed') return 'rejected';
+    if (status === 'canceled' || status === 'cancelled') return 'cancelled';
+    return 'pending';
   }
 }

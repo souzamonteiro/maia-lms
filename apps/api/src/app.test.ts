@@ -11,6 +11,7 @@ import { processCertificatePdf } from '../../worker/src/certificate-pdf.js';
 import { createApp } from './app.js';
 import { runMigrations } from './db/migrate.js';
 import { loadConfig } from './config.js';
+import { totpCode } from './services/totp.js';
 
 let db: Database.Database;
 let server: Server;
@@ -1304,6 +1305,203 @@ describe('verification email resend', () => {
       });
   });
 
+  describe('administrator MFA and account verification policy', () => {
+    it('requires a second factor before admin session creation and supports one-time recovery codes', async () => {
+      const admin = await account('mfa-admin@example.com', 'admin');
+      expect((await request('/api/v1/auth/mfa/status', 'GET', undefined, admin.cookie)).data).toEqual({
+        enabled: false,
+        recoveryCodesRemaining: 0,
+      });
+
+      const setup = await request('/api/v1/auth/mfa/setup', 'POST', {}, admin.cookie);
+      expect(setup.status).toBe(200);
+      expect(setup.data.uri).toContain('otpauth://totp/');
+      expect(setup.data.uri).toContain(encodeURIComponent('Maia LMS'));
+      const secret = setup.data.secret as string;
+      expect(secret).not.toBe(db.prepare('SELECT secret FROM totp_secrets WHERE user_id=?').get(admin.id)?.secret);
+
+      expect((await request('/api/v1/auth/mfa/enable', 'POST', { code: '000000' }, admin.cookie)).status).toBe(422);
+      const enabled = await request('/api/v1/auth/mfa/enable', 'POST', { code: totpCode(secret) }, admin.cookie);
+      expect(enabled.status).toBe(200);
+      expect(enabled.data.recoveryCodes).toHaveLength(10);
+      expect(db.prepare("SELECT count(*) AS total FROM audit_events WHERE action='auth.mfa.enabled' AND subject_id=?")
+        .get(admin.id)).toEqual({ total: 1 });
+      expect((await request('/api/v1/auth/mfa/status', 'GET', undefined, admin.cookie)).data).toEqual({
+        enabled: true,
+        recoveryCodesRemaining: 10,
+      });
+
+      const recoveryCode = enabled.data.recoveryCodes[0] as string;
+      const passwordLogin = await request('/api/v1/auth/login', 'POST', {
+        email: 'mfa-admin@example.com', password,
+      });
+      expect(passwordLogin.status).toBe(200);
+      expect(passwordLogin.data.mfaRequired).toBe(true);
+      expect(passwordLogin.cookie).toBe('');
+      expect((await request('/api/v1/auth/me', 'GET', undefined, passwordLogin.cookie)).status).toBe(401);
+      expect((await request('/api/v1/auth/login/mfa', 'POST', {
+        challengeToken: passwordLogin.data.challengeToken, code: '000000',
+      })).status).toBe(401);
+
+      const recovered = await request('/api/v1/auth/login/mfa', 'POST', {
+        challengeToken: passwordLogin.data.challengeToken, code: recoveryCode,
+      });
+      expect(recovered.status).toBe(200);
+      expect(recovered.data.role).toBe('admin');
+      expect((await request('/api/v1/auth/mfa/status', 'GET', undefined, recovered.cookie)).data)
+        .toEqual({ enabled: true, recoveryCodesRemaining: 9 });
+
+      const nextChallenge = await request('/api/v1/auth/login', 'POST', {
+        email: 'mfa-admin@example.com', password,
+      });
+      expect(nextChallenge.data.mfaRequired).toBe(true);
+      expect((await request('/api/v1/auth/login/mfa', 'POST', {
+        challengeToken: nextChallenge.data.challengeToken, code: recoveryCode,
+      })).status).toBe(401);
+      const totpLogin = await request('/api/v1/auth/login/mfa', 'POST', {
+        challengeToken: nextChallenge.data.challengeToken, code: totpCode(secret),
+      });
+      expect(totpLogin.status).toBe(200);
+      expect(totpLogin.data.role).toBe('admin');
+
+      const replayChallenge = await request('/api/v1/auth/login', 'POST', {
+        email: 'mfa-admin@example.com', password,
+      });
+      expect((await request('/api/v1/auth/login/mfa', 'POST', {
+        challengeToken: replayChallenge.data.challengeToken, code: totpCode(secret),
+      })).status).toBe(401);
+
+      const disabled = await request('/api/v1/auth/mfa/disable', 'POST', {
+        currentPassword: password, code: enabled.data.recoveryCodes[1],
+      }, totpLogin.cookie);
+      expect(disabled.status).toBe(204);
+      expect(db.prepare("SELECT count(*) AS total FROM audit_events WHERE action='auth.mfa.disabled' AND subject_id=?")
+        .get(admin.id)).toEqual({ total: 1 });
+      expect((await request('/api/v1/auth/mfa/status', 'GET', undefined, totpLogin.cookie)).status).toBe(401);
+      const passwordOnlyLogin = await request('/api/v1/auth/login', 'POST', {
+        email: 'mfa-admin@example.com', password,
+      });
+      expect(passwordOnlyLogin.status).toBe(200);
+      expect(passwordOnlyLogin.data.mfaRequired).toBeUndefined();
+      expect(passwordOnlyLogin.cookie).not.toBe('');
+    });
+
+    it('consumes an MFA challenge after five invalid codes', async () => {
+      const admin = await account('mfa-lockout-admin@example.com', 'admin');
+      const setup = await request('/api/v1/auth/mfa/setup', 'POST', {}, admin.cookie);
+      expect((await request('/api/v1/auth/mfa/enable', 'POST', { code: totpCode(setup.data.secret) }, admin.cookie)).status)
+        .toBe(200);
+      const login = await request('/api/v1/auth/login', 'POST', {
+        email: 'mfa-lockout-admin@example.com', password,
+      });
+      expect(login.data.mfaRequired).toBe(true);
+      for (let attempt = 0; attempt < 5; attempt++) {
+        expect((await request('/api/v1/auth/login/mfa', 'POST', {
+          challengeToken: login.data.challengeToken,
+          code: '000000',
+        })).status).toBe(401);
+      }
+      expect(db.prepare('SELECT failed_attempts,consumed_at FROM auth_mfa_challenges WHERE user_id=?')
+        .get(admin.id)).toMatchObject({ failed_attempts: 5, consumed_at: expect.any(String) });
+      expect((await request('/api/v1/auth/login/mfa', 'POST', {
+        challengeToken: login.data.challengeToken,
+        code: totpCode(setup.data.secret),
+      })).status).toBe(401);
+    });
+
+    it('allows unverified accounts to sign in but keeps them ineligible for certificate issuance', async () => {
+      const admin = await account('unverified-policy-admin@example.com', 'admin');
+      const learner = await account('unverified-policy@example.com');
+      db.prepare('UPDATE users SET verified_at=NULL WHERE id=?').run(learner.id);
+      const login = await request('/api/v1/auth/login', 'POST', {
+        email: 'unverified-policy@example.com', password,
+      });
+      expect(login.status).toBe(200);
+      expect(login.data.verifiedAt).toBeNull();
+      const course = await publish(admin.cookie, 'unverified-policy-course');
+      const enrolled = await request(`/api/v1/courses/${course.id}/enroll`, 'POST', {}, login.cookie);
+      expect(enrolled.status).toBe(200);
+      const eligibility = await request('/api/v1/me/certificates/eligibility', 'POST', {
+        enrollmentId: enrolled.data.id,
+        confirmedName: 'Unverified Learner',
+        disclosureConsent: true,
+      }, login.cookie);
+      expect(eligibility.data.reasons).toContain('CERTIFICATE_EMAIL_UNVERIFIED');
+    });
+  });
+
+  describe('account email change confirmation', () => {
+    it('keeps the current email until a single-use new-address confirmation and revokes existing sessions', async () => {
+      const user = await account('email-change-old@example.com');
+      await account('email-change-taken@example.com');
+
+      expect((await request('/api/v1/auth/change-email', 'POST', {
+        email: 'email-change-next@example.com', currentPassword: 'wrong-password',
+      }, user.cookie)).data.code).toBe('AUTH_CURRENT_PASSWORD_INVALID');
+      expect((await request('/api/v1/auth/change-email', 'POST', {
+        email: 'email-change-taken@example.com', currentPassword: password,
+      }, user.cookie)).data.code).toBe('AUTH_EMAIL_EXISTS');
+      expect((await request('/api/v1/auth/change-email', 'POST', {
+        email: 'email-change-old@example.com', currentPassword: password,
+      }, user.cookie)).data.code).toBe('AUTH_EMAIL_UNCHANGED');
+
+      expect((await request('/api/v1/auth/change-email', 'POST', {
+        email: ' EMAIL-CHANGE-NEXT@example.com ', currentPassword: password,
+      }, user.cookie)).status).toBe(204);
+      expect((await request('/api/v1/auth/me', 'GET', undefined, user.cookie)).data.email)
+        .toBe('email-change-old@example.com');
+      const requestRow = db.prepare('SELECT id,email,email_normalized,token_hash,expires_at FROM account_email_changes WHERE user_id=? AND used_at IS NULL')
+        .get(user.id) as { id: string; email: string; email_normalized: string; token_hash: string; expires_at: string };
+      expect(requestRow).toMatchObject({
+        email: 'EMAIL-CHANGE-NEXT@example.com',
+        email_normalized: 'email-change-next@example.com',
+      });
+      const mail = db.prepare('SELECT payload FROM outbox WHERE event_type=? ORDER BY rowid DESC LIMIT 1')
+        .get('email.send') as { payload: string };
+      const mailPayload = JSON.parse(mail.payload) as { to: string; subject: string; text: string };
+      expect(mailPayload.to).toBe('EMAIL-CHANGE-NEXT@example.com');
+      expect(mailPayload.subject).toBe('Confirme o novo e-mail da sua conta Maia');
+      expect(mailPayload.text).toContain('/auth/confirm-email-change?lang=pt-BR&token=');
+      const token = mailPayload.text.match(/token=([a-f0-9]{64})$/)?.[1];
+      expect(token).toBeTruthy();
+
+      const confirmed = await request('/api/v1/auth/confirm-email-change', 'POST', { token });
+      expect(confirmed.status).toBe(200);
+      expect(confirmed.data).toMatchObject({ code: 'EMAIL_CHANGE_CONFIRMED', email: 'EMAIL-CHANGE-NEXT@example.com' });
+      expect((await request('/api/v1/auth/me', 'GET', undefined, user.cookie)).status).toBe(401);
+      expect((await request('/api/v1/auth/login', 'POST', {
+        email: 'email-change-old@example.com', password,
+      })).data.code).toBe('AUTH_INVALID_CREDENTIALS');
+      const newLogin = await request('/api/v1/auth/login', 'POST', {
+        email: 'email-change-next@example.com', password,
+      });
+      expect(newLogin.status).toBe(200);
+      expect(newLogin.data.verifiedAt).toBeTruthy();
+      expect((await request('/api/v1/auth/confirm-email-change', 'POST', { token })).data.code)
+        .toBe('AUTH_TOKEN_USED');
+
+      const expiredToken = 'b'.repeat(64);
+      db.prepare('UPDATE account_email_changes SET used_at=? WHERE user_id=? AND used_at IS NULL')
+        .run(new Date().toISOString(), user.id);
+      db.prepare(`INSERT INTO account_email_changes(
+        id,user_id,email,email_normalized,token_hash,expires_at
+      ) VALUES(?,?,?,?,?,'2000-01-01T00:00:00Z')`).run(
+        randomUUID(),
+        user.id,
+        'email-change-expired@example.com',
+        'email-change-expired@example.com',
+        createHash('sha256').update(expiredToken).digest('hex'),
+      );
+      expect((await request('/api/v1/auth/confirm-email-change', 'POST', { token: expiredToken })).data.code)
+        .toBe('AUTH_TOKEN_EXPIRED');
+      expect((await request('/api/v1/auth/me', 'GET', undefined, newLogin.cookie)).data.email)
+        .toBe('EMAIL-CHANGE-NEXT@example.com');
+      expect((await request('/api/v1/auth/change-email', 'POST', {
+        email: 'email-change-after-expired@example.com', currentPassword: password,
+      }, newLogin.cookie)).status).toBe(204);
+    });
+  });
+
 describe('account interface language preference', () => {
     it('persists supported locales, rejects unsupported values, and requires authentication', async () => {
       const user = await account('locale-preference@example.com');
@@ -1731,6 +1929,19 @@ describe('administrator enrollment support', () => {
       admin.cookie,
     );
     expect(revoked.data).toEqual({ id: enrollmentId, state: 'revoked', changed: true });
+    const revokedListing = await request(
+      '/api/v1/admin/enrollments?q=enrollment-target&state=revoked',
+      'GET',
+      undefined,
+      admin.cookie,
+    );
+    expect(revokedListing.data.items[0]).toMatchObject({
+      id: enrollmentId,
+      state: 'revoked',
+      has_entitlement: 0,
+      completed_lessons: 1,
+    });
+    expect((await request(`/api/v1/lessons/${course.lessonId}`, 'GET', undefined, learner.cookie)).status).toBe(403);
     expect(
       (
         await request(`/api/v1/admin/enrollments/${enrollmentId}/revoke`, 'PATCH', {
@@ -1765,6 +1976,106 @@ describe('administrator enrollment support', () => {
     expect(history.data.items[0].metadata).toContain(grant.reason);
     expect(history.data.items[1].metadata).toContain('Access paused at learner request.');
     expect((await request(`/api/v1/lessons/${course.lessonId}`, 'GET', undefined, learner.cookie)).status).toBe(200);
+  });
+});
+
+describe('paid course checkout initiation', () => {
+  it('creates idempotent orders from published prices without granting access on checkout return', async () => {
+    const admin = await account('paid-course-admin@example.com', 'admin');
+    const buyer = await account('paid-course-buyer@example.com');
+    const otherBuyer = await account('paid-course-other@example.com');
+    const unpriced = await request('/api/v1/admin/courses', 'POST', draft('unpriced-paid-course', 'PAID'), admin.cookie);
+    expect(unpriced.status).toBe(422);
+    expect(unpriced.data.code).toBe('COURSE_PRICE_REQUIRED');
+    const freeWithPrice = await request('/api/v1/admin/courses', 'POST', {
+      ...draft('free-course-with-price'),
+      priceAmountMinor: 1000,
+      priceCurrency: 'BRL',
+    }, admin.cookie);
+    expect(freeWithPrice.status).toBe(422);
+    expect(freeWithPrice.data.code).toBe('COURSE_PRICE_FREE_INVALID');
+    const paidCourse = await request('/api/v1/admin/courses', 'POST', {
+      ...draft('paid-checkout-course', 'PAID'),
+      title: 'Paid course snapshot',
+      accessTerms: 'Access for twelve months.',
+      priceAmountMinor: 2599,
+      priceCurrency: 'BRL',
+    }, admin.cookie);
+    expect(paidCourse.status).toBe(201);
+    const courseId = paidCourse.data.id as string;
+    expect((await request(`/api/v1/admin/courses/${courseId}/publish`, 'POST', {
+      expectedRevisionId: paidCourse.data.current_revision_id,
+    }, admin.cookie)).status).toBe(200);
+
+    const idempotencyKey = randomUUID();
+    const first = await request('/api/v1/orders', 'POST', { courseId, idempotencyKey }, buyer.cookie);
+    expect(first.status).toBe(201);
+    expect(first.data).toMatchObject({ state: 'CHECKOUT_PENDING' });
+    expect(first.data.checkoutUrl).toMatch(/^http:\/\/localhost:/);
+
+    const repeated = await request('/api/v1/orders', 'POST', { courseId, idempotencyKey }, buyer.cookie);
+    expect(repeated.status).toBe(201);
+    expect(repeated.data.orderId).toBe(first.data.orderId);
+    expect(repeated.data.checkoutUrl).toBe(first.data.checkoutUrl);
+    const newBrowserKey = await request('/api/v1/orders', 'POST', {
+      courseId,
+      idempotencyKey: randomUUID(),
+    }, buyer.cookie);
+    expect(newBrowserKey.data.orderId).toBe(first.data.orderId);
+    expect(db.prepare('SELECT count(*) AS total FROM orders WHERE user_id=? AND course_id=?')
+      .get(buyer.id, courseId)).toEqual({ total: 1 });
+    expect(db.prepare('SELECT price_snapshot,currency,course_revision_id,course_title_snapshot,access_terms_snapshot FROM orders WHERE id=?')
+      .get(first.data.orderId)).toEqual({
+      price_snapshot: 2599,
+      currency: 'BRL',
+      course_revision_id: paidCourse.data.current_revision_id,
+      course_title_snapshot: 'Paid course snapshot',
+      access_terms_snapshot: 'Access for twelve months.',
+    });
+    expect((await request(`/api/v1/me/orders/${first.data.orderId}`, 'GET', undefined, otherBuyer.cookie)).status)
+      .toBe(404);
+    expect((await request('/api/v1/me/orders', 'GET', undefined, buyer.cookie)).data.items)
+      .toMatchObject([{ id: first.data.orderId, state: 'CHECKOUT_PENDING', price_snapshot: 2599 }]);
+    expect(db.prepare('SELECT count(*) AS total FROM enrollments WHERE user_id=? AND course_id=?')
+      .get(buyer.id, courseId)).toEqual({ total: 0 });
+    expect((await request(`/api/v1/courses/${courseId}/enroll`, 'POST', {}, buyer.cookie)).data.code)
+      .toBe('PAYMENT_REQUIRED');
+
+    const firstPaymentId = new URL(first.data.checkoutUrl).pathname.split('/').at(-1)!;
+    const fakePage = await request(`/api/v1/dev/fake-checkout/${firstPaymentId}`);
+    expect(fakePage.data).toMatchObject({
+      state: 'CHECKOUT_PENDING',
+      paymentStatus: 'pending',
+      course_title_snapshot: 'Paid course snapshot',
+      price_snapshot: 2599,
+    });
+
+    const cancelOrder = await request('/api/v1/orders', 'POST', {
+      courseId,
+      idempotencyKey: randomUUID(),
+    }, otherBuyer.cookie);
+    const cancelPaymentId = new URL(cancelOrder.data.checkoutUrl).pathname.split('/').at(-1)!;
+    const canceled = await request(`/api/v1/dev/fake-checkout/${cancelPaymentId}`, 'POST', {
+      decision: 'cancel',
+    });
+    expect(canceled.data.state).toBe('CANCELED');
+    expect(db.prepare('SELECT count(*) AS total FROM enrollments WHERE user_id=? AND course_id=?')
+      .get(otherBuyer.id, courseId)).toEqual({ total: 0 });
+
+    const approved = await request(`/api/v1/dev/fake-checkout/${firstPaymentId}`, 'POST', {
+      decision: 'approve',
+    });
+    expect(approved.data).toMatchObject({ state: 'PAID', orderId: first.data.orderId });
+    expect(new URL(approved.data.returnUrl).pathname).toBe('/my-orders');
+    expect(db.prepare('SELECT count(*) AS total FROM enrollments WHERE user_id=? AND course_id=?')
+      .get(buyer.id, courseId)).toEqual({ total: 1 });
+    expect(db.prepare("SELECT count(*) AS total FROM entitlements WHERE source_type='order' AND source_id=?")
+      .get(first.data.orderId)).toEqual({ total: 1 });
+    expect((await request(`/api/v1/dev/fake-checkout/${firstPaymentId}`, 'POST', {
+      decision: 'approve',
+    })).data.state).toBe('PAID');
+    expect(db.prepare("SELECT count(*) AS total FROM entitlements WHERE source_type='order' AND source_id=?")
+      .get(first.data.orderId)).toEqual({ total: 1 });
   });
 });
 
@@ -1849,6 +2160,86 @@ describe('course publication review', () => {
       (db.prepare('SELECT status FROM courses WHERE id=?').get(created.data.id) as { status: string })
         .status,
     ).toBe('DRAFT');
+  });
+
+  it('lets administrators schedule, reschedule, and cancel publication for the reviewed revision', async () => {
+    const admin = await account('schedule-admin@example.com', 'admin');
+    const author = await account('schedule-author@example.com', 'author');
+    const created = await request(
+      '/api/v1/admin/courses',
+      'POST',
+      draft('scheduled-review-course'),
+      author.cookie,
+    );
+    const courseId = created.data.id as string;
+    const revisionId = created.data.current_revision_id as string;
+    expect((await request(`/api/v1/admin/courses/${courseId}/review`, 'POST', {
+      expectedRevisionId: revisionId,
+    }, author.cookie)).status).toBe(200);
+
+    const schedulePath = `/api/v1/admin/courses/${courseId}/schedule-publication`;
+    const nextHour = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    const laterHour = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+    expect((await request(schedulePath, 'POST', {
+      expectedRevisionId: revisionId,
+      scheduledAt: nextHour,
+    }, author.cookie)).status).toBe(403);
+    expect((await request(schedulePath, 'POST', {
+      expectedRevisionId: revisionId,
+      scheduledAt: new Date(Date.now() - 60_000).toISOString(),
+    }, admin.cookie)).data.code).toBe('COURSE_SCHEDULE_FUTURE_REQUIRED');
+
+    const scheduled = await request(schedulePath, 'POST', {
+      expectedRevisionId: revisionId,
+      scheduledAt: nextHour,
+    }, admin.cookie);
+    expect(scheduled.status).toBe(200);
+    expect(scheduled.data).toMatchObject({
+      status: 'REVIEW',
+      scheduled_publication_at: nextHour,
+      scheduled_revision_id: revisionId,
+      scheduled_by: admin.id,
+    });
+    const rescheduled = await request(schedulePath, 'POST', {
+      expectedRevisionId: revisionId,
+      scheduledAt: laterHour,
+    }, admin.cookie);
+    expect(rescheduled.data.scheduled_publication_at).toBe(laterHour);
+
+    const cancelled = await request(schedulePath, 'POST', {
+      expectedRevisionId: revisionId,
+      scheduledAt: null,
+    }, admin.cookie);
+    expect(cancelled.data).toMatchObject({
+      scheduled_publication_at: null,
+      scheduled_revision_id: null,
+      scheduled_by: null,
+    });
+    const scheduleAfterCancel = await request(schedulePath, 'POST', {
+      expectedRevisionId: revisionId,
+      scheduledAt: laterHour,
+    }, admin.cookie);
+    expect(scheduleAfterCancel.status).toBe(200);
+    const edited = await request(`/api/v1/admin/courses/${courseId}`, 'PUT', {
+      ...draft('scheduled-review-course'),
+      expectedRevisionId: revisionId,
+    }, author.cookie);
+    expect(edited.status).toBe(200);
+    expect(edited.data.current_revision_id).not.toBe(revisionId);
+    expect(edited.data).toMatchObject({
+      scheduled_publication_at: null,
+      scheduled_revision_id: null,
+      scheduled_by: null,
+    });
+    expect(db.prepare("SELECT action FROM audit_events WHERE subject_id=? ORDER BY rowid")
+      .all(courseId)).toEqual([
+      { action: 'course.submit_review' },
+      { action: 'course.schedule_publication' },
+      { action: 'course.schedule_publication' },
+      { action: 'course.cancel_scheduled_publication' },
+      { action: 'course.schedule_publication' },
+      { action: 'course.cancel_scheduled_publication' },
+    ]);
   });
 });
 
@@ -1936,6 +2327,30 @@ describe('urgent course withdrawal', () => {
     );
     expect(republish.status).toBe(409);
     expect(republish.data.code).toBe('COURSE_WITHDRAWN');
+  });
+});
+
+describe('course archive', () => {
+  it('hides archived courses and blocks new enrollment while preserving current learner access', async () => {
+    const admin = await account('archive-admin@example.com', 'admin');
+    const learner = await account('archive-learner@example.com');
+    const newLearner = await account('archive-new-learner@example.com');
+    const course = await publish(admin.cookie, 'archive-preserves-access');
+    expect((await request(`/api/v1/courses/${course.id}/enroll`, 'POST', {}, learner.cookie)).status)
+      .toBe(200);
+
+    const archived = await request(`/api/v1/admin/courses/${course.id}/archive`, 'POST', {}, admin.cookie);
+    expect(archived.data.status).toBe('ARCHIVED');
+    expect((await request('/api/v1/courses')).data.some((item: { id: string }) => item.id === course.id))
+      .toBe(false);
+    expect((await request(`/api/v1/courses/${course.id}`, 'GET', undefined, learner.cookie)).status)
+      .toBe(200);
+    expect((await request(`/api/v1/lessons/${course.lessonId}`, 'GET', undefined, learner.cookie)).status)
+      .toBe(200);
+    expect((await request(`/api/v1/courses/${course.id}/enroll`, 'POST', {}, newLearner.cookie)).status)
+      .toBe(409);
+    expect(db.prepare("SELECT action FROM audit_events WHERE subject_id=? AND action='course.archive'")
+      .get(course.id)).toEqual({ action: 'course.archive' });
   });
 });
 

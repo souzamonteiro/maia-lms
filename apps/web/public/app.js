@@ -2,10 +2,13 @@ import { mountEmailVerification } from './email-verification.js';
 import { attachPlaybackPositionSaver } from './playback-position.js';
 import { mountCategoryEditor, categoriesDirty } from './category-editor.js';
 import { mountAdminUsers } from './admin-users.js';
+import { mountAdminOrders } from './admin-orders.js';
+import { mountAdminMedia } from './admin-media.js';
 import { mountAdminEnrollments } from './admin-enrollments.js';
 import { mountAdminCertificates } from './admin-certificates.js';
 import { coursePresentation } from './course-presentation.js';
 import { icon } from './icons.js';
+import { attachHlsPlayer } from './hls-player.js';
 import { mountStudio, studioDirty } from './studio.js';
 import { mountHomeEditor, homeDirty } from './home-editor.js';
 import { applyTranslations, detectLocale, formatNumber, storeLocale, translate } from './i18n.js';
@@ -20,6 +23,25 @@ const escapeHtml = value =>
 const e = escapeHtml;
 let me;
 let locale = detectLocale();
+let pendingMfaChallenge = null;
+let activePlayerCleanups = [];
+
+function clearActivePlayers() {
+  for (const cleanup of activePlayerCleanups) cleanup();
+  activePlayerCleanups = [];
+}
+
+async function mountHlsPlayers(root = app) {
+  clearActivePlayers();
+  const videos = [...root.querySelectorAll('video[data-hls-url][data-mp4-url]')];
+  activePlayerCleanups = await Promise.all(videos.map(video => attachHlsPlayer(video, {
+    hlsUrl: video.dataset.hlsUrl,
+    mp4Url: video.dataset.mp4Url,
+    quality: video.parentElement.querySelector('.video-quality'),
+    status: video.parentElement.querySelector('.video-status'),
+    t,
+  })));
+}
 if (location.pathname === '/auth/verify-email') {
   const emailLocale = new URLSearchParams(location.search).get('lang');
   if (['en', 'pt-BR', 'es'].includes(emailLocale)) locale = emailLocale;
@@ -77,6 +99,104 @@ function bindForm(id, callback) {
     }
   });
 }
+function renderMfaChallenge(challengeToken) {
+  app.innerHTML = `<h1>${t('mfaChallengeTitle')}</h1><p>${t('mfaChallengeHelp')}</p><form id="mfa-challenge" class="auth"><label>${t('mfaCodeLabel')}<input name="code" autocomplete="one-time-code" inputmode="text" minlength="6" maxlength="40" required></label><button type="submit">${t('mfaVerifyAction')}</button></form><button type="button" class="secondary" id="mfa-restart-login">${t('signIn')}</button>`;
+  bindForm('#mfa-challenge', async data => {
+    await api('/auth/login/mfa', 'POST', { challengeToken, code: data.get('code') });
+    pendingMfaChallenge = null;
+    location.href = '/my-learning';
+  });
+  button('#mfa-restart-login', () => {
+    pendingMfaChallenge = null;
+    auth('login');
+  });
+}
+async function mountAdminMfa(host) {
+  const render = (status, recoveryCodes = null, setup = null) => {
+    host.replaceChildren();
+    const heading = document.createElement('h3');
+    heading.textContent = t('mfaSettingsTitle');
+    host.append(heading);
+
+    if (recoveryCodes) {
+      const description = document.createElement('p');
+      description.textContent = t('mfaRecoveryCodesHelp');
+      const list = document.createElement('pre');
+      list.textContent = recoveryCodes.join('\n');
+      const saved = document.createElement('button');
+      saved.type = 'button';
+      saved.textContent = t('mfaRecoveryCodesSaved');
+      saved.addEventListener('click', () => render(status));
+      host.append(description, list, saved);
+      return;
+    }
+
+    if (setup) {
+      const description = document.createElement('p');
+      description.textContent = t('mfaSetupHelp');
+      const keyLabel = document.createElement('p');
+      keyLabel.textContent = `${t('mfaSetupKey')}: ${setup.secret}`;
+      const uriLabel = document.createElement('p');
+      uriLabel.textContent = `${t('mfaSetupUri')}: ${setup.uri}`;
+      const form = document.createElement('form');
+      form.innerHTML = `<label>${e(t('mfaConfirmCode'))}<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" minlength="6" maxlength="6" required></label><button type="submit">${e(t('mfaEnableAction'))}</button>`;
+      form.addEventListener('submit', async event => {
+        event.preventDefault();
+        const submit = form.querySelector('button[type=submit]');
+        submit.disabled = true;
+        try {
+          const result = await api('/auth/mfa/enable', 'POST', { code: new FormData(form).get('code') });
+          render({ enabled: true, recoveryCodesRemaining: result.recoveryCodes.length }, result.recoveryCodes);
+        } catch (error) {
+          notify(error);
+          submit.disabled = false;
+        }
+      });
+      host.append(description, keyLabel, uriLabel, form);
+      return;
+    }
+
+    const description = document.createElement('p');
+    description.textContent = status.enabled ? t('mfaEnabled') : t('mfaNotEnabled');
+    host.append(description);
+    if (!status.enabled) {
+      const setupButton = document.createElement('button');
+      setupButton.type = 'button';
+      setupButton.textContent = t('mfaSetupAction');
+      setupButton.addEventListener('click', async () => {
+        setupButton.disabled = true;
+        try {
+          render(status, null, await api('/auth/mfa/setup', 'POST'));
+        } catch (error) {
+          notify(error);
+          setupButton.disabled = false;
+        }
+      });
+      host.append(setupButton);
+      return;
+    }
+
+    const remaining = document.createElement('p');
+    remaining.textContent = t('mfaRecoveryCount', { count: status.recoveryCodesRemaining });
+    const form = document.createElement('form');
+    form.innerHTML = `<label>${e(t('mfaDisablePassword'))}<input name="currentPassword" type="password" autocomplete="current-password" required maxlength="128"></label><label>${e(t('mfaDisableCode'))}<input name="code" autocomplete="one-time-code" required maxlength="40"></label><button type="submit" class="secondary">${e(t('mfaDisableAction'))}</button>`;
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      const submit = form.querySelector('button[type=submit]');
+      submit.disabled = true;
+      try {
+        await api('/auth/mfa/disable', 'POST', Object.fromEntries(new FormData(form)));
+        location.href = '/auth/login?mfaDisabled=1';
+      } catch (error) {
+        notify(error);
+        submit.disabled = false;
+      }
+    });
+    host.append(remaining, form);
+  };
+
+  render(await api('/auth/mfa/status'));
+}
 function button(id, callback) {
   document
     .querySelector(id)
@@ -89,7 +209,7 @@ function coverImage(c) {
 }
 function cards(courses) {
   return courses.length
-    ? `<div class="grid">${courses.map(c => `<article class="card">${coverImage(c)}<span class="badge">${c.access_mode === 'OPEN_FREE' ? t('accessOpen') : t('accessEnrolled')}</span><h2><a href="/courses/${e(c.slug)}">${e(c.title)}</a></h2><p>${e(c.summary)}</p></article>`).join('')}</div>`
+    ? `<div class="grid">${courses.map(c => `<article class="card">${coverImage(c)}<span class="badge">${c.access_mode === 'OPEN_FREE' ? t('accessOpen') : c.access_mode === 'PAID' ? t('coursePriceValue', { value: new Intl.NumberFormat(locale, { style: 'currency', currency: c.price_currency }).format(c.price_amount_minor / 100) }) : t('accessEnrolled')}</span><h2><a href="/courses/${e(c.slug)}">${e(c.title)}</a></h2><p>${e(c.summary)}</p></article>`).join('')}</div>`
     : `<p>${t('noCoursesPublished')}</p>`;
 }
 async function catalog() {
@@ -142,6 +262,7 @@ async function catalog() {
   const root = document.querySelector('#catalog');
   params.set('format', 'page');
   params.set('pageSize', '12');
+  params.set('displayLocale', locale);
   try {
     const result = await api(`/courses?${params}`);
     if (!root.isConnected) return;
@@ -150,6 +271,7 @@ async function catalog() {
       query.delete('format');
       query.delete('pageSize');
       query.set('page', String(page));
+      query.set('displayLocale', locale);
       return `/courses?${query}`;
     };
     const pageCount = Math.max(1, Math.ceil(result.total / result.pageSize));
@@ -160,8 +282,14 @@ async function catalog() {
   }
 }
 async function auth(kind) {
+  if (kind === 'login' && pendingMfaChallenge) {
+    renderMfaChallenge(pendingMfaChallenge);
+    return;
+  }
     if (kind === 'login' && new URLSearchParams(location.search).has('passwordChanged'))
       notify(t('passwordChangeSuccess'));
+  if (kind === 'login' && new URLSearchParams(location.search).has('mfaDisabled'))
+    notify(t('mfaDisabledNotice'));
   // Keep credentials only in the current DOM; never persist them to browser storage.
   const previous = app.querySelector('#auth');
   const values = previous ? new FormData(previous) : null;
@@ -183,8 +311,12 @@ async function auth(kind) {
     const payload = Object.fromEntries(data);
     if (kind === 'register') payload.locale = locale;
     if (reset) payload.token = new URLSearchParams(location.search).get('token');
-    await api(`/auth/${kind}`, 'POST', payload);
-    if (kind === 'login') location.href = '/my-learning';
+    const result = await api(`/auth/${kind}`, 'POST', payload);
+    if (kind === 'login' && result?.mfaRequired) {
+      pendingMfaChallenge = result.challengeToken;
+      renderMfaChallenge(pendingMfaChallenge);
+    }
+    else if (kind === 'login') location.href = '/my-learning';
     else if (kind === 'register') {
       notify(t('registerSuccess'));
       const resend = document.createElement('button');
@@ -215,21 +347,88 @@ function attachmentCards(items = []) {
     : '';
 }
 async function detail(slug) {
-  const c = await api(`/courses/${encodeURIComponent(slug)}`);
-  app.innerHTML = `<a href="/courses">${t('backToCourses')}</a><h1>${e(c.title)}</h1>${coverImage(c)}<p>${e(c.summary)}</p>${coursePresentation(c, { t, e })}${c.enrollment ? `<p class="badge">${t('enrolledBadge')}</p>` : me ? `<button id="enroll">${t('enrollFree')}</button>` : `<p><a href="/auth/login">${t('signIn')}</a>${t('toEnrollSuffix')}</p>`}${attachmentCards(c.attachments)}${c.modules.map(m => `<section><h2>${e(m.title)}</h2><ol>${m.lessons.map(l => `<li><a href="/lessons/${e(l.id)}">${e(l.title)}</a>${l.is_preview ? t('previewOpen') : ''}</li>`).join('')}</ol></section>`).join('')}`;
+  clearActivePlayers();
+  const c = await api(`/courses/${encodeURIComponent(slug)}?displayLocale=${encodeURIComponent(locale)}`);
+  app.innerHTML = `<a href="/courses">${t('backToCourses')}</a><h1>${e(c.title)}</h1>${coverImage(c)}<p>${e(c.summary)}</p>${coursePresentation(c, { t, e, locale })}${c.enrollment ? `<p class="badge">${t('enrolledBadge')}</p>` : me ? `<button id="enroll">${t('enrollFree')}</button>` : `<p><a href="/auth/login">${t('signIn')}</a>${t('toEnrollSuffix')}</p>`}${attachmentCards(c.attachments)}${c.modules.map(m => `<section><h2>${e(m.title)}</h2><ol>${m.lessons.map(l => `<li><a href="/lessons/${e(l.id)}">${e(l.title)}</a>${l.is_preview ? t('previewOpen') : ''}</li>`).join('')}</ol></section>`).join('')}`;
+  await mountHlsPlayers(app);
+  if (c.access_mode === 'PAID' && !c.enrollment) {
+    const purchase = app.querySelector('#enroll');
+    if (purchase) purchase.textContent = t('buyCourse');
+    const signInPrompt = app.querySelector('a[href="/auth/login"]')?.parentElement;
+    if (!me && signInPrompt) signInPrompt.lastChild.textContent = t('toBuySuffix');
+  }
   button('#enroll', async () => {
+    if (c.access_mode === 'PAID') {
+      const key = `maia-lms:checkout:${c.id}`;
+      let idempotencyKey = sessionStorage.getItem(key);
+      if (!idempotencyKey) {
+        idempotencyKey = crypto.randomUUID();
+        sessionStorage.setItem(key, idempotencyKey);
+      }
+      const checkout = await api('/orders', 'POST', { courseId: c.id, idempotencyKey });
+      sessionStorage.removeItem(key);
+      if (checkout.checkoutUrl) location.assign(checkout.checkoutUrl);
+      else location.href = '/my-orders';
+      return;
+    }
     await api(`/courses/${c.id}/enroll`, 'POST');
     await detail(slug);
   });
 }
+async function myOrders() {
+  if (!me) {
+    location.href = '/auth/login';
+    return;
+  }
+  const { items } = await api('/me/orders');
+  const statusKeys = {
+    CREATED: 'orderStatusCreated',
+    CHECKOUT_PENDING: 'orderStatusPending',
+    PAID: 'orderStatusPaid',
+    EXPIRED: 'orderStatusExpired',
+    CANCELED: 'orderStatusCanceled',
+    PARTIALLY_REFUNDED: 'orderStatusPartiallyRefunded',
+    REFUNDED: 'orderStatusRefunded',
+    CHARGEBACK: 'orderStatusChargeback',
+  };
+  app.innerHTML = `<h1>${t('myOrdersTitle')}</h1>${items.length ? items.map(order => `<article class="card order-entry"><h2>${e(order.course_title_snapshot)}</h2><p role="status">${t(statusKeys[order.state] || 'orderStatusPending')} · ${e(new Intl.NumberFormat(locale, { style: 'currency', currency: order.currency }).format(order.price_snapshot / 100))}</p>${order.access_terms_snapshot ? `<p class="plain-content">${e(order.access_terms_snapshot)}</p>` : ''}${order.state === 'CHECKOUT_PENDING' && order.checkout_url ? `<a class="button" href="${e(order.checkout_url)}">${t('continueCheckout')}</a>` : ''}${['CHECKOUT_PENDING','PAID'].includes(order.state) ? `<button type="button" class="secondary" data-refresh-order="${e(order.id)}">${t('refreshOrderStatus')}</button>` : ''}</article>`).join('') : `<p>${t('ordersEmpty')}</p>`}`;
+  app.querySelectorAll('[data-refresh-order]').forEach(refresh => {
+    refresh.addEventListener('click', async () => {
+      refresh.disabled = true;
+      try {
+        await api(`/me/orders/${encodeURIComponent(refresh.dataset.refreshOrder)}/refresh`, 'POST');
+        await myOrders();
+      } catch (error) {
+        notify(error);
+        refresh.disabled = false;
+      }
+    });
+  });
+}
+async function fakeCheckout(paymentId) {
+  const checkout = await api(`/dev/fake-checkout/${encodeURIComponent(paymentId)}`);
+  const amount = new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: checkout.currency,
+  }).format(checkout.price_snapshot / 100);
+  app.innerHTML = `<section class="fake-checkout"><h1>${t('fakeCheckoutTitle')}</h1><h2>${e(checkout.course_title_snapshot)}</h2><p>${e(t('fakeCheckoutDescription', { course: checkout.course_title_snapshot }))}</p><p><strong>${e(amount)}</strong></p><p role="status">${t(`orderStatus${checkout.state === 'PAID' ? 'Paid' : 'Pending'}`)}</p><div class="actions"><button id="fake-approve">${t('fakeApprove')}</button><button id="fake-cancel" class="secondary">${t('fakeCancel')}</button></div></section>`;
+  const decide = async decision => {
+    const result = await api(`/dev/fake-checkout/${encodeURIComponent(paymentId)}`, 'POST', { decision });
+    location.assign(result.returnUrl);
+  };
+  button('#fake-approve', () => decide('approve'));
+  button('#fake-cancel', () => decide('cancel'));
+}
 async function lesson(id) {
+  clearActivePlayers();
   const l = await api(`/lessons/${encodeURIComponent(id)}`);
   const outline = `<nav class="lesson-outline" aria-label="${t('courseOutline')}">${l.navigation.modules.map(m => `<section><h2>${e(m.title)}</h2><ol>${m.lessons.map(item => `<li><a href="/lessons/${e(item.id)}"${item.id === id ? ' aria-current="page"' : ''}>${e(item.title)}</a></li>`).join('')}</ol></section>`).join('')}</nav>`;
   const lessonNavigation = `<nav class="lesson-navigation" aria-label="${t('lessonNavigation')}">${l.navigation.previous_lesson_id ? `<a rel="prev" href="/lessons/${e(l.navigation.previous_lesson_id)}">${t('previousLesson')}</a>` : '<span></span>'}${l.navigation.next_lesson_id ? `<a rel="next" href="/lessons/${e(l.navigation.next_lesson_id)}">${t('nextLesson')}</a>` : '<span></span>'}</nav>`;
   const quizPanel = l.quiz_id && l.can_track_progress
     ? `<section class="lesson-quiz" id="lesson-quiz"><h2>${t('quizTitle')}</h2><p>${t('quizPrivacy')}</p><p id="quiz-status" role="status" aria-live="polite"></p><div id="quiz-content"><button type="button" id="quiz-start">${t('quizStart')}</button></div><section id="quiz-results" aria-live="polite"></section></section>`
     : '';
-  app.innerHTML = `<a href="/courses/${e(l.course_id)}">${t('backToCourse')}</a>${outline}<article class="lesson"><h1>${e(l.title)}</h1><div class="lesson-body prose">${l.video_id ? `<video id="lesson-video" controls playsinline preload="metadata" poster="/api/v1/lessons/${e(id)}/poster" src="/api/v1/lessons/${e(id)}/video">${(l.captions || []).map(c => `<track kind="captions" srclang="${e(c.language)}" label="${e(c.label)}" src="/api/v1/lessons/${e(id)}/captions/${e(c.language)}">`).join('')}</video><label>${t('playbackSpeed')}<select id="playback-speed"><option>0.75</option><option selected>1</option><option>1.25</option><option>1.5</option><option>2</option></select></label><p id="video-error" role="status"></p>` : ''}${l.body_html}</div>${attachmentCards(l.attachments)}${(l.captions || []).map(c => `<details><summary>${t('transcript')} — ${e(c.label)}</summary><div class="plain-content">${e(c.transcript)}</div></details>`).join('')}</article>${quizPanel}${lessonNavigation}${me ? `<button id="complete">${l.progress?.completed_at ? t('lessonCompleted') : t('markComplete')}</button>` : `<p>${t('signInToTrackProgress')}</p>`}`;
+  app.innerHTML = `<a href="/courses/${e(l.course_id)}">${t('backToCourse')}</a>${outline}<article class="lesson"><h1>${e(l.title)}</h1><div class="lesson-body prose">${l.video_id ? `<div class="lesson-video-player"><video id="lesson-video" controls playsinline preload="metadata" poster="/api/v1/lessons/${e(id)}/poster" src="/api/v1/lessons/${e(id)}/video" data-mp4-url="/api/v1/lessons/${e(id)}/video" data-hls-url="/api/v1/lessons/${e(id)}/hls/master.m3u8">${(l.captions || []).map(c => `<track kind="captions" srclang="${e(c.language)}" label="${e(c.label)}" src="/api/v1/lessons/${e(id)}/captions/${e(c.language)}">`).join('')}</video><label class="video-quality-control" hidden>${t('videoQuality')}<select class="video-quality" aria-label="${t('videoQuality')}"><option value="-1">${t('videoQualityAuto')}</option></select></label><p class="video-status" role="status" aria-live="polite"></p></div><label>${t('playbackSpeed')}<select id="playback-speed"><option>0.75</option><option selected>1</option><option>1.25</option><option>1.5</option><option>2</option></select></label><p id="video-error" role="status"></p>` : ''}${l.body_html}</div>${attachmentCards(l.attachments)}${(l.captions || []).map(c => `<details><summary>${t('transcript')} — ${e(c.label)}</summary><div class="plain-content">${e(c.transcript)}</div></details>`).join('')}</article>${quizPanel}${lessonNavigation}${me ? `<button id="complete">${l.progress?.completed_at ? t('lessonCompleted') : t('markComplete')}</button>` : `<p>${t('signInToTrackProgress')}</p>`}`;
+  await mountHlsPlayers(app);
   if (quizPanel) {
     const content = document.querySelector('#quiz-content');
     const status = document.querySelector('#quiz-status');
@@ -347,13 +546,48 @@ async function learning() {
     location.href = '/auth/login';
     return;
   }
-  const courses = await api('/me/enrollments');
+  const courses = await api(`/me/enrollments?displayLocale=${encodeURIComponent(locale)}`);
   const certificates = await api('/me/certificates');
   app.innerHTML = `<h1>${t('myLearningTitle')}</h1>${courses.length ? courses.map(c => `<article class="card"><h2>${c.course_withdrawn_at ? e(c.title) : `<a href="/courses/${e(c.slug)}">${e(c.title)}</a>`}</h2><p>${t('lessonsProgress', { completed: c.completed_lessons, required: c.required_lessons })}${c.completed_at ? ` · ${t('courseCompleted')}` : ''}${c.state === 'revoked' ? t('revokedAccess') : ''}${c.course_withdrawn_at ? ` · ${t('courseWithdrawnFromLearning')}` : ''}.</p><progress value="${c.completed_lessons}" max="${Math.max(1, c.required_lessons)}" aria-label="${t('courseProgressAria')}"></progress>${c.state !== 'revoked' && !c.course_withdrawn_at && !c.completed_at && c.continue_lesson_id ? `<p><a class="button" href="/lessons/${e(c.continue_lesson_id)}">${t('continueCourse')}</a></p>` : ''}</article>`).join('') : `<p>${t('nextLearningPrefix')}<a href="/courses">${t('coursesCatalog')}</a>.</p>`}<section class="learner-certificates"><h2>${t('myCertificatesTitle')}</h2>${certificates.length ? certificates.map(certificate => `<article class="card certificate-entry"><div><h3>${e(certificate.courseTitle)}</h3><p>${t(certificate.status === 'revoked' ? 'certificateStatusRevoked' : 'certificateStatusValid')} · ${t(`certificatePdf${certificate.pdfStatus}`)}</p><p>${t('certificateIssuedAt')}: <time datetime="${e(certificate.issuedAt)}">${e(new Date(certificate.issuedAt).toLocaleDateString(locale))}</time></p></div><div class="actions"><a href="${e(certificate.verificationPath)}">${t('certificateViewVerification')}</a>${certificate.downloadPath ? `<a class="button" href="${e(certificate.downloadPath)}">${t('certificateDownloadPdf')}</a>` : ''}</div></article>`).join('') : `<p>${t('myCertificatesEmpty')}</p>`}</section><section class="account-security"><h2>${t('accountSecurity')}</h2><form id="change-password"><label>${t('currentPassword')}<input name="currentPassword" type="password" autocomplete="current-password" required minlength="8" maxlength="128"></label><label>${t('newPassword')}<input name="newPassword" type="password" autocomplete="new-password" required minlength="8" maxlength="128"></label><label>${t('confirmPassword')}<input name="confirmPassword" type="password" autocomplete="new-password" required minlength="8" maxlength="128"></label><button type="submit">${t('changePassword')}</button></form></section>`;
+  if (!me.verified_at) {
+    const notice = document.createElement('section');
+    const policy = document.createElement('p');
+    policy.textContent = t('emailUnverifiedPolicy');
+    const resend = document.createElement('button');
+    resend.type = 'button';
+    resend.className = 'secondary';
+    resend.textContent = t('resendVerification');
+    resend.addEventListener('click', async () => {
+      resend.disabled = true;
+      try {
+        await api('/auth/resend-verification', 'POST', { email: me.email });
+        policy.textContent = t('resendVerificationAccepted');
+      } catch (error) {
+        notify(error);
+        resend.disabled = false;
+      }
+    });
+    notice.append(policy, resend);
+    app.insertBefore(notice, app.firstChild.nextSibling);
+  }
+  if (me.role === 'admin') {
+    const host = document.createElement('section');
+    host.className = 'account-profile admin-mfa-settings';
+    app.querySelector('.account-security').append(host);
+    try {
+      await mountAdminMfa(host);
+    } catch (error) {
+      host.textContent = error.message || t('genericError');
+    }
+  }
     app.insertAdjacentHTML(
       'beforeend',
-      `<section class="account-profile"><h2>${t('accountProfile')}</h2><form id="account-profile"><label>${t('displayName')}<input name="displayName" value="${e(me.display_name ?? '')}" maxlength="100" required></label><button type="submit">${t('saveProfile')}</button></form></section>`,
+      `<section class="account-profile"><h2>${t('accountProfile')}</h2><form id="account-profile"><label>${t('displayName')}<input name="displayName" value="${e(me.display_name ?? '')}" maxlength="100" required></label><button type="submit">${t('saveProfile')}</button></form><h3>${t('emailChangeTitle')}</h3><p>${e(me.email)}</p><form id="change-email"><label>${t('emailChangeAddress')}<input name="email" type="email" maxlength="254" required></label><label>${t('emailChangePassword')}<input name="currentPassword" type="password" autocomplete="current-password" maxlength="128" required></label><button type="submit" class="secondary">${t('emailChangeAction')}</button></form></section>`,
     );
+    bindForm('#change-email', async data => {
+      await api('/auth/change-email', 'POST', Object.fromEntries(data));
+      notify(t('emailChangeRequested'));
+    });
     if (['author', 'admin'].includes(me.role)) {
       const profile = await api('/auth/instructor-profile');
       app.insertAdjacentHTML(
@@ -400,6 +634,11 @@ async function admin() {
   } else if (location.pathname === '/admin/users') {
     if (me.role !== 'admin') throw new Error(t('adminAccessRestricted'));
     await mountAdminUsers(context);
+  } else if (location.pathname === '/admin/orders') {
+    if (me.role !== 'admin') throw new Error(t('adminAccessRestricted'));
+    await mountAdminOrders(context);
+  } else if (location.pathname === '/admin/media') {
+    await mountAdminMedia(context);
   } else if (location.pathname === '/admin/enrollments') {
     if (me.role !== 'admin') throw new Error(t('adminAccessRestricted'));
     await mountAdminEnrollments(context);
@@ -412,12 +651,12 @@ async function admin() {
   } else await mountStudio(context);
 }
 async function home() {
-  const selection = await api('/home');
+  const selection = await api(`/home?displayLocale=${encodeURIComponent(locale)}`);
   const hero = selection.hero[0];
   app.innerHTML = `<section class="hero"><p class="eyebrow">Maia Learn</p><h1>${hero ? e(hero.title) : t('heroTitle')}</h1>${hero ? coverImage(hero) : ''}<p>${hero ? e(hero.summary) : t('heroText')}</p>${hero ? `<a class="button" href="/courses/${e(hero.slug)}">${t('viewCourse')}</a>` : ''}</section>${['featured', 'recommended'].map(slot => (selection[slot].length ? `<section><h2>${t(slot === 'featured' ? 'homeFeatured' : 'homeRecommended')}</h2>${cards(selection[slot])}</section>` : '')).join('')}<a class="button" href="/courses">${t('allCourses')}</a>`;
 }
 async function instructor(slug) {
-  const profile = await api(`/instructors/${encodeURIComponent(slug)}`);
+  const profile = await api(`/instructors/${encodeURIComponent(slug)}?displayLocale=${encodeURIComponent(locale)}`);
   app.innerHTML = `<a href="/courses">${t('backToCourses')}</a><h1>${e(profile.display_name)}</h1>${profile.bio ? `<div class="plain-content">${e(profile.bio)}</div>` : ''}${profile.website_url ? `<p><a href="${e(profile.website_url)}" target="_blank" rel="noopener noreferrer">${t('instructorProfileWebsiteLink')}</a></p>` : ''}<section><h2>${t('instructorCourses')}</h2>${cards(profile.courses)}</section>`;
 }
 async function certificateVerification(code) {
@@ -454,14 +693,17 @@ async function main() {
       applyLocale();
     }
     document.querySelector('#account').innerHTML =
-      `${['admin', 'author'].includes(me.role) ? `<a href="/admin">${t('administer')}</a>` : ''}${me.role === 'admin' ? `<a href="/admin/users">${t('adminUsersTitle')}</a><a href="/admin/enrollments">${t('adminEnrollmentsTitle')}</a><a href="/admin/certificates">${t('adminCertificatesTitle')}</a>` : ''}<button id="logout" class="secondary">${icon('signOut')}${t('signOut')}</button>`;
+      `${['admin', 'author'].includes(me.role) ? `<a href="/admin">${t('administer')}</a><a href="/admin/media">${t('adminMediaTitle')}</a>` : ''}<a href="/my-orders">${t('myOrdersTitle')}</a>${me.role === 'admin' ? `<a href="/admin/orders">${t('adminOrdersTitle')}</a><a href="/admin/users">${t('adminUsersTitle')}</a><a href="/admin/enrollments">${t('adminEnrollmentsTitle')}</a><a href="/admin/certificates">${t('adminCertificatesTitle')}</a>` : ''}<button id="logout" class="secondary">${icon('signOut')}${t('signOut')}</button>`;
     button('#logout', async () => {
       await api('/auth/logout', 'POST');
       location.href = '/';
     });
   }
   const parts = location.pathname.split('/').filter(Boolean);
-  if (location.pathname === '/auth/verify-email') mountEmailVerification({ app, api, t });
+  if (location.pathname === '/auth/verify-email' || location.pathname === '/auth/confirm-email-change')
+    mountEmailVerification({ app, api, t });
+  else if (parts[0] === 'dev' && parts[1] === 'fake-checkout' && parts[2])
+    await fakeCheckout(parts[2]);
   else if (parts[0] === 'auth') await auth(parts[1]);
   else if (parts[0] === 'courses' && parts[1]) await detail(parts[1]);
   else if (parts[0] === 'certificates' && parts[1] === 'verify' && parts[2])
@@ -469,6 +711,7 @@ async function main() {
   else if (parts[0] === 'instructors' && parts[1]) await instructor(parts[1]);
   else if (parts[0] === 'lessons') await lesson(parts[1]);
   else if (parts[0] === 'my-learning') await learning();
+  else if (parts[0] === 'my-orders') await myOrders();
   else if (parts[0] === 'admin') await admin();
   else if (!parts.length) await home();
   else await catalog();

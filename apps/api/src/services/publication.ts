@@ -13,6 +13,18 @@ export function publicationIssues(
   revisionId: string,
 ): PublicationIssue[] {
   const issues: PublicationIssue[] = [];
+  const price = db
+    .prepare('SELECT access_mode,price_amount_minor,price_currency FROM course_revisions WHERE id=?')
+    .get(revisionId) as {
+    access_mode: string;
+    price_amount_minor: number | null;
+    price_currency: string | null;
+  } | undefined;
+  if (
+    price?.access_mode === 'PAID' &&
+    (!price.price_amount_minor || !price.price_currency)
+  )
+    issues.push({ code: 'COURSE_PRICE_REQUIRED' });
   const cover = db
     .prepare(
       `SELECT r.cover_file_id,r.cover_alt,v.status,v.course_id,v.media_kind,v.filename

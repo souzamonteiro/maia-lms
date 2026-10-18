@@ -34,6 +34,23 @@ export function mountVideoEditor(
   function updateDuration() {
     duration.hidden = !videoId;
     const selected = videos.find(video => video.id === videoId);
+    const retry = root.querySelector('.retry-video');
+    if (retry) retry.disabled = selected?.status !== 'FAILED';
+    if (!busy && selected) {
+      if (selected.status === 'PROCESSING') {
+        progress.value = selected.processing_progress ?? 0;
+        status.textContent = t('videoProcessingProgress', { percent: progress.value });
+      } else if (selected.status === 'READY') {
+        progress.value = 100;
+        status.textContent = t('videoREADY');
+      } else if (selected.status === 'QUEUED') {
+        progress.value = 0;
+        status.textContent = t('videoQUEUED');
+      } else if (selected.status === 'FAILED') {
+        progress.value = selected.processing_progress ?? 0;
+        status.textContent = t('videoFAILED');
+      }
+    }
     scanError.textContent =
       selected?.status === 'FAILED' && selected.error ? t(selected.error) : '';
     const value = selected?.status === 'READY' ? formatVideoDuration(selected.duration) : null;
@@ -91,6 +108,7 @@ export function mountVideoEditor(
     if (!file || busy) return;
     busy = true;
     paused = false;
+    progress.value = 0;
     root.querySelector('.upload-video').disabled = true;
     root.querySelector('.pause-video').disabled = false;
     choice.disabled = true;
@@ -151,4 +169,12 @@ export function mountVideoEditor(
     }
   };
   refresh().catch(notify);
+  const statusPoll = setInterval(() => {
+    if (!root.isConnected) {
+      clearInterval(statusPoll);
+      return;
+    }
+    if (videos.some(video => ['QUEUED', 'PROCESSING'].includes(video.status)))
+      refresh().catch(notify);
+  }, 2000);
 }

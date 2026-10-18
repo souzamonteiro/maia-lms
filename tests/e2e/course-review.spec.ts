@@ -1,5 +1,9 @@
 import { test, expect } from './fixtures';
 
+function localDateTimeValue(date: Date) {
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+
 test('author submits a ready course for review before administrator publication', async ({ page, browser, request }) => {
   const email = `review-${Date.now()}@example.com`;
   const password = 'Review-author-password-123';
@@ -50,6 +54,36 @@ test('author submits a ready course for review before administrator publication'
   await courseCard.getByRole('button', { name: 'Submit for review', exact: true }).click();
   await expect(courseCard).toContainText('REVIEW');
   await expect(courseCard.getByRole('button', { name: 'Submit for review', exact: true })).toHaveCount(0);
+
+  await page.goto('/admin');
+  const adminCourseCard = page.locator('#admin-list article').filter({ hasText: 'Review workflow course' });
+  const scheduleInput = adminCourseCard.getByLabel('Publication date and time');
+  const firstSchedule = localDateTimeValue(new Date(Date.now() + 60 * 60 * 1000));
+  const secondSchedule = localDateTimeValue(new Date(Date.now() + 2 * 60 * 60 * 1000));
+  await scheduleInput.fill(firstSchedule);
+  const scheduleResponse = page.waitForResponse(
+    response => response.url().includes('/schedule-publication') && response.request().method() === 'POST',
+  );
+  await adminCourseCard.getByRole('button', { name: 'Schedule publication', exact: true }).click();
+  expect((await scheduleResponse).status()).toBe(200);
+  await expect(adminCourseCard.getByLabel('Publication date and time')).toHaveValue(firstSchedule);
+  await adminCourseCard.getByLabel('Publication date and time').fill(secondSchedule);
+  await expect(adminCourseCard.getByLabel('Publication date and time')).toHaveValue(secondSchedule);
+  const secondScheduleUtc = await page.evaluate(value => new Date(value).toISOString(), secondSchedule);
+  const rescheduleResponse = page.waitForResponse(
+    response => response.url().includes('/schedule-publication') && response.request().method() === 'POST',
+  );
+  await adminCourseCard.getByRole('button', { name: 'Reschedule publication', exact: true }).click();
+  const rescheduledResponse = await rescheduleResponse;
+  expect(rescheduledResponse.status()).toBe(200);
+  expect((await rescheduledResponse.request().postDataJSON()).scheduledAt).toBe(secondScheduleUtc);
+  await expect(adminCourseCard.getByLabel('Publication date and time')).toHaveValue(secondSchedule);
+  const cancelResponse = page.waitForResponse(
+    response => response.url().includes('/schedule-publication') && response.request().method() === 'POST',
+  );
+  await adminCourseCard.getByRole('button', { name: 'Cancel scheduled publication', exact: true }).click();
+  expect((await cancelResponse).status()).toBe(200);
+  await expect(adminCourseCard.getByLabel('Publication date and time')).toHaveValue('');
 
   const published = await page.evaluate(async ({ id, revisionId }) => {
     const response = await fetch(`/api/v1/admin/courses/${id}/publish`, {

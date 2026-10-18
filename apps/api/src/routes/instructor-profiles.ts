@@ -3,6 +3,7 @@ import type Database from 'better-sqlite3';
 import { z } from 'zod';
 import { requireRole } from '../middleware/auth.js';
 import { AppError } from '../middleware/error-handler.js';
+import { localizeCourseMetadata } from '../services/course-metadata.js';
 
 const profileSchema = z.object({
   slug: z.string().trim().min(3).max(80).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
@@ -79,6 +80,7 @@ export function instructorProfilesRouter(db: Database.Database): Router {
   );
 
   router.get('/instructors/:slug', (req, res) => {
+    const displayLocale = z.enum(['en', 'pt-BR', 'es']).optional().parse(req.query.displayLocale);
     const profile = db
       .prepare(
         `SELECT slug,display_name,bio,website_url FROM instructor_profiles
@@ -90,16 +92,17 @@ export function instructorProfilesRouter(db: Database.Database): Router {
     if (!profile) throw new AppError(404, 'Instructor profile not found', 'INSTRUCTOR_PROFILE_NOT_FOUND');
     const courses = db
       .prepare(
-          `SELECT c.slug AS id,c.slug,r.id AS revision_id,r.title,r.summary,r.locale,
-            c.access_mode,r.cover_file_id,r.cover_alt FROM courses c
+          `SELECT c.slug AS id,c.slug,r.id AS revision_id,r.title,r.summary,
+            r.locale AS revision_locale,r.translations_json,c.access_mode,r.cover_file_id,r.cover_alt FROM courses c
          JOIN course_revisions r ON r.id=c.published_revision_id
          WHERE c.author_id=(SELECT user_id FROM instructor_profiles WHERE slug=? AND is_public=1)
            AND c.status='PUBLISHED' AND c.withdrawn_at IS NULL
          ORDER BY c.created_at DESC,c.id DESC`,
       )
-      .all(profile.slug);
+      .all(profile.slug) as Array<Record<string, unknown>>;
+    const localizedCourses = courses.map(course => localizeCourseMetadata(course, displayLocale));
     res.set('Cache-Control', 'public, max-age=60');
-    res.json({ ...profile, courses });
+    res.json({ ...profile, courses: localizedCourses });
   });
 
   return router;

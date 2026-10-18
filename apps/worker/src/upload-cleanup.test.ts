@@ -68,3 +68,39 @@ it('expires only abandoned unreferenced uploads and retries failed file deletion
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+it('retains chunks for active cancellation leases and reclaims a stale cancelled lease', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'maia-cancel-cleanup-'));
+  const db = new Database(':memory:');
+  try {
+    runMigrations(db);
+    db.exec(`
+      INSERT INTO users(id,email,email_normalized,password_hash)
+        VALUES('owner','owner@example.com','owner@example.com','hash');
+      INSERT INTO courses(id,slug,author_id) VALUES('course','course','owner');
+      INSERT INTO video_uploads(id,owner_id,course_id,filename,size,status,lease,heartbeat)
+      VALUES
+        ('active','owner','course','active.mp4',4,'CANCELLED','active-lease',datetime('now')),
+        ('stale','owner','course','stale.mp4',4,'CANCELLED','stale-lease',datetime('now','-3 minutes'));
+    `);
+    const store = new LocalStorageProvider(root, 'unused', 'http://localhost');
+    for (const id of ['active', 'stale']) {
+      const key = `uploads/${id}/chunk`;
+      await store.putPrivate(key, Buffer.from('test'), '');
+      db.prepare(
+        'INSERT INTO video_chunks(upload_id,offset,size,storage_key,sha256) VALUES(?,0,4,?,?)',
+      ).run(id, key, 'hash');
+    }
+
+    expect(await cleanupUploads(db, root)).toBe(1);
+    expect(db.prepare('SELECT lease FROM video_uploads WHERE id=?').get('active'))
+      .toEqual({ lease: 'active-lease' });
+    expect(db.prepare('SELECT lease FROM video_uploads WHERE id=?').get('stale'))
+      .toEqual({ lease: null });
+    expect((await store.readAuthorized('uploads/active/chunk')).toString()).toBe('test');
+    await expect(store.readAuthorized('uploads/stale/chunk')).rejects.toThrow();
+  } finally {
+    db.close();
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

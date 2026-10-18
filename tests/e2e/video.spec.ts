@@ -15,7 +15,7 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
       '-f',
       'lavfi',
       '-i',
-      'testsrc=size=160x90:rate=10',
+      'testsrc=size=640x480:rate=10',
       '-t',
       '3',
       '-c:v',
@@ -65,6 +65,9 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
         { timeout: 30000 },
       )
       .toContain('Ready');
+    await expect.poll(() => page.locator('.video-editor .upload-progress').evaluate(progress => progress.value))
+      .toBe(100);
+    await expect(page.locator('.video-editor .video-status')).toHaveText('Ready');
     await expect(page.locator('.video-editor > .video-duration')).toContainText('Video duration:');
     await expect(page.locator('.video-editor > .video-duration')).toHaveText(/Video duration: 0:0[1-9]/);
     await page.getByText('Captions', { exact: true }).click();
@@ -114,9 +117,42 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
           `${error.message}\nUI: ${await page.locator('#message').textContent()}\nSave: ${await page.locator('#save-status').textContent()}`,
         );
       });
+    const hlsResponses: string[] = [];
+    page.on('response', response => {
+      if (response.url().includes('/trailer/hls/'))
+        hlsResponses.push(`${response.status()} ${new URL(response.url()).pathname}`);
+    });
+    const trailerManifest = page.waitForResponse(response =>
+      response.url().includes('/trailer/hls/master.m3u8') && response.status() === 200,
+    );
     await card.getByRole('link', { name: 'View', exact: true }).click();
     const trailer = page.locator('.course-trailer');
     await expect(trailer).toBeVisible();
+    expect((await trailerManifest).status()).toBe(200);
+    const trailerQuality = page.locator('.course-trailer-player .video-quality');
+    const hlsCapabilities = await page.evaluate(() => {
+      const Hls = (window as Window & { Hls?: { isSupported(): boolean } }).Hls;
+      const probe = document.createElement('video');
+      return {
+        libraryLoaded: Boolean(Hls),
+        mediaSourceSupported: Boolean(Hls?.isSupported()),
+        nativeHls: probe.canPlayType('application/vnd.apple.mpegurl'),
+      };
+    });
+    if (hlsCapabilities.mediaSourceSupported) {
+      const hlsState = await page.evaluate(() => ({
+        levelCount: document.querySelector('.course-trailer-player .video-quality')?.querySelectorAll('option').length,
+        status: document.querySelector('.course-trailer-player .video-status')?.textContent,
+        source: document.querySelector('.course-trailer')?.getAttribute('src'),
+        currentSource: document.querySelector('.course-trailer')?.currentSrc,
+      }));
+      await expect(trailerQuality, JSON.stringify({ hlsCapabilities, hlsResponses, hlsState })).toBeVisible();
+      await expect(trailerQuality.locator('option')).toHaveCount(3);
+      await trailerQuality.selectOption('0');
+    } else {
+      expect(hlsCapabilities.nativeHls).toBeTruthy();
+      await expect(trailerQuality).toBeHidden();
+    }
     await trailer.evaluate((video: HTMLVideoElement) => { video.muted = true; return video.play(); });
     await expect.poll(() => trailer.evaluate((video: HTMLVideoElement) => video.currentTime)).toBeGreaterThan(0);
     await page.getByRole('button', { name: 'Sign out', exact: true }).click();
@@ -130,12 +166,21 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     await page.getByLabel('Password', { exact: true }).fill('Video-learner-password-123');
     await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'My learning' })).toBeVisible();
+    await page.route('**/api/v1/lessons/*/hls/**', route => route.abort());
     await page.goto('/courses/browser-video-course');
     await page.getByRole('button', { name: 'Enroll for free', exact: true }).click();
     await expect(page.getByText('You are enrolled in this course.')).toBeVisible();
     await page.getByRole('link', { name: 'Real video lesson', exact: true }).click();
     const video = page.locator('video');
     await expect(video).toBeVisible();
+    await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.currentSrc))
+      .toContain('/api/v1/lessons/');
+    await video.evaluate((element: HTMLVideoElement) => {
+      element.muted = true;
+      return element.play();
+    });
+    await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.currentTime))
+      .toBeGreaterThan(0);
     await expect(page.locator('track[srclang="en"]')).toHaveCount(1);
     await video.evaluate((v: HTMLVideoElement) => {
       v.textTracks[0].mode = 'showing';

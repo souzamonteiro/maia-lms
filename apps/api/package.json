@@ -3,6 +3,24 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "exports": {
+    "./config": {
+      "types": "./dist/config.d.ts",
+      "default": "./dist/config.js"
+    },
+    "./payment-provider": {
+      "types": "./dist/services/payment-provider.d.ts",
+      "default": "./dist/services/payment-provider.js"
+    },
+    "./payment-reconciliation": {
+      "types": "./dist/services/payment-reconciliation.d.ts",
+      "default": "./dist/services/payment-reconciliation.js"
+    },
+    "./scheduled-publication": {
+      "types": "./dist/services/course-publishing.d.ts",
+      "default": "./dist/services/course-publishing.js"
+    }
+  },
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",

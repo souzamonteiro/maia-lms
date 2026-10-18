@@ -24,9 +24,18 @@ const emptyCourse = () => ({
   title: '',
   summary: '',
   accessMode: 'ENROLLED_FREE',
+  priceAmountMinor: null,
+  priceCurrency: null,
   locale: 'en',
+  translations: [],
   modules: [{ title: '', lessons: [emptyLesson()] }],
 });
+function priceToMinor(value) {
+  if (!value) return null;
+  const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(value);
+  if (!match) return null;
+  return Number(match[1]) * 100 + Number((match[2] || '').padEnd(2, '0'));
+}
 const key = id => `maia-lms:author-draft:${id}`;
 export const studioDirty = () => Boolean(state?.dirty || pending);
 function persist() {
@@ -52,6 +61,69 @@ function changed() {
   if (state.id && !state.conflict)
     timer = setTimeout(() => save(false).catch(context.notify), 1600);
 }
+const translationFields = [
+  ['title', 'courseTranslationTitle'],
+  ['summary', 'courseTranslationSummary'],
+  ['learningOutcomes', 'learningOutcomes'],
+  ['prerequisites', 'prerequisites'],
+  ['instructorBio', 'instructorBio'],
+  ['accessTerms', 'accessTerms'],
+  ['certificateTerms', 'certificateTerms'],
+];
+function mountCourseTranslations(root, initial, form) {
+  const { t, e } = context;
+  root.innerHTML = `<fieldset><legend>${t('courseTranslationsTitle')}</legend><p class="muted">${t('courseTranslationsHelp')}</p><div class="course-translation-list"></div><button type="button" class="add-course-translation secondary">${icon('add')}${t('addCourseTranslation')}</button></fieldset>`;
+  const list = root.querySelector('.course-translation-list');
+  const locales = ['en', 'pt-BR', 'es'];
+  function syncLocales() {
+    const baseLocale = form.elements.locale.value;
+    const rows = [...list.querySelectorAll('.course-translation')];
+    const selected = rows.map(row => row.querySelector('.translation-locale').value);
+    for (const option of form.elements.locale.options)
+      option.disabled = selected.includes(option.value);
+    for (const [index, row] of rows.entries()) {
+      const select = row.querySelector('.translation-locale');
+      for (const option of select.options)
+        option.disabled = option.value === baseLocale || selected.some((value, other) => other !== index && value === option.value);
+    }
+    const add = root.querySelector('.add-course-translation');
+    add.disabled = rows.length >= locales.length - 1 || locales.filter(value => value !== baseLocale && !selected.includes(value)).length === 0;
+  }
+  function add(translation = {}) {
+    const row = document.createElement('fieldset');
+    row.className = 'course-translation';
+    const localeOptions = locales.map(locale => `<option value="${locale}" ${translation.locale === locale ? 'selected' : ''}>${{ en: 'English', 'pt-BR': 'Português', es: 'Español' }[locale]}</option>`).join('');
+    const translationControls = translationFields.map(([field, key]) => {
+      const maxLength = field === 'title' ? 255 : field === 'summary' ? 1000 : 5000;
+      const minLength = field === 'title' ? ' minlength="3"' : field === 'summary' ? ' minlength="10"' : '';
+      const value = translation[field] || '';
+      return `<label>${t(key)}${field === 'title'
+        ? `<input data-translation-field="${field}"${minLength} maxlength="${maxLength}" value="${e(value)}">`
+        : `<textarea data-translation-field="${field}"${minLength} maxlength="${maxLength}">${e(value)}</textarea>`}</label>`;
+    }).join('');
+    row.innerHTML = `<legend>${t('courseTranslation')}</legend><label>${t('courseTranslationLocale')}<select class="translation-locale">${localeOptions}</select></label>${translationControls}<button type="button" class="remove-course-translation secondary">${icon('remove')}${t('removeCourseTranslation')}</button>`;
+    row.querySelector('.remove-course-translation').addEventListener('click', () => {
+      row.remove();
+      syncLocales();
+      readForm();
+      changed();
+    });
+    row.querySelector('.translation-locale').addEventListener('change', syncLocales);
+    list.append(row);
+    syncLocales();
+  }
+  for (const translation of initial) add(translation);
+  root.querySelector('.add-course-translation').addEventListener('click', () => {
+    const selected = new Set([...list.querySelectorAll('.translation-locale')].map(select => select.value));
+    const locale = locales.find(value => value !== form.elements.locale.value && !selected.has(value));
+    if (!locale) return;
+    add({ locale });
+    readForm();
+    changed();
+  });
+  form.elements.locale.addEventListener('change', syncLocales);
+  syncLocales();
+}
 function readForm() {
   const form = document.querySelector('#editor');
   if (!form) return;
@@ -61,9 +133,23 @@ function readForm() {
       .map(input => input.value)
       .sort(),
     level: form.elements.level.value || null,
+    priceAmountMinor:
+      form.elements.accessMode.value === 'PAID'
+        ? priceToMinor(form.elements.priceAmountInput.value)
+        : null,
+    priceCurrency:
+      form.elements.accessMode.value === 'PAID' ? form.elements.priceCurrency.value : null,
     durationMinutes: form.elements.durationMinutes.value
       ? Number(form.elements.durationMinutes.value)
       : null,
+    translations: [...form.querySelectorAll('.course-translation')].map(row => {
+      const translation = { locale: row.querySelector('.translation-locale').value };
+      for (const [field] of translationFields) {
+        const value = row.querySelector(`[data-translation-field="${field}"]`).value.trim();
+        if (value) translation[field] = value;
+      }
+      return translation;
+    }).filter(translation => Object.keys(translation).length > 1),
     trailerVideoId: form.querySelector('#course-trailer').dataset.videoId || null,
     coverFileId: form.querySelector('#course-cover').dataset.fileId || null,
     attachments: readAttachments(document.querySelector('#course-attachments')),
@@ -353,15 +439,21 @@ function moduleField(module) {
   controls(field, 'module');
   return field;
 }
+function localDateTimeValue(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
 async function refreshList() {
   const { api, t, e, me } = context;
   const courses = await api('/admin/courses');
   const list = document.querySelector('#admin-list');
   if (!list) return;
+  const minimumScheduleTime = localDateTimeValue(new Date().toISOString());
   list.innerHTML = courses
     .map(
       c =>
-        `<article class="card"><h2>${e(c.title)}</h2><p>${e(c.withdrawn_at ? t('courseUrgentlyWithdrawn') : c.status)}${c.published_revision_id && c.current_revision_id !== c.published_revision_id ? ` · ${t('unpublishedChanges')}` : ''}${c.withdrawal_reason ? `<br>${e(c.withdrawal_reason)}` : ''}</p><div class="actions"><button data-edit="${c.id}">${icon('edit')}${t('edit')}</button>${me.role === 'admin' ? `${!c.withdrawn_at ? `<button data-publish="${c.id}" data-revision="${c.current_revision_id}">${icon('publish')}${t('publish')}</button>` : ''}<button data-archive="${c.id}" class="secondary">${icon('archive')}${t('archive')}</button>${c.published_revision_id && !c.withdrawn_at ? `<button data-withdraw="${c.id}" data-revision="${c.current_revision_id}" class="secondary">${t('courseUrgentWithdraw')}</button>` : ''}` : c.status === 'DRAFT' ? `<button data-review="${c.id}" data-revision="${c.current_revision_id}">${icon('publish')}${t('submitForReview')}</button>` : ''}<a href="/courses/${c.id}">${t('view')}</a></div></article>`,
+        `<article class="card"><h2>${e(c.title)}</h2><p>${e(c.withdrawn_at ? t('courseUrgentlyWithdrawn') : c.status)}${c.published_revision_id && c.current_revision_id !== c.published_revision_id ? ` · ${t('unpublishedChanges')}` : ''}${c.withdrawal_reason ? `<br>${e(c.withdrawal_reason)}` : ''}</p><div class="actions"><button data-edit="${c.id}">${icon('edit')}${t('edit')}</button>${me.role === 'admin' ? `${!c.withdrawn_at ? `<button data-publish="${c.id}" data-revision="${c.current_revision_id}">${icon('publish')}${t('publish')}</button>` : ''}<button data-archive="${c.id}" class="secondary">${icon('archive')}${t('archive')}</button>${c.published_revision_id && !c.withdrawn_at ? `<button data-withdraw="${c.id}" data-revision="${c.current_revision_id}" class="secondary">${t('courseUrgentWithdraw')}</button>` : ''}${c.status === 'REVIEW' ? `<label>${t('schedulePublicationAt')}<input type="datetime-local" data-schedule-time min="${e(minimumScheduleTime)}" value="${e(localDateTimeValue(c.scheduled_publication_at))}"></label><button data-schedule="${c.id}" data-revision="${c.current_revision_id}" class="secondary">${t(c.scheduled_publication_at ? 'reschedulePublication' : 'schedulePublication')}</button>${c.scheduled_publication_at ? `<button data-cancel-schedule="${c.id}" data-revision="${c.current_revision_id}" class="secondary">${t('cancelPublicationSchedule')}</button>` : ''}` : ''}` : c.status === 'DRAFT' ? `<button data-review="${c.id}" data-revision="${c.current_revision_id}">${icon('publish')}${t('submitForReview')}</button>` : ''}<a href="/courses/${c.id}">${t('view')}</a></div></article>`,
     )
     .join('');
 }
@@ -416,7 +508,10 @@ function fromCourse(c) {
       title: c.title,
       summary: c.summary,
       accessMode: c.access_mode,
+      priceAmountMinor: c.price_amount_minor,
+      priceCurrency: c.price_currency,
       locale: c.locale,
+      translations: c.translations || [],
       attachments: c.attachments || [],
       modules: c.modules.map(m => ({
         title: m.title,
@@ -457,6 +552,23 @@ export async function mountStudio(ctx) {
   }
   app.innerHTML = `<h1>${t('adminPublishTitle')}</h1><p>${t('studioDescription')}</p>${me.role === 'admin' ? `<div class="actions"><a href="/admin/home">${t('editHome')}</a><a href="/admin/categories">${t('manageCategories')}</a></div>` : ''}<div id="admin-list"></div><h2 id="editor-title">${state.id ? t('editCourseTitle') : t('newCourseTitle')}</h2><div class="actions"><button type="button" id="new-course" class="secondary">${icon('add')}${t('newCourseTitle')}</button><button type="button" id="reload-course" class="secondary" ${state.id ? '' : 'hidden'}>${icon('reloadDraft')}${t('reloadDraft')}</button></div><form id="editor"><section id="course-settings"><fieldset id="course-categories"><legend>${t('categories')}</legend><p>${t('courseCategoriesHelp')}</p>${categories.map(c => `<label><input type="checkbox" name="categoryId" value="${ctx.e(c.id)}" ${categoryIds.includes(c.id) ? 'checked' : ''}> ${ctx.e(c.name)}</label>`).join('') || `<p>${t('noCategories')}</p>`}</fieldset><label>${t('title')}<input name="title" required minlength="3" maxlength="255"></label><label>${t('courseSlugLabel')}<input name="slug" required pattern="[a-z0-9]+(-[a-z0-9]+)*" minlength="3" maxlength="100"></label><label>${t('summary')}<textarea name="summary" required minlength="10" maxlength="1000"></textarea></label><label>${t('instructorName')}<textarea name="instructorName" maxlength="200"></textarea></label><label>${t('instructorBio')}<textarea name="instructorBio" maxlength="5000"></textarea></label><label>${t('accessTerms')}<textarea name="accessTerms" maxlength="5000"></textarea></label><label>${t('certificateTerms')}<textarea name="certificateTerms" maxlength="5000"></textarea></label><p class="muted">${t('presentationTermsHelp')}</p><label>${t('learningOutcomes')}<textarea name="learningOutcomes" maxlength="5000"></textarea></label><label>${t('prerequisites')}<textarea name="prerequisites" maxlength="5000"></textarea></label><label>${t('courseLevel')}<select name="level"><option value="">${t('notSpecified')}</option><option value="beginner">${t('levelBeginner')}</option><option value="intermediate">${t('levelIntermediate')}</option><option value="advanced">${t('levelAdvanced')}</option></select></label><label>${t('courseWorkload')}<input name="durationMinutes" type="number" min="1" max="60000" step="1"></label><label>${t('access')}<select name="accessMode" aria-label="${t('access')}"><option value="OPEN_FREE">${t('accessOpenOption')}</option><option value="ENROLLED_FREE">${t('accessEnrolledOption')}</option></select></label><label>${t('courseLanguage')}<select name="locale"><option value="en">English</option><option value="pt-BR">Português</option><option value="es">Español</option></select></label><label>${t('coverAlt')}<input name="coverAlt" maxlength="300"></label><section id="course-cover"></section><p>${t('trailerHelp')}</p><section id="course-trailer"></section><section id="course-attachments"></section></section><div id="modules"></div><div class="actions"><button type="button" id="add-module" class="secondary">${icon('add')}${t('addModule')}</button><button type="button" id="preview-course">${icon('previewContent')}${t('draftPreview')}</button><button type="submit">${icon('saveDraft')}${t('saveDraft')}</button></div><p id="save-status" role="status" aria-live="polite"></p></form>`;
   const form = document.querySelector('#editor');
+  const translationsRoot = document.createElement('section');
+  translationsRoot.id = 'course-translations';
+  form.querySelector('#course-settings').append(translationsRoot);
+  mountCourseTranslations(translationsRoot, state.payload.translations || [], form);
+  const priceFields = document.createElement('fieldset');
+  priceFields.id = 'course-pricing';
+  priceFields.innerHTML = `<legend>${t('coursePricing')}</legend><label>${t('coursePrice')}<input name="priceAmountInput" type="number" min="0.01" max="1000000" step="0.01" inputmode="decimal"></label><label>${t('priceCurrency')}<select name="priceCurrency"><option value="BRL">BRL</option><option value="USD">USD</option><option value="EUR">EUR</option></select></label>`;
+  form.elements.accessMode.add(new Option(t('accessPaidOption'), 'PAID'));
+  form.elements.accessMode.closest('label').after(priceFields);
+  const updatePriceVisibility = () => {
+    const paid = form.elements.accessMode.value === 'PAID';
+    priceFields.hidden = !paid;
+    form.elements.priceAmountInput.required = paid;
+    form.elements.priceCurrency.required = paid;
+  };
+  form.elements.accessMode.addEventListener('change', updatePriceVisibility);
+  updatePriceVisibility();
   const quizEditorHost = document.createElement('div');
   quizEditorHost.id = 'quiz-editor-host';
   app.append(quizEditorHost);
@@ -483,6 +595,10 @@ export async function mountStudio(ctx) {
     'certificateTerms',
   ])
     form.elements[name].value = state.payload[name] ?? '';
+  form.elements.priceAmountInput.value = state.payload.priceAmountMinor == null
+    ? ''
+    : (state.payload.priceAmountMinor / 100).toFixed(2);
+  form.elements.priceCurrency.value = state.payload.priceCurrency || 'BRL';
   const trailer = form.querySelector('#course-trailer');
   trailer.dataset.videoId = state.payload.trailerVideoId || '';
   mountVideoEditor(trailer, {
@@ -617,6 +733,20 @@ export async function mountStudio(ctx) {
         persist();
         await mountStudio(ctx);
         document.querySelector('#editor').scrollIntoView();
+      } else if (target.dataset.schedule || target.dataset.cancelSchedule) {
+        const card = target.closest('article');
+        const input = card.querySelector('[data-schedule-time]');
+        const scheduledAt = target.dataset.cancelSchedule ? null : new Date(input.value);
+        if (scheduledAt && (!Number.isFinite(scheduledAt.getTime()) || scheduledAt.getTime() <= Date.now())) {
+          notify(t('COURSE_SCHEDULE_FUTURE_REQUIRED'));
+          return;
+        }
+        await api(`/admin/courses/${target.dataset.schedule || target.dataset.cancelSchedule}/schedule-publication`, 'POST', {
+          expectedRevisionId: target.dataset.revision,
+          scheduledAt: scheduledAt?.toISOString() ?? null,
+        });
+        await refreshList();
+        notify(t(target.dataset.cancelSchedule ? 'publicationScheduleCancelled' : 'publicationScheduleSaved'));
       } else if (target.dataset.publish || target.dataset.archive || target.dataset.review || target.dataset.withdraw) {
         if (state.dirty) {
           notify(t('saveBeforePublish'));

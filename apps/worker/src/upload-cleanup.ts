@@ -5,6 +5,11 @@ import { LocalStorageProvider } from '@maia/providers';
 export async function cleanupUploads(db: Database.Database, root: string): Promise<number> {
   db.transaction(() => {
     db.prepare(
+      `UPDATE video_uploads SET lease=NULL,heartbeat=NULL
+       WHERE status='CANCELLED' AND lease IS NOT NULL
+         AND (heartbeat IS NULL OR julianday(heartbeat)<julianday('now','-2 minutes'))`,
+    ).run();
+    db.prepare(
       `UPDATE video_uploads SET status='CANCELLED',error='UPLOAD_EXPIRED'
       WHERE id IN (SELECT v.id FROM video_uploads v
         WHERE v.status='UPLOADING' AND julianday(v.last_activity_at)<julianday('now','-7 days')
@@ -17,7 +22,7 @@ export async function cleanupUploads(db: Database.Database, root: string): Promi
   const store = new LocalStorageProvider(root, 'unused', 'http://localhost');
   const rows = db
     .prepare(
-      `SELECT v.id FROM video_uploads v WHERE status='CANCELLED'
+      `SELECT v.id FROM video_uploads v WHERE status='CANCELLED' AND lease IS NULL
     AND EXISTS (SELECT 1 FROM video_chunks c WHERE c.upload_id=v.id) ORDER BY created_at LIMIT 50`,
     )
     .all() as { id: string }[];

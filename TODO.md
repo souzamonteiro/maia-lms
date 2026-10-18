@@ -177,9 +177,11 @@ checks signatures, decodes with FFprobe/FFmpeg, limits dimensions to 8192 per si
 and 16 megapixels, and re-encodes a single frame without source metadata before READY.
 Normalized output also has a 10 MiB cap. Optional ClamAV inspection applies before
 normalization. Downloads retain enrollment/revision authorization and attachment
-headers. SVG and other image types remain unsupported. MEDIA-02 remains open for
-inline/cover image workflows and real scanner deployment validation; HOME-02 also
-tracks covers. No deployment performed.
+headers. SVG and other image types remain unsupported. Lesson Markdown can now
+insert uploaded PNG/JPEG materials through a same-origin inline endpoint bound to
+revision, preview/enrollment, withdrawal, and owner access. MEDIA-02 remains open for
+real scanner deployment validation and remaining upload inspection/quota qualification;
+HOME-02 tracks course covers. No deployment performed.
 
 ## Revision-bound course covers — September 30, 2026
 
@@ -452,24 +454,54 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   and define inspection/antimalware for attachments. Dependencies: MEDIA-01, BASE-02.
   Acceptance: interrupted uploads resume without duplication; invalid files or files
   belonging to another author are rejected; a full disk produces a recoverable error.
-- [ ] **MEDIA-03 — FFprobe/FFmpeg processing.**
+  - [x] Insert a READY PNG/JPEG upload into lesson Markdown from the attachment row;
+    same-origin delivery remains bound to revision, preview/enrollment, and withdrawal
+    authorization. E2E covers upload, preview, publication, and browser rendering.
+- [x] **MEDIA-03 — FFprobe/FFmpeg processing (local implementation).**
   Validate containers/streams, generate compatible playback MP4 and adaptive HLS,
   poster, duration, and metadata; CPU/memory/time limits and subprocesses without
   shell interpolation. Dependencies: MEDIA-02, JOB-01. Acceptance: real video reaches
   READY with verified outputs; corrupted files become FAILED with useful errors;
   publication never points to incomplete files. Do not artificially upscale resolution.
-- [ ] **JOB-01 — Long-running jobs and controlled concurrency.**
+  Delivered locally: FFprobe validates supported containers, video streams, duration,
+  and dimensions; FFmpeg emits H.264/AAC MP4, poster, and private HLS VOD master,
+  variant playlists, and segments. Variants scale down only, aggregate HLS output is
+  capped, and READY is committed only after all outputs are stored. HLS requests
+  recheck revision/preview/enrollment/withdrawal access for every playlist and
+  segment. Real-media tests cover output generation and authorized delivery. MEDIA-03
+  is complete locally; long-duration CPU/disk/bandwidth qualification on Maia Edge
+  remains operational work. PLAY-02 still owns adaptive-player integration.
+- [x] **JOB-01 — Long-running jobs and controlled concurrency (local implementation).**
   Separate media capacity from the email queue; lease renewal, progress, heartbeat,
   cancellation, and crash recovery; idempotent outputs and manual retry.
   Dependency: MEDIA-01. Acceptance: transcoding longer than five minutes is not
   reclaimed by another worker; crashes/restarts neither produce concurrent duplicate
   outputs nor block SMTP.
-- [ ] **MEDIA-04 — Media library and lifecycle.**
+  Delivered locally: media processing uses an independent `MEDIA_WORKER_CONCURRENCY`
+  pool (default 1, bounded to 4), separate from `WORKER_CONCURRENCY` for outbox work.
+  A live media job renews its lease/heartbeat every 15 seconds; only a heartbeat older
+  than two minutes can be reclaimed. Lease-specific output keys and conditional READY
+  commits keep stale workers from publishing duplicate outputs. Processing milestones
+  persist from 0 to 100 and are visible in the editor; retries reset progress. Owners
+  and admins can retry FAILED jobs and cancel queued/processing work. Active cancellation
+  leases retain chunks until the worker aborts; the sweeper reclaims stale cancelled
+  leases and removes chunks safely. Tests cover concurrent claims, outbox progress
+  during media jobs, retry, cancellation races, stale-lease recovery, and real-media
+  completion. JOB-01 is complete locally; long-duration VPS qualification remains
+  operational validation, not an unimplemented queue workflow.
+- [ ] **MEDIA-04 — Media library and lifecycle (blocked on retention policy).**
   List by author/course, search, select, replace with a new version, associate
   images/covers/posters/attachments, and display queue/errors. Dependencies:
   MEDIA-02/03, EDIT-03. Acceptance: authors follow the entire process without a
   terminal; orphan collection considers old revisions and removes only eligible
   files after a defined retention period.
+  - [x] Add an author/admin library with filename/course search, course/type/status
+    filters, pagination, processing/error state, reference counts, and owner-scoped
+    results; never expose storage keys. Existing course editor selectors continue
+    to handle association and replacement.
+  - [ ] Define orphan retention and implement collection that rechecks every old
+    revision before deleting only unreferenced media; no retention period or cleanup
+    has been activated without an owner policy.
 - [x] **MEDIA-05 — Supplementary materials with descriptions.**
   Allow multiple attachments per course or lesson, including PDF, ZIP, source code,
   and other permitted formats. Each attachment has an editable title and description;
@@ -481,35 +513,72 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   revision, revocation, and preview policy; direct URLs cannot bypass authorization.
   Apply size limits and type validation; serve as downloads without executing code
   or automatically extracting ZIP files.
-- [ ] **PLAY-01 — Authorized MP4 and HLS delivery.**
+- [x] **PLAY-01 — Authorized MP4 and HLS delivery (local implementation).**
   Playback endpoints tied to lesson/revision/entitlement, HTTP Range/206/416, correct
   Content-Type, HEAD, and playback session expiration/renewal; also check secondary
   playlists, segments, keys, and attachments. Dependencies: MEDIA-03, BASE-01.
   Acceptance: direct access/copied URLs cannot bypass enrollment or revocation;
   public previews expose only the approved asset, never the entire directory.
-- [ ] **PLAY-02 — Integrated, responsive player.**
+  Delivered locally: MP4/poster/captions and HLS master/variant/segment requests
+  resolve from the requested lesson revision and recheck preview, active entitlement,
+  owner/admin, and withdrawal on every request. MP4 supports Range/206/416 and HEAD;
+  HLS paths are allowlisted and storage keys remain private. All responses are
+  private/no-store. Protected requests use the normal HTTP session cookie, which
+  expires after seven days and is touched/renewed by the SQLite store; the API also
+  rechecks active user/session version on every request. Real-media integration tests
+  cover copied unauthenticated URLs, enrolled access, revocation, withdrawal, HLS
+  master/variant/segment delivery, and legacy MP4 ranges. PLAY-01 is complete locally;
+  browser player HLS integration remains PLAY-02.
+- [ ] **PLAY-02 — Integrated, responsive player (local implementation; device qualification open).**
   HTML5 player with native HLS/appropriate fallback, play/pause, seek, volume, speed,
   fullscreen, keyboard controls, loading/error states, and quality selection.
   Dependency: PLAY-01. Acceptance: playback and seeking work on desktop, Android,
   and Safari/iOS; access renewal during long lessons does not unnecessarily interrupt playback.
+  - [x] Use native HLS where supported, local HLS.js with automatic/manual rendition
+    selection where MSE is available, and authorized MP4 fallback when adaptive
+    playback is unavailable. Native controls provide keyboard, seek, volume and
+    fullscreen controls; speed, loading, error, and fallback states are localized.
+  - [x] Chromium real-video coverage verifies HLS master/variant/segment playback,
+    quality switching, and MP4 fallback after an HLS playlist failure.
+  - [ ] Qualify seeking/quality switching on Android Chrome and Safari/iOS, and run
+    long lessons through HTTP-session renewal on the deployed host.
 - [x] **PLAY-03 — Captions and transcripts.**
   WebVTT upload/validation, language and track selection, accessible text transcripts,
   replacement workflow, and availability indication. Dependencies: MEDIA-04, PLAY-02.
   Acceptance: authors publish captions and learners enable them in the player;
   private course tracks follow the same authorization as video.
-- [ ] **PLAY-04 — Learner resumption and navigation.**
+- [x] **PLAY-04 — Learner resumption and navigation (local implementation).**
   Persistent module outline, previous/next, last lesson, debounced position saving,
   continue watching, and course progress. Dependencies: PLAY-02, BASE-01.
   Acceptance: reloads/device changes resume position; requests stay within API limits;
   explicit completion follows course policy, without treating seconds reported by
   the browser as proof of learning.
-- [ ] **OPS-01 — Adapt HTTP and installation for video.**
+  - [x] Lesson API returns revision-scoped module outline and previous/next links;
+    public preview exposes only public/preview lessons, while active learners retain
+    navigation in their assigned revision.
+  - [x] Browser saves integer playback position at a 15-second interval and sends a
+    trailing save on pause, including when a prior save is still in flight.
+  - [x] Player restores position after metadata loads; learning dashboard selects the
+    most recently active unfinished lesson or the first unfinished lesson.
+  - [x] Server completion requires recorded completion for every snapshotted required
+    lesson and passing all required quizzes; browser position alone never completes it.
+  Full real-video Chromium coverage verifies pause/save, reload and isolated-session
+  resume. PLAY-04 is complete locally; independent device qualification remains part
+  of PLAY-02.
+- [ ] **OPS-01 — Adapt HTTP and installation for video (local implementation; VPS validation open).**
   Separate uploads from the original JSON-only middleware; dedicated authentication/CSRF
   for multipart/chunks. Define route and rate limits for uploads/player; review
   Nginx (1 MB at the audit), buffering, timeouts, Range, temporary storage, FFmpeg,
   and dependencies in systemd/Docker installations. Dependencies: MEDIA-02, PLAY-01.
   Acceptance: representative uploads, seeking, and long playback cross the VPS/WireGuard
   without inappropriate 413/415/429 errors, exposing new public services, or restarting the VPN.
+  - [x] Keep uploads as authenticated 512 KiB raw chunks with per-account rate limits,
+    same-origin/JSON guards, and a 1 MiB managed Nginx body ceiling; stream requests
+    and media responses without Nginx proxy buffering and forward Range headers.
+  - [x] Host installer binds the API to the assigned WireGuard IP and trusts only the
+    configured proxy IP; no new public port or VPN peer is created.
+  - [ ] Exercise uploads, Range/HLS seeking, and long playback through the installed
+    VPS/WireGuard domain; local renderer/Nginx syntax tests cannot prove host capacity.
 
 ## P0 — homepage and course presentation
 
@@ -544,11 +613,20 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   selected locale. Browser coverage exercises account, recovery, authoring, catalog,
   learner, verification, and admin date flows across locales. Currency formatting
   is ready for price UI; paid pricing/checkout remain PAY-01, not an I18N-01 gap.
-- [ ] **I18N-02 — Separate interface and course languages.**
+- [x] **I18N-02 — Separate interface and course languages (local implementation).**
   Save user preferences, let authors set content/caption locales, and support
   translated metadata with explicit fallback. Dependencies: BASE-02, I18N-01.
   Acceptance: selecting Spanish in the interface neither reclassifies a Portuguese
   course nor promises automatic video translation; preferences persist across devices.
+  Delivered locally: interface-language preference remains account-backed; the course
+  source locale is distinct from `displayLocale`. Authors can add optional en/pt-BR/es
+  translations for title, summary, outcomes, prerequisites, instructor bio, access
+  terms, and certificate terms. Catalog, home, detail, learning, and author preview
+  apply field-level fallback to the source revision. Revision translations are
+  immutable after publication or enrollment. Caption tracks retain explicit author-
+  selected locales. API/E2E tests verify Spanish display over a PT-BR course without
+  relabeling its source locale. I18N-02 is complete locally; the actual course
+  translations remain content-owner authored.
 - [x] **ADMIN-01 — User and author management (local implementation).**
   Listing/search, roles, suspension/reactivation, public instructor profiles, and
   auditing; administrative bootstrap/reset with specific errors and no default passwords.
@@ -568,46 +646,63 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   default passwords; explicit resets rotate credentials, promote the selected
   account to admin, invalidate sessions, and write audit events. ADMIN-01 is
   implemented locally; production runbook execution remains an operator task.
-- [ ] **AUTH-01 — Complete account workflows.**
+- [x] **AUTH-01 — Complete account workflows (local implementation).**
   Profile, password changes, verification resend/feedback, localized recovery,
   account states, and explicit unverified-email policy; administrator MFA with
   recovery. Dependencies: I18N-01, ADMIN-01. Acceptance: used/expired tokens,
   unavailable SMTP, and lost second factors have verifiable recovery paths.
-  Partial local delivery: verification confirmation/resend, localized account
-  and recovery emails, interface-language preference, private display-name
-  editing, and authenticated password changes. Recovery requests invalidate
-  earlier reset links; successful password changes revoke sessions and pending
-  reset tokens.
-  A private display name is editable in My learning; broader profile management,
-  MFA, verified-email policy, and remaining
-  failure/recovery workflows are still open. The account-security browser test
-  verifies labels and confirmation-mismatch feedback in en, pt-BR, and es.
-- [ ] **ADMIN-02 — Enrollments, grants, and audit.**
+  Delivered locally: profile display-name and email changes; email changes require
+  current-password confirmation and a single-use link to the new address, retain
+  the old address until confirmation, then verify the new address and revoke all
+  sessions. Unverified accounts may sign in and learn, but certificate issuance
+  requires verification; My learning explains this and allows a generic resend.
+  Password changes and resets revoke sessions and invalidate pending reset links.
+  Verification/recovery/email-change messages use the saved locale; tokens are
+  single-use/expiring, and SMTP failures remain retryable in the outbox with resend
+  paths. Admin MFA uses encrypted TOTP secrets, pre-authentication challenges,
+  replay protection, a five-attempt challenge limit, hashed one-time recovery codes,
+  audit events, and password-plus-factor disable with session revocation. Recovery
+  codes provide access when an authenticator is lost. Full tests cover used/expired
+  tokens, email collisions, session revocation, MFA lockout/replay/recovery, and
+  unverified-email policy; Chromium covers localized flows. Local implementation
+  is complete; live SMTP/provider delivery and host runbook qualification remain
+  deployment/operations checks, not unimplemented account workflows.
+- [x] **ADMIN-02 — Enrollments, grants, and audit (local implementation).**
   Dashboard for enrollments, progress, manual grants/revocation with reasons,
   history, and support handling. Dependencies: BASE-01, ADMIN-01. Acceptance:
   authorized, audited operations change access without deleting history or requiring manual SQL.
-  Partial local delivery: administrators can search enrollments by learner email,
-  course title, or slug, inspect required-lesson progress and current access,
-  manually grant access to a published course, revoke enrollment access with a
-  reason, and inspect chronological audit history. Re-granting reuses the existing
-  enrollment and preserves progress; duplicate active grants and repeated revokes
-  do not create duplicate access-change events. Commerce reconciliation, grants
-  tied to provider support, and broader operational reporting remain open.
-- [ ] **ADMIN-03 — Publication, review, and urgent withdrawal.**
+  Delivered locally: administrators can search and filter enrollments by learner
+  email, course title, address, and state; inspect required-lesson progress and
+  effective current access; grant access to a published course or revoke it with
+  a required reason; and inspect chronological audit history. Only administrators
+  can use these operations. Revoked enrollment state blocks protected lesson and
+  media access and is reflected as no current access even while prior entitlement
+  history remains intact. Re-granting reuses the enrollment and preserves progress;
+  duplicate active grants are rejected and repeated revocations do not duplicate
+  audit events. API integration and Chromium tests cover authorization, access
+  denial/restoration, progress/history retention, and the support UI. ADMIN-02 is
+  complete locally. Provider-payment reconciliation, provider-linked support, and
+  broad operational reporting remain outside this acceptance and tracked separately.
+- [x] **ADMIN-03 — Publication, review, and urgent withdrawal (local implementation).**
   DRAFT → REVIEW → PUBLISHED workflow, checklist, optional scheduling, and notifications;
   distinguish archiving (preserves access) from urgent access withdrawal.
   Dependencies: EDIT-05, ADMIN-02. Acceptance: each transition's rules are tested;
   urgent withdrawal leaves no access through old URLs/media grants.
-  Partial local delivery: authors can submit an owned DRAFT for review only when
-  the publication checklist passes; the revision is checked optimistically and the
-  transition is audited. Administrators can then publish; direct admin publication
-  remains available for compatibility. Administrators can urgently withdraw a
-  published or archived course with a required reason; migration 049 stores an
-  immutable withdrawal marker, and the action is audited. Existing course/lesson,
-  video, caption, cover, attachment, enrollment-grant, and progress-write routes
-  recheck the marker, while enrollment/progress history is preserved. Archived
-  courses continue to preserve access unless separately withdrawn. Scheduling and
-  learner notifications remain open; ADMIN-03 is otherwise operational locally.
+  Delivered locally: authors submit owned drafts for review only after the shared
+  checklist passes, with optimistic revision checks and audit events. Administrators
+  can publish immediately or schedule a REVIEW revision for a future local date/time;
+  the worker revalidates readiness at execution, and schedules can be rescheduled or
+  cancelled. Editing the reviewed revision, archiving, or early publication clears
+  and audits the obsolete schedule. New revisions queue localized outbox email only
+  for active, verified learners; first publication has no existing recipients, and
+  current enrollment/progress revisions remain unchanged. Administrators can archive
+  to hide discovery and block new enrollment while preserving existing access, or
+  urgently withdraw a published/archived course with a required reason. Migration 049
+  stores the immutable withdrawal marker; protected course, lesson, video, caption,
+  cover, attachment, grant, and progress routes enforce it, with history retained.
+  API, worker-service, migration, and Chromium tests cover transitions, scheduling,
+  failed revalidation, notifications, access, and audit. ADMIN-03 is complete locally;
+  no live SMTP or production scheduling qualification was performed.
 
 ## P1 — assessments and completion
 
@@ -673,12 +768,25 @@ does not satisfy a task. Preserve local internationalization changes and prototy
 
 ## P1 — sales and payments
 
-- [ ] **PAY-01 — Pricing, orders, and real checkout.**
+- [x] **PAY-01 — Pricing, orders, and checkout workflow (local implementation).**
   Enable PAID in the editor with price/currency/terms, order snapshots, idempotency,
   hosted checkout, and pending/canceled/approved screens. Dependencies: BASE-01,
   HOME-02, ADMIN-02. Acceptance: browser-supplied prices are not trusted; return
   redirects do not grant access; buyers can see their orders and status.
-- [ ] **PAY-02 — Review the adapter contract and receive webhooks.**
+  Delivered locally: authors can price a PAID revision in integer minor units with
+  BRL/USD/EUR and published terms; migration 084 requires a valid price snapshot.
+  Buyers see localized public prices and can create orders from the published
+  revision only. Migration 085 stores immutable revision/title/terms snapshots;
+  server-owned price/currency, per-user idempotency and pending-order reuse prevent
+  browser price changes and duplicate attempts. Buyers can see private order status.
+  The development/test Fake provider offers a local hosted-checkout simulation;
+  approval checks provider status, amount and currency before transactionally creating
+  enrollment/entitlement, while cancel and browser return do not grant access.
+  Production startup rejects fake checkout activation and production checkout remains
+  disabled until PAY-02 signature/webhook/reconciliation validation is implemented.
+  PAY-01 is complete locally; live provider sandbox/production qualification remains
+  under PAY-02/PAY-05, not as an unimplemented local order flow.
+- [x] **PAY-02 — Orders API adapter and verified webhooks (local implementation).**
   Check current official documentation before implementation; test signatures,
   identifier sources, headers/query/body, and correct deduplication. At the audit,
   `verifyWebhook` attempted to extract `data.id` from the body as URLSearchParams
@@ -687,27 +795,68 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   specific contract without broad exceptions on other routes. Dependency: PAY-01.
   Acceptance: official/sandbox fixtures accepted, tampered ones rejected, and distinct
   transitions of the same payment processed without duplicate grants.
-- [ ] **PAY-03 — Confirmation, reconciliation, and access rights.**
+  Delivered locally after reviewing Mercado Pago's current Checkout Pro Orders API
+  documentation: the adapter creates `/v1/orders` with `X-Idempotency-Key`, manual
+  online processing and exact total/item snapshots, and retrieves authoritative order
+  state by provider order ID. Webhooks preserve raw JSON only on the dedicated route,
+  verify the HMAC manifest from `data.id` query + `x-request-id` + `ts`, require the
+  signed body event ID/type/order ID to agree, and re-fetch the order before changes.
+  The transaction validates `external_reference`, amount and currency, deduplicates
+  by provider/event ID plus payload hash, stores provider payment transitions, and
+  grants one entitlement only after approval. Pending, mismatch/retry, duplicate,
+  tampered signature, and distinct state transitions have official-shaped fixtures.
+  PAY-02 is complete locally. A real Mercado Pago test-account purchase/webhook was
+  not run; production checkout stays disabled by default until sandbox qualification.
+- [x] **PAY-03 — Confirmation, reconciliation, and access rights (local implementation).**
   Query authoritative status and verify seller, reference, currency, and amount;
   write order/payment/enrollment/entitlement/outbox in a short SQLite transaction;
   reconcile lost/delayed events. Dependency: PAY-02. Acceptance: approved payments
   grant access once; repeated/out-of-order notifications cannot create incorrect
   access; approved orders without enrollment are detected and recovered.
-- [ ] **PAY-04 — Refunds, disputes, and commercial support.**
+  Delivered locally: webhook and buyer refresh query authoritative Orders API state
+  and compare configured seller, external reference, amount and currency against the
+  immutable order snapshot. Settlement updates provider-payment state, order state,
+  enrollment, order entitlement and a localized confirmation email in one SQLite
+  transaction. The worker reconciles aged pending orders once per minute independently
+  of media/outbox work; PAID orders missing enrollment/order entitlement are repaired
+  with a two-minute retry backoff. Duplicate/out-of-order notifications remain
+  idempotent, and a locally PAID order is not downgraded by a stale pending response.
+  Tests cover seller/snapshot mismatch, lost-event reconciliation, missing-access
+  recovery, duplicate grants/receipts, and buyer-triggered refresh. PAY-03 is complete
+  locally; live sandbox reconciliation and production monitoring remain operator
+  qualification, and refund/chargeback policy remains PAY-04.
+- [x] **PAY-04 — Refunds, disputes, and commercial support (local implementation).**
   Full/partial refunds, chargebacks, audit trail, access revocation, and policy for
   issued certificates; orders and receipts dashboard. Dependencies: PAY-03, ADMIN-02.
   Acceptance: retries cannot duplicate refunds; local state reconciles with the
   provider; partial refund rules are explicit.
-- [ ] **PAY-05 — Validation and commercial configuration.**
+  Delivered locally: admin-only order search/status/history, reasoned partial/full
+  refunds and manual chargeback records; provider order webhooks now reconcile
+  refund IDs/status and `order.charged_back` state. Same-key retries preserve request
+  details across browser reloads. Partial refunds retain access/certificates; full
+  refunds and chargebacks revoke active order access and certificates with reasons,
+  retaining enrollment/progress and audit history. The dashboard reports receipt
+  email state. PAY-04 is complete locally; no live Mercado Pago sandbox refund,
+  chargeback notification, or production deployment was performed. Production
+  checkout remains disabled until PAY-05 operator qualification.
+- [ ] **PAY-05 — Validation and commercial configuration (blocked on owner/operator input).**
   Separate sandbox/production, review seller identity, currency, access/refund terms,
   support, receipts, and tax requirements with a qualified responsible party.
   Dependencies: PAY-01–04. Acceptance: purchase/reversal tested in the sandbox;
   real activation depends on the owner's credentials/configuration. Do not substitute
   fake production payments for a pending integration.
+  Delivered locally: explicit `MP_ENVIRONMENT`, strict boolean parsing for
+  `PAYMENTS_CHECKOUT_ENABLED`, sandbox-only nonproduction and production-only
+  production configuration, required real-provider credentials when enabled, and a
+  route guard that blocks Mercado Pago checkout whenever the flag is false. The flag
+  remains false. Blocked pending owner/operator confirmation of the seller account,
+  currency/payment methods, buyer-facing terms/support/receipt wording, tax/accounting
+  review, and sandbox credentials/test-user setup. Configure credentials through the
+  deployment secret store, never in chat.
 
 ## P1 — certificates
 
-- [ ] **CERT-01 — Eligibility and idempotent issuance.**
+- [ ] **CERT-01 — Eligibility and idempotent issuance (blocked on issuer policy).**
   Check completion, entitlement, verified email, name, and disclosure consent;
   snapshot identity/course/workload/issuer. Dependencies: LEARN-01, AUTH-01, and
   PAY-04 for paid courses. Acceptance: concurrent requests produce one valid issuance;
@@ -721,9 +870,11 @@ does not satisfy a task. Preserve local internationalization changes and prototy
     consent timestamp/version, and append-only audit event are stored. Concurrent
     requests and retries return the same active issuance; later profile/revision
     edits cannot rewrite that snapshot.
-  - [ ] Decide institutional issuer policy and connect paid-course reversal rules
-    from PAY-04 before treating issuance as production-ready. Locally, workload is
-    the published revision's declared minutes and issuer is its instructor name.
+  - [x] Connect paid-course reversal rules from PAY-04: full refunds and chargebacks
+    revoke active certificates with reasons while partial refunds preserve them.
+  - [ ] Owner confirms institutional issuer policy before production issuance.
+    Locally, workload is the published revision's declared minutes and issuer is
+    the course revision's instructor name.
 - [x] **CERT-02 — PDF, QR, and public verification.**
   Asynchronous generation, authorized download, opaque code, public verification
   with minimal data and valid/revoked status; learner certificates screen.

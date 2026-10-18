@@ -12,6 +12,7 @@ import { createApp } from './app.js';
 import { runMigrations } from './db/migrate.js';
 import { loadConfig } from './config.js';
 import { LocalStorageProvider } from '@maia/providers';
+import { cleanupUploads } from '../../worker/src/upload-cleanup.js';
 
 let directory: string;
 let db: Database.Database;
@@ -131,6 +132,63 @@ it('author upload is resumable, bounded, isolated and cancellable', async () => 
   expect((await chunk(id, a.cookie, 3, Buffer.from('def'))).status).toBe(409);
   expect(db.prepare('SELECT * FROM video_chunks WHERE upload_id=?').all(id)).toEqual([]);
 });
+it('cancels a processing upload without deleting chunks until its worker lease is released', async () => {
+  const author = await account('processing-cancel@video.test', 'author');
+  const course = (await request('/api/v1/admin/courses', 'POST', draft('processing-cancel'), author.cookie))
+    .data;
+  const created = await request('/api/v1/admin/videos', 'POST', {
+    courseId: course.id,
+    filename: 'movie.mp4',
+    size: 3,
+  }, author.cookie);
+  const id = created.data.id as string;
+  expect((await chunk(id, author.cookie, 0, Buffer.from('vid'))).status).toBe(200);
+  expect((await request(`/api/v1/admin/videos/${id}/complete`, 'POST', {}, author.cookie)).status)
+    .toBe(200);
+  db.prepare("UPDATE video_uploads SET status='PROCESSING',lease='processing-lease',heartbeat=datetime('now') WHERE id=?")
+    .run(id);
+
+  const cancelled = await request(`/api/v1/admin/videos/${id}/cancel`, 'POST', {}, author.cookie);
+  expect(cancelled.status).toBe(200);
+  expect(cancelled.data).toEqual({ status: 'CANCELLED', waitingForWorker: true });
+  expect(db.prepare('SELECT status,lease FROM video_uploads WHERE id=?').get(id)).toEqual({
+    status: 'CANCELLED',
+    lease: 'processing-lease',
+  });
+  expect(db.prepare('SELECT count(*) AS total FROM video_chunks WHERE upload_id=?').get(id))
+    .toEqual({ total: 1 });
+  expect(await cleanupUploads(db, directory)).toBe(0);
+
+  db.prepare("UPDATE video_uploads SET lease=NULL,heartbeat=NULL WHERE id=? AND status='CANCELLED'")
+    .run(id);
+  expect(await cleanupUploads(db, directory)).toBe(1);
+  expect(db.prepare('SELECT count(*) AS total FROM video_chunks WHERE upload_id=?').get(id))
+    .toEqual({ total: 0 });
+});
+it('retries failed media jobs and resets persisted processing progress', async () => {
+  const author = await account('retry-media@video.test', 'author');
+  const course = (await request('/api/v1/admin/courses', 'POST', draft('retry-media'), author.cookie))
+    .data;
+  const upload = await request('/api/v1/admin/videos', 'POST', {
+    courseId: course.id,
+    filename: 'movie.mp4',
+    size: 3,
+  }, author.cookie);
+  const id = upload.data.id as string;
+  db.prepare("UPDATE video_uploads SET status='QUEUED' WHERE id=?").run(id);
+  db.prepare("UPDATE video_uploads SET status='PROCESSING' WHERE id=?").run(id);
+  db.prepare("UPDATE video_uploads SET status='FAILED',processing_progress=45,error='VIDEO_PROCESSING_FAILED' WHERE id=?")
+    .run(id);
+
+  expect((await request(`/api/v1/admin/videos/${id}/retry`, 'POST', {}, author.cookie)).data)
+    .toEqual({ status: 'QUEUED' });
+  expect((await request(`/api/v1/admin/videos/${id}`, 'GET', undefined, author.cookie)).data)
+    .toMatchObject({ status: 'QUEUED', processing_progress: 0, error: null });
+  expect((await request(`/api/v1/admin/videos?courseId=${course.id}`, 'GET', undefined, author.cookie))
+    .data[0]).toMatchObject({ id, status: 'QUEUED', processing_progress: 0 });
+  expect((await request(`/api/v1/admin/videos/${id}/retry`, 'POST', {}, author.cookie)).data.code)
+    .toBe('UPLOAD_RETRY_STATE_INVALID');
+});
 it('reports full storage as recoverable and leaves the upload offset unchanged', async () => {
   const author = await account('disk-full@video.test', 'author');
   const course = (await request('/api/v1/admin/courses', 'POST', draft('disk-full'), author.cookie))
@@ -164,6 +222,7 @@ it.runIf(process.env.VIDEO_TEST_REAL === '1')(
   async () => {
     const a = await account('admin@video.test', 'admin');
     const learner = await account('learner@video.test');
+    const unrelatedLearner = await account('unrelated-video@video.test');
     const c = (await request('/api/v1/admin/courses', 'POST', draft('real-video'), a.cookie)).data;
     const sample = path.join(directory, 'sample.mp4');
     execFileSync('ffmpeg', [
@@ -173,7 +232,7 @@ it.runIf(process.env.VIDEO_TEST_REAL === '1')(
       '-f',
       'lavfi',
       '-i',
-      'testsrc=size=160x90:rate=10',
+      'testsrc=size=640x480:rate=10',
       '-t',
       '2',
       '-c:v',
@@ -229,8 +288,14 @@ it.runIf(process.env.VIDEO_TEST_REAL === '1')(
       false,
     ]);
     expect(
-      (await request(`/api/v1/admin/videos/${video.id}`, 'GET', undefined, a.cookie)).data.status,
-    ).toBe('READY');
+      (await request(`/api/v1/admin/videos/${video.id}`, 'GET', undefined, a.cookie)).data,
+    ).toMatchObject({ status: 'READY', processing_progress: 100 });
+    const hlsKey = (db.prepare('SELECT hls_key FROM video_uploads WHERE id=?').get(video.id) as { hls_key: string }).hls_key;
+    expect(hlsKey).toMatch(/^videos\/[a-f0-9-]+\/.+-hls\/master\.m3u8$/);
+    const hlsMaster = fs.readFileSync(path.join(directory, hlsKey), 'utf8');
+    expect(hlsMaster.match(/#EXT-X-STREAM-INF/g)).toHaveLength(2);
+    expect(hlsMaster).toContain('RESOLUTION=480x360');
+    expect(hlsMaster).toContain('RESOLUTION=640x480');
     expect(
       (await request(`/api/v1/admin/courses/${c.id}/publish`, 'POST', {}, a.cookie)).status,
     ).toBe(200);
@@ -238,11 +303,33 @@ it.runIf(process.env.VIDEO_TEST_REAL === '1')(
     const lesson = detail.modules[0].lessons[0];
     expect(lesson.kind).toBe('video');
     const url = `${base}/api/v1/lessons/${lesson.id}/video`;
+    const hlsUrl = `${base}/api/v1/lessons/${lesson.id}/hls/master.m3u8`;
     expect((await fetch(url)).status).toBe(403);
+    expect((await fetch(hlsUrl)).status).toBe(403);
+    expect((await fetch(url, { headers: { Cookie: unrelatedLearner.cookie } })).status).toBe(403);
+    expect((await fetch(hlsUrl, { headers: { Cookie: unrelatedLearner.cookie } })).status).toBe(403);
     const captionUrl = url.replace('/video', '/captions/en');
     expect((await fetch(captionUrl)).status).toBe(403);
     expect((await fetch(url.replace('/video', '/poster'))).status).toBe(403);
     await request(`/api/v1/courses/${c.id}/enroll`, 'POST', {}, learner.cookie);
+    const masterResponse = await fetch(hlsUrl, { headers: { Cookie: learner.cookie } });
+    expect(masterResponse.status).toBe(200);
+    expect(masterResponse.headers.get('content-type')).toContain('application/vnd.apple.mpegurl');
+    const master = await masterResponse.text();
+    expect(master).toContain('#EXT-X-STREAM-INF');
+    const variantPath = master.split(/\r?\n/).find(line => line.endsWith('.m3u8'));
+    expect(variantPath).toBeTruthy();
+    const variantUrl = new URL(variantPath!, hlsUrl).toString();
+    const variantResponse = await fetch(variantUrl, { headers: { Cookie: learner.cookie } });
+    expect(variantResponse.status).toBe(200);
+    const variant = await variantResponse.text();
+    expect(variant).toContain('#EXTINF');
+    const segmentPath = variant.split(/\r?\n/).find(line => line.endsWith('.ts'));
+    expect(segmentPath).toBeTruthy();
+    const segment = await fetch(new URL(segmentPath!, variantUrl), { headers: { Cookie: learner.cookie } });
+    expect(segment.status).toBe(200);
+    expect(segment.headers.get('content-type')).toBe('video/mp2t');
+    expect((await segment.arrayBuffer()).byteLength).toBeGreaterThan(0);
     expect(
       (await fetch(url.replace('/video', '/poster'), { headers: { Cookie: learner.cookie } }))
         .status,
@@ -297,6 +384,7 @@ it.runIf(process.env.VIDEO_TEST_REAL === '1')(
       await (await fetch(captionUrl, { headers: { Cookie: learner.cookie } })).text(),
     ).toContain('Hello world');
     const playback = await fetch(url, { headers: { Cookie: learner.cookie, Range: 'bytes=0-31' } });
+    expect((await fetch(hlsUrl, { headers: { Cookie: learner.cookie } })).status).toBe(200);
     expect(playback.status).toBe(206);
     expect((await playback.arrayBuffer()).byteLength).toBe(32);
     expect(playback.headers.get('content-type')).toContain('video/mp4');
@@ -307,6 +395,7 @@ it.runIf(process.env.VIDEO_TEST_REAL === '1')(
       (await fetch(url, { headers: { Cookie: learner.cookie, Range: 'bytes=999999999-' } })).status,
     ).toBe(416);
     db.prepare("UPDATE entitlements SET revoked_at=datetime('now')").run();
+    expect((await fetch(hlsUrl, { headers: { Cookie: learner.cookie } })).status).toBe(403);
     expect(
       (await fetch(url, { headers: { Cookie: learner.cookie, Range: 'bytes=32-63' } })).status,
     ).toBe(403);
@@ -324,6 +413,7 @@ it.runIf(process.env.VIDEO_TEST_REAL === '1')(
       ).status,
     ).toBe(200);
     expect((await fetch(url, { headers: { Cookie: learner.cookie } })).status).toBe(404);
+    expect((await fetch(hlsUrl, { headers: { Cookie: learner.cookie } })).status).toBe(404);
     expect((await fetch(captionUrl, { headers: { Cookie: learner.cookie } })).status).toBe(404);
     const invalid = (
       await request(
@@ -335,10 +425,14 @@ it.runIf(process.env.VIDEO_TEST_REAL === '1')(
     ).data;
     await chunk(invalid.id, a.cookie, 0, Buffer.from('fake'));
     await request(`/api/v1/admin/videos/${invalid.id}/complete`, 'POST', {}, a.cookie);
+    db.prepare(
+      "UPDATE video_uploads SET status='PROCESSING',lease='stale-worker',heartbeat=datetime('now','-3 minutes'),processing_progress=77 WHERE id=?",
+    ).run(invalid.id);
     await processVideo(db, directory);
-    expect(
-      (await request(`/api/v1/admin/videos/${invalid.id}`, 'GET', undefined, a.cookie)).data.status,
-    ).toBe('FAILED');
+    const failed = (await request(`/api/v1/admin/videos/${invalid.id}`, 'GET', undefined, a.cookie))
+      .data;
+    expect(failed.status).toBe('FAILED');
+    expect(failed.processing_progress).toBeLessThan(77);
   },
   30000,
 );
@@ -356,6 +450,35 @@ it('materials preserve revisions and authorize downloads, including preview and 
       author.cookie,
     )
   ).data;
+  const inlineImage = (await request(
+    '/api/v1/admin/files',
+    'POST',
+    { courseId: course.id, filename: 'diagram.png', size: 8 },
+    author.cookie,
+  )).data;
+  const inlineImageBytes = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+  fs.mkdirSync(path.join(directory, 'materials'), { recursive: true });
+  fs.writeFileSync(path.join(directory, 'materials', 'diagram.png'), inlineImageBytes);
+  db.prepare('UPDATE video_uploads SET offset=size WHERE id=?').run(inlineImage.id);
+  db.prepare("UPDATE video_uploads SET status='QUEUED' WHERE id=?").run(inlineImage.id);
+  db.prepare("UPDATE video_uploads SET status='PROCESSING' WHERE id=?").run(inlineImage.id);
+  db.prepare("UPDATE video_uploads SET status='READY',output_key=?,processing_progress=100 WHERE id=?")
+    .run('materials/diagram.png', inlineImage.id);
+  const mediaLibrary = await request(
+    '/api/v1/admin/media?q=diagram&kind=attachment&status=READY',
+    'GET',
+    undefined,
+    author.cookie,
+  );
+  expect(mediaLibrary.status).toBe(200);
+  expect(mediaLibrary.data).toMatchObject({
+    total: 1,
+    items: [{ id: inlineImage.id, course_slug: 'materials', media_kind: 'attachment', status: 'READY' }],
+  });
+  expect(mediaLibrary.data.items[0]).not.toHaveProperty('output_key');
+  const unrelatedAuthor = await account('unrelated-media@tests.test', 'author');
+  expect((await request('/api/v1/admin/media', 'GET', undefined, unrelatedAuthor.cookie)).data)
+    .toMatchObject({ total: 0, items: [] });
   expect(
     (await request(`/api/v1/admin/videos/${upload.id}`, 'GET', undefined, author.cookie)).status,
   ).toBe(404);
@@ -381,11 +504,24 @@ it('materials preserve revisions and authorize downloads, including preview and 
   const payload = {
     ...draft('materials'),
     expectedRevisionId: course.current_revision_id,
-    attachments: [attachment],
+    attachments: [attachment, {
+      fileId: inlineImage.id,
+      title: 'Lesson diagram',
+      description: 'Diagram embedded in the lesson body.',
+    }],
     modules: [
       {
         title: 'Module',
-        lessons: [{ title: 'Lesson', body: 'Read the example', attachments: [attachment] }],
+        lessons: [{
+          title: 'Lesson',
+          body: `![Diagram](/api/v1/files/${inlineImage.id}/inline)`,
+          contentFormat: 'markdown',
+          attachments: [attachment, {
+            fileId: inlineImage.id,
+            title: 'Lesson diagram',
+            description: 'Diagram embedded in the lesson body.',
+          }],
+        }],
       },
     ],
   };
@@ -407,12 +543,20 @@ it('materials preserve revisions and authorize downloads, including preview and 
   const detail = (await request(`/api/v1/courses/${course.id}`)).data;
   const courseFile = detail.attachments[0].id;
   const lessonId = detail.modules[0].lessons[0].id;
+  const inlineUrl = `${base}/api/v1/files/${inlineImage.id}/inline`;
   const download = (id: string, cookie = '') =>
     fetch(`${base}/api/v1/attachments/${id}/download`, { headers: { Cookie: cookie } });
   expect((await download(courseFile)).status).toBe(403);
+  expect((await fetch(inlineUrl)).status).toBe(403);
   await request(`/api/v1/courses/${course.id}/enroll`, 'POST', {}, learner.cookie);
   const lesson = (await request(`/api/v1/lessons/${lessonId}`, 'GET', undefined, learner.cookie))
     .data;
+  expect(lesson.body_html).toContain(`/api/v1/files/${inlineImage.id}/inline`);
+  const inlineResponse = await fetch(inlineUrl, { headers: { Cookie: learner.cookie } });
+  expect(inlineResponse.status).toBe(200);
+  expect(inlineResponse.headers.get('content-type')).toBe('image/png');
+  expect(inlineResponse.headers.get('content-disposition')).toBe('inline');
+  expect(Buffer.from(await inlineResponse.arrayBuffer())).toEqual(inlineImageBytes);
   const received = await download(lesson.attachments[0].id, learner.cookie);
   expect(received.headers.get('content-disposition')).toContain('attachment;');
   expect(received.headers.get('content-type')).toContain('application/octet-stream');
@@ -430,8 +574,10 @@ it('materials preserve revisions and authorize downloads, including preview and 
   expect((await download(courseFile, learner.cookie)).status).toBe(200);
   db.prepare("UPDATE entitlements SET revoked_at=datetime('now')").run();
   expect((await download(courseFile, learner.cookie)).status).toBe(403);
+  expect((await fetch(inlineUrl, { headers: { Cookie: learner.cookie } })).status).toBe(403);
   db.prepare('UPDATE entitlements SET revoked_at=NULL').run();
   expect((await download(courseFile, learner.cookie)).status).toBe(200);
+  expect((await fetch(inlineUrl, { headers: { Cookie: learner.cookie } })).status).toBe(200);
   expect(
     (
       await request(
@@ -443,6 +589,7 @@ it('materials preserve revisions and authorize downloads, including preview and 
     ).status,
   ).toBe(200);
   expect((await download(courseFile, learner.cookie)).status).toBe(404);
+    expect((await fetch(inlineUrl, { headers: { Cookie: learner.cookie } })).status).toBe(404);
   const other = (
     await request('/api/v1/admin/courses', 'POST', draft('other-materials'), author.cookie)
   ).data;

@@ -52,7 +52,7 @@ export function adminEnrollmentsRouter(db: Database.Database): Router {
            WHERE m.revision_id=e.revision_id AND l.is_required=1) AS required_lessons,
           (SELECT count(*) FROM lesson_progress p JOIN lessons l ON l.id=p.lesson_id
            WHERE p.enrollment_id=e.id AND p.completed_at IS NOT NULL AND l.is_required=1) AS completed_lessons,
-          (c.withdrawn_at IS NULL AND EXISTS (SELECT 1 FROM entitlements t WHERE t.enrollment_id=e.id AND t.revoked_at IS NULL
+          (e.state='active' AND c.withdrawn_at IS NULL AND EXISTS (SELECT 1 FROM entitlements t WHERE t.enrollment_id=e.id AND t.revoked_at IS NULL
             AND julianday(t.starts_at)<=julianday('now')
             AND (t.ends_at IS NULL OR julianday(t.ends_at)>julianday('now')))) AS has_entitlement
          FROM enrollments e JOIN users u ON u.id=e.user_id JOIN courses c ON c.id=e.course_id

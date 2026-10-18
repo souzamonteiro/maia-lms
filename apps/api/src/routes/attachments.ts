@@ -74,6 +74,73 @@ export function attachmentsRouter(db: Database.Database, config: Config): Router
       stream.pipe(res);
     })().catch(next);
   });
+  router.get('/files/:fileId/inline', (req, res, next) => {
+    void (async () => {
+      const rows = db.prepare(
+        `SELECT a.revision_id,a.lesson_id,v.output_key,v.filename,c.id AS course_id,c.author_id,
+          c.status,c.access_mode,c.published_revision_id,c.withdrawn_at,l.is_preview
+         FROM course_attachments a
+         JOIN course_revisions r ON r.id=a.revision_id
+         JOIN courses c ON c.id=r.course_id
+         JOIN video_uploads v ON v.id=a.upload_id AND v.course_id=c.id
+         LEFT JOIN lessons l ON l.id=a.lesson_id
+         WHERE a.upload_id=? AND v.status='READY' AND v.media_kind='attachment'`,
+      ).all(req.params.fileId) as Array<{
+        revision_id: string;
+        lesson_id: string | null;
+        output_key: string;
+        filename: string;
+        course_id: string;
+        author_id: string;
+        status: string;
+        access_mode: string;
+        published_revision_id: string | null;
+        withdrawn_at: string | null;
+        is_preview: number | null;
+      }>;
+      const imageRows = rows.filter(row => /\.(png|jpe?g)$/i.test(row.filename));
+      if (!imageRows.length) throw new AppError(404, 'Image not found', 'ATTACHMENT_NOT_FOUND');
+      const accessible = imageRows.find(row => {
+        const owner = req.session.role === 'admin' || req.session.userId === row.author_id;
+        if (row.withdrawn_at && !owner) return false;
+        const publicAccess = !row.withdrawn_at && row.status === 'PUBLISHED' &&
+          row.revision_id === row.published_revision_id &&
+          (row.access_mode === 'OPEN_FREE' || row.is_preview === 1);
+        const enrolled = db.prepare(
+          `SELECT 1 FROM enrollments e JOIN entitlements t ON t.enrollment_id=e.id
+           WHERE e.user_id=? AND e.course_id=? AND e.revision_id=? AND e.state='active'
+             AND t.revoked_at IS NULL AND julianday(t.starts_at)<=julianday('now')
+             AND (t.ends_at IS NULL OR julianday(t.ends_at)>julianday('now')) LIMIT 1`,
+        ).get(req.session.userId ?? '', row.course_id, row.revision_id);
+        return owner || publicAccess || Boolean(enrolled);
+      });
+      if (!accessible) {
+        if (imageRows.every(row => row.withdrawn_at && req.session.userId !== row.author_id && req.session.role !== 'admin'))
+          throw new AppError(404, 'Image not found', 'ATTACHMENT_NOT_FOUND');
+        throw new AppError(403, 'Enrollment required', 'ENROLLMENT_REQUIRED');
+      }
+      const stat = await store.stat(accessible.output_key);
+      res.set({
+        'Content-Type': /\.png$/i.test(accessible.filename) ? 'image/png' : 'image/jpeg',
+        'Content-Length': String(stat.size),
+        'Content-Disposition': 'inline',
+        'Cache-Control': 'private, no-store',
+        'Cross-Origin-Resource-Policy': 'same-origin',
+        'X-Content-Type-Options': 'nosniff',
+      });
+      if (req.method === 'HEAD') {
+        res.end();
+        return;
+      }
+      const stream = store.openRead(accessible.output_key);
+      res.on('close', () => stream.destroy());
+      stream.on('error', error => {
+        if (res.headersSent) res.destroy(error);
+        else next(error);
+      });
+      stream.pipe(res);
+    })().catch(next);
+  });
   router.get('/attachments/:id/download', (req, res, next) => {
     void (async () => {
       const a = db

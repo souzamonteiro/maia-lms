@@ -18,15 +18,18 @@ sudo ./install.sh host --host-ip 10.77.0.2 --proxy-ip 10.77.0.1
 
 The installer checks `ffmpeg` and `ffprobe` before stopping services. Migration 005
 is additive. The worker is limited to 2 GiB of RAM, two CPUs and 128 tasks in systemd
-and Compose installations. The shared Compose image includes FFmpeg; rebuild it
-when upgrading. The API and worker use the same private `STORAGE_ROOT`.
+and Compose installations. `MEDIA_WORKER_CONCURRENCY` controls media jobs separately
+(default 1, maximum 4); `WORKER_CONCURRENCY` controls outbox jobs. The shared Compose
+image includes FFmpeg; rebuild it when upgrading. The API and worker use the same
+private `STORAGE_ROOT`.
 
 No additional port or public route is needed. Uploaded chunks are at most 512 KiB,
-below the existing virtual host's 1 MiB limit. The API allows 300 requests/minute
-per IP; chunks have a separate limit of 300/minute per authenticated account.
-Range/HEAD pass through the existing proxy. Local validation does not establish
-VPN capacity, bandwidth or the actual VPS configuration; perform the final test
-through the domain after upgrading.
+below the managed virtual host's 1 MiB limit. Nginx streams upload bodies and media
+responses without proxy buffering, forwards Range/If-Range, and uses bounded upload
+and long-read timeouts. The API allows 300 requests/minute per IP; chunks have a
+separate limit of 300/minute per authenticated account. Local renderer/syntax tests
+do not establish VPN capacity, bandwidth or the installed VPS configuration; perform
+the final test through the domain after upgrading.
 
 ## Author workflow
 
@@ -37,8 +40,10 @@ through the domain after upgrading.
    after reloading the page, choose the upload in the selector and select the same
    file again. The browser checks SHA-256 for all previously received chunks before
    continuing; a different file is rejected.
-4. Once uploaded, the video enters the queue. Use **Refresh status** to follow it.
-   **Ready** means the MP4 and poster image have been generated.
+4. Once uploaded, the video enters the queue. Status and coarse processing progress
+  update automatically; **Refresh status** remains available. **Ready** means the
+  MP4 and poster image have been generated. Queued/processing jobs can be cancelled;
+  failed jobs can be retried without uploading the source again.
 5. Save the lesson (or wait for autosave) and publish as an administrator. Processing,
    cancelled or failed videos prevent publication.
 
@@ -97,6 +102,27 @@ enrollment for the corresponding revision. The storage directory has no public
 access. HTTP Range supports 206/416 and HEAD; responses disable private caching.
 Revocation blocks new requests but cannot recall bytes already received by the browser.
 
+## Adaptive HLS outputs
+
+Each READY video also has a private HLS VOD master playlist, variant playlists, and
+MPEG-TS segments alongside the MP4 and poster. FFmpeg emits up to 360p and 720p
+variants, capped at the source resolution; low-resolution sources get one variant
+instead of an upscaled copy. The HLS output set is limited to 8 GiB and is published
+only after every object is stored under the worker's current lease. Failed or stale
+workers delete their incomplete objects.
+
+`/api/v1/lessons/:id/hls/:asset` accepts only the master, known variant playlist,
+or generated segment path and rechecks the lesson revision, public preview, active
+entitlement, owner/admin access, and withdrawal state on every request. Playlists
+use relative same-origin paths; responses are private/no-store and do not expose
+storage keys. Lesson videos and course trailers now use native HLS where available
+and local HLS.js where Media Source Extensions are supported. HLS.js offers automatic
+or manual rendition selection; fatal adaptive-stream failures fall back to the same
+authorized MP4 endpoint. Native video controls provide play/pause, seeking, volume,
+fullscreen, and keyboard interaction; playback speed, loading, error, and fallback
+status are provided by the application. Real-device Android/Safari behavior and VPS
+duration, concurrency, disk, and network capacity have not been qualified.
+
 ## Validation and implementation
 
 Make FFmpeg/FFprobe available on PATH:
@@ -134,6 +160,21 @@ seconds up. The value comes from server-side processing and is not author-editab
 It describes video playback time, not estimated reading time or certificate workload.
 The label is localized in English, Portuguese, and Spanish. Attachment controls do
 not display video duration.
+
+## Inline lesson images
+
+An author can upload a PNG/JPEG as a lesson material and choose **Insert inline
+image** to add it to the Markdown body. The renderer only keeps same-origin image
+paths; `/api/v1/files/:id/inline` serves only READY PNG/JPEG uploads referenced by a
+course revision and authorized for the current preview, active enrollment/revision,
+or owner/admin. Revoked or withdrawn access is rejected. The endpoint sends
+normalized image bytes with `nosniff`, same-origin resource policy, and `no-store`;
+the attachment download endpoint remains a separate forced download.
+
+Optional ClamAV scanning runs before image normalization when configured. Actual
+ClamAV signatures and scanner availability still require validation in the host or
+container deployment; this local workflow does not establish that production
+scanning is enabled.
 
 ## Private storage contract
 

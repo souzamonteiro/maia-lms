@@ -529,6 +529,12 @@ button.icon-only {
   max-height: 70vh;
   background: #000;
 }
+.video-player { display: grid; gap: .5rem; min-width: 0; }
+.video-player video { display: block; width: 100%; max-height: 70vh; background: #000; }
+.video-quality-control { display: flex; align-items: center; gap: .5rem; max-width: 20rem; }
+.video-status:empty { display: none; }
+.video-status { min-height: 1.5em; }
+.video-quality-control[hidden] { display: none; }
 .video-editor {
   border-top: 1px solid var(--line);
   margin-top: 24px;

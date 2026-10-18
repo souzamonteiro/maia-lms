@@ -128,5 +128,83 @@ export function playbackRouter(db: Database.Database, config: Config): Router {
       })().catch(next);
     },
   );
+  router.get(['/lessons/:id/hls/*', '/courses/:id/trailer/hls/*'], (req, res, next) => {
+    void (async () => {
+      const assetPath = String((req.params as Record<string, string>)['0'] ?? '');
+      if (!/^(?:master\.m3u8|v\d+\/(?:index\.m3u8|segment_\d{5}\.ts))$/.test(assetPath))
+        throw new AppError(404, 'HLS asset not found', 'VIDEO_NOT_AVAILABLE');
+      const trailer = req.path.startsWith('/courses/');
+      const row = (trailer
+        ? db.prepare(
+            `SELECT 1 AS is_preview,r.id AS revision_id,c.id AS course_id,c.author_id,c.status,
+              c.access_mode,c.published_revision_id,c.withdrawn_at,v.hls_key
+             FROM courses c JOIN course_revisions r ON r.course_id=c.id
+             JOIN video_uploads v ON v.id=r.trailer_video_id AND v.course_id=c.id
+             WHERE (c.id=? OR c.slug=?) AND r.id=COALESCE(?,c.published_revision_id)
+               AND v.status='READY' AND v.media_kind='video'`,
+          ).get(
+            req.params.id,
+            req.params.id,
+            typeof req.query.revisionId === 'string' ? req.query.revisionId : null,
+          )
+        : db.prepare(
+            `SELECT l.is_preview,m.revision_id,c.id AS course_id,c.author_id,c.status,c.access_mode,
+              c.published_revision_id,c.withdrawn_at,v.hls_key
+             FROM lessons l JOIN modules m ON m.id=l.module_id
+             JOIN course_revisions r ON r.id=m.revision_id
+             JOIN courses c ON c.id=r.course_id
+             JOIN video_uploads v ON v.id=l.video_id AND v.course_id=c.id
+             WHERE l.id=? AND v.status='READY' AND v.media_kind='video'`,
+          ).get(req.params.id)) as {
+        is_preview: number;
+        revision_id: string;
+        course_id: string;
+        author_id: string;
+        status: string;
+        access_mode: string;
+        published_revision_id: string | null;
+        withdrawn_at: string | null;
+        hls_key: string | null;
+      } | undefined;
+      if (!row?.hls_key) throw new AppError(404, 'HLS asset not found', 'VIDEO_NOT_AVAILABLE');
+      const owner = req.session.role === 'admin' || req.session.userId === row.author_id;
+      if (row.withdrawn_at && !owner)
+        throw new AppError(404, 'HLS asset not found', 'VIDEO_NOT_AVAILABLE');
+      const publicAccess = !row.withdrawn_at && row.status === 'PUBLISHED' &&
+        row.revision_id === row.published_revision_id &&
+        (row.access_mode === 'OPEN_FREE' || row.is_preview === 1);
+      const enrolled = db.prepare(
+        `SELECT 1 FROM enrollments e JOIN entitlements t ON t.enrollment_id=e.id
+         WHERE e.user_id=? AND e.course_id=? AND e.revision_id=? AND e.state='active'
+           AND t.revoked_at IS NULL AND julianday(t.starts_at)<=julianday('now')
+           AND (t.ends_at IS NULL OR julianday(t.ends_at)>julianday('now')) LIMIT 1`,
+      ).get(req.session.userId ?? '', row.course_id, row.revision_id);
+      if (!publicAccess && !owner && !enrolled)
+        throw new AppError(403, 'Enrollment required', 'ENROLLMENT_REQUIRED');
+      const prefix = row.hls_key.slice(0, row.hls_key.lastIndexOf('/') + 1);
+      const key = `${prefix}${assetPath}`;
+      const stat = await store.stat(key);
+      res.set({
+        'Content-Type': assetPath.endsWith('.m3u8')
+          ? 'application/vnd.apple.mpegurl; charset=utf-8'
+          : 'video/mp2t',
+        'Content-Length': String(stat.size),
+        'Cache-Control': 'private, no-store',
+        'Cross-Origin-Resource-Policy': 'same-origin',
+        'X-Content-Type-Options': 'nosniff',
+      });
+      if (req.method === 'HEAD') {
+        res.end();
+        return;
+      }
+      const stream = store.openRead(key);
+      res.on('close', () => stream.destroy());
+      stream.on('error', error => {
+        if (res.headersSent) res.destroy(error);
+        else next(error);
+      });
+      stream.pipe(res);
+    })().catch(next);
+  });
   return router;
 }

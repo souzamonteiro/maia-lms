@@ -7,7 +7,7 @@ export interface CheckoutResult {
 
 export interface PaymentState {
   providerPaymentId: string;
-  status: 'approved' | 'pending' | 'rejected' | 'cancelled' | 'refunded' | 'charged_back';
+  status: 'approved' | 'pending' | 'rejected' | 'cancelled' | 'refunded' | 'partially_refunded' | 'charged_back';
   amountMinor: number;
   currency: string;
   metadata: Record<string, unknown>;
@@ -39,11 +39,16 @@ export interface PaymentProvider {
 
   getPayment(providerPaymentId: string): Promise<PaymentState>;
 
-  verifyWebhook(rawBody: Buffer, headers: Record<string, string>): WebhookVerification;
+  verifyWebhook(
+    rawBody: Buffer,
+    headers: Record<string, string>,
+    dataId?: string,
+  ): WebhookVerification;
 
   refund(params: {
-    providerPaymentId: string;
-    amountMinor: number;
+    providerOrderId: string;
+    transactionId?: string;
+    amountMinor?: number;
     idempotencyKey: string;
   }): Promise<RefundResult>;
 }

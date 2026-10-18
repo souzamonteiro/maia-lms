@@ -61,9 +61,12 @@ verification emails link to the confirmation page described below; verification
 and recovery emails use the currently saved account locale. Verification resend
 is available after registration; recovery requests invalidate earlier reset links.
 
-Signed-in users can update a private display name from **My learning**. It is not a
-public instructor profile or a replacement for the separate instructor presentation
-fields on a course. The profile form is available in English, Brazilian Portuguese,
+Signed-in users can update a private display name and request an account email change
+from **My learning**. Email changes require the current password and confirmation
+from the new address; the existing email remains active until confirmation. The
+confirmed change verifies the new address and revokes existing sessions. The private
+display name is not a public instructor profile or a replacement for course
+presentation fields. These forms are available in English, Brazilian Portuguese,
 and Spanish.
 
 Signed-in learners can change their password from the account-security section of
@@ -95,17 +98,22 @@ An author can submit an owned draft from the studio after the publication checkl
 passes. The request includes the draft revision ID, so stale editor state cannot be
 submitted silently. The course enters **REVIEW** and records an audit event; an
 administrator can publish it after review. Direct administrator publishing remains
-available for existing operational workflows. Archiving still closes discovery and
-new enrollment while preserving authorized access for existing learners; it is not
-an urgent withdrawal. An administrator can separately withdraw a published or
-archived course with a required reason. The immutable marker immediately blocks
-learner access through existing course/lesson URLs and video, caption, cover, and
-attachment routes, and prevents further progress writes; enrollment and progress
-history remain intact. The course is hidden from public discovery and cannot be
-republished through the normal publication route. Owner/admin inspection remains
-available. The learner dashboard keeps the historical enrollment and progress but
-does not show dead course or continue links. Scheduled publication and learner
-notifications are still pending.
+available for existing operational workflows. An administrator may schedule a
+course in REVIEW using local date/time; the API stores UTC, and the worker rechecks
+the publication checklist when the time arrives. Invalid or stale schedules are
+cleared and audited for correction; admins can reschedule or cancel, and editing the
+revision, archiving, or publishing early clears an obsolete schedule. A new revision
+of an already-published course queues a localized outbox notice to active learners
+with verified email. Their assigned revision and progress remain unchanged; first
+publication has no existing learners to notify. Archiving closes discovery and new
+enrollment while preserving authorized access for current learners; it is not an
+urgent withdrawal. An administrator can separately withdraw a published or archived
+course with a required reason. The immutable marker immediately blocks learner
+access through existing course/lesson URLs and video, caption, cover, attachment,
+enrollment-grant, and progress routes, while preserving enrollment/progress history.
+The course is hidden from discovery and cannot be republished through the normal
+route. Owner/admin inspection remains available; learners retain the historical
+record but no dead course or continue link.
 
 ## Assessment definition API
 
@@ -144,14 +152,14 @@ explanation of which submitted answers were correct.
 ## Enrollment support
 
 Administrators can open **Manage enrollments** to search by learner email, course
-title, or course address, and inspect the enrollment state, current entitlement,
-and required-lesson progress. A manual grant requires a published course and a
-reason. Revocation also requires a reason and preserves the enrollment, progress,
-and earlier entitlements; the enrollment state prevents further access. Re-grant
-reactivates the existing enrollment rather than creating a second record. The
-history view presents grant/revocation audit events in insertion order when events
-share the same stored timestamp. Provider payment reconciliation is not part of
-this support workflow.
+title, or course address, filter by state, and inspect required-lesson progress and
+effective current access. A manual grant requires a published course and a reason.
+Revocation also requires a reason and preserves the enrollment, progress, and
+earlier entitlements; the revoked enrollment state blocks protected access and the
+dashboard reports no current access. Re-grant reactivates the existing enrollment
+instead of creating a second record. The history view presents grant/revocation
+audit events in insertion order when events share the same stored timestamp.
+Provider payment reconciliation is not part of this support workflow.
 
 ## Course completion
 
@@ -215,10 +223,17 @@ single-use token in the account's saved locale. Known, unknown, already-verified
 and suspended accounts receive the same 204 response. Requests are rate-limited;
 the browser displays generic confirmation and does not disclose account state.
 
-Previously queued emails may still point directly to the legacy GET API endpoint.
-Those links retain their original behavior. Profile management beyond the private
-display name, MFA, and an explicit policy requiring verified email remain separate
-TODO items.
+Previously queued verification emails may still point directly to the legacy GET
+API endpoint. Those links retain their original behavior. Unverified users can sign
+in and learn, but certificate issuance requires a verified address; the account
+page explains the policy and offers a generic resend action. Verification and
+recovery emails remain queued for worker retry if SMTP is unavailable.
+
+Administrators can enable TOTP-based two-step verification from account security.
+The setup secret is encrypted at rest; login creates no authenticated session until
+the second factor succeeds. Ten single-use recovery codes are shown once and stored
+as hashes. A code can recover access when an authenticator is lost; disabling MFA
+requires the current password and a valid TOTP/recovery factor and revokes sessions.
 
 ## Learner lesson navigation
 

@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@maia/api": "*",
     "@maia/domain": "*",
     "@maia/providers": "*",
     "better-sqlite3": "^11.0.0",
