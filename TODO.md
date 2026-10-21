@@ -1096,12 +1096,13 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   all 35 workflows, including real video and 360×780 checks. An earlier run had
   non-reproducible timeouts beginning in admin MFA; the preceding account/admin
   block and subsequent full rerun passed. Firefox full-suite reruns passed 34/35:
-  real-video and the navigation/verification tests pass, but the admin-date test
-  timed out on navigation in the full suite while passing in isolation. Keep
-  Firefox qualification open until a complete clean run. WebKit cannot launch
-  because host libraries are missing; the authorized dependency-install command
-  could not elevate because this session has no interactive sudo. No host changes
-  were made. Physical-device qualification remains open.
+  real-video and verification passed, but the admin-date workflow timed out during
+  navigation in the full suite while passing in isolation. Keep Firefox
+  qualification open until a complete clean run. WebKit dependencies are now
+  installed by the operator and the browser launches, but even the first isolated
+  workflow remains on the home-page “Loading courses…” shell after navigating to
+  login, so the login form never appears. WebKit qualification remains open for
+  diagnosis and a complete passing suite. Physical-device qualification remains open.
 - [ ] **DOC-01 — Keep contracts and operations aligned with implementation.**
   Update OpenAPI, data model, installation/configuration, author/learner/admin
   manuals, limits, and recovery procedures with every delivery. Dependency:

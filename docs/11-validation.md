@@ -1624,12 +1624,12 @@ Chromium suite passed all 35 workflows, including real video playback and the
 runs: video passed after making its delayed-progress checkpoint deterministic, and
 verification/navigation plus the admin-date workflow passed in isolation. The
 admin-date workflow still timed out waiting for navigation in the full suite.
-Treat Firefox as pending until a clean complete run passes. WebKit cannot currently
-launch because required host libraries are unavailable. The authorized
-`npx playwright install-deps webkit` attempt did not change the host: sudo required
-interactive authentication unavailable in this session. These are local tests, not
-physical-device or external deployment qualification. No host or production changes
-were made.
+Treat Firefox as pending until a clean complete run passes. WebKit dependencies
+have now been installed by the operator and Playwright launches the browser, but
+even the isolated account-email-change flow stays on the home-page “Loading
+courses…” shell after navigating to `/auth/login`, so the login form never appears.
+Diagnose this before treating WebKit as qualified. These are local tests, not
+physical-device or external deployment qualification.
 
 ## Implemented API contract — October 20, 2026
 
