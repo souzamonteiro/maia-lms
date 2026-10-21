@@ -24,6 +24,7 @@ test('administrator publishes; a learner enrolls and completes an article', asyn
   await courseCard.getByRole('button', { name: 'Publish', exact: true }).click();
   await expect(courseCard.getByText('PUBLISHED', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  await expect(page).toHaveURL('/');
   await page.goto('/auth/register');
   await page.getByLabel('Email', { exact: true }).fill('learner@example.com');
   await page.getByLabel('Password', { exact: true }).fill('Learner-test-password-123');

@@ -1091,18 +1091,17 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Chrome/Firefox/Safari and mobile where applicable. Dependencies: all P0/P1
   deliveries. Acceptance: new reports per version; the original English article
   test does not establish acceptance for video, editor, languages, checkout, or certificates.
-  Local report, October 21, 2026: `npm test` passed 177 tests and skipped 2
-  (179 total across 62 files); build and lint passed. The full Chromium run passed
-  all 35 workflows, including real video and 360×780 checks. An earlier run had
-  non-reproducible timeouts beginning in admin MFA; the preceding account/admin
-  block and subsequent full rerun passed. Firefox full-suite reruns passed 34/35:
-  real-video and verification passed, but the admin-date workflow timed out during
-  navigation in the full suite while passing in isolation. Keep Firefox
-  qualification open until a complete clean run. WebKit dependencies are now
-  installed by the operator and the browser launches, but even the first isolated
-  workflow remains on the home-page “Loading courses…” shell after navigating to
-  login, so the login form never appears. WebKit qualification remains open for
-  diagnosis and a complete passing suite. Physical-device qualification remains open.
+  Local report, October 21, 2026: `npm test` passed 178 tests and skipped 2
+  (180 total across 62 files); build and lint passed. Chromium and WebKit each
+  passed all 35 workflows, including real video and 360×780 checks. Firefox
+  repeated full-suite runs each had one intermittent navigation/load timeout
+  (34/35), affecting verification once and the initial learning login on other
+  runs; both flows passed in isolation.
+  Keep Firefox qualification open until a clean full run passes. The WebKit
+  blockers were resolved locally: omit `upgrade-insecure-requests` outside
+  production, initiate preview playback with the video scrolled into view, and
+  wait for logout redirects before navigating. Physical-device qualification
+  remains open; no deployment or host changes were made.
 - [ ] **DOC-01 — Keep contracts and operations aligned with implementation.**
   Update OpenAPI, data model, installation/configuration, author/learner/admin
   manuals, limits, and recovery procedures with every delivery. Dependency:

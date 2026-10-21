@@ -96,9 +96,13 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     await expect(page.locator('#save-status')).toContainText('Draft saved');
     await page.getByRole('button', { name: 'Preview draft', exact: true }).click();
     const draftPreview = page.getByRole('dialog');
-    await expect(draftPreview.locator('video')).toBeVisible();
-    await draftPreview.locator('video').evaluate((video: HTMLVideoElement) => { video.muted = true; return video.play(); });
-    await expect.poll(() => draftPreview.locator('video').evaluate((video: HTMLVideoElement) => video.currentTime)).toBeGreaterThan(0);
+    const previewVideo = draftPreview.locator('video');
+    await expect(previewVideo).toBeVisible();
+    await previewVideo.scrollIntoViewIfNeeded();
+    await previewVideo.evaluate((video: HTMLVideoElement) => { video.muted = true; return video.play(); });
+    await expect.poll(
+      () => previewVideo.evaluate((video: HTMLVideoElement) => video.currentTime),
+    ).toBeGreaterThan(0);
     await expect(draftPreview.locator('track[srclang="en"]')).toHaveCount(1);
     await draftPreview.getByLabel('Preview as').selectOption('visitor');
     await draftPreview.getByLabel('Preview as').selectOption('learner');
@@ -156,6 +160,7 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     await trailer.evaluate((video: HTMLVideoElement) => { video.muted = true; return video.play(); });
     await expect.poll(() => trailer.evaluate((video: HTMLVideoElement) => video.currentTime)).toBeGreaterThan(0);
     await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+    await expect(page).toHaveURL('/');
     await page.goto('/auth/register');
     await page.getByLabel('Email', { exact: true }).fill('video-learner@example.com');
     await page.getByLabel('Password', { exact: true }).fill('Video-learner-password-123');

@@ -629,7 +629,7 @@ async function learning() {
     me.display_name = result.displayName;
     notify(t('profileSaved'));
   });
-  app.insertAdjacentHTML('beforeend', `<section class="account-privacy"><h2>${t('privacySelfService')}</h2><p>${t('privacyRequestExplanation')}</p><p><a class="button" href="/api/v1/auth/privacy/export">${t('privacyDownloadExport')}</a></p><button type="button" class="secondary" id="privacy-deletion-request">${t('privacyRequestDeletion')}</button><p id="privacy-request-status" aria-live="polite"></p><ul id="privacy-request-list"></ul></section>`);
+  app.insertAdjacentHTML('beforeend', `<section class="account-privacy"><h2>${t('privacySelfService')}</h2><p>${t('privacyRequestExplanation')}</p><p><a class="button" href="/api/v1/auth/privacy/export" download="maia-account-export.json">${t('privacyDownloadExport')}</a></p><button type="button" class="secondary" id="privacy-deletion-request">${t('privacyRequestDeletion')}</button><p id="privacy-request-status" aria-live="polite"></p><ul id="privacy-request-list"></ul></section>`);
   const privacyRequestStatus = app.querySelector('#privacy-request-status');
   const privacyRequestList = app.querySelector('#privacy-request-list');
   async function loadPrivacyRequests() {

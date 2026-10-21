@@ -160,6 +160,12 @@ describe('HTTP learning workflow', () => {
     expect((await request('/static/app.js')).status).toBe(200);
     expect((await request('/readyz')).status).toBe(200);
   });
+  it('does not upgrade local test assets to HTTPS', async () => {
+    const response = await fetch(`${base}/auth/login`);
+    expect(response.headers.get('content-security-policy')).not.toContain(
+      'upgrade-insecure-requests',
+    );
+  });
   it('rejects unknown accounts without a server error; queues email atomically and logs out', async () => {
     expect(
       (await request('/api/v1/auth/login', 'POST', { email: 'missing@example.com', password }))

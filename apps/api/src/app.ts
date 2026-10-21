@@ -56,6 +56,7 @@ export function createApp(
           imgSrc: ["'self'", 'data:', 'blob:'],
           mediaSrc: ["'self'", 'blob:'],
           frameSrc: ["'none'"],
+          upgradeInsecureRequests: config.NODE_ENV === 'production' ? [] : null,
         },
       },
     }),

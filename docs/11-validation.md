@@ -1617,19 +1617,21 @@ WebKit full-suite and physical mobile qualification remain outstanding.
 
 ## Product QA rerun — October 21, 2026
 
-Local validation of the current checkout: `npm test` passed 177 tests and skipped
-2 (179 total across 62 files); `npm run build` and `npm run lint` passed. The full
-Chromium suite passed all 35 workflows, including real video playback and the
-360×780 mobile viewport checks. The Firefox suite passed 34/35 in repeated full
-runs: video passed after making its delayed-progress checkpoint deterministic, and
-verification/navigation plus the admin-date workflow passed in isolation. The
-admin-date workflow still timed out waiting for navigation in the full suite.
-Treat Firefox as pending until a clean complete run passes. WebKit dependencies
-have now been installed by the operator and Playwright launches the browser, but
-even the isolated account-email-change flow stays on the home-page “Loading
-courses…” shell after navigating to `/auth/login`, so the login form never appears.
-Diagnose this before treating WebKit as qualified. These are local tests, not
-physical-device or external deployment qualification.
+Local validation of the current checkout: `npm test` passed 178 tests and skipped
+2 (180 total across 62 files); `npm run build` and `npm run lint` passed. Chromium
+and WebKit each passed all 35 workflows, including real video playback and the
+360×780 viewport checks. WebKit's local blockers were corrected: Helmet now emits
+`upgrade-insecure-requests` only in production, the draft-preview video test
+scrolls the media into view before playback, and logout flows wait for the
+redirect before navigating. The export link also declares its download filename
+so WebKit handles the response as a download.
+
+Repeated Firefox full-suite attempts each passed 34/35 but had one intermittent
+navigation/load timeout: the verification page on one run and the initial login
+in the learning workflow on other runs. Both affected workflows passed in
+isolation, and the Firefox video workflow passed. Keep Firefox qualification
+open until a clean complete run passes. No deployment, host changes, or
+physical-device qualification were performed; device testing remains external.
 
 ## Implemented API contract — October 20, 2026
 
