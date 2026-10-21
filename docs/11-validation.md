@@ -1620,10 +1620,16 @@ WebKit full-suite and physical mobile qualification remain outstanding.
 Local validation of the current checkout: `npm test` passed 177 tests and skipped
 2 (179 total across 62 files); `npm run build` and `npm run lint` passed. The full
 Chromium suite passed all 35 workflows, including real video playback and the
-360×780 mobile viewport checks. These are local implementation tests, not external
-qualification. Full Firefox/WebKit browser suites and physical-device testing
-remain pending; WebKit cannot currently launch because required host libraries are
-unavailable. No deployment, host change, or production access was performed.
+360×780 mobile viewport checks. The Firefox suite passed 34/35 in repeated full
+runs: video passed after making its delayed-progress checkpoint deterministic, and
+verification/navigation plus the admin-date workflow passed in isolation. The
+admin-date workflow still timed out waiting for navigation in the full suite.
+Treat Firefox as pending until a clean complete run passes. WebKit cannot currently
+launch because required host libraries are unavailable. The authorized
+`npx playwright install-deps webkit` attempt did not change the host: sudo required
+interactive authentication unavailable in this session. These are local tests, not
+physical-device or external deployment qualification. No host or production changes
+were made.
 
 ## Implemented API contract — October 20, 2026
 

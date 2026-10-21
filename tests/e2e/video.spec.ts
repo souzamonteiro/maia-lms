@@ -17,7 +17,7 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
       '-i',
       'testsrc=size=640x480:rate=10',
       '-t',
-      '3',
+      '15',
       '-c:v',
       'libx264',
       '-pix_fmt',
@@ -69,7 +69,7 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
       .toBe(100);
     await expect(page.locator('.video-editor .video-status')).toHaveText('Ready');
     await expect(page.locator('.video-editor > .video-duration')).toContainText('Video duration:');
-    await expect(page.locator('.video-editor > .video-duration')).toHaveText(/Video duration: 0:0[1-9]/);
+    await expect(page.locator('.video-editor > .video-duration')).toHaveText('Video duration: 0:15');
     await page.getByText('Captions', { exact: true }).click();
     await page.locator('.caption-row[data-language="en"] .caption-file').setInputFiles({
       name: 'lesson.vtt',
@@ -198,12 +198,14 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     let resolveFirstSave: (() => void) | undefined;
     let notifyFirstSave: (() => void) | undefined;
     let progressRequestCount = 0;
+    let firstSavedPosition: number | undefined;
     const firstSaveStarted = new Promise<void>(resolve => {
       notifyFirstSave = resolve;
     });
     await page.route('**/api/v1/lessons/*/progress', async route => {
       progressRequestCount += 1;
       if (progressRequestCount === 1) {
+        firstSavedPosition = route.request().postDataJSON().positionSeconds;
         notifyFirstSave?.();
         await new Promise<void>(resolve => {
           resolveFirstSave = resolve;
@@ -213,10 +215,14 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     });
     await video.evaluate((v: HTMLVideoElement) => v.play());
     await firstSaveStarted;
-    await video.evaluate((v: HTMLVideoElement) => {
-      v.currentTime = 1.25;
+    if (firstSavedPosition === undefined)
+      throw new Error('The first playback position request did not include a position');
+    const trailingPosition = firstSavedPosition === 1 ? 2 : 1;
+    await video.evaluate(async (v: HTMLVideoElement, position: number) => {
+      if (v.paused) await v.play();
+      v.currentTime = position + 0.25;
       v.pause();
-    });
+    }, trailingPosition);
     const finalSaveResponse = page.waitForResponse(
       response =>
         response.url().includes('/progress') && response.request().method() === 'PUT' &&
@@ -227,7 +233,7 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     const lessonUrl = new URL(page.url());
     const lessonId = lessonUrl.pathname.split('/').at(-1);
     const savedLesson = await page.request.get(`/api/v1/lessons/${lessonId}`);
-    expect((await savedLesson.json()).progress.position_seconds).toBe(1);
+    expect((await savedLesson.json()).progress.position_seconds).toBe(trailingPosition);
     await page.reload();
     await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime)).toBeGreaterThan(0.9);
     await page.getByRole('button', { name: 'Sign out', exact: true }).click();
