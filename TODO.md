@@ -448,7 +448,7 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   after failure. Dependencies: none. Acceptance: confinement and author isolation
   tests; large file transfers without an entire Buffer in memory. The original
   adapter must not be exposed before this correction.
-- [ ] **MEDIA-02 — Upload videos, images, and attachments.**
+- [ ] **MEDIA-02 — Upload videos, images, and attachments (local implementation; host scan qualification open).**
   Authorized endpoints, resumable streaming/chunks, progress, cancel/retry, quotas,
   and incomplete upload cleanup. Check size and actual content, quarantine originals,
   and define inspection/antimalware for attachments. Dependencies: MEDIA-01, BASE-02.
@@ -457,6 +457,12 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   - [x] Insert a READY PNG/JPEG upload into lesson Markdown from the attachment row;
     same-origin delivery remains bound to revision, preview/enrollment, and withdrawal
     authorization. E2E covers upload, preview, publication, and browser rendering.
+  Local endpoints enforce author ownership, quotas, resumable chunk offsets, and
+  cancellation; the worker validates signatures/content in private storage before
+  publishing normalized artifacts, and expires/cleans incomplete uploads. The
+  ClamAV path is fail-closed when enabled and tested with scanner outcomes, but
+  `ATTACHMENT_SCAN_MODE` defaults to `disabled`. Keep this item open until the real
+  worker host has ClamAV enabled and its scan behavior is qualified.
 - [x] **MEDIA-03 — FFprobe/FFmpeg processing (local implementation).**
   Validate containers/streams, generate compatible playback MP4 and adaptive HLS,
   poster, duration, and metadata; CPU/memory/time limits and subprocesses without
@@ -749,7 +755,7 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   converge on the same persisted result with one answer row. Additional high-volume
   stress runs and richer deadline recovery UX are operational follow-up, not open
   functional acceptance criteria.
-- [ ] **LEARN-01 — Consistent completion policy.**
+- [x] **LEARN-01 — Consistent completion policy (local implementation).**
   Snapshot required lessons/grades/attempts per revision, server-side calculation,
   and idempotent completion. Dependencies: PLAY-04, QUIZ-02. Acceptance: dashboard
   and certificates use the same decision; revoked access and failed assessments prevent issuance.
@@ -761,10 +767,12 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   entitlement. Lesson-completion writes and quiz submissions reevaluate atomically;
   repeated updates preserve the original completion timestamp. `/me/enrollments`
   exposes `completion_ready` and the learner dashboard marks recorded completion.
-  Certificate eligibility and record issuance now use this same completion policy;
-  they store an immutable certificate payload and consent snapshot. PLAY-04 device
-  qualification remains an open dependency, so LEARN-01 remains open until that
-  learner resumption/navigation path is qualified.
+  Certificate eligibility and record issuance use this same completion policy;
+  they store an immutable certificate payload and consent snapshot. API tests cover
+  incomplete lessons, failed quizzes, completion timestamps, revoked entitlement,
+  and certificate eligibility; browser tests cover progress/dashboard/navigation.
+  LEARN-01 is complete locally. Real-device playback qualification remains under
+  PLAY-02, and institutional issuer policy remains under CERT-01.
 
 ## P1 — sales and payments
 
@@ -935,6 +943,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   - [x] Restrict upload status changes to the processing lifecycle, recovery,
     retry, or cancellation paths; READY/CANCELLED remain terminal (migration 059,
     with publication/media fixtures following the real transitions).
+  - [x] Enforce translated metadata structure, supported unique locales distinct
+    from the source locale, allowed fields, and field limits for direct SQL writes
+    (migration 089; focused insert/update integrity tests).
   Partial: migrations 017–018 prevent progress, enrollment-revision, and
   lesson-module changes from crossing the enrollment's assigned revision, and
   constrain progress positions to non-negative integers. Migration 019 ensures
@@ -1007,11 +1018,19 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:
   restoring a published course and old revision allows playback, resumption, and
   certificate verification; a SQLite-only backup is not a complete video backup.
-- [ ] **OPS-03 — Observability and dashboard operations.**
+- [ ] **OPS-03 — Observability and dashboard operations (local dashboard; telemetry and alert delivery open).**
   Queue/transcode/playback/SMTP/payment/disk metrics, logs without tokens/PII,
   alerts, inspection, and administrative retries. Dependencies: JOB-01, PAY-03.
   Acceptance: operators identify stuck jobs and error causes without inspecting
   secrets; API readiness is not treated as proof that every worker is healthy.
+  Local delivery: `/admin/operations` shows persisted worker heartbeats, media job
+  states/stalls, outbox and email retry counts, payment states, storage capacity,
+  and safe alert codes without payloads or identities. Playback requests are
+  aggregated over seven days by resource type and HTTP status class; no course/user
+  IDs, IPs, or paths are stored. Latency, playback starts/buffering, SMTP/payment
+  reconciliation, and production log review remain uninstrumented; alerts are
+  visible in the panel but have no external delivery channel. Keep OPS-03 open for
+  those metrics and alert-delivery qualification.
 - [ ] **OPS-04 — Real capacity on Maia Edge.**
   Define audience/bitrate/upload limits and test host, VPN, and VPS bandwidth,
   disk, and SQLite/FFmpeg concurrency. Dependencies: PLAY-02, OPS-01. Acceptance:
@@ -1023,37 +1042,76 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Dependencies: BASE-02, OPS-01/02. Acceptance: upgrade a representative copy and
   test restoration before publishing; preserve `.env`, accounts, languages, and VPN.
   Exercise Docker and systemd installations, not just their syntax.
-- [ ] **SEC-01 — Authorization, abuse, and hostile content.**
+- [ ] **SEC-01 — Authorization, abuse, and hostile content (local controls strengthened; full matrix open).**
   Tests for cross-user/author/course access, private/revoked media, Markdown,
   uploads, extraction/transcoding, payment replay, and storage limits.
   Dependencies: corresponding deliveries. Acceptance: no new endpoint bypasses
   policies; hostile test files fail in a controlled way without leaks.
+  Verified local slices cover cross-author/media entitlement, revoked and withdrawn
+  media, Markdown sanitization, upload signatures/quotas/cleanup, transcoding failures,
+  and webhook signature/replay behavior. Production attachment scanning now fails
+  closed if ClamAV is disabled; no malware scan can report success in production
+  without the scanner. Keep open for the complete hostile corpus and deployment
+  qualification.
 - [ ] **PRIV-01 — Privacy and self-service.**
   Profile/correction, export, deletion requests, versioned consent, account/media/payment
   retention, and support contact. Dependencies: ADMIN-01, PAY-04, CERT-03.
   Acceptance: traceable requests respect defined retention; public certificate
   lookups expose only consented data. Legal review is an external dependency, not
   a claim that compliance has already been achieved.
-- [ ] **UX-01 — Accessibility and real usage states.**
+  Local delivery: authenticated JSON export is scoped to the account's profile,
+  enrollments/progress/quiz answers, entitlements, orders/refunds, certificates and
+  owned media metadata; it excludes password hashes, session/email tokens and storage
+  keys. Export and request endpoints have a dedicated rate limit. Users can create
+  and view an idempotent deletion request. No account data is deleted, and the request
+  has no admin review workflow yet. Keep PRIV-01 open for
+  retention/legal policy, support contact, review/resolution workflow and export
+  completeness review.
+- [ ] **UX-01 — Accessibility and real usage states (form-error feedback improved; full audit open).**
   Keyboard/focus, screen readers, contrast, zoom/mobile, captions, error messages,
   skeleton/loading and empty states; test all three languages. Dependencies:
   EDIT-03, PLAY-03, HOME-03, I18N-01. Acceptance: publish and watch without a mouse;
   player, editor, and forms retain context when errors occur.
-- [ ] **SEO-01 — Indexable public pages.**
+  Local delivery: application errors announce as assertive alerts and receive focus;
+  successful notices remain polite status messages. E2E verifies translated login
+  errors and focus in en/pt-BR/es while retaining form input. Keep open for contrast,
+  zoom/mobile, captions, and the full author/learner workflow audit.
+- [ ] **SEO-01 — Indexable public pages (course SSR delivered; public-page coverage open).**
   Useful server-rendered content, per-course title/description, canonical URLs,
   sitemap, Open Graph/covers, and locale; prevent indexing of private areas.
   Dependencies: HOME-02/03, I18N-02. Acceptance: initial HTML for a published course
   contains its presentation; crawlers do not receive only the original generic shell.
-- [ ] **QA-01 — Complete product test suite and demonstration.**
+  Local delivery: course, home, and catalog pages server-render localized metadata
+  and public content; course pages include canonical/Open Graph cover metadata.
+  `robots.txt` and `sitemap.xml` include only public courses; private/admin/auth
+  pages are `noindex`. Instructor profiles remain client-first; keep SEO-01 open
+  for their SSR metadata and full crawler validation.
+- [ ] **QA-01 — Complete product test suite and demonstration (current Chromium report recorded; cross-browser open).**
   Extend HTTP, database, job, and browser tests to all workflows below, including
   Chrome/Firefox/Safari and mobile where applicable. Dependencies: all P0/P1
   deliveries. Acceptance: new reports per version; the original English article
   test does not establish acceptance for video, editor, languages, checkout, or certificates.
+  Local report, October 21, 2026: `npm test` passed 177 tests and skipped 2
+  (179 total across 62 files); build and lint passed. The full Chromium run passed
+  all 35 workflows, including real video and 360×780 checks. An earlier run had
+  non-reproducible timeouts beginning in admin MFA; the preceding account/admin
+  block and subsequent full rerun passed. A limited Firefox smoke returned 200 for
+  `/courses` at 360×780 with no horizontal overflow. Full Firefox/WebKit suites and
+  physical mobile qualification remain open; WebKit currently lacks required host
+  libraries.
 - [ ] **DOC-01 — Keep contracts and operations aligned with implementation.**
   Update OpenAPI, data model, installation/configuration, author/learner/admin
   manuals, limits, and recovery procedures with every delivery. Dependency:
   cross-cutting. Acceptance: implemented API and future plans are separate;
   runnable examples do not depend on default credentials or omitted steps.
+  Local delivery: updated the data model for migrations 089–092, privacy semantics,
+  production scanner behavior, worker/playback dashboard limits, SEO metadata, and
+  validation results. `spec/openapi.yaml` now documents HLS playback plus the new
+  operational and privacy endpoints; the future design remains separate in
+  `planned-openapi.yaml`.
+  The implemented contract is still incomplete, and installation, recovery,
+  author/learner/admin manuals and cross-document review need a full pass. Keep
+  DOC-01 open.
 
 ## Sequence of demonstrable deliveries
 

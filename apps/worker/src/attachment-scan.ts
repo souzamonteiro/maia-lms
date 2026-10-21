@@ -14,7 +14,11 @@ export function attachmentScanMode(): 'disabled' | 'clamav' {
 }
 // Caller keeps originals private and must not mark READY before this completes.
 export async function scanAttachment(file: string, signal: AbortSignal): Promise<void> {
-  if (attachmentScanMode() === 'disabled') return;
+  if (attachmentScanMode() === 'disabled') {
+    if (process.env.NODE_ENV === 'production')
+      throw new AttachmentScanError('FILE_SCAN_FAILED');
+    return;
+  }
   try {
     await exec(
       'clamscan',

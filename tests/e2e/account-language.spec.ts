@@ -38,7 +38,8 @@ test('account forms retain input and submit the selected language with translate
     await page.locator('#auth [name=email]').fill(email);
     await page.locator('#auth [name=password]').fill('Incorrect-password-123');
     await page.locator('#auth button[type=submit]').click();
-    await expect(page.getByRole('status')).toHaveText(error);
+    await expect(page.getByRole('alert')).toHaveText(error);
+    await expect(page.locator('#message')).toBeFocused();
   }
 });
 

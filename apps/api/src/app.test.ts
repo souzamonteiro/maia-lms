@@ -3280,3 +3280,41 @@ describe('certificate eligibility preflight', () => {
     ).toBe(404);
   });
 });
+
+describe('public course SEO rendering', () => {
+  it('renders only the published revision with localized metadata and noindexes private pages', async () => {
+    const admin = await account('seo-admin@example.com', 'admin');
+    const created = await request('/api/v1/admin/courses', 'POST', {
+      ...draft('seo-public-course'),
+      translations: [{ locale: 'es', title: 'Curso visible', summary: 'Descripción útil para buscadores y estudiantes.' }],
+    }, admin.cookie);
+    expect(created.status).toBe(201);
+    expect((await request(`/api/v1/admin/courses/${created.data.id}/publish`, 'POST', {}, admin.cookie)).status)
+      .toBe(200);
+    const draftCourse = await request('/api/v1/admin/courses', 'POST', draft('seo-hidden-draft'), admin.cookie);
+    expect(draftCourse.status).toBe(201);
+    db.prepare(`INSERT INTO promotions(id,slot,course_id,starts_at,priority)
+      VALUES(?,?,?,datetime('now','-1 minute'),0)`).run(randomUUID(), 'hero', created.data.id);
+
+    const page = await fetch(`${base}/courses/seo-public-course?displayLocale=es`);
+    const html = await page.text();
+    expect(page.status).toBe(200);
+    expect(html).toContain('<html lang="es">');
+    expect(html).toContain('<h1>Curso visible</h1>');
+    expect(html).toContain('content="Descripción útil para buscadores y estudiantes."');
+    expect(html).toContain('rel="canonical"');
+
+    const home = await fetch(`${base}/?displayLocale=es`);
+    const homeHtml = await home.text();
+    expect(homeHtml).toContain('<h1>Curso visible</h1>');
+    const catalog = await fetch(`${base}/courses?displayLocale=es`);
+    const catalogHtml = await catalog.text();
+    expect(catalogHtml).toContain('<h2><a href="/courses/seo-public-course">Curso visible</a></h2>');
+    expect(catalogHtml).not.toContain('seo-hidden-draft');
+
+    const privatePage = await fetch(`${base}/my-learning`);
+    expect(privatePage.headers.get('x-robots-tag')).toContain('noindex');
+    const robots = await fetch(`${base}/robots.txt`);
+    expect(await robots.text()).toContain('Disallow: /my-learning');
+  });
+});

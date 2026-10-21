@@ -388,6 +388,14 @@ it.runIf(process.env.VIDEO_TEST_REAL === '1')(
     expect(playback.status).toBe(206);
     expect((await playback.arrayBuffer()).byteLength).toBe(32);
     expect(playback.headers.get('content-type')).toContain('video/mp4');
+    const playbackMetrics = db.prepare(`SELECT resource_type,status_class,sum(request_count) AS total
+      FROM playback_metrics_daily WHERE metric_date=date('now')
+      GROUP BY resource_type,status_class`).all();
+    expect(playbackMetrics).toEqual(expect.arrayContaining([
+      expect.objectContaining({ resource_type: 'mp4', status_class: 2 }),
+      expect.objectContaining({ resource_type: 'mp4', status_class: 4 }),
+      expect.objectContaining({ resource_type: 'hls_playlist', status_class: 2 }),
+    ]));
     expect((await fetch(url, { method: 'HEAD', headers: { Cookie: learner.cookie } })).status).toBe(
       200,
     );

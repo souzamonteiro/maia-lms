@@ -1,0 +1,17 @@
+{% extends "base.njk" %}
+{% block htmlLanguage %}{{ course.locale }}{% endblock %}
+{% block metaDescription %}{{ description }}{% endblock %}
+{% block metaType %}{{ ogType }}{% endblock %}
+{% block metaTitle %}{{ title }} — Maia Learn{% endblock %}
+{% block metaOgDescription %}{{ description }}{% endblock %}
+{% block metaLocale %}{{ ogLocale }}{% endblock %}
+{% block content %}
+<div id="message" role="status" aria-live="polite" tabindex="-1"></div>
+<article id="app" class="seo-course">
+  <p class="eyebrow">{{ course.locale }}</p>
+  <h1>{{ course.title }}</h1>
+  {% if course.coverUrl %}<img src="{{ course.coverUrl }}" alt="">{% endif %}
+  <p>{{ course.summary }}</p>
+</article>
+<noscript>JavaScript is required to enroll and access lessons.</noscript>
+{% endblock %}

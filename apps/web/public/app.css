@@ -366,6 +366,40 @@ footer {
   margin: 0;
   overflow-wrap: anywhere;
 }
+.ops-section {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+.ops-section h2 {
+  margin-top: 0;
+  font-size: 1.2rem;
+}
+.ops-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px 24px;
+  margin: 0;
+}
+.ops-grid > div {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.ops-grid dt {
+  color: #526760;
+  font-weight: 700;
+}
+.ops-grid dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+}
+.ops-worker {
+  padding-left: 12px;
+  border-left: 4px solid #14644b;
+}
+.ops-worker.ops-stale,
+.ops-worker.ops-stopped {
+  border-color: #a84b39;
+}
 @media (max-width: 650px) {
   header {
     align-items: flex-start;

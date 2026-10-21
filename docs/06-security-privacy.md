@@ -15,6 +15,14 @@
 
 Implement Brazilian LGPD principles through a clear privacy notice, purpose-specific data collection, role-limited access, export/correction/deletion workflow, and a documented retention/legal-basis matrix. Marketing opt-in separate from course enrollment and required service messages. Analytics default to aggregate measures; advertising pixels/cookies only under a reviewed consent design. Record consent version/time/source. Decide controller/processor roles and cross-border processing before enabling third-party analytics, email or AI assistant.
 
+Current self-service includes an authenticated, rate-limited JSON export and an
+idempotent deletion-request record. The export is scoped to the requesting account
+and omits password hashes, sessions, email-token hashes, provider references, and
+storage keys. A deletion request is only recorded for review; it does not suspend,
+delete, or anonymize the account. Retention periods, legal basis, support contact,
+admin review/resolution, and the full export inventory remain to be defined. These
+endpoints are not, by themselves, proof of legal compliance.
+
 Certificate public verification has explicit name-disclosure consent and a revocation/takedown procedure; explain that anyone with its code or QR may see limited details. AI assistant must enforce course access, document permissions and retention; generated answers cite source passages and remain clearly labeled.
 
 ## Threat-focused release checks

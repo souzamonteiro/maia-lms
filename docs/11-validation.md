@@ -1,3 +1,4 @@
+
 No deployment was performed.
 
 The account-security E2E was extended to switch among en, pt-BR, and es, verify the
@@ -1515,3 +1516,119 @@ claimed. API tests cover fallback, search, home/profile/learning readers, and im
 published revisions; Chromium covers studio editing and interface-language switching.
 Final validation passed 169 tests across 56 files, build/lint, and all 32 Chromium
 workflows.
+
+## Learner completion policy — October 20, 2026
+
+LEARN-01 is complete locally. Completion uses the enrollment's immutable required-
+lesson and quiz snapshots, requires active entitlement and a non-withdrawn course,
+and is reevaluated transactionally after lesson completion or quiz submission.
+`completed_at` is idempotent; revocation preserves the historical timestamp but
+makes `completion_ready` false. Certificate eligibility consumes the same server
+policy, so browser playback seconds alone cannot qualify a learner. Existing API
+coverage checks incomplete lessons, failed quizzes, timestamp stability, revoked
+access, and certificate preflight. Chromium coverage verifies completion UI,
+navigation, and resumption. No completion state was changed by this documentation
+update.
+
+## Course translation database invariants — October 20, 2026
+
+Migration 089 adds SQLite insert/update validation for translated revision metadata:
+JSON objects must use supported, unique locales distinct from the source locale;
+unknown fields, malformed values, out-of-range strings, and empty translations are
+rejected. Focused direct-SQL tests cover valid inserts, invalid insert variants, and
+invalid locale/translation updates. The existing translation API workflow remains
+covered separately. DATA-01 remains open pending the complete invariant matrix and
+the BASE-02 prototype database rehearsal.
+
+## Media upload and attachment inspection — October 20, 2026
+
+Focused validation passed for attachment signature/content checks, ClamAV clean,
+malware and scanner-error outcomes, incomplete-upload cleanup, and the API upload
+workflow (11 passed, 1 skipped). The local worker keeps originals private, validates
+content, scans before READY when `ATTACHMENT_SCAN_MODE=clamav`, and only publishes
+normalized artifacts. The mode defaults to `disabled`; no host scanner or signature
+database was installed or qualified. MEDIA-02 remains open for that real-host check.
+
+## Operations dashboard and worker heartbeat — October 20, 2026
+
+Migration 090 stores worker instance start, heartbeat, and stop times. Worker
+heartbeats refresh every 10 seconds; the admin-only `/api/v1/admin/operations`
+summary classifies stale instances using SQLite time, aggregates media/outbox/email/
+payment state, reports storage capacity, and emits safe alert codes without job
+payloads or user identities. Chromium covers admin authorization, dashboard sections,
+and manual refresh. Migration 092 aggregates seven-day playback requests by resource
+type and HTTP status class without storing paths or user identifiers; real MP4/HLS
+responses are covered by the video API test. Latency/start/buffering metrics remain
+unimplemented, and alerts are not delivered externally. Final validation passed 178
+tests across 62 files, build/lint, and all 35 Chromium workflows. No host deployment
+was performed.
+
+## Security controls — October 20, 2026
+
+Production attachment processing now fails with `FILE_SCAN_FAILED` when
+`ATTACHMENT_SCAN_MODE` is disabled; development/test behavior remains configurable.
+Focused tests passed for cross-author/media entitlement, revoked media, upload
+signature and quota checks, incomplete cleanup, private attachment inspection,
+ClamAV clean/malware/error results, Markdown sanitization, and webhook signature and
+replay handling. The full SEC-01 hostile-input matrix and host qualification remain
+open; ClamAV was not installed or run against real signatures.
+
+## Privacy export and deletion requests — October 20, 2026
+
+Migration 091 stores minimal, idempotent account-deletion requests. Authenticated
+exports are `no-store`, contain only the requesting user's account, learning,
+assessment, entitlement, payment, certificate/consent, and owned-media metadata, and
+omit password hashes, sessions, email-token hashes, provider references, and storage
+keys. API tests verify cross-account isolation, secret exclusion, and that requesting
+deletion neither suspends nor deletes an account. Privacy routes use a dedicated
+rate-limit bucket. Chromium verifies JSON download, request status, and continued
+account access. No deletion is executed. Retention, admin review, support contact,
+and legal review remain unconfigured.
+
+## Form error accessibility — October 20, 2026
+
+The global message region now switches between polite `status` for success notices
+and assertive `alert` for `Error` instances. Error messages receive keyboard focus
+and remain localized; form inputs are preserved. Chromium verifies incorrect-login
+messages and focus behavior in English, Brazilian Portuguese, and Spanish, alongside
+the account-security forms. Contrast, zoom/mobile, captions, and the broader editor/
+player audit remain outstanding.
+
+## Public course SEO — October 20, 2026
+
+Published course pages now server-render the selected metadata locale, escaped title
+and summary, canonical URL, and Open Graph fields/cover. The generated sitemap lists
+only published, non-withdrawn courses; `robots.txt` excludes private areas, which
+also return `X-Robots-Tag: noindex`. Web tests cover metadata, localization, escaping,
+sitemap and private/missing routes; API integration verifies lookup against the
+published SQLite revision. API integration also verifies active home placements and
+published catalog rows while excluding drafts. Instructor profiles still need
+server-rendered content and full crawler validation.
+
+## Product QA report — October 20, 2026
+
+The report recorded 179 test cases across 62 files; all workspaces built and lint
+passed. A fresh full Chromium rerun passed all 35 workflows, including the 360×780
+catalog/operations and real-video player checks. One earlier full run had
+non-reproducible timeouts beginning in admin MFA; the preceding account/admin block
+and subsequent complete rerun passed. A limited Firefox smoke returned 200 for
+`/courses` at 360×780 with no horizontal overflow. WebKit lacks host libraries;
+WebKit full-suite and physical mobile qualification remain outstanding.
+
+## Product QA rerun — October 21, 2026
+
+Local validation of the current checkout: `npm test` passed 177 tests and skipped
+2 (179 total across 62 files); `npm run build` and `npm run lint` passed. The full
+Chromium suite passed all 35 workflows, including real video playback and the
+360×780 mobile viewport checks. These are local implementation tests, not external
+qualification. Full Firefox/WebKit browser suites and physical-device testing
+remain pending; WebKit cannot currently launch because required host libraries are
+unavailable. No deployment, host change, or production access was performed.
+
+## Implemented API contract — October 20, 2026
+
+`spec/openapi.yaml` now includes HLS playlist/variant/segment routes, privacy
+export/request endpoints, and the admin operations summary. Future product design
+remains in `spec/planned-openapi.yaml`. The implemented spec parsed successfully
+with the repository's YAML-capable Prettier parser; it is still not a complete
+catalog of every API route.

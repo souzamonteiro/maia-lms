@@ -4,6 +4,7 @@ import { mountCategoryEditor, categoriesDirty } from './category-editor.js';
 import { mountAdminUsers } from './admin-users.js';
 import { mountAdminOrders } from './admin-orders.js';
 import { mountAdminMedia } from './admin-media.js';
+import { mountAdminOperations } from './admin-operations.js';
 import { mountAdminEnrollments } from './admin-enrollments.js';
 import { mountAdminCertificates } from './admin-certificates.js';
 import { coursePresentation } from './course-presentation.js';
@@ -82,7 +83,11 @@ async function api(path, method = 'GET', data) {
 }
 function notify(error) {
   message.textContent = error.message || error;
+  const isError = error instanceof Error;
+  message.setAttribute('role', isError ? 'alert' : 'status');
+  message.setAttribute('aria-live', isError ? 'assertive' : 'polite');
   message.scrollIntoView({ block: 'nearest' });
+  if (isError) message.focus();
 }
 function bindForm(id, callback) {
   document.querySelector(id).addEventListener('submit', async event => {
@@ -624,6 +629,36 @@ async function learning() {
     me.display_name = result.displayName;
     notify(t('profileSaved'));
   });
+  app.insertAdjacentHTML('beforeend', `<section class="account-privacy"><h2>${t('privacySelfService')}</h2><p>${t('privacyRequestExplanation')}</p><p><a class="button" href="/api/v1/auth/privacy/export">${t('privacyDownloadExport')}</a></p><button type="button" class="secondary" id="privacy-deletion-request">${t('privacyRequestDeletion')}</button><p id="privacy-request-status" aria-live="polite"></p><ul id="privacy-request-list"></ul></section>`);
+  const privacyRequestStatus = app.querySelector('#privacy-request-status');
+  const privacyRequestList = app.querySelector('#privacy-request-list');
+  async function loadPrivacyRequests() {
+    const requests = await api('/auth/privacy/requests');
+    privacyRequestList.replaceChildren();
+    for (const request of requests) {
+      const item = document.createElement('li');
+      item.textContent = `${t('privacyRequestReceived')} · ${t('privacyRequestOpen')} · ${new Date(request.created_at).toLocaleDateString(locale)}`;
+      privacyRequestList.append(item);
+    }
+  }
+  app.querySelector('#privacy-deletion-request').addEventListener('click', async event => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    try {
+      await api('/auth/privacy/requests', 'POST', { requestType: 'deletion' });
+      privacyRequestStatus.textContent = t('privacyRequestSubmitted');
+      await loadPrivacyRequests();
+    } catch (error) {
+      privacyRequestStatus.textContent = error.message || t('genericError');
+    } finally {
+      button.disabled = false;
+    }
+  });
+  try {
+    await loadPrivacyRequests();
+  } catch (error) {
+    privacyRequestStatus.textContent = error.message || t('genericError');
+  }
 }
 async function admin() {
   if (!me || !['admin', 'author'].includes(me.role)) throw new Error(t('adminAccessRestricted'));
@@ -637,6 +672,9 @@ async function admin() {
   } else if (location.pathname === '/admin/orders') {
     if (me.role !== 'admin') throw new Error(t('adminAccessRestricted'));
     await mountAdminOrders(context);
+  } else if (location.pathname === '/admin/operations') {
+    if (me.role !== 'admin') throw new Error(t('adminAccessRestricted'));
+    await mountAdminOperations(context);
   } else if (location.pathname === '/admin/media') {
     await mountAdminMedia(context);
   } else if (location.pathname === '/admin/enrollments') {
@@ -693,7 +731,7 @@ async function main() {
       applyLocale();
     }
     document.querySelector('#account').innerHTML =
-      `${['admin', 'author'].includes(me.role) ? `<a href="/admin">${t('administer')}</a><a href="/admin/media">${t('adminMediaTitle')}</a>` : ''}<a href="/my-orders">${t('myOrdersTitle')}</a>${me.role === 'admin' ? `<a href="/admin/orders">${t('adminOrdersTitle')}</a><a href="/admin/users">${t('adminUsersTitle')}</a><a href="/admin/enrollments">${t('adminEnrollmentsTitle')}</a><a href="/admin/certificates">${t('adminCertificatesTitle')}</a>` : ''}<button id="logout" class="secondary">${icon('signOut')}${t('signOut')}</button>`;
+      `${['admin', 'author'].includes(me.role) ? `<a href="/admin">${t('administer')}</a><a href="/admin/media">${t('adminMediaTitle')}</a>` : ''}<a href="/my-orders">${t('myOrdersTitle')}</a>${me.role === 'admin' ? `<a href="/admin/operations">${t('adminOperationsTitle')}</a><a href="/admin/orders">${t('adminOrdersTitle')}</a><a href="/admin/users">${t('adminUsersTitle')}</a><a href="/admin/enrollments">${t('adminEnrollmentsTitle')}</a><a href="/admin/certificates">${t('adminCertificatesTitle')}</a>` : ''}<button id="logout" class="secondary">${icon('signOut')}${t('signOut')}</button>`;
     button('#logout', async () => {
       await api('/auth/logout', 'POST');
       location.href = '/';

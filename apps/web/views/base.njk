@@ -1,9 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{% block htmlLanguage %}en{% endblock %}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ title }} — Maia Learn</title>
+  <meta name="description" content="{% block metaDescription %}Learn with Maia.{% endblock %}">
+  <meta name="robots" content="{% if noIndex %}noindex,nofollow,noarchive{% else %}index,follow{% endif %}">
+  <link rel="canonical" href="{{ canonicalUrl }}">
+  <meta property="og:type" content="{% block metaType %}website{% endblock %}">
+  <meta property="og:title" content="{% block metaTitle %}{{ title }} — Maia Learn{% endblock %}">
+  <meta property="og:description" content="{% block metaOgDescription %}Learn with Maia.{% endblock %}">
+  <meta property="og:url" content="{{ canonicalUrl }}">
+  <meta property="og:locale" content="{% block metaLocale %}en{% endblock %}">
+  {% if ogImage %}<meta property="og:image" content="{{ ogImage }}">{% endif %}
   <link rel="stylesheet" href="/static/app.css">
   <script type="module" src="/static/app.js"></script>
 </head>

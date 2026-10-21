@@ -6,6 +6,12 @@ import { NodemailerEmailProvider } from '@maia/providers';
 import { processVideo } from './video-jobs.js';
 import { pollOnce } from './jobs.js';
 import { processCertificatePdf } from './certificate-pdf.js';
+import { randomUUID } from 'node:crypto';
+import {
+  refreshWorkerHeartbeat,
+  registerWorkerHeartbeat,
+  stopWorkerHeartbeat,
+} from './worker-heartbeat.js';
 import { publishDueCourses } from '@maia/api/scheduled-publication';
 import { loadConfig } from '@maia/api/config';
 import { createPaymentProvider } from '@maia/api/payment-provider';
@@ -27,6 +33,16 @@ const db = new Database(database, { fileMustExist: true });
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 db.pragma('busy_timeout = 5000');
+const workerInstanceId = randomUUID();
+registerWorkerHeartbeat(db, workerInstanceId);
+const workerHeartbeat = setInterval(() => {
+  try {
+    refreshWorkerHeartbeat(db, workerInstanceId);
+  } catch {
+    console.error('Worker heartbeat failed');
+  }
+}, 10_000);
+workerHeartbeat.unref();
 const email = new NodemailerEmailProvider(
   process.env.MAIL_TRANSPORT ?? 'smtp://localhost:1025',
   process.env.MAIL_FROM ?? 'noreply@maiaplatform.org',
@@ -105,4 +121,6 @@ while (running) {
 }
 await Promise.all(mediaJobs);
 await paymentJob;
+clearInterval(workerHeartbeat);
+stopWorkerHeartbeat(db, workerInstanceId);
 db.close();

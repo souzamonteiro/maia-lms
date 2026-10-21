@@ -140,6 +140,16 @@ Inspect `outbox` for events with `processed_at IS NULL` and `attempts >= 5`. Aft
 
 Monitor readiness, errors, queue age, free space, backups, TLS renewal and VPN operation. There is no automatic remote deployment: running installers at the destination and validating DNS/TLS/SMTP depends on each machine's actual configuration.
 
+The admin-only `/admin/operations` page summarizes worker heartbeat state, media
+jobs/stalls, outbox and email retries, payment order states, storage capacity, and
+safe alert codes. Migration 090 records each worker process every ten seconds;
+heartbeats older than 45 seconds are stale. `/readyz` checks only API/SQLite
+readiness and is not a worker health check. Migration 092 stores daily playback
+counts by resource type and HTTP status class only; it does not store paths, IDs,
+IP addresses, or payloads. The dashboard shows a seven-day window. Playback latency,
+start/buffering, and watch-time telemetry remain unavailable, and dashboard alerts
+are not delivered to an external channel.
+
 ## Repairing permissions from earlier installations
 
 If Node logs `MODULE_NOT_FOUND` for `current/apps/api/dist/server.js` or `current/apps/worker/dist/worker.js`, inspect the path with:
@@ -185,8 +195,9 @@ abandoned drafts require the future media lifecycle workflow, not this sweep.
 `ATTACHMENT_SCAN_MODE` accepts `disabled` (default) or `clamav`. Configure it in
 `/etc/maia-lms/app.env` for systemd, or the worker environment for containers.
 Before enabling, install the scanner and current signatures in that same runtime
-and verify access as the service user. A missing or failing scanner blocks new
-attachments when enabled. Existing READY files are not rescanned automatically.
+and verify access as the service user. Production fails closed if scanning is
+disabled or if ClamAV is missing/failing; development/test may use `disabled` for
+local work. Existing READY files are not rescanned automatically.
 Deployment steps and limits are in [materials](14-materials.md#optional-malware-inspection).
 
 ## Course cover upgrade

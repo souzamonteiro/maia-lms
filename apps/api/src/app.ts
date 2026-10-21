@@ -26,6 +26,10 @@ import { adminCertificatesRouter } from './routes/admin-certificates.js';
 import { instructorProfilesRouter } from './routes/instructor-profiles.js';
 import { ordersRouter } from './routes/orders.js';
 import { adminOrdersRouter } from './routes/admin-orders.js';
+import { adminOperationsRouter } from './routes/admin-operations.js';
+import { privacyRouter } from './routes/privacy.js';
+import { localizeCourseMetadata } from './services/course-metadata.js';
+import { classifyPlaybackPath, recordPlaybackMetric } from './services/playback-metrics.js';
 import { createPaymentProvider } from './services/payment-provider.js';
 import { errorHandler } from './middleware/error-handler.js';
 
@@ -137,10 +141,18 @@ export function createApp(
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 20,
     // Session lookup happens on every page; it is covered by the global limiter.
-    skip: req => req.method === 'GET' && req.path === '/me',
+    skip: req => (req.method === 'GET' && req.path === '/me') || req.path.startsWith('/privacy/'),
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: 'Too many requests, please try again later.', code: 'AUTH_RATE_LIMITED' },
+  });
+
+  const privacyLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many privacy requests, please try again later.', code: 'PRIVACY_RATE_LIMITED' },
   });
 
   const globalLimiter = rateLimit({
@@ -168,9 +180,11 @@ export function createApp(
 
   // ── API routes ────────────────────────────────────────────────
   app.use('/api/v1/auth', authLimiter, authRouter(db, config.PUBLIC_BASE_URL, config.SESSION_SECRET));
+  app.use('/api/v1/auth', privacyLimiter, privacyRouter(db));
 
   app.use('/api/v1', adminUsersRouter(db));
   app.use('/api/v1', adminOrdersRouter(db, paymentProvider));
+  app.use('/api/v1', adminOperationsRouter(db, config));
   app.use('/api/v1', ordersRouter(db, config, paymentProvider));
   app.use('/api/v1', adminEnrollmentsRouter(db));
   app.use('/api/v1', assessmentsRouter(db));
@@ -182,9 +196,83 @@ export function createApp(
   app.use('/api/v1', homeRouter(db));
   app.use('/api/v1', videosRouter(db, config));
   app.use('/api/v1', videosRouter(db, config, 'attachment'));
+  app.use('/api/v1', (req, res, next) => {
+    const resource = classifyPlaybackPath(req.path);
+    if (resource) {
+      res.once('finish', () => {
+        try {
+          recordPlaybackMetric(db, resource, res.statusCode);
+        } catch {
+          console.error('Playback metrics write failed');
+        }
+      });
+    }
+    next();
+  });
   app.use('/api/v1', playbackRouter(db, config));
   app.use('/api/v1', attachmentsRouter(db, config));
-  app.use(createWebApp());
+  const publicPageCourse = (row: Record<string, unknown>, displayLocale?: string) => {
+    const localized = localizeCourseMetadata(row, displayLocale);
+    const slug = String(localized.slug);
+    const coverFilename = row.cover_filename;
+    return {
+      slug,
+      href: `/courses/${encodeURIComponent(slug)}`,
+      title: String(localized.title),
+      summary: String(localized.summary),
+      locale: displayLocale ?? String(localized.locale),
+      coverUrl: typeof coverFilename === 'string' && /\.(png|jpe?g)$/i.test(coverFilename)
+        ? `${config.PUBLIC_BASE_URL.replace(/\/$/, '')}/api/v1/courses/${encodeURIComponent(slug)}/cover`
+        : null,
+      coverAlt: String(row.cover_alt ?? ''),
+    };
+  };
+  app.use(createWebApp({
+    publicBaseUrl: config.PUBLIC_BASE_URL,
+    getPublicCourse: (slug, displayLocale) => {
+      const row = db.prepare(`SELECT c.slug,r.title,r.summary,r.locale AS revision_locale,
+        r.translations_json,r.cover_alt,cover.filename AS cover_filename
+        FROM courses c JOIN course_revisions r ON r.id=c.published_revision_id
+        LEFT JOIN video_uploads cover ON cover.id=r.cover_file_id AND cover.course_id=c.id
+          AND cover.status='READY' AND cover.media_kind='attachment'
+        WHERE c.slug=? AND c.status='PUBLISHED' AND c.withdrawn_at IS NULL`).get(slug) as
+        Record<string, unknown> | undefined;
+      if (!row) return undefined;
+      return publicPageCourse(row, displayLocale);
+    },
+    getHomeSelection: displayLocale => {
+      const rows = db.prepare(`SELECT c.slug,r.title,r.summary,r.locale AS revision_locale,
+        r.translations_json,r.cover_alt,cover.filename AS cover_filename,p.slot
+        FROM promotions p JOIN courses c ON c.id=p.course_id
+        JOIN course_revisions r ON r.id=c.published_revision_id
+        LEFT JOIN video_uploads cover ON cover.id=r.cover_file_id AND cover.course_id=c.id
+          AND cover.status='READY' AND cover.media_kind='attachment'
+        WHERE c.status='PUBLISHED' AND c.withdrawn_at IS NULL
+          AND julianday(p.starts_at)<=julianday('now')
+          AND (p.ends_at IS NULL OR julianday(p.ends_at)>julianday('now'))
+          AND p.slot IN ('hero','featured','recommended')
+        ORDER BY p.priority,p.id`).all() as Array<Record<string, unknown> & { slot: string }>;
+      const slots = { hero: [], featured: [], recommended: [] } as Record<
+        'hero' | 'featured' | 'recommended',
+        ReturnType<typeof publicPageCourse>[]
+      >;
+      for (const row of rows) slots[row.slot as keyof typeof slots].push(publicPageCourse(row, displayLocale));
+      return slots;
+    },
+    listPublicCourses: displayLocale => {
+      const rows = db.prepare(`SELECT c.slug,r.title,r.summary,r.locale AS revision_locale,
+        r.translations_json,r.cover_alt,cover.filename AS cover_filename
+        FROM courses c JOIN course_revisions r ON r.id=c.published_revision_id
+        LEFT JOIN video_uploads cover ON cover.id=r.cover_file_id AND cover.course_id=c.id
+          AND cover.status='READY' AND cover.media_kind='attachment'
+        WHERE c.status='PUBLISHED' AND c.withdrawn_at IS NULL
+        ORDER BY c.created_at DESC,c.id DESC LIMIT 100`).all() as Array<Record<string, unknown>>;
+      return rows.map(row => publicPageCourse(row, displayLocale));
+    },
+    listPublicCourseSlugs: () => (db.prepare(`SELECT slug FROM courses
+      WHERE status='PUBLISHED' AND withdrawn_at IS NULL ORDER BY slug`)
+      .all() as Array<{ slug: string }>).map(course => course.slug),
+  }));
 
   // ── 404 handler ───────────────────────────────────────────────
   app.use((_req, res) => {

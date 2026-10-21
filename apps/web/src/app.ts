@@ -4,8 +4,27 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
-export function createWebApp(): express.Application {
+export type PublicCoursePage = {
+  slug: string;
+  href: string;
+  title: string;
+  summary: string;
+  locale: string;
+  coverUrl: string | null;
+  coverAlt: string;
+};
+
+export type WebAppOptions = {
+  publicBaseUrl: string;
+  getPublicCourse: (slug: string, displayLocale?: string) => PublicCoursePage | undefined;
+  getHomeSelection: (displayLocale?: string) => Record<'hero' | 'featured' | 'recommended', PublicCoursePage[]>;
+  listPublicCourses: (displayLocale?: string) => PublicCoursePage[];
+  listPublicCourseSlugs: () => string[];
+};
+
+export function createWebApp(options: WebAppOptions): express.Application {
   const app = express();
+  const baseUrl = options.publicBaseUrl.replace(/\/$/, '');
   nunjucks.configure(path.join(directory, '../views'), { autoescape: true, express: app });
   app.set('view engine', 'njk');
   app.use(
@@ -20,12 +39,92 @@ export function createWebApp(): express.Application {
   app.use('/static', express.static(path.join(directory, '../public')));
   app.get('/certificates/verify/:code', (_req, res) => {
     res.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
-    res.render('home.njk', { title: 'Certificate verification' });
+    res.render('home.njk', {
+      title: 'Certificate verification',
+      canonicalUrl: `${baseUrl}${_req.path}`,
+      noIndex: true,
+    });
+  });
+  app.get('/robots.txt', (_req, res) => {
+    res.type('text/plain').send([
+      'User-agent: *',
+      'Disallow: /admin',
+      'Disallow: /auth',
+      'Disallow: /my-learning',
+      'Disallow: /my-orders',
+      'Disallow: /lessons',
+      'Disallow: /dev',
+      `Sitemap: ${baseUrl}/sitemap.xml`,
+      '',
+    ].join('\n'));
+  });
+  app.get('/', (req, res) => {
+    const displayLocale = typeof req.query.displayLocale === 'string' &&
+      ['en', 'pt-BR', 'es'].includes(req.query.displayLocale)
+      ? req.query.displayLocale
+      : undefined;
+    const selection = options.getHomeSelection(displayLocale);
+    const hero = selection.hero[0];
+    res.render('home.njk', {
+      title: hero?.title ?? 'Learn with Maia',
+      description: hero?.summary ?? 'Courses to explore technology and turn knowledge into practice.',
+      canonicalUrl: `${baseUrl}/`,
+      noIndex: false,
+      displayLocale: displayLocale ?? hero?.locale ?? 'en',
+      homeSelection: selection,
+    });
+  });
+  app.get('/courses', (req, res) => {
+    const displayLocale = typeof req.query.displayLocale === 'string' &&
+      ['en', 'pt-BR', 'es'].includes(req.query.displayLocale)
+      ? req.query.displayLocale
+      : undefined;
+    const titles: Record<string, string> = { en: 'Courses', 'pt-BR': 'Cursos', es: 'Cursos' };
+    res.render('courses.njk', {
+      title: titles[displayLocale ?? 'en'],
+      description: 'Browse published courses from Maia Learn.',
+      canonicalUrl: `${baseUrl}/courses`,
+      noIndex: false,
+      displayLocale: displayLocale ?? 'en',
+      courses: options.listPublicCourses(displayLocale),
+    });
+  });
+  app.get('/sitemap.xml', (_req, res) => {
+    const locations = [
+      `${baseUrl}/`,
+      `${baseUrl}/courses`,
+      ...options.listPublicCourseSlugs().map(slug => `${baseUrl}/courses/${encodeURIComponent(slug)}`),
+    ];
+    const xml = locations.map(location => `  <url><loc>${location.replace(/&/g, '&amp;')}</loc></url>`).join('\n');
+    res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${xml}\n</urlset>`);
+  });
+  app.get('/courses/:slug', (req, res) => {
+    const requestedLocale = typeof req.query.displayLocale === 'string' &&
+      ['en', 'pt-BR', 'es'].includes(req.query.displayLocale)
+      ? req.query.displayLocale
+      : undefined;
+    const course = options.getPublicCourse(req.params.slug, requestedLocale);
+    const canonicalUrl = `${baseUrl}/courses/${encodeURIComponent(req.params.slug)}`;
+    if (!course) {
+      res.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+      res.status(404).render('home.njk', {
+        title: 'Course not found',
+        canonicalUrl,
+        noIndex: true,
+      });
+      return;
+    }
+    res.render('course.njk', {
+      title: course.title,
+      description: course.summary,
+      canonicalUrl,
+      ogType: 'article',
+      ogImage: course.coverUrl,
+      ogLocale: course.locale.replace('-', '_'),
+      course,
+    });
   });
   for (const route of [
-    '/',
-    '/courses',
-    '/courses/:slug',
     '/instructors/:slug',
     '/lessons/:id',
     '/auth/login',
@@ -41,12 +140,22 @@ export function createWebApp(): express.Application {
     '/admin/home',
     '/admin/categories',
     '/admin/orders',
+    '/admin/operations',
     '/admin/media',
     '/admin/users',
     '/admin/enrollments',
     '/admin/certificates',
   ]) {
-    app.get(route, (_req, res) => res.render('home.njk', { title: 'Learn with Maia' }));
+    app.get(route, (req, res) => {
+      const noIndex = ['/lessons', '/auth', '/my-learning', '/my-orders', '/dev', '/admin']
+        .some(prefix => req.path === prefix || req.path.startsWith(`${prefix}/`));
+      if (noIndex) res.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+      res.render('home.njk', {
+        title: 'Learn with Maia',
+        canonicalUrl: `${baseUrl}${req.path}`,
+        noIndex,
+      });
+    });
   }
   return app;
 }

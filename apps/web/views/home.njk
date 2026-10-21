@@ -1,6 +1,36 @@
 {% extends "base.njk" %}
+{% block htmlLanguage %}{{ displayLocale or 'en' }}{% endblock %}
+{% block metaDescription %}{{ description or 'Courses to explore technology and turn knowledge into practice.' }}{% endblock %}
 {% block content %}
-<div id="message" role="status" aria-live="polite"></div>
-<div id="app"><h1 data-i18n="welcomeHeading">Learn with Maia</h1><p data-i18n="loadingCourses">Loading courses…</p></div>
+<div id="message" role="status" aria-live="polite" tabindex="-1"></div>
+<div id="app">
+{% if homeSelection %}
+	{% set hero = homeSelection.hero[0] %}
+	{% if hero %}
+	<section class="hero">
+		<p class="eyebrow">{{ hero.locale }}</p>
+		<h1>{{ hero.title }}</h1>
+		{% if hero.coverUrl %}<img src="{{ hero.coverUrl }}" alt="{{ hero.coverAlt }}">{% endif %}
+		<p>{{ hero.summary }}</p>
+		<a class="button" href="{{ hero.href }}">View course</a>
+	</section>
+	{% else %}
+	<section class="hero"><h1 data-i18n="welcomeHeading">Learn with Maia</h1><p>Courses to explore technology and turn knowledge into practice.</p></section>
+	{% endif %}
+	{% if homeSelection.featured %}
+	<section><h2>Featured courses</h2><div class="grid">
+		{% for course in homeSelection.featured %}<article class="card"><h3><a href="{{ course.href }}">{{ course.title }}</a></h3><p>{{ course.summary }}</p></article>{% endfor %}
+	</div></section>
+	{% endif %}
+	{% if homeSelection.recommended %}
+	<section><h2>Recommended courses</h2><div class="grid">
+		{% for course in homeSelection.recommended %}<article class="card"><h3><a href="{{ course.href }}">{{ course.title }}</a></h3><p>{{ course.summary }}</p></article>{% endfor %}
+	</div></section>
+	{% endif %}
+	<p><a href="/courses">Browse all courses</a></p>
+{% else %}
+	<h1 data-i18n="welcomeHeading">Learn with Maia</h1><p data-i18n="loadingCourses">Loading courses…</p>
+{% endif %}
+</div>
 <noscript data-i18n="noscriptText">Enable JavaScript to browse courses and track your learning.</noscript>
 {% endblock %}

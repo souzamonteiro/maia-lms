@@ -267,3 +267,30 @@ retain their identity, sessions, enrollments, and progress. `PUT /api/v1/auth/pr
 updates only the authenticated user's value, trims surrounding whitespace, and
 accepts 1–100 characters. `GET /api/v1/auth/me` returns it. The field is private
 account data, not a public instructor profile or course instructor presentation.
+
+## Translation and operations integrity — migrations 089–090
+
+Migration 089 validates course revision `translations_json` on insert and updates
+that change locale or translations. Entries must be supported-locale objects, differ
+from the source locale, use unique locales and keys, contain only known metadata
+fields, and satisfy the API field bounds. Invalid direct-SQL writes are rejected.
+
+Migration 090 adds `worker_instances`, keyed by a random process instance ID, with
+start, heartbeat, and stop timestamps. Worker processes refresh every ten seconds;
+the operations dashboard treats heartbeats older than 45 seconds as stale. This is
+process liveness, not proof that SMTP, payments, or playback are healthy.
+
+## Account privacy requests — migration 091
+
+`account_privacy_requests` records an authenticated user's deletion request and
+status. A partial unique index allows only one OPEN/IN_REVIEW request per account.
+The self-service API is idempotent and leaves the account active; this table does
+not delete user data or define retention, legal review, or request-resolution policy.
+
+## Playback aggregates — migration 092
+
+`playback_metrics_daily` stores counts by UTC date, resource type, and HTTP status
+class. The application records MP4, poster, caption, HLS playlist, and HLS segment
+requests after responses finish. It stores no URL/path, course or lesson ID, user ID,
+IP address, or payload. The dashboard reports a seven-day window. These are request
+counts only; they do not measure playback starts, buffering, latency, or watch time.

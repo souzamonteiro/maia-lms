@@ -171,8 +171,11 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     await page.getByRole('button', { name: 'Enroll for free', exact: true }).click();
     await expect(page.getByText('You are enrolled in this course.')).toBeVisible();
     await page.getByRole('link', { name: 'Real video lesson', exact: true }).click();
+    await page.setViewportSize({ width: 360, height: 780 });
     const video = page.locator('video');
     await expect(video).toBeVisible();
+    await expect(page.locator('#playback-speed')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.currentSrc))
       .toContain('/api/v1/lessons/');
     await video.evaluate((element: HTMLVideoElement) => {

@@ -2,9 +2,7 @@ openapi: 3.1.0
 info:
   title: Maia Learn API — implemented MVP
   version: 0.1.0
-  description: Free article/Markdown/MP4 courses, resumable upload, private playback,
-    curated home, identity and progress. HLS remains planned. Mutations require application/json
-    except the authenticated octet-stream chunk route.
+  description: Implemented API endpoints for course delivery, MP4/HLS playback, assessments, commerce, certificates, privacy self-service, and operations. Production qualification is tracked separately; future endpoints remain in planned-openapi.yaml. Mutations require application/json except the authenticated octet-stream chunk route.
 servers:
   - url: https://learn.maiaplatform.org/api/v1
   - url: http://localhost:3000/api/v1
@@ -1984,6 +1982,106 @@ paths:
           description: Access denied
         '404':
           description: Not found
+  /lessons/{id}/hls/master.m3u8:
+    parameters:
+      - $ref: '#/components/parameters/lessonId'
+    get:
+      summary: Authorized HLS master playlist for a READY lesson video
+      description: Access follows the lesson's preview/enrollment/revision policy; public preview may be anonymous. The playlist contains relative links to variants.
+      responses:
+        '200':
+          description: Private no-store HLS master playlist
+          content:
+            application/vnd.apple.mpegurl:
+              schema: {type: string}
+        '403': {description: Enrollment required or wrong revision}
+        '404': {description: Video or HLS output not available}
+  /lessons/{id}/hls/{variant}/index.m3u8:
+    parameters:
+      - $ref: '#/components/parameters/lessonId'
+      - name: variant
+        in: path
+        required: true
+        schema: {type: string, pattern: '^v\d+$'}
+    get:
+      summary: Authorized HLS variant playlist for a lesson video
+      responses:
+        '200':
+          description: Private no-store variant playlist
+          content:
+            application/vnd.apple.mpegurl:
+              schema: {type: string}
+        '403': {description: Enrollment required or wrong revision}
+        '404': {description: Variant not available}
+  /lessons/{id}/hls/{variant}/segment_{segment}.ts:
+    parameters:
+      - $ref: '#/components/parameters/lessonId'
+      - name: variant
+        in: path
+        required: true
+        schema: {type: string, pattern: '^v\d+$'}
+      - name: segment
+        in: path
+        required: true
+        schema: {type: string, pattern: '^\d{5}$'}
+    get:
+      summary: Authorized MPEG-TS segment for a lesson video
+      responses:
+        '200':
+          description: Private no-store HLS segment
+          content:
+            video/mp2t:
+              schema: {type: string, format: binary}
+        '403': {description: Enrollment required or wrong revision}
+        '404': {description: Segment not available}
+  /courses/{id}/trailer/hls/master.m3u8:
+    parameters:
+      - $ref: '#/components/parameters/courseId'
+    get:
+      summary: Publicly authorized HLS master playlist for a course trailer
+      responses:
+        '200':
+          description: Private no-store HLS master playlist
+          content:
+            application/vnd.apple.mpegurl:
+              schema: {type: string}
+        '404': {description: Trailer not available}
+  /courses/{id}/trailer/hls/{variant}/index.m3u8:
+    parameters:
+      - $ref: '#/components/parameters/courseId'
+      - name: variant
+        in: path
+        required: true
+        schema: {type: string, pattern: '^v\d+$'}
+    get:
+      summary: Publicly authorized HLS variant playlist for a course trailer
+      responses:
+        '200':
+          description: Private no-store variant playlist
+          content:
+            application/vnd.apple.mpegurl:
+              schema: {type: string}
+        '404': {description: Variant not available}
+  /courses/{id}/trailer/hls/{variant}/segment_{segment}.ts:
+    parameters:
+      - $ref: '#/components/parameters/courseId'
+      - name: variant
+        in: path
+        required: true
+        schema: {type: string, pattern: '^v\d+$'}
+      - name: segment
+        in: path
+        required: true
+        schema: {type: string, pattern: '^\d{5}$'}
+    get:
+      summary: Publicly authorized MPEG-TS segment for a course trailer
+      responses:
+        '200':
+          description: Private no-store HLS segment
+          content:
+            video/mp2t:
+              schema: {type: string, format: binary}
+        '404': {description: Segment not available}
   /lessons/{id}/captions/{language}:
     parameters:
       - $ref: '#/components/parameters/lessonId'
@@ -2009,6 +2107,128 @@ paths:
           description: Enrollment required or wrong revision
         '404':
           description: Missing video or language track
+  /auth/privacy/export:
+    get:
+      summary: Download the authenticated account's data export
+      description: Returns user-scoped profile, learning, assessment, entitlement, payment, certificate/consent, media metadata, and privacy-request records. Excludes password hashes, sessions, email-token hashes, provider references, and storage keys. No account deletion is performed.
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Private, no-store JSON export
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'private, no-store'}
+            Content-Disposition:
+              schema: {type: string, example: 'attachment; filename="maia-account-export.json"'}
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [schemaVersion, generatedAt, account]
+                properties:
+                  schemaVersion: {type: string, const: maia-account-export-v1}
+                  generatedAt: {type: string, format: date-time}
+                  account: {type: object, description: Own account fields only; no credential hashes}
+                  instructorProfile: {type: [object, 'null']}
+                  enrollments: {type: array, items: {type: object}}
+                  entitlements: {type: array, items: {type: object}}
+                  lessonProgress: {type: array, items: {type: object}}
+                  quizAttempts: {type: array, items: {type: object}}
+                  quizAnswers: {type: array, items: {type: object}}
+                  orders: {type: array, items: {type: object}}
+                  refunds: {type: array, items: {type: object}}
+                  certificates: {type: array, items: {type: object}}
+                  mediaUploads: {type: array, items: {type: object}}
+                  privacyRequests: {type: array, items: {type: object}}
+        '401': {description: Authentication required}
+        '429': {description: PRIVACY_RATE_LIMITED}
+  /auth/privacy/requests:
+    get:
+      summary: List the authenticated user's privacy requests
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Own requests, newest first, private no-store
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [id, request_type, status, created_at, updated_at]
+                  properties:
+                    id: {type: string, format: uuid}
+                    request_type: {type: string, const: deletion}
+                    status: {type: string, enum: [OPEN, IN_REVIEW, CLOSED]}
+                    created_at: {type: string}
+                    updated_at: {type: string}
+        '401': {description: Authentication required}
+        '429': {description: PRIVACY_RATE_LIMITED}
+    post:
+      summary: Record an idempotent deletion request without deleting the account
+      description: Repeated OPEN/IN_REVIEW deletion requests return the existing request. Retention, legal review, and execution are not configured by this endpoint.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [requestType]
+              properties:
+                requestType: {type: string, const: deletion}
+      responses:
+        '201': {description: New request recorded with status OPEN}
+        '200': {description: Existing open request returned}
+        '401': {description: Authentication required}
+        '422': {description: PRIVACY_REQUEST_INVALID}
+        '429': {description: PRIVACY_RATE_LIMITED}
+  /admin/operations:
+    get:
+      summary: Read aggregated worker, queue, storage, payment, and playback status
+      description: Administrator-only summary. Playback counts cover seven UTC dates and group by resource type and HTTP status class; no paths, course/user IDs, IPs, or payloads are stored. Does not report latency, buffering, or watch time.
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Private, no-store operational summary
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [generatedAt, workers, media, outbox, payments, storage, playback, alerts]
+                properties:
+                  generatedAt: {type: string, format: date-time}
+                  workers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        status: {type: string, enum: [healthy, stale, stopped]}
+                        startedAt: {type: string}
+                        lastSeenAt: {type: string}
+                        stoppedAt: {type: [string, 'null']}
+                  media: {type: object}
+                  outbox: {type: object}
+                  payments: {type: object, additionalProperties: {type: integer}}
+                  storage: {type: [object, 'null']}
+                  playback:
+                    type: object
+                    properties:
+                      windowDays: {type: integer, const: 7}
+                      requests: {type: integer}
+                      byResource: {type: object, additionalProperties: {type: integer}}
+                      byStatusClass: {type: object, additionalProperties: {type: integer}}
+                  alerts:
+                    type: array
+                    items:
+                      type: string
+                      enum: [WORKER_MISSING, WORKER_NOT_HEALTHY, MEDIA_JOB_STUCK, MEDIA_JOB_FAILED, OUTBOX_EXHAUSTED, STORAGE_LOW]
+        '401': {description: Authentication required}
+        '403': {description: Administrator role required}
 components:
   securitySchemes:
     cookieAuth:

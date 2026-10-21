@@ -55,6 +55,10 @@ it('publishes attachments only after a clean scanner exit and keeps rejected out
     });
     vi.stubEnv('ATTACHMENT_SCAN_MODE', 'disabled');
     await expect(scanAttachment('missing', new AbortController().signal)).resolves.toBeUndefined();
+    vi.stubEnv('NODE_ENV', 'production');
+    await expect(scanAttachment('missing', new AbortController().signal)).rejects.toMatchObject({
+      code: 'FILE_SCAN_FAILED',
+    });
     vi.stubEnv('ATTACHMENT_SCAN_MODE', 'typo');
     expect(attachmentScanMode).toThrow('Invalid ATTACHMENT_SCAN_MODE');
   } finally {
