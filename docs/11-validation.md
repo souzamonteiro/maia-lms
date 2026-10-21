@@ -1626,12 +1626,12 @@ scrolls the media into view before playback, and logout flows wait for the
 redirect before navigating. The export link also declares its download filename
 so WebKit handles the response as a download.
 
-Repeated Firefox full-suite attempts each passed 34/35 but had one intermittent
-navigation/load timeout: the verification page on one run and the initial login
-in the learning workflow on other runs. Both affected workflows passed in
-isolation, and the Firefox video workflow passed. Keep Firefox qualification
-open until a clean complete run passes. No deployment, host changes, or
-physical-device qualification were performed; device testing remains external.
+Firefox full-suite attempts remain intermittent: earlier runs passed 34/35, and
+the latest passed 33/35 with timeouts in verification navigation and video
+enrollment feedback. The verification and video spec files passed together (4/4)
+in a focused Firefox run. Keep Firefox qualification open until a clean complete
+run passes. No deployment, host changes, or physical-device qualification were
+performed; device testing remains external.
 
 ## Implemented API contract — October 20, 2026
 

@@ -1094,11 +1094,12 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Local report, October 21, 2026: `npm test` passed 178 tests and skipped 2
   (180 total across 62 files); build and lint passed. Chromium and WebKit each
   passed all 35 workflows, including real video and 360×780 checks. Firefox
-  repeated full-suite runs each had one intermittent navigation/load timeout
-  (34/35), affecting verification once and the initial learning login on other
-  runs; both flows passed in isolation.
-  Keep Firefox qualification open until a clean full run passes. The WebKit
-  blockers were resolved locally: omit `upgrade-insecure-requests` outside
+  full-suite attempts remain intermittent: earlier runs passed 34/35,
+  and the latest passed 33/35 with timeouts in verification navigation and video
+  enrollment feedback. The verification and video spec files passed together
+  (4/4) in a focused Firefox run. Keep Firefox qualification open until a clean
+  full run passes. The WebKit blockers were resolved locally: omit
+  `upgrade-insecure-requests` outside
   production, initiate preview playback with the video scrolled into view, and
   wait for logout redirects before navigating. Physical-device qualification
   remains open; no deployment or host changes were made.
