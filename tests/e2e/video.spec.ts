@@ -173,7 +173,15 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     await expect(page.getByRole('heading', { name: 'My learning' })).toBeVisible();
     await page.route('**/api/v1/lessons/*/hls/**', route => route.abort());
     await page.goto('/courses/browser-video-course');
+    const enrollmentResponse = page.waitForResponse(response =>
+      response.url().includes('/api/v1/courses/') &&
+      response.url().endsWith('/enroll') &&
+      response.request().method() === 'POST',
+    );
     await page.getByRole('button', { name: 'Enroll for free', exact: true }).click();
+    const enrollment = await enrollmentResponse;
+    expect(enrollment.status()).toBe(200);
+    expect(await enrollment.json()).toHaveProperty('id');
     await expect(page.getByText('You are enrolled in this course.')).toBeVisible();
     await page.getByRole('link', { name: 'Real video lesson', exact: true }).click();
     await page.setViewportSize({ width: 360, height: 780 });

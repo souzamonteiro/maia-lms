@@ -1673,3 +1673,16 @@ export/request endpoints, and the admin operations summary. Future product desig
 remains in `spec/planned-openapi.yaml`. The implemented spec parsed successfully
 with the repository's YAML-capable Prettier parser; it is still not a complete
 catalog of every API route.
+
+## Firefox E2E qualification — October 22, 2026
+
+`npm test` passed 181 tests and skipped 2; build and lint passed.
+The Playwright config and isolated E2E server accept `E2E_PORT` to avoid
+interfering with an already-running local test instance. With
+`VIDEO_TEST_REAL=1 E2E_PORT=4322`, the full Firefox run passed 34/35 workflows;
+one course-withdrawal navigation timed out waiting for the browser `load` event.
+The course-withdrawal workflow passed in isolation, as did the real-video
+workflow, its enrollment API response check, and media processing checks.
+Firefox remains unqualified until a full run passes without
+intermittent timeouts. The existing instance on port 4320 stayed ready throughout;
+no host or external environment was changed.

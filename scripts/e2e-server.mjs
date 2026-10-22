@@ -7,12 +7,13 @@ import Database from 'better-sqlite3';
 import argon2 from 'argon2';
 import { runMigrations } from '../apps/api/dist/db/migrate.js';
 const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'maia-lms-e2e-'));
+const port = process.env.E2E_PORT ?? '4320';
 Object.assign(process.env, {
   NODE_ENV: 'test',
   TRUST_PROXY: 'loopback',
   HOST: '127.0.0.1',
-  PORT: '4320',
-  PUBLIC_BASE_URL: 'http://127.0.0.1:4320',
+  PORT: port,
+  PUBLIC_BASE_URL: `http://127.0.0.1:${port}`,
   DATABASE_URL: path.join(directory, 'test.db'),
   STORAGE_ROOT: path.join(directory, 'storage'),
   SESSION_SECRET: 'e2e-only-session-secret-at-least-32-characters',

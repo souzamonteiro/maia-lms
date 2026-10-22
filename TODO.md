@@ -1103,14 +1103,16 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Chrome/Firefox/Safari and mobile where applicable. Dependencies: all P0/P1
   deliveries. Acceptance: new reports per version; the original English article
   test does not establish acceptance for video, editor, languages, checkout, or certificates.
-  Local report, October 21, 2026: `npm test` passed 178 tests and skipped 2
-  (180 total across 62 files); build and lint passed. Chromium and WebKit each
+  Local report, October 22, 2026: `npm test` passed 181 tests and skipped 2
+  (183 total across 63 files); build and lint passed. Chromium and WebKit each
   passed all 35 workflows, including real video and 360×780 checks. Firefox
-  full-suite attempts remain intermittent: earlier runs passed 34/35,
-  and the latest passed 33/35 with timeouts in verification navigation and video
-  enrollment feedback. The verification and video spec files passed together
-  (4/4) in a focused Firefox run. Keep Firefox qualification open until a clean
-  full run passes. The WebKit blockers were resolved locally: omit
+  full-suite attempts remain intermittent: the October 22 run passed 34/35,
+  with one `page.goto` timeout waiting for the `load` event; the course-withdrawal
+  workflow passed in isolation. The real-video workflow and its enrollment
+  response assertion also passed in a focused run. E2E now accepts
+  `E2E_PORT` so browser qualification can use a separate fixture server without
+  disturbing the user's local instance. Keep Firefox qualification open until a
+  clean full run passes. The WebKit blockers were resolved locally: omit
   `upgrade-insecure-requests` outside
   production, initiate preview playback with the video scrolled into view, and
   wait for logout redirects before navigating. Physical-device qualification
