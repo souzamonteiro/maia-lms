@@ -294,3 +294,9 @@ class. The application records MP4, poster, caption, HLS playlist, and HLS segme
 requests after responses finish. It stores no URL/path, course or lesson ID, user ID,
 IP address, or payload. The dashboard reports a seven-day window. These are request
 counts only; they do not measure playback starts, buffering, latency, or watch time.
+
+Migration 093 rebuilds this table while preserving existing rows and requires
+`metric_date` to be a real `YYYY-MM-DD` calendar date, `status_class` to be an
+integer from 2 through 5, and `request_count` to be a positive integer. If existing
+rows violate these constraints, the migration fails transactionally rather than
+silently dropping or rewriting the recorded metrics.

@@ -951,6 +951,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   - [x] Enforce translated metadata structure, supported unique locales distinct
     from the source locale, allowed fields, and field limits for direct SQL writes
     (migration 089; focused insert/update integrity tests).
+  - [x] Restrict playback aggregates to real UTC calendar dates and integral HTTP
+    status classes/request counts (migration 093; valid historical rows survive,
+    and invalid legacy rows fail the migration without being discarded).
   Partial: migrations 017–018 prevent progress, enrollment-revision, and
   lesson-module changes from crossing the enrollment's assigned revision, and
   constrain progress positions to non-negative integers. Migration 019 ensures
@@ -1014,7 +1017,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   identifiers, refund bounds, and state transitions, while provider reconciliation
   and refund policy remain open. Further audit/rollout safety still depends on
   BASE-02 and the end-to-end QUIZ/PAY/CERT workflows; keep the parent open until those
-  dependencies and the full invariant matrix are validated. Migration 056 requires
+  dependencies and the full invariant matrix are validated. Migrations 092–093
+  record only daily aggregate resource/status counts and require a real calendar
+  date plus integer status class/count values. Migration 056 requires
   an open attempt to have no score/pass and a submitted attempt to have an integer
   score in 0–100 plus an integer pass flag; focused tests cover invalid direct-SQL
   states while preserving the existing deadline and immutable-submission checks.

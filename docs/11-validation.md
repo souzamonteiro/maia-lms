@@ -1657,6 +1657,15 @@ four cases; combined migration/API/web regression tests passed 64 cases, and
 build/lint passed. This is a synthetic schema/data rehearsal only; there is no
 production or real customer database, and none was accessed or modified.
 
+## Playback metric SQLite invariants — October 22, 2026
+
+Migration 093 now rejects impossible/non-ISO metric dates and fractional HTTP
+status classes or request counts. It rebuilds the aggregate table transactionally:
+valid historical aggregates survive, while a synthetic invalid legacy row makes
+the migration fail without losing the row or recording the migration as applied.
+Focused migration tests passed both preservation/failure cases; the migration test
+also checks invalid inserts and updates. No production database was accessed.
+
 ## Implemented API contract — October 20, 2026
 
 `spec/openapi.yaml` now includes HLS playlist/variant/segment routes, privacy
