@@ -14,12 +14,22 @@ export type PublicCoursePage = {
   coverAlt: string;
 };
 
+export type PublicInstructorPage = {
+  slug: string;
+  displayName: string;
+  bio: string;
+  websiteUrl: string | null;
+  courses: PublicCoursePage[];
+};
+
 export type WebAppOptions = {
   publicBaseUrl: string;
   getPublicCourse: (slug: string, displayLocale?: string) => PublicCoursePage | undefined;
+  getPublicInstructor: (slug: string, displayLocale?: string) => PublicInstructorPage | undefined;
   getHomeSelection: (displayLocale?: string) => Record<'hero' | 'featured' | 'recommended', PublicCoursePage[]>;
   listPublicCourses: (displayLocale?: string) => PublicCoursePage[];
   listPublicCourseSlugs: () => string[];
+  listPublicInstructorSlugs: () => string[];
 };
 
 export function createWebApp(options: WebAppOptions): express.Application {
@@ -94,6 +104,7 @@ export function createWebApp(options: WebAppOptions): express.Application {
       `${baseUrl}/`,
       `${baseUrl}/courses`,
       ...options.listPublicCourseSlugs().map(slug => `${baseUrl}/courses/${encodeURIComponent(slug)}`),
+      ...options.listPublicInstructorSlugs().map(slug => `${baseUrl}/instructors/${encodeURIComponent(slug)}`),
     ];
     const xml = locations.map(location => `  <url><loc>${location.replace(/&/g, '&amp;')}</loc></url>`).join('\n');
     res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${xml}\n</urlset>`);
@@ -124,8 +135,34 @@ export function createWebApp(options: WebAppOptions): express.Application {
       course,
     });
   });
+  app.get('/instructors/:slug', (req, res) => {
+    const requestedLocale = typeof req.query.displayLocale === 'string' &&
+      ['en', 'pt-BR', 'es'].includes(req.query.displayLocale)
+      ? req.query.displayLocale
+      : undefined;
+    const instructor = options.getPublicInstructor(req.params.slug, requestedLocale);
+    const canonicalUrl = `${baseUrl}/instructors/${encodeURIComponent(req.params.slug)}`;
+    if (!instructor) {
+      res.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+      res.status(404).render('home.njk', {
+        title: 'Instructor not found',
+        canonicalUrl,
+        noIndex: true,
+      });
+      return;
+    }
+    const description = instructor.bio || `Courses by ${instructor.displayName} on Maia Learn.`;
+    res.render('instructor.njk', {
+      title: instructor.displayName,
+      description,
+      canonicalUrl,
+      ogType: 'profile',
+      ogLocale: requestedLocale ?? 'en',
+      displayLocale: requestedLocale ?? 'en',
+      instructor,
+    });
+  });
   for (const route of [
-    '/instructors/:slug',
     '/lessons/:id',
     '/auth/login',
     '/auth/register',

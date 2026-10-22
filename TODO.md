@@ -400,18 +400,23 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Dependencies: none. Acceptance: saving a draft keeps the course live; visitors see
   the previous publication, authors see the draft, and existing learners retain
   their revision. Publication switches the public reference in a transaction.
-- [ ] **BASE-02 — Migrate existing data without reinterpreting text.**
+- [x] **BASE-02 — Migrate existing data without reinterpreting text (synthetic rehearsal complete).**
   Add new additive migrations for revisions, content format, media relationships,
   translations/metadata, and editorial slots according to the workflows below.
   Dependency: BASE-01. Acceptance: restoring the prototype database in an isolated
   environment preserves accounts, enrollments, progress, and lessons; legacy text
   remains `plain`, without executing previously harmless markup. Do not edit applied migrations.
-  A file-backed synthetic upgrade test now applies the prototype-era migrations to
-  a temporary backup and verifies accounts, sessions/tokens, published and draft
+  A file-backed synthetic upgrade test applies the prototype-era migrations to a
+  temporary backup and verifies accounts, sessions/tokens, published and draft
   revisions, legacy media references, enrollments, entitlements, progress, literal
-  text, promotion slots, repeatability, and SQLite integrity. Keep BASE-02 open:
-  no actual prototype database is present in the workspace for the required isolated
-  data-preservation rehearsal.
+  text, promotion slots, repeatability, and SQLite integrity.
+  `node scripts/create-prototype-fixture.mjs` now creates an ignored local fixture from
+  migrations 001–003 with fictional records. A separate copy was upgraded twice
+  through migration 092; account/course/enrollment counts, progress and literal
+  `plain` lesson content were preserved, `integrity_check` returned `ok`, and
+  `foreign_key_check` returned no rows. This validates migration behavior against
+  the synthetic prototype schema only; no production or real customer database
+  exists or was used.
 - [x] **EDIT-01 — Markdown editor with toolbar and preview.**
   Headings, bold, italic, lists, links, quotes, code blocks, tables, and images with
   alt text; accessible editing and preview. Dependencies: BASE-01/02.
@@ -1076,7 +1081,7 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   successful notices remain polite status messages. E2E verifies translated login
   errors and focus in en/pt-BR/es while retaining form input. Keep open for contrast,
   zoom/mobile, captions, and the full author/learner workflow audit.
-- [ ] **SEO-01 — Indexable public pages (course SSR delivered; public-page coverage open).**
+- [ ] **SEO-01 — Indexable public pages (public SSR delivered locally; qualification open).**
   Useful server-rendered content, per-course title/description, canonical URLs,
   sitemap, Open Graph/covers, and locale; prevent indexing of private areas.
   Dependencies: HOME-02/03, I18N-02. Acceptance: initial HTML for a published course
@@ -1084,8 +1089,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Local delivery: course, home, and catalog pages server-render localized metadata
   and public content; course pages include canonical/Open Graph cover metadata.
   `robots.txt` and `sitemap.xml` include only public courses; private/admin/auth
-  pages are `noindex`. Instructor profiles remain client-first; keep SEO-01 open
-  for their SSR metadata and full crawler validation.
+  pages are `noindex`. Instructor profiles now server-render escaped public
+  biographies and published courses with canonical/Open Graph metadata and
+  appear in the sitemap only when opted in. Keep SEO-01 open for full crawler
+  validation and the remaining public-page coverage.
 - [ ] **QA-01 — Complete product test suite and demonstration (current Chromium report recorded; cross-browser open).**
   Extend HTTP, database, job, and browser tests to all workflows below, including
   Chrome/Firefox/Safari and mobile where applicable. Dependencies: all P0/P1

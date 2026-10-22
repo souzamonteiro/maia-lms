@@ -1633,6 +1633,30 @@ in a focused Firefox run. Keep Firefox qualification open until a clean complete
 run passes. No deployment, host changes, or physical-device qualification were
 performed; device testing remains external.
 
+## Instructor profile SEO — October 21, 2026
+
+Public instructor pages now server-render the opted-in biography and only
+published, non-withdrawn courses, with escaped text, canonical/Open Graph
+metadata and sitemap entries. Unpublished/private profiles return a noindex 404.
+Web rendering tests cover escaping, metadata, localization and sitemap inclusion;
+API integration covers actual profile/course filtering. The combined API/web
+rendering regression tests passed 60 cases; build and lint passed. No deployment
+or host change was performed.
+
+## BASE-02 synthetic prototype rehearsal — October 21, 2026
+
+`node scripts/create-prototype-fixture.mjs` creates the ignored
+`data/prototype-rehearsal.db` using only fictional records and the prototype-era
+migrations 001–003. A separate `data/prototype-rehearsal-upgraded.db` copy was
+upgraded twice through migration 092. The rehearsal preserved two accounts, two
+courses, enrollment and entitlement, 137-second completed progress, legacy media
+references, publication/draft state and literal HTML-like lesson text with
+`content_format='plain'`. SQLite `integrity_check` returned `ok` and
+`foreign_key_check` returned no violations. The focused migration test passed all
+four cases; combined migration/API/web regression tests passed 64 cases, and
+build/lint passed. This is a synthetic schema/data rehearsal only; there is no
+production or real customer database, and none was accessed or modified.
+
 ## Implemented API contract — October 20, 2026
 
 `spec/openapi.yaml` now includes HLS playlist/variant/segment routes, privacy

@@ -241,6 +241,28 @@ export function createApp(
       if (!row) return undefined;
       return publicPageCourse(row, displayLocale);
     },
+    getPublicInstructor: (slug, displayLocale) => {
+      const profile = db.prepare(`SELECT slug,display_name,bio,website_url
+        FROM instructor_profiles WHERE slug=? AND is_public=1`).get(slug) as
+        | { slug: string; display_name: string; bio: string; website_url: string | null }
+        | undefined;
+      if (!profile) return undefined;
+      const rows = db.prepare(`SELECT c.slug,r.title,r.summary,r.locale AS revision_locale,
+        r.translations_json,r.cover_alt,cover.filename AS cover_filename
+        FROM instructor_profiles p JOIN courses c ON c.author_id=p.user_id
+        JOIN course_revisions r ON r.id=c.published_revision_id
+        LEFT JOIN video_uploads cover ON cover.id=r.cover_file_id AND cover.course_id=c.id
+          AND cover.status='READY' AND cover.media_kind='attachment'
+        WHERE p.slug=? AND p.is_public=1 AND c.status='PUBLISHED' AND c.withdrawn_at IS NULL
+        ORDER BY c.created_at DESC,c.id DESC`).all(slug) as Array<Record<string, unknown>>;
+      return {
+        slug: profile.slug,
+        displayName: profile.display_name,
+        bio: profile.bio,
+        websiteUrl: profile.website_url,
+        courses: rows.map(row => publicPageCourse(row, displayLocale)),
+      };
+    },
     getHomeSelection: displayLocale => {
       const rows = db.prepare(`SELECT c.slug,r.title,r.summary,r.locale AS revision_locale,
         r.translations_json,r.cover_alt,cover.filename AS cover_filename,p.slot
@@ -273,6 +295,8 @@ export function createApp(
     listPublicCourseSlugs: () => (db.prepare(`SELECT slug FROM courses
       WHERE status='PUBLISHED' AND withdrawn_at IS NULL ORDER BY slug`)
       .all() as Array<{ slug: string }>).map(course => course.slug),
+    listPublicInstructorSlugs: () => (db.prepare(`SELECT slug FROM instructor_profiles
+      WHERE is_public=1 ORDER BY slug`).all() as Array<{ slug: string }>).map(profile => profile.slug),
   }));
 
   // ── 404 handler ───────────────────────────────────────────────

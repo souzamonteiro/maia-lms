@@ -1,0 +1,32 @@
+{% extends "base.njk" %}
+{% block htmlLanguage %}{{ displayLocale }}{% endblock %}
+{% block metaDescription %}{{ description }}{% endblock %}
+{% block metaType %}{{ ogType }}{% endblock %}
+{% block metaTitle %}{{ title }} — Maia Learn{% endblock %}
+{% block metaOgDescription %}{{ description }}{% endblock %}
+{% block metaLocale %}{{ ogLocale }}{% endblock %}
+{% block content %}
+<div id="message" role="status" aria-live="polite" tabindex="-1"></div>
+<article id="app" class="seo-instructor">
+  <h1>{{ instructor.displayName }}</h1>
+  {% if instructor.bio %}<p class="plain-content">{{ instructor.bio }}</p>{% endif %}
+  {% if instructor.websiteUrl %}<p><a href="{{ instructor.websiteUrl }}" rel="noopener noreferrer">{{ instructor.displayName }}'s website</a></p>{% endif %}
+  <section>
+    <h2>Published courses</h2>
+    <ul>
+      {% for course in instructor.courses %}
+      <li>
+        <article>
+          {% if course.coverUrl %}<img src="{{ course.coverUrl }}" alt="{{ course.coverAlt }}">{% endif %}
+          <h3><a href="{{ course.href }}">{{ course.title }}</a></h3>
+          <p>{{ course.summary }}</p>
+        </article>
+      </li>
+      {% else %}
+      <li>No published courses are available yet.</li>
+      {% endfor %}
+    </ul>
+  </section>
+</article>
+<noscript>Published courses are listed above.</noscript>
+{% endblock %}

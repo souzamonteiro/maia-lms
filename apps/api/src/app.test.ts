@@ -1872,6 +1872,15 @@ describe('public instructor profiles', () => {
     expect(withCourse.data.courses).toEqual([
       expect.objectContaining({ slug: 'profile-published-course', title: 'Curso de teste' }),
     ]);
+    const profilePage = await fetch(`${base}/instructors/ada-lovelace`);
+    const profileHtml = await profilePage.text();
+    expect(profilePage.status).toBe(200);
+    expect(profileHtml).toContain('<h1>Ada Lovelace</h1>');
+    expect(profileHtml).toContain('An educator and software engineer.');
+    expect(profileHtml).toContain('<h3><a href="/courses/profile-published-course">Curso de teste</a></h3>');
+    expect(profileHtml).not.toContain('profile-draft-course');
+    expect((await (await fetch(`${base}/sitemap.xml`)).text())
+      .match(/<loc>[^<]*\/instructors\/ada-lovelace<\/loc>/)).not.toBeNull();
     expect(
       (await request('/api/v1/courses/profile-published-course')).data.instructor_profile_slug,
     ).toBe('ada-lovelace');
