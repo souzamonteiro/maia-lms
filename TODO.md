@@ -468,6 +468,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   ClamAV path is fail-closed when enabled and tested with scanner outcomes, but
   `ATTACHMENT_SCAN_MODE` defaults to `disabled`. Keep this item open until the real
   worker host has ClamAV enabled and its scan behavior is qualified.
+  The isolated E2E server now always starts its temporary worker so image/attachment
+  workflows run even when real-video conversion tests are skipped; this does not
+  change the production scanner policy or qualify host scanning.
 - [x] **MEDIA-03 — FFprobe/FFmpeg processing (local implementation).**
   Validate containers/streams, generate compatible playback MP4 and adaptive HLS,
   poster, duration, and metadata; CPU/memory/time limits and subprocesses without

@@ -1696,3 +1696,12 @@ for `domcontentloaded` instead of `load` did not resolve the suite-level
 intermittency, so that per-test change was not retained. Firefox remains
 unqualified; do not mask the instability by weakening assertions or declaring
 success based on focused reruns.
+
+## Default E2E media worker — October 23, 2026
+
+The isolated E2E server now starts its worker regardless of `VIDEO_TEST_REAL`.
+That flag still controls real FFmpeg/video browser workflows, while non-video
+attachment processing needs the worker too. The Firefox inline-image upload,
+publish, and render workflow passed without the flag; lint passed. This remains
+local test-harness behavior and does not alter ClamAV configuration or qualify
+the real worker host.

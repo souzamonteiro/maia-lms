@@ -135,8 +135,10 @@ VIDEO_TEST_REAL=1 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome npm
 ```
 
 Without `VIDEO_TEST_REAL=1`, real conversion/playback tests are explicitly skipped.
-CI installs FFmpeg and enables those tests. HTTP tests also check permissions,
-origin, limits, offsets, cancellation, invalid files and revocation.
+The isolated E2E server still runs the background worker for image and attachment
+processing workflows; the flag only enables tests requiring real video conversion
+and playback. CI installs FFmpeg and enables those tests. HTTP tests also check
+permissions, origin, limits, offsets, cancellation, invalid files and revocation.
 
 The implementation uses [FFmpeg](https://ffmpeg.org/ffmpeg.html) and
 [FFprobe](https://ffmpeg.org/ffprobe.html), invoked without a shell, with restricted

@@ -66,12 +66,10 @@ for (let i = 0; i < 13; i++) {
   );
 }
 db.close();
-if (process.env.VIDEO_TEST_REAL === '1') {
-  const worker = spawn(process.execPath, ['apps/worker/dist/worker.js'], {
-    env: process.env,
-    stdio: 'ignore',
-  });
-  process.on('exit', () => worker.kill('SIGKILL'));
-}
+const worker = spawn(process.execPath, ['apps/worker/dist/worker.js'], {
+  env: process.env,
+  stdio: 'ignore',
+});
+process.on('exit', () => worker.kill('SIGKILL'));
 process.on('exit', () => fs.rmSync(directory, { recursive: true, force: true }));
 await import('../apps/api/dist/server.js');
