@@ -1111,8 +1111,12 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   workflow passed in isolation. The real-video workflow and its enrollment
   response assertion also passed in a focused run. E2E now accepts
   `E2E_PORT` so browser qualification can use a separate fixture server without
-  disturbing the user's local instance. Keep Firefox qualification open until a
-  clean full run passes. The WebKit blockers were resolved locally: omit
+  disturbing the user's local instance. Three full Firefox reruns on October 23
+  each passed 34/35, but the lone 30-second navigation timeout moved between
+  workflows; the affected workflows pass in isolation. Do not treat a per-test
+  navigation workaround as a fix for this suite-wide intermittency. Keep Firefox
+  qualification open until a clean full run passes. The WebKit blockers were
+  resolved locally: omit
   `upgrade-insecure-requests` outside
   production, initiate preview playback with the video scrolled into view, and
   wait for logout redirects before navigating. Physical-device qualification

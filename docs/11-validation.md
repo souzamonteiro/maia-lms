@@ -1686,3 +1686,13 @@ workflow, its enrollment API response check, and media processing checks.
 Firefox remains unqualified until a full run passes without
 intermittent timeouts. The existing instance on port 4320 stayed ready throughout;
 no host or external environment was changed.
+
+## Firefox E2E reruns — October 23, 2026
+
+Three additional complete Firefox runs each passed 34/35 workflows. The single
+30-second `page.goto` timeout varied between runs (login navigation and
+verification navigation); each affected workflow passed when isolated. Waiting
+for `domcontentloaded` instead of `load` did not resolve the suite-level
+intermittency, so that per-test change was not retained. Firefox remains
+unqualified; do not mask the instability by weakening assertions or declaring
+success based on focused reruns.
