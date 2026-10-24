@@ -2222,6 +2222,13 @@ paths:
                       requests: {type: integer}
                       byResource: {type: object, additionalProperties: {type: integer}}
                       byStatusClass: {type: object, additionalProperties: {type: integer}}
+                      responseDuration:
+                        type: object
+                        description: Time from playback middleware entry until response finish, not time to first byte, client download completion, or buffering. Historical requests without timing are excluded from the average.
+                        required: [measuredRequests, averageMs]
+                        properties:
+                          measuredRequests: {type: integer, minimum: 0}
+                          averageMs: {type: [number, 'null'], minimum: 0}
                   alerts:
                     type: array
                     items:

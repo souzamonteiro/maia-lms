@@ -6,6 +6,7 @@ import { afterEach, beforeEach, expect, it } from 'vitest';
 import { createApp } from './app.js';
 import { loadConfig } from './config.js';
 import { runMigrations } from './db/migrate.js';
+import { recordPlaybackMetric } from './services/playback-metrics.js';
 
 let db: Database.Database;
 let server: Server;
@@ -84,9 +85,11 @@ it('summarizes operational state for admins without exposing payloads or identit
       requests: 10,
       byResource: { mp4: 8, hls_segment: 2 },
       byStatusClass: { '2': 8, '4': 2 },
+      responseDuration: { measuredRequests: 0, averageMs: null },
     },
     alerts: ['MEDIA_JOB_FAILED', 'OUTBOX_EXHAUSTED'],
   });
+
   expect(result.data.workers.map((worker: { status: string }) => worker.status).sort())
     .toEqual(['healthy', 'stale', 'stopped']);
   expect(result.data.storage).toMatchObject({ availableBytes: expect.any(Number), totalBytes: expect.any(Number) });
@@ -95,4 +98,26 @@ it('summarizes operational state for admins without exposing payloads or identit
   expect(serialized).not.toContain('secret-token');
   expect(serialized).not.toContain('private-name.mp4');
   expect(serialized).not.toContain('private error');
+});
+
+it('reports a weighted duration average for measured responses within the seven-day window only', async () => {
+  const cookie = await account('duration-admin@example.com', 'admin');
+  const getSummary = () => request('/api/v1/admin/operations', 'GET', undefined, cookie);
+  expect((await getSummary()).data.playback.responseDuration)
+    .toEqual({ measuredRequests: 0, averageMs: null });
+  const today = new Date();
+  const sixDaysAgo = new Date(today.getTime() - 6 * 86400_000);
+  const sevenDaysAgo = new Date(today.getTime() - 7 * 86400_000);
+  const tomorrow = new Date(today.getTime() + 86400_000);
+  recordPlaybackMetric(db, 'mp4', 206, today);
+  recordPlaybackMetric(db, 'mp4', 206, today, 100);
+  recordPlaybackMetric(db, 'mp4', 206, today, 300);
+  recordPlaybackMetric(db, 'hls_segment', 403, sixDaysAgo, 50);
+  recordPlaybackMetric(db, 'mp4', 200, sevenDaysAgo, 9999);
+  recordPlaybackMetric(db, 'mp4', 200, tomorrow, 9999);
+  expect((await getSummary()).data.playback).toMatchObject({
+    requests: 4,
+    byResource: { mp4: 3, hls_segment: 1 },
+    responseDuration: { measuredRequests: 3, averageMs: 150 },
+  });
 });

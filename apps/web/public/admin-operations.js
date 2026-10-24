@@ -76,7 +76,12 @@ export async function mountAdminOperations({ app, api, t, e, locale }) {
       });
       app.querySelector('#ops-playback').innerHTML = Object.entries(summary.playback.byResource)
         .map(([resource, count]) => fact(t(playbackResourceKeys[resource] || 'genericError'), number(count)))
-        .join('');
+        .join('') + [
+          fact(t('adminOpsPlaybackMeasured'), number(summary.playback.responseDuration.measuredRequests)),
+          fact(t('adminOpsPlaybackDuration'), summary.playback.responseDuration.averageMs === null
+            ? t('adminOpsPlaybackUnmeasured')
+            : t('adminOpsPlaybackMilliseconds', { value: number(summary.playback.responseDuration.averageMs) })),
+        ].join('');
 
       const alerts = app.querySelector('#ops-alerts');
       alerts.replaceChildren();

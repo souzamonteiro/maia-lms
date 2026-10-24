@@ -31,3 +31,29 @@ it('aggregates playback requests by day, resource type, and response class witho
     db.close();
   }
 });
+
+it('counts measured durations separately from historical requests, including zero-ms responses', () => {
+  const db = new Database(':memory:');
+  try {
+    runMigrations(db);
+    const now = new Date('2026-10-23T12:00:00Z');
+    recordPlaybackMetric(db, 'mp4', 206, now);
+    recordPlaybackMetric(db, 'mp4', 206, now, 100);
+    recordPlaybackMetric(db, 'mp4', 206, now, 0);
+    recordPlaybackMetric(db, 'mp4', 206, now, 350);
+    recordPlaybackMetric(db, 'mp4', 403, now, 20);
+    expect(db.prepare(`SELECT status_class,request_count,duration_count,duration_total_ms
+      FROM playback_metrics_daily ORDER BY status_class`).all()).toEqual([
+      { status_class: 2, request_count: 4, duration_count: 3, duration_total_ms: 450 },
+      { status_class: 4, request_count: 1, duration_count: 1, duration_total_ms: 20 },
+    ]);
+    for (const invalid of [-1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+      expect(() => recordPlaybackMetric(db, 'mp4', 200, now, invalid))
+        .toThrow(RangeError);
+    }
+    expect(db.prepare('SELECT sum(request_count) AS total FROM playback_metrics_daily').get())
+      .toEqual({ total: 5 });
+  } finally {
+    db.close();
+  }
+});

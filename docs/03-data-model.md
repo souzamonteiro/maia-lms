@@ -292,11 +292,22 @@ not delete user data or define retention, legal review, or request-resolution po
 `playback_metrics_daily` stores counts by UTC date, resource type, and HTTP status
 class. The application records MP4, poster, caption, HLS playlist, and HLS segment
 requests after responses finish. It stores no URL/path, course or lesson ID, user ID,
-IP address, or payload. The dashboard reports a seven-day window. These are request
-counts only; they do not measure playback starts, buffering, latency, or watch time.
+IP address, or payload. The dashboard reports a seven-day UTC window, excluding
+future-dated rows. These are HTTP aggregates, not playback starts, buffering, or
+watch time.
 
 Migration 093 rebuilds this table while preserving existing rows and requires
 `metric_date` to be a real `YYYY-MM-DD` calendar date, `status_class` to be an
 integer from 2 through 5, and `request_count` to be a positive integer. If existing
 rows violate these constraints, the migration fails transactionally rather than
 silently dropping or rewriting the recorded metrics.
+
+Migration 094 adds `duration_count` and `duration_total_ms`, both non-negative
+integers defaulting to zero. Measured responses cannot outnumber requests, and
+unmeasured rows cannot carry a duration total. Existing request counts remain
+intact with no timing samples. The API measures elapsed monotonic time from
+playback middleware entry until the HTTP response `finish` event, rounded to
+milliseconds; aborted responses that never finish are not counted.
+The operations API exposes the measured count and a weighted average in
+milliseconds (`null` when no timings exist). It does not measure time to first
+byte, client download completion, or end-to-end playback latency.

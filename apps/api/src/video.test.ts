@@ -396,6 +396,9 @@ it.runIf(process.env.VIDEO_TEST_REAL === '1')(
       expect.objectContaining({ resource_type: 'mp4', status_class: 4 }),
       expect.objectContaining({ resource_type: 'hls_playlist', status_class: 2 }),
     ]));
+    expect(db.prepare(`SELECT count(*) AS unmeasured FROM playback_metrics_daily
+      WHERE duration_count<>request_count OR duration_total_ms<0`).get())
+      .toEqual({ unmeasured: 0 });
     expect((await fetch(url, { method: 'HEAD', headers: { Cookie: learner.cookie } })).status).toBe(
       200,
     );

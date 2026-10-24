@@ -18,11 +18,18 @@ export function recordPlaybackMetric(
   resource: PlaybackResource,
   statusCode: number,
   now = new Date(),
+  durationMs?: number,
 ): void {
+  if (durationMs !== undefined && (!Number.isSafeInteger(durationMs) || durationMs < 0))
+    throw new RangeError('Playback response duration must be a non-negative safe integer');
   const statusClass = Math.floor(statusCode / 100);
   if (statusClass < 2 || statusClass > 5) return;
-  db.prepare(`INSERT INTO playback_metrics_daily(metric_date,resource_type,status_class,request_count,updated_at)
-    VALUES(?,?,?,1,?) ON CONFLICT(metric_date,resource_type,status_class) DO UPDATE SET
-    request_count=request_count+1,updated_at=excluded.updated_at`)
-    .run(now.toISOString().slice(0, 10), resource, statusClass, now.toISOString());
+  db.prepare(`INSERT INTO playback_metrics_daily(
+    metric_date,resource_type,status_class,request_count,updated_at,duration_count,duration_total_ms)
+    VALUES(?,?,?,1,?,?,?) ON CONFLICT(metric_date,resource_type,status_class) DO UPDATE SET
+    request_count=request_count+1,updated_at=excluded.updated_at,
+    duration_count=duration_count+excluded.duration_count,
+    duration_total_ms=duration_total_ms+excluded.duration_total_ms`)
+    .run(now.toISOString().slice(0, 10), resource, statusClass, now.toISOString(),
+      durationMs === undefined ? 0 : 1, durationMs ?? 0);
 }

@@ -1705,3 +1705,30 @@ attachment processing needs the worker too. The Firefox inline-image upload,
 publish, and render workflow passed without the flag; lint passed. This remains
 local test-harness behavior and does not alter ClamAV configuration or qualify
 the real worker host.
+
+## Playback response completion timing — October 23, 2026
+
+OPS-03 now includes server-side response completion timing for MP4, posters,
+captions, and HLS playlists/segments, including completed error responses.
+Migration 094 preserves historical request counts with no timing samples and
+constrains measured counts/duration totals. The seven-day operations summary
+reports a weighted average over timed responses only, not an average of bucket
+averages, and excludes future dates. Empty samples return `averageMs: null`.
+The panel displays sample count and average in en/pt-BR/es with an explicit
+unmeasured state. No paths, user/course IDs, addresses, or payloads are recorded.
+
+Validation: 11 focused migration/service/API/i18n tests passed; the full
+`VIDEO_TEST_REAL=1 npm test` run passed all 186 tests across 63 files, including
+real-media HTTP instrumentation checks. Build and lint passed. The focused
+Chromium operations workflow passed against a disposable database on port 4329,
+checking the unmeasured state, a real error-response timing, refresh, and all
+three languages. A combined Chromium rerun also passed all four operations,
+orders, users, and mobile-viewport workflows, checking that language switching
+does not affect subsequent shared-admin tests. The OpenAPI YAML parsed
+successfully. No Firefox suite was run for this delivery.
+
+This measures elapsed monotonic time until the server response `finish` event,
+not time to first byte, client download completion, buffering, or watch time.
+Aborted responses are not recorded. OPS-03 remains open for the remaining
+telemetry and external alert delivery. No deployment, host configuration change,
+or migration of the user's running instance was performed.

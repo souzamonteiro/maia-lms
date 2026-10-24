@@ -50,12 +50,15 @@ export function adminOperationsRouter(db: Database.Database, config: Config): Ro
     const payments = Object.fromEntries((db.prepare(`SELECT state,count(*) AS total
       FROM orders GROUP BY state`).all() as Array<{ state: string; total: number }>)
       .map(row => [row.state, row.total]));
-    const playbackRows = db.prepare(`SELECT resource_type,status_class,sum(request_count) AS total
-      FROM playback_metrics_daily WHERE metric_date>=date('now','-6 days')
+    const playbackRows = db.prepare(`SELECT resource_type,status_class,sum(request_count) AS total,
+      sum(duration_count) AS durationCount,sum(duration_total_ms) AS durationTotalMs
+      FROM playback_metrics_daily WHERE metric_date BETWEEN date('now','-6 days') AND date('now')
       GROUP BY resource_type,status_class`).all() as Array<{
         resource_type: string;
         status_class: number;
         total: number;
+        durationCount: number;
+        durationTotalMs: number;
       }>;
     const playbackByResource = Object.fromEntries(playbackRows.reduce((counts, row) => {
       counts.set(row.resource_type, (counts.get(row.resource_type) ?? 0) + row.total);
@@ -67,6 +70,8 @@ export function adminOperationsRouter(db: Database.Database, config: Config): Ro
       return counts;
     }, new Map<string, number>()));
     const playbackRequests = playbackRows.reduce((total, row) => total + row.total, 0);
+    const measuredRequests = playbackRows.reduce((total, row) => total + row.durationCount, 0);
+    const durationTotalMs = playbackRows.reduce((total, row) => total + row.durationTotalMs, 0);
 
     let storage: { availableBytes: number; totalBytes: number } | null = null;
     try {
@@ -100,6 +105,10 @@ export function adminOperationsRouter(db: Database.Database, config: Config): Ro
         requests: playbackRequests,
         byResource: playbackByResource,
         byStatusClass: playbackByStatusClass,
+        responseDuration: {
+          measuredRequests,
+          averageMs: measuredRequests ? durationTotalMs / measuredRequests : null,
+        },
       },
       alerts,
     });

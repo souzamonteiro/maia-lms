@@ -82,3 +82,28 @@ it('fails the new migration without discarding invalid historical metrics', () =
     db.close();
   }
 });
+
+it('adds unmeasured duration defaults to historical aggregates and enforces duration bounds', () => {
+  const db = databaseAtPreviousSchema();
+  try {
+    db.prepare(`INSERT INTO playback_metrics_daily(
+      metric_date,resource_type,status_class,request_count
+    ) VALUES('2026-10-23','mp4',2,17)`).run();
+    runMigrations(db);
+    runMigrations(db);
+    expect(db.prepare(`SELECT request_count,duration_count,duration_total_ms
+      FROM playback_metrics_daily`).get()).toEqual({
+      request_count: 17, duration_count: 0, duration_total_ms: 0,
+    });
+    for (const [count, total] of [[-1, 0], [18, 100], [0.5, 1], [1, -1], [1, 1.5], [0, 100]]) {
+      expect(() => db.prepare(`UPDATE playback_metrics_daily
+        SET duration_count=?,duration_total_ms=?`).run(count, total))
+        .toThrow(/CHECK constraint failed/);
+    }
+    db.prepare(`UPDATE playback_metrics_daily
+      SET duration_count=2,duration_total_ms=300`).run();
+    expect(db.pragma('integrity_check', { simple: true })).toBe('ok');
+  } finally {
+    db.close();
+  }
+});

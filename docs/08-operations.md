@@ -145,10 +145,15 @@ jobs/stalls, outbox and email retries, payment order states, storage capacity, a
 safe alert codes. Migration 090 records each worker process every ten seconds;
 heartbeats older than 45 seconds are stale. `/readyz` checks only API/SQLite
 readiness and is not a worker health check. Migration 092 stores daily playback
-counts by resource type and HTTP status class only; it does not store paths, IDs,
-IP addresses, or payloads. The dashboard shows a seven-day window. Playback latency,
-start/buffering, and watch-time telemetry remain unavailable, and dashboard alerts
-are not delivered to an external channel.
+counts by resource type and HTTP status class; it does not store paths, IDs,
+IP addresses, or payloads. Migration 094 adds response-duration sums and measured
+response counts. The dashboard shows a seven-day UTC window, with a weighted
+average completion time in milliseconds and sample count; historical requests
+without timings do not lower the average and an empty sample shows "Not measured".
+The timing ends at the server's response `finish` event, not at the client's
+download completion; it is not time to first byte or playback startup/buffering.
+Aborted responses are excluded. Playback start/buffering and watch-time telemetry
+remain unavailable, and dashboard alerts are not delivered to an external channel.
 
 ## Repairing permissions from earlier installations
 

@@ -200,9 +200,11 @@ export function createApp(
   app.use('/api/v1', (req, res, next) => {
     const resource = classifyPlaybackPath(req.path);
     if (resource) {
+      const startedAt = performance.now();
       res.once('finish', () => {
         try {
-          recordPlaybackMetric(db, resource, res.statusCode);
+          recordPlaybackMetric(db, resource, res.statusCode, new Date(),
+            Math.round(performance.now() - startedAt));
         } catch {
           console.error('Playback metrics write failed');
         }

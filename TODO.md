@@ -1040,7 +1040,11 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   states/stalls, outbox and email retry counts, payment states, storage capacity,
   and safe alert codes without payloads or identities. Playback requests are
   aggregated over seven days by resource type and HTTP status class; no course/user
-  IDs, IPs, or paths are stored. Latency, playback starts/buffering, SMTP/payment
+  IDs, IPs, or paths are stored. Migration 094 adds the count and total duration of
+  measured responses; the panel displays their weighted average completion time
+  and sample count in en/pt-BR/es, excluding unmeasured historical requests.
+  This is server response completion, not time to first byte, client download
+  completion, playback starts, or buffering. Those metrics, SMTP/payment
   reconciliation, and production log review remain uninstrumented; alerts are
   visible in the panel but have no external delivery channel. Keep OPS-03 open for
   those metrics and alert-delivery qualification.
@@ -1106,9 +1110,11 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Chrome/Firefox/Safari and mobile where applicable. Dependencies: all P0/P1
   deliveries. Acceptance: new reports per version; the original English article
   test does not establish acceptance for video, editor, languages, checkout, or certificates.
-  Local report, October 22, 2026: `npm test` passed 181 tests and skipped 2
-  (183 total across 63 files); build and lint passed. Chromium and WebKit each
-  passed all 35 workflows, including real video and 360×780 checks. Firefox
+  Local report, October 23, 2026: `VIDEO_TEST_REAL=1 npm test` passed all 186
+  tests across 63 files; build and lint passed. The focused Chromium operations
+  workflow passed, including measured/unmeasured durations and all three locales.
+  Earlier complete Chromium and WebKit runs each passed all 35 workflows,
+  including real video and 360×780 checks; these are not new full-suite runs. Firefox
   full-suite attempts remain intermittent: the October 22 run passed 34/35,
   with one `page.goto` timeout waiting for the `load` event; the course-withdrawal
   workflow passed in isolation. The real-video workflow and its enrollment
