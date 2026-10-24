@@ -18,10 +18,23 @@ Implement Brazilian LGPD principles through a clear privacy notice, purpose-spec
 Current self-service includes an authenticated, rate-limited JSON export and an
 idempotent deletion-request record. The export is scoped to the requesting account
 and omits password hashes, sessions, email-token hashes, provider references, and
-storage keys. A deletion request is only recorded for review; it does not suspend,
-delete, or anonymize the account. Retention periods, legal basis, support contact,
-admin review/resolution, and the full export inventory remain to be defined. These
-endpoints are not, by themselves, proof of legal compliance.
+storage keys. A deletion request does not suspend, delete, or anonymize the account.
+Administrators can search and paginate the request queue at `/admin/privacy`,
+filter by state, and record a private review note (5–1000 trimmed characters).
+Review moves OPEN to IN_REVIEW or appends a note while keeping IN_REVIEW.
+Each action records the actor and previous state in the append-only audit log
+within the same transaction. All queue/history/review APIs require an administrator
+and return private/no-store responses. Requesters see the actual state, not notes
+or administrator identities; exports likewise exclude private review notes.
+Do not enter credentials or unnecessary personal information in review notes.
+
+The interface preserves unsaved notes in page memory during language changes and
+failed saves, not in local storage. Notes are intentionally private working records;
+their inclusion in any legally required disclosure remains a policy/legal-review
+question. No endpoint closes, fulfills, deletes, or anonymizes a request/account.
+Retention periods, legal basis, support contact, resolution, and the full export
+inventory remain to be defined. These endpoints are not, by themselves, proof of
+legal compliance.
 
 Certificate public verification has explicit name-disclosure consent and a revocation/takedown procedure; explain that anyone with its code or QR may see limited details. AI assistant must enforce course access, document permissions and retention; generated answers cite source passages and remain clearly labeled.
 

@@ -6,6 +6,7 @@ import { mountAdminOrders } from './admin-orders.js';
 import { mountAdminMedia } from './admin-media.js';
 import { mountAdminOperations } from './admin-operations.js';
 import { mountAdminEnrollments } from './admin-enrollments.js';
+import { mountAdminPrivacy } from './admin-privacy.js';
 import { mountAdminCertificates } from './admin-certificates.js';
 import { coursePresentation } from './course-presentation.js';
 import { icon } from './icons.js';
@@ -637,7 +638,7 @@ async function learning() {
     privacyRequestList.replaceChildren();
     for (const request of requests) {
       const item = document.createElement('li');
-      item.textContent = `${t('privacyRequestReceived')} · ${t('privacyRequestOpen')} · ${new Date(request.created_at).toLocaleDateString(locale)}`;
+      item.textContent = `${t('privacyRequestReceived')} · ${t(`privacyStatus${request.status}`)} · ${new Date(request.created_at).toLocaleDateString(locale)}`;
       privacyRequestList.append(item);
     }
   }
@@ -680,6 +681,9 @@ async function admin() {
   } else if (location.pathname === '/admin/enrollments') {
     if (me.role !== 'admin') throw new Error(t('adminAccessRestricted'));
     await mountAdminEnrollments(context);
+  } else if (location.pathname === '/admin/privacy') {
+    if (me.role !== 'admin') throw new Error(t('adminAccessRestricted'));
+    await mountAdminPrivacy(context);
   } else if (location.pathname === '/admin/certificates') {
     if (me.role !== 'admin') throw new Error(t('adminAccessRestricted'));
     await mountAdminCertificates(context);
@@ -732,6 +736,12 @@ async function main() {
     }
     document.querySelector('#account').innerHTML =
       `${['admin', 'author'].includes(me.role) ? `<a href="/admin">${t('administer')}</a><a href="/admin/media">${t('adminMediaTitle')}</a>` : ''}<a href="/my-orders">${t('myOrdersTitle')}</a>${me.role === 'admin' ? `<a href="/admin/operations">${t('adminOperationsTitle')}</a><a href="/admin/orders">${t('adminOrdersTitle')}</a><a href="/admin/users">${t('adminUsersTitle')}</a><a href="/admin/enrollments">${t('adminEnrollmentsTitle')}</a><a href="/admin/certificates">${t('adminCertificatesTitle')}</a>` : ''}<button id="logout" class="secondary">${icon('signOut')}${t('signOut')}</button>`;
+    if (me.role === 'admin') {
+      const privacyLink = document.createElement('a');
+      privacyLink.href = '/admin/privacy';
+      privacyLink.textContent = t('adminPrivacyTitle');
+      document.querySelector('#account').insertBefore(privacyLink, document.querySelector('#logout'));
+    }
     button('#logout', async () => {
       await api('/auth/logout', 'POST');
       location.href = '/';

@@ -1732,3 +1732,27 @@ not time to first byte, client download completion, buffering, or watch time.
 Aborted responses are not recorded. OPS-03 remains open for the remaining
 telemetry and external alert delivery. No deployment, host configuration change,
 or migration of the user's running instance was performed.
+
+## Administrative privacy request review — October 24, 2026
+
+PRIV-01 now has an administrator-only request queue at `/admin/privacy` with
+literal email/request-ID search, state filters, pagination, private review notes,
+and actor-attributed append-only history. Recording a note moves OPEN to IN_REVIEW
+or appends to IN_REVIEW; the request state and audit event are committed atomically.
+An audit insertion failure leaves the previous request state intact. CLOSED
+requests reject further review. Requesters see their actual state rather than a
+hardcoded "Open", but cannot read admin notes/history or other users' requests.
+Review neither deletes/suspends accounts nor closes/fulfills deletion requests.
+No migration is needed; existing request/audit tables and constraints are reused.
+
+Validation: all 187 tests passed with `VIDEO_TEST_REAL=1`, across 63 files;
+build and lint passed. Focused Chromium privacy/account workflows passed 3/3,
+covering private note escaping, failed-save retention/retry, locale switches
+with unsaved text preserved, requester state/isolation, account export, and
+password changes. API tests cover role restrictions for all three admin routes,
+pagination/filter validation, note bounds, missing/closed requests, private
+no-store responses, atomic rollback, idempotent self-service during review, and
+append-only history. Public web tests verify the new shell is noindex. OpenAPI
+YAML parsed successfully. No Firefox reruns, deployment, host changes, or changes
+to the existing user-test instance were performed. PRIV-01 stays open for legal/
+retention policy, support contact, resolution and export completeness review.

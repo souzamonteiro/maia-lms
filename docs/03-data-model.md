@@ -287,6 +287,14 @@ status. A partial unique index allows only one OPEN/IN_REVIEW request per accoun
 The self-service API is idempotent and leaves the account active; this table does
 not delete user data or define retention, legal review, or request-resolution policy.
 
+The admin review API uses the existing schema: an IMMEDIATE transaction changes
+OPEN to IN_REVIEW (or keeps IN_REVIEW), updates the request timestamp, and appends
+a `privacy_request.review` event in `audit_events` with actor, previous status,
+and private note. An audit failure rolls back the status update. CLOSED requests
+cannot be reopened through review. No close/delete operation is provided.
+Self-service responses/export include request status but omit private audit notes;
+existing audit append-only protections apply to review history.
+
 ## Playback aggregates — migration 092
 
 `playback_metrics_daily` stores counts by UTC date, resource type, and HTTP status

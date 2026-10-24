@@ -1080,9 +1080,13 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   enrollments/progress/quiz answers, entitlements, orders/refunds, certificates and
   owned media metadata; it excludes password hashes, session/email tokens and storage
   keys. Export and request endpoints have a dedicated rate limit. Users can create
-  and view an idempotent deletion request. No account data is deleted, and the request
-  has no admin review workflow yet. Keep PRIV-01 open for
-  retention/legal policy, support contact, review/resolution workflow and export
+  and view an idempotent deletion request. Administrators now have a searchable,
+  status-filtered, paginated queue at `/admin/privacy`, with private notes and
+  actor-attributed append-only review history. Review atomically moves OPEN to
+  IN_REVIEW, which the requester sees in their own language; notes remain admin-only.
+  Failed saves and language switches preserve unsaved notes in page memory.
+  No account data is deleted, and review does not close or fulfill the request.
+  Keep PRIV-01 open for retention/legal policy, support contact, resolution and export
   completeness review.
 - [ ] **UX-01 — Accessibility and real usage states (form-error feedback improved; full audit open).**
   Keyboard/focus, screen readers, contrast, zoom/mobile, captions, error messages,

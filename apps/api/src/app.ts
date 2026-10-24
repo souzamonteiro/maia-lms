@@ -20,6 +20,7 @@ import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
 import { adminUsersRouter } from './routes/admin-users.js';
 import { adminEnrollmentsRouter } from './routes/admin-enrollments.js';
+import { adminPrivacyRouter } from './routes/admin-privacy.js';
 import { assessmentsRouter } from './routes/assessments.js';
 import { certificatesRouter } from './routes/certificates.js';
 import { adminCertificatesRouter } from './routes/admin-certificates.js';
@@ -188,6 +189,7 @@ export function createApp(
   app.use('/api/v1', adminOperationsRouter(db, config));
   app.use('/api/v1', ordersRouter(db, config, paymentProvider));
   app.use('/api/v1', adminEnrollmentsRouter(db));
+  app.use('/api/v1', adminPrivacyRouter(db));
   app.use('/api/v1', assessmentsRouter(db));
   app.use('/api/v1', certificatesRouter(db, config));
   app.use('/api/v1', adminCertificatesRouter(db));

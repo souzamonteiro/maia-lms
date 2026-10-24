@@ -181,6 +181,7 @@ export function createWebApp(options: WebAppOptions): express.Application {
     '/admin/media',
     '/admin/users',
     '/admin/enrollments',
+    '/admin/privacy',
     '/admin/certificates',
   ]) {
     app.get(route, (req, res) => {

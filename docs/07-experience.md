@@ -201,6 +201,25 @@ a fresh code and PDF job. Public verification remains deliberately minimal and
 does not expose the private reason or lineage details.
 
 
+## Account privacy request review
+
+The administrator navigation includes **Privacy requests** at `/admin/privacy`.
+Search by account email or request ID, filter by OPEN/IN_REVIEW/CLOSED, and use
+Previous/Next to browse pages of 25 requests. Empty, loading, error, and retry
+states are translated in en/pt-BR/es.
+
+Each non-closed request has a private review-note field and **Record review**.
+The first note changes OPEN to IN_REVIEW; additional notes preserve IN_REVIEW.
+Private history shows notes, actor IDs, and timestamps. Notes are escaped text,
+not rendered HTML. A failed save retains the input; switching language preserves
+notes, applied filters, and page in memory. Reloading/leaving the page does not
+persist unsaved notes. Requesters see the actual state in **My learning**, but not
+private review notes, and remain able to sign in and learn.
+
+Review is triage only: the page cannot close a request, delete data, suspend an
+account, or claim fulfillment. Those actions require a defined retention/legal
+policy and a separate resolution workflow.
+
 ## Email verification confirmation
 
 New verification emails open `/auth/verify-email?lang=<locale>&token=<token>`.

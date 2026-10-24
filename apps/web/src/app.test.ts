@@ -71,7 +71,7 @@ it('publishes a sitemap and excludes private and unknown routes from indexing', 
   expect(await robots.text()).toContain('Sitemap: https://learn.example.test/sitemap.xml');
   const sitemap = await fetch(`${base}/sitemap.xml`);
   expect(await sitemap.text()).toContain('<loc>https://learn.example.test/courses/course-a</loc>');
-  for (const route of ['/admin', '/my-learning', '/auth/login', '/lessons/private']) {
+  for (const route of ['/admin', '/admin/privacy', '/my-learning', '/auth/login', '/lessons/private']) {
     const response = await fetch(`${base}${route}`);
     expect(response.headers.get('x-robots-tag')).toContain('noindex');
   }

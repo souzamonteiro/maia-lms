@@ -2186,10 +2186,110 @@ paths:
         '401': {description: Authentication required}
         '422': {description: PRIVACY_REQUEST_INVALID}
         '429': {description: PRIVACY_RATE_LIMITED}
+  /admin/privacy/requests:
+    get:
+      summary: Search and paginate account deletion requests for administrative review
+      description: Administrator only. Returns minimal account email and request metadata, not credentials or review notes. Private no-store.
+      security:
+        - cookieAuth: []
+      parameters:
+        - {name: q, in: query, schema: {type: string, maxLength: 100}, description: Literal email substring or request ID}
+        - {name: status, in: query, schema: {type: string, enum: [OPEN, IN_REVIEW, CLOSED]}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 25}}
+        - {name: offset, in: query, schema: {type: integer, minimum: 0, default: 0}}
+      responses:
+        '200':
+          description: Paginated requests ordered by creation time descending
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, total, limit, offset]
+                properties:
+                  total: {type: integer}
+                  limit: {type: integer}
+                  offset: {type: integer}
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: {type: string, format: uuid}
+                        email: {type: string, format: email}
+                        request_type: {type: string, const: deletion}
+                        status: {type: string, enum: [OPEN, IN_REVIEW, CLOSED]}
+                        created_at: {type: string}
+                        updated_at: {type: string}
+        '401': {description: Authentication required}
+        '403': {description: Administrator role required}
+        '422': {description: Invalid filter or pagination}
+  /admin/privacy/requests/{id}/review:
+    post:
+      summary: Start review or append a private review note
+      description: Administrator only. Atomically moves OPEN to IN_REVIEW, or retains IN_REVIEW, and appends an audit event with actor, previous status and note. Does not close or fulfill the request, delete data, or suspend the account. Private notes are not included in self-service request listings or account exports.
+      security:
+        - cookieAuth: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [note]
+              properties:
+                note: {type: string, minLength: 5, maxLength: 1000}
+      responses:
+        '200':
+          description: Review recorded, private no-store
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: {type: string, format: uuid}
+                  status: {type: string, const: IN_REVIEW}
+                  updatedAt: {type: string, format: date-time}
+        '401': {description: Authentication required}
+        '403': {description: Administrator role required}
+        '404': {description: PRIVACY_REQUEST_NOT_FOUND}
+        '409': {description: PRIVACY_REQUEST_CLOSED}
+        '422': {description: Invalid ID or note}
+  /admin/privacy/requests/{id}/history:
+    get:
+      summary: Read private review audit history
+      description: Administrator only. Append-only events include actor ID, timestamp and JSON metadata containing the note and previous status. Private no-store; not available to the requester.
+      security:
+        - cookieAuth: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '200':
+          description: Review events ordered by timestamp and ID
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: {type: string, format: uuid}
+                        actor_id: {type: [string, 'null']}
+                        action: {type: string, const: privacy_request.review}
+                        occurred_at: {type: string}
+                        metadata: {type: string}
+        '401': {description: Authentication required}
+        '403': {description: Administrator role required}
+        '404': {description: PRIVACY_REQUEST_NOT_FOUND}
+        '422': {description: Invalid request ID}
   /admin/operations:
     get:
       summary: Read aggregated worker, queue, storage, payment, and playback status
-      description: Administrator-only summary. Playback counts cover seven UTC dates and group by resource type and HTTP status class; no paths, course/user IDs, IPs, or payloads are stored. Does not report latency, buffering, or watch time.
+      description: Administrator-only summary. Playback counts cover seven UTC dates and group by resource type and HTTP status class; no paths, course/user IDs, IPs, or payloads are stored. Includes measured server response completion times, not playback startup latency, buffering, or watch time.
       security:
         - cookieAuth: []
       responses:

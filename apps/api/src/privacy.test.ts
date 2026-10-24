@@ -101,3 +101,71 @@ it('records an idempotent deletion request without deleting or suspending the ac
     WHERE user_id=?`).get(owner.id) as { total: number };
   expect(requestCount.total).toBe(1);
 });
+
+it('allows only admins to search, paginate and review requests with private append-only history', async () => {
+  const owner = await register('review-owner@example.com');
+  const other = await register('review-other@example.com');
+  const admin = await register('review-admin@example.com');
+  const author = await register('review-author@example.com');
+  db.prepare("UPDATE users SET role='admin' WHERE id=?").run(admin.id);
+  db.prepare("UPDATE users SET role='author' WHERE id=?").run(author.id);
+  const adminCookie = (await request('/api/v1/auth/login', 'POST',
+    { email: 'review-admin@example.com', password })).cookie;
+  const authorCookie = (await request('/api/v1/auth/login', 'POST',
+    { email: 'review-author@example.com', password })).cookie;
+  const first = await request('/api/v1/auth/privacy/requests', 'POST', { requestType: 'deletion' }, owner.cookie);
+  await request('/api/v1/auth/privacy/requests', 'POST', { requestType: 'deletion' }, other.cookie);
+  const path = `/api/v1/admin/privacy/requests/${first.data.id}`;
+  for (const [cookie, status] of [['', 401], [owner.cookie, 403], [authorCookie, 403]] as const) {
+    expect((await request('/api/v1/admin/privacy/requests', 'GET', undefined, cookie)).status).toBe(status);
+    expect((await request(`${path}/history`, 'GET', undefined, cookie)).status).toBe(status);
+    expect((await request(`${path}/review`, 'POST', { note: 'Unauthorized review' }, cookie)).status).toBe(status);
+  }
+  const page = await request('/api/v1/admin/privacy/requests?limit=1&offset=1', 'GET', undefined, adminCookie);
+  expect(page.data).toMatchObject({ total: 2, limit: 1, offset: 1 });
+  expect(page.data.items).toHaveLength(1);
+  expect(page.headers.get('cache-control')).toContain('no-store');
+  const filtered = await request('/api/v1/admin/privacy/requests?q=review-owner&status=OPEN', 'GET', undefined, adminCookie);
+  expect(filtered.data.total).toBe(1);
+  expect(filtered.data.items[0]).toMatchObject({ id: first.data.id, email: 'review-owner@example.com' });
+  expect((await request('/api/v1/admin/privacy/requests?limit=101', 'GET', undefined, adminCookie)).status).toBe(422);
+  expect((await request(`${path}/review`, 'POST', { note: '  ' }, adminCookie)).status).toBe(422);
+  expect((await request(`${path}/review`, 'POST', { note: 'a'.repeat(1001) }, adminCookie)).status).toBe(422);
+  expect((await request('/api/v1/admin/privacy/requests/00000000-0000-4000-8000-000000000000/review',
+    'POST', { note: 'Valid review note' }, adminCookie)).status).toBe(404);
+  db.exec(`CREATE TRIGGER reject_privacy_review_audit BEFORE INSERT ON audit_events
+    WHEN NEW.action='privacy_request.review'
+    BEGIN SELECT RAISE(ABORT,'Simulated audit failure'); END;`);
+  expect((await request(`${path}/review`, 'POST', { note: 'Must roll back with audit' }, adminCookie)).status).toBe(500);
+  expect(db.prepare('SELECT status FROM account_privacy_requests WHERE id=?').get(first.data.id))
+    .toEqual({ status: 'OPEN' });
+  db.exec('DROP TRIGGER reject_privacy_review_audit');
+
+  const reviewed = await request(`${path}/review`, 'POST', { note: '  Check retention obligations before action.  ' }, adminCookie);
+  expect(reviewed.data).toMatchObject({ id: first.data.id, status: 'IN_REVIEW' });
+  expect(reviewed.headers.get('cache-control')).toContain('no-store');
+  expect((await request('/api/v1/admin/privacy/requests?status=IN_REVIEW', 'GET', undefined, adminCookie)).data.total).toBe(1);
+  await request(`${path}/review`, 'POST', { note: 'Second private note.' }, adminCookie);
+  const history = await request(`${path}/history`, 'GET', undefined, adminCookie);
+  expect(history.data.items).toHaveLength(2);
+  expect(history.data.items).toEqual(expect.arrayContaining([
+    expect.objectContaining({
+      actor_id: admin.id, action: 'privacy_request.review',
+      metadata: JSON.stringify({ note: 'Check retention obligations before action.', previousStatus: 'OPEN' }),
+    }),
+  ]));
+  expect(() => db.prepare("DELETE FROM audit_events WHERE subject_id=?").run(first.data.id)).toThrow();
+  const ownRequests = await request('/api/v1/auth/privacy/requests', 'GET', undefined, owner.cookie);
+  expect(ownRequests.data[0].status).toBe('IN_REVIEW');
+  expect(JSON.stringify(ownRequests.data)).not.toContain('private note');
+  expect((await request('/api/v1/auth/privacy/requests', 'GET', undefined, other.cookie)).data)
+    .not.toContainEqual(expect.objectContaining({ id: first.data.id }));
+  const exported = await request('/api/v1/auth/privacy/export', 'GET', undefined, owner.cookie);
+  expect(JSON.stringify(exported.data)).not.toContain('retention obligations');
+  const duplicate = await request('/api/v1/auth/privacy/requests', 'POST', { requestType: 'deletion' }, owner.cookie);
+  expect(duplicate.data).toMatchObject({ id: first.data.id, status: 'IN_REVIEW' });
+  expect((db.prepare('SELECT status FROM users WHERE id=?').get(owner.id) as { status: string }).status).toBe('active');
+  db.prepare("UPDATE account_privacy_requests SET status='CLOSED' WHERE id=?").run(first.data.id);
+  expect((await request(`${path}/review`, 'POST', { note: 'Must not reopen' }, adminCookie)).status).toBe(409);
+  expect((await request(`${path}/history`, 'GET', undefined, adminCookie)).data.items).toHaveLength(2);
+});
