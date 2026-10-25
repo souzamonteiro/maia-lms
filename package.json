@@ -17,6 +17,7 @@
     "start": "node apps/api/dist/server.js",
     "admin": "node scripts/admin.mjs",
     "backup": "node scripts/backup.mjs",
+    "backup:bundle": "node scripts/backup-bundle.mjs",
     "test:e2e": "playwright test"
   },
   "devDependencies": {

@@ -123,6 +123,24 @@ sudo -u maia-lms node --env-file=/etc/maia-lms/app.env \
 
 Use new filenames; the command refuses to overwrite files. Schedule daily backups, send encrypted copies to another machine and define retention. Back up storage and configuration separately. The file contains personal data, sessions and pending email tokens; restrict access to backups too.
 
+For a local bundle containing a verified SQLite snapshot and a copy of the complete
+media storage root, set both `DATABASE_URL` and `STORAGE_ROOT` in the process
+environment and use a new destination directory:
+
+```bash
+npm run backup:bundle -- /path/to/new-backup-directory
+```
+
+The bundle contains `database.sqlite`, `storage/`, and a `manifest.json` with
+database checks, per-file SHA-256 hashes, sizes, and referenced-object validation.
+It refuses to overwrite a destination, follow storage symlinks, or produce a
+successful manifest if any database-referenced storage object is missing.
+Environment files, credentials, and other secrets are intentionally excluded.
+The database snapshot and media copy are separate operations; stop API and worker
+writes before a production recovery point that must be mutually consistent. The
+bundle feature is locally tested and does not replace off-site encryption,
+retention policy, or a rehearsed restore on the target host.
+
 Test restoration in an isolated directory first, running `PRAGMA integrity_check` and `PRAGMA foreign_key_check` and starting a test instance with the restored file. For actual recovery:
 
 1. Stop `maia-lms-worker` and `maia-lms`.
