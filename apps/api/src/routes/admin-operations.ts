@@ -40,12 +40,17 @@ export function adminOperationsRouter(db: Database.Database, config: Config): Ro
       COALESCE(sum(CASE WHEN processed_at IS NULL AND attempts<5 THEN 1 ELSE 0 END),0) AS pending,
       COALESCE(sum(CASE WHEN processed_at IS NULL AND attempts>=5 THEN 1 ELSE 0 END),0) AS exhausted,
       COALESCE(sum(CASE WHEN event_type='email.send' AND processed_at IS NULL AND attempts<5 THEN 1 ELSE 0 END),0) AS emailPending,
-      COALESCE(sum(CASE WHEN event_type='email.send' AND processed_at IS NULL AND attempts>=5 THEN 1 ELSE 0 END),0) AS emailExhausted
+      COALESCE(sum(CASE WHEN event_type='email.send' AND processed_at IS NULL AND attempts>=5 THEN 1 ELSE 0 END),0) AS emailExhausted,
+      COALESCE(sum(CASE WHEN processed_at IS NULL AND attempts<5 AND julianday(available_at)<=julianday('now') THEN 1 ELSE 0 END),0) AS ready,
+      CAST(round(max(CASE WHEN processed_at IS NULL AND attempts<5 AND julianday(available_at)<=julianday('now')
+        THEN (julianday('now')-julianday(available_at))*86400 END)) AS INTEGER) AS oldestReadyDelaySeconds
       FROM outbox`).get() as {
       pending: number;
       exhausted: number;
       emailPending: number;
       emailExhausted: number;
+      ready: number;
+      oldestReadyDelaySeconds: number | null;
     };
     const payments = Object.fromEntries((db.prepare(`SELECT state,count(*) AS total
       FROM orders GROUP BY state`).all() as Array<{ state: string; total: number }>)

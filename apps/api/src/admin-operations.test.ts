@@ -121,3 +121,30 @@ it('reports a weighted duration average for measured responses within the seven-
     responseDuration: { measuredRequests: 3, averageMs: 150 },
   });
 });
+
+it('reports ready queue count and delay using worker eligibility without exposing message data', async () => {
+    const cookie = await account('queue-admin@example.com', 'admin');
+    db.exec(`UPDATE outbox SET attempts=attempts+1,lease_token='fixture-claim' WHERE processed_at IS NULL;
+      UPDATE outbox SET processed_at=datetime('now'),lease_token=NULL WHERE processed_at IS NULL;`);
+    const summary = async () => (await request('/api/v1/admin/operations', 'GET', undefined, cookie)).data.outbox;
+    expect(await summary()).toMatchObject({ ready: 0, oldestReadyDelaySeconds: null });
+    db.exec(`INSERT INTO outbox(id,event_type,payload,attempts,available_at,processed_at,lease_token) VALUES
+      ('ready','email.send','{}',0,datetime('now','-120 seconds'),NULL,NULL),
+      ('expired-lease','certificate.generate','{}',1,datetime('now','-300 seconds'),NULL,'expired'),
+      ('future','email.send','{}',0,datetime('now','+1 hour'),NULL,NULL),
+      ('leased','email.send','{}',1,datetime('now','+5 minutes'),NULL,'active'),
+      ('exhausted','email.send','{}',5,datetime('now','-1 day'),NULL,NULL),
+      ('processed','email.send','{}',1,datetime('now','-2 days'),datetime('now'),NULL);`);
+    const queue = await summary();
+    expect(queue).toMatchObject({ pending: 4, ready: 2 });
+    expect(queue.oldestReadyDelaySeconds).toBeGreaterThanOrEqual(300);
+    expect(queue.oldestReadyDelaySeconds).toBeLessThan(305);
+    db.exec(`UPDATE outbox SET attempts=attempts+1,lease_token='fixture-complete' WHERE id IN ('ready','expired-lease');
+      UPDATE outbox SET processed_at=datetime('now'),lease_token=NULL WHERE id IN ('ready','expired-lease');`);
+    expect(await summary()).toMatchObject({ pending: 2, ready: 0, oldestReadyDelaySeconds: null });
+    db.exec("INSERT INTO outbox(id,event_type,payload,available_at) VALUES('just-ready','email.send','{}',datetime('now'))");
+    const justReady = await summary();
+    expect(justReady.ready).toBe(1);
+    expect(justReady.oldestReadyDelaySeconds).toBeGreaterThanOrEqual(0);
+    expect(justReady.oldestReadyDelaySeconds).toBeLessThan(5);
+});

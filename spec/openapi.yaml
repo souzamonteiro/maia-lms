@@ -2312,7 +2312,22 @@ paths:
                         lastSeenAt: {type: string}
                         stoppedAt: {type: [string, 'null']}
                   media: {type: object}
-                  outbox: {type: object}
+                  outbox:
+                    type: object
+                    required: [pending, exhausted, emailPending, emailExhausted, ready, oldestReadyDelaySeconds]
+                    properties:
+                      pending: {type: integer, minimum: 0}
+                      exhausted: {type: integer, minimum: 0}
+                      emailPending: {type: integer, minimum: 0}
+                      emailExhausted: {type: integer, minimum: 0}
+                      ready:
+                        type: integer
+                        minimum: 0
+                        description: Unprocessed messages with attempts below five and available_at at or before now, matching worker eligibility (including expired leases).
+                      oldestReadyDelaySeconds:
+                        type: [integer, 'null']
+                        minimum: 0
+                        description: Rounded seconds since the earliest available_at among ready messages. Null if none are ready. Not age since creation, SMTP delivery latency, or an alert threshold.
                   payments: {type: object, additionalProperties: {type: integer}}
                   storage: {type: [object, 'null']}
                   playback:

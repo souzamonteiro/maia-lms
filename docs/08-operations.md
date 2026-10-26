@@ -212,6 +212,15 @@ outdated-data warning and its last successful timestamp. Errors receive keyboard
 focus; use the refresh button to retry. A successful retry clears the warning.
 These states are available in en/pt-BR/es. The timestamp is not a freshness SLA.
 
+Message queue diagnostics distinguish pending messages from those ready for
+processing: unprocessed jobs with fewer than five attempts whose `available_at`
+has arrived. The longest wait is rounded seconds since the earliest availability
+among those ready messages, not time since creation or SMTP delivery duration.
+The rule matches the worker: expired reservations count as ready; future retries
+and active reservations do not, and exhausted/processed jobs are excluded.
+When no message is ready, the panel says so and the API returns a null delay.
+No new age-based alert threshold or automatic retry policy is introduced.
+
 Migration 090 records each worker process every ten seconds;
 heartbeats older than 45 seconds are stale. `/readyz` checks only API/SQLite
 readiness and is not a worker health check. Migration 092 stores daily playback

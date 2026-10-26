@@ -1073,6 +1073,12 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   reconciliation, and production log review remain uninstrumented; alerts are
   visible in the panel but have no external delivery channel. Keep OPS-03 open for
   those metrics and alert-delivery qualification.
+  Queue diagnostics now show the number of ready messages and the longest wait
+  since `available_at`, using the worker's eligibility rule (unprocessed,
+  attempts below five, availability reached, including expired leases).
+  Future retries/active leases and exhausted messages are excluded; an empty
+  ready queue has an explicit no-ready state, not a measured zero delay.
+  This is neither SMTP delivery latency nor an automatic alert threshold.
 - [ ] **OPS-04 — Real capacity on Maia Edge.**
   Define audience/bitrate/upload limits and test host, VPN, and VPS bandwidth,
   disk, and SQLite/FFmpeg concurrency. Dependencies: PLAY-02, OPS-01. Acceptance:

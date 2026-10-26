@@ -1882,3 +1882,24 @@ rerun was needed for this static UI change; the last full result remains
 202 tests. OPS-03 remains open for telemetry and external alert delivery.
 No Firefox/device/screen-reader qualification, deploy, host changes or changes
 to the user's running instance were performed.
+
+## Ready queue diagnostics — October 26, 2026
+
+OPS-03 now returns `outbox.ready` and `oldestReadyDelaySeconds` and displays
+them in en/pt-BR/es. Eligibility matches worker selection: unprocessed jobs,
+attempts below five and availability at/before now. Expired leases participate;
+future availability, processed jobs and exhausted attempts do not. Delay is
+rounded seconds since the earliest ready availability, not job creation or SMTP
+delivery latency. No ready jobs returns null with an explicit translated empty
+state. Existing pending/exhausted counters are unchanged, with no new personal
+data, schema migration, alert threshold or scheduling behavior.
+
+Validation: seven focused API/translation tests, build and lint passed.
+API fixtures exercise empty and just-ready queues, a five-minute expired lease,
+future availability/active leases, processed jobs and exhausted attempts using
+valid claim/completion transitions. Chromium operations workflows check numeric
+presentation in three locales and the null-delay empty state with mocked queue
+values; existing refresh-failure recovery remains covered. The OpenAPI contract
+and operations guide document both fields and their meaning. Full-suite/browser
+qualification is separate: the last full regression remains 202 tests.
+No deploy, host configuration changes or changes to the running user instance.

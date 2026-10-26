@@ -82,6 +82,10 @@ export async function mountAdminOperations({ app, api, t, e, locale }) {
 
       app.querySelector('#ops-outbox').innerHTML = [
         fact(t('adminOpsOutboxPending'), number(summary.outbox.pending)),
+        fact(t('adminOpsOutboxReady'), number(summary.outbox.ready)),
+        fact(t('adminOpsOutboxDelay'), summary.outbox.oldestReadyDelaySeconds === null
+          ? t('adminOpsOutboxNoReady')
+          : t('adminOpsOutboxSeconds', { value: number(summary.outbox.oldestReadyDelaySeconds) })),
         fact(t('adminOpsOutboxExhausted'), number(summary.outbox.exhausted)),
         fact(t('adminOpsEmailPending'), number(summary.outbox.emailPending)),
         fact(t('adminOpsEmailExhausted'), number(summary.outbox.emailExhausted)),

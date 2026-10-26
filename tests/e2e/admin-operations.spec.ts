@@ -34,6 +34,8 @@ test('administrator inspects operational status and refreshes the summary', asyn
     summary.playback.requests = 15;
     summary.playback.byResource = { mp4: 15 };
     summary.playback.byStatusClass = { 1: 1, 2: 2, 3: 3, 4: 4, 5: 5 };
+    summary.outbox.ready = 2;
+    summary.outbox.oldestReadyDelaySeconds = 123;
     await route.fulfill({ response, json: summary });
   });
 
@@ -47,6 +49,12 @@ test('administrator inspects operational status and refreshes the summary', asyn
     await expect(measured.locator('dd')).toHaveText('1');
     const duration = page.locator('#ops-playback > div').filter({ hasText: durationLabel });
     await expect(duration.locator('dd')).toHaveText(/^[\d.,]+ ms$/);
+    const queueLabel = locale === 'en' ? 'Messages ready for processing'
+      : locale === 'pt-BR' ? 'Mensagens prontas para processamento' : 'Mensajes listos para procesar';
+    await expect(page.locator('#ops-outbox > div').filter({
+      has: page.getByText(queueLabel, { exact: true }),
+    }).locator('dd')).toHaveText('2');
+    await expect(page.locator('#ops-outbox')).toContainText('123 s');
     await expect(page.locator('#ops-playback-status dd')).toHaveText(['1', '2', '3', '4', '5']);
     await expect(page.getByRole('heading', {
       name: locale === 'en' ? 'Media responses by HTTP status'
@@ -64,6 +72,15 @@ test('administrator inspects operational status and refreshes the summary', asyn
   }
   await page.locator('#languageSelect').selectOption('en');
   await expect(page.getByRole('heading', { name: 'Operations', exact: true })).toBeVisible();
+  await page.route('**/api/v1/admin/operations', async route => {
+    const response = await route.fetch();
+    const summary = await response.json();
+    summary.outbox.ready = 0;
+    summary.outbox.oldestReadyDelaySeconds = null;
+    await route.fulfill({ response, json: summary });
+  }, { times: 1 });
+  await page.locator('#ops-refresh').click();
+  await expect(page.locator('#ops-outbox')).toContainText('No messages ready');
 });
 
 test('operations distinguishes unavailable and outdated snapshots and recovers after retry', async ({ page }) => {
@@ -81,8 +98,12 @@ test('operations distinguishes unavailable and outdated snapshots and recovers a
       ['pt-BR', 'Status operacional indisponível.', 'Exibindo dados desatualizados de', 'Carregando status operacional…'],
       ['es', 'Estado operativo no disponible.', 'Se muestran datos desactualizados de', 'Cargando estado operativo…'],
     ]) {
-      await page.locator('#languageSelect').selectOption(locale);
-      await expect(snapshot).toBeVisible();
+        const [localeResponse] = await Promise.all([
+          page.waitForResponse(response => response.url().endsWith('/api/v1/admin/operations')),
+          page.locator('#languageSelect').selectOption(locale),
+        ]);
+        await localeResponse.finished();
+        await expect(snapshot).toBeVisible();
       await expect(snapshot).toHaveAttribute('aria-busy', 'false');
       await page.route('**/api/v1/admin/operations', route => route.fulfill({
         status: 503, contentType: 'application/json',
