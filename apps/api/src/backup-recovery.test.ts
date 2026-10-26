@@ -60,6 +60,13 @@ it.runIf(process.env.VIDEO_TEST_REAL === '1')(
       db.prepare("UPDATE users SET role=?,verified_at=datetime('now') WHERE id=?").run(role, user.id);
       return login(email);
     }
+    function lastEmailToken() {
+      const mail = db.prepare("SELECT payload FROM outbox WHERE event_type='email.send' ORDER BY rowid DESC LIMIT 1")
+        .get() as { payload: string };
+      const token = (JSON.parse(mail.payload).text as string).match(/token=([a-f0-9]{64})/)?.[1];
+      expect(token).toBeDefined();
+      return token!;
+    }
     try {
       db.pragma('journal_mode = WAL');
       db.pragma('foreign_keys = ON');
@@ -67,6 +74,7 @@ it.runIf(process.env.VIDEO_TEST_REAL === '1')(
       await start();
       const admin = await account('admin@recovery.test', 'admin');
       const learner = await account('learner@recovery.test');
+      const oldVerificationToken = lastEmailToken();
       const courseDraft = {
         slug: 'recovery-course',
         title: 'Recovery course',
@@ -136,6 +144,12 @@ it.runIf(process.env.VIDEO_TEST_REAL === '1')(
         ...courseDraft, title: 'New published title', expectedRevisionId: current.current_revision_id,
       }, admin)).status).toBe(200);
       expect((await request(`/admin/courses/${course.id}/publish`, 'POST', {}, admin)).status).toBe(200);
+      expect((await request('/auth/forgot-password', 'POST', { email: 'learner@recovery.test' })).status).toBe(204);
+      const oldResetToken = lastEmailToken();
+      expect((await request('/auth/change-email', 'POST', {
+        email: 'changed@recovery.test', currentPassword: password,
+      }, learner)).status).toBe(204);
+      const oldEmailChangeToken = lastEmailToken();
       await stop();
       db.close();
       execFileSync(process.execPath, [path.resolve('scripts/backup-bundle.mjs'), bundle], {
@@ -151,6 +165,13 @@ it.runIf(process.env.VIDEO_TEST_REAL === '1')(
       config.DATABASE_URL = path.join(recovery, 'database.sqlite');
       await start();
       expect((await fetch(`${base}/readyz`)).status).toBe(200);
+      expect((await request('/auth/privacy/export', 'GET', undefined, learner)).status).toBe(401);
+      expect((await request('/admin/courses', 'GET', undefined, admin)).status).toBe(401);
+      expect((await request('/auth/verify-email', 'POST', { token: oldVerificationToken })).status).toBe(400);
+      expect((await request('/auth/reset-password', 'POST', { token: oldResetToken, password })).status).toBe(400);
+      expect((await request('/auth/confirm-email-change', 'POST', { token: oldEmailChangeToken })).status).toBe(400);
+      expect((await request('/auth/forgot-password', 'POST', { email: 'learner@recovery.test' })).status).toBe(204);
+      expect((await request('/auth/reset-password', 'POST', { token: lastEmailToken(), password })).status).toBe(200);
       const restoredLearner = await login('learner@recovery.test');
       const outsider = await account('outsider@recovery.test');
       expect((await (await request(`/courses/${course.id}`)).json()).title).toBe('New published title');

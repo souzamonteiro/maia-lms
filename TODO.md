@@ -1047,7 +1047,13 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   isolated application using only the recovered paths. It checks old-revision
   access, MP4 Range/HLS delivery, captions/poster, progress resumption,
   certificate verification/PDF identity and authorization after recovery.
-  Keep open for configuration/session recovery policy, off-site
+  Restoring a bundle now invalidates recovered sessions, verification/reset/email
+  change links and pending MFA login challenges only in the new copy, atomically.
+  The restored manifest records the policy/counts/source hash and its new database
+  hash; both source and recovery remain independently verifiable. Focused tests
+  cover rollback, preserved credentials/preferences/MFA enrollment and rejection
+  of old cookies/links before fresh recovery/login in the real-media HTTP rehearsal.
+  Keep open for configuration recovery, post-backup credential/MFA review, off-site
   encryption/retention, and host/device qualification.
 - [ ] **OPS-03 — Observability and dashboard operations (local dashboard; telemetry and alert delivery open).**
   Queue/transcode/playback/SMTP/payment/disk metrics, logs without tokens/PII,

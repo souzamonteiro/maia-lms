@@ -1928,3 +1928,34 @@ noscript HTML. Editor diagnostics and `git diff --check` passed.
 SEO-01 stays open for external crawler and remaining public-page qualification.
 No new complete browser suite, Firefox/WebKit/device qualification, deployment,
 host changes or changes to the user's running instance were performed.
+
+## Restored authentication invalidation — October 26, 2026
+
+OPS-02 applies the owner-selected invalidation policy on every bundle restoration.
+Only the newly copied database is changed: account session versions advance,
+HTTP sessions expire, legacy sessions are revoked, unused email tokens and
+email-change confirmations are consumed, and pending MFA login challenges are
+consumed in one transaction. Password hashes, addresses/languages, MFA enrollment
+and recovery codes are preserved. Source/live databases and source bundles remain
+unchanged. The restored completion manifest records policy/time/counts/provenance
+and recalculated database size/hash, and is written only after re-verification.
+
+Validation: 18 focused backup and real-media HTTP recovery tests passed;
+build, lint, editor diagnostics and `git diff --check` passed. Tests cover source
+byte preservation, independent verification of both bundles, expired sessions,
+consumed tokens/challenges, preserved previously consumed tokens and account/MFA
+data, plus full rollback/no completion marker after injected invalidation failure.
+The HTTP rehearsal rejects pre-backup learner/admin cookies and three old link
+types, completes fresh password recovery/login, and retains its old-revision
+media/progress/certificate checks. An initial test captured the last email after
+certificate issuance instead of registration; token capture was corrected to the
+registration point. No production behavior was changed to accommodate the test.
+
+This does not rotate restored passwords/MFA keys or reconcile credential changes
+after the snapshot. Pending mail is preserved and must be reviewed before worker
+startup, because old messages may contain invalidated links. Older snapshots
+missing required authentication schema fail explicitly, without silently weakening
+the policy. Configuration recovery, encrypted off-site retention and host/device
+qualification remain open. No new full regression/browser suite was run; the last
+complete regression remains 206 tests. No deployment, host changes or changes to
+the user's running instance were performed.

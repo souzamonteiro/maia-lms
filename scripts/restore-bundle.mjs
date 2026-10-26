@@ -142,8 +142,45 @@ if (verifyOnly) {
   }
   // The completion marker is written only after the restored files verify.
   await verify(destination, manifest);
+  const databaseFile = path.join(destination, 'database.sqlite');
+  const restored = new Database(databaseFile, { fileMustExist: true });
+  const invalidatedAt = new Date().toISOString();
+  let invalidated;
+  try {
+    restored.pragma('foreign_keys = ON');
+    invalidated = restored.transaction(() => ({
+      accounts: restored.prepare('UPDATE users SET session_version=session_version+1').run().changes,
+      httpSessions: restored.prepare('UPDATE http_sessions SET expires_at=0 WHERE expires_at>0').run().changes,
+      legacySessions: restored.prepare('UPDATE sessions SET revoked_at=? WHERE revoked_at IS NULL')
+        .run(invalidatedAt).changes,
+      emailTokens: restored.prepare('UPDATE email_tokens SET used_at=? WHERE used_at IS NULL')
+        .run(invalidatedAt).changes,
+      emailChanges: restored.prepare('UPDATE account_email_changes SET used_at=? WHERE used_at IS NULL')
+        .run(invalidatedAt).changes,
+      mfaChallenges: restored.prepare('UPDATE auth_mfa_challenges SET consumed_at=? WHERE consumed_at IS NULL')
+        .run(invalidatedAt).changes,
+    })).immediate();
+  } finally {
+    restored.close();
+  }
+  const restoredManifest = {
+    ...manifest,
+    database: {
+      ...manifest.database,
+      size: regularFile(databaseFile).size,
+      sha256: await digest(databaseFile),
+    },
+    restoration: {
+      authenticationPolicy: 'invalidate',
+      invalidatedAt,
+      invalidated,
+      sourceDatabaseSha256: manifest.database.sha256,
+    },
+  };
+  await verify(destination, restoredManifest);
   const marker = path.join(destination, 'manifest.json');
-  fs.writeFileSync(marker, `${JSON.stringify(manifest, null, 2)}\n`, { flag: 'wx', mode: 0o600 });
+  fs.writeFileSync(marker, `${JSON.stringify(restoredManifest, null, 2)}\n`, { flag: 'wx', mode: 0o600 });
   console.log(`Verified restore: ${destination}`);
-  console.log('Configuration, migrations, session policy and service startup remain operator actions.');
+  console.log('Recovered sessions, pending email tokens and MFA login challenges have been invalidated.');
+  console.log('Configuration, migrations and service startup remain operator actions.');
 }

@@ -162,7 +162,31 @@ permissions, and revalidates the restored copy. It writes a completion manifest
 only for a successfully verified copy; failure can leave a partial directory
 without a completion manifest. Preserve it for diagnosis or choose a new directory
 for a retry. The command does not load `.env`, overwrite the live database,
-configure/start services, apply migrations, or invalidate sessions.
+configure/start services or apply migrations.
+
+Restoration now **always invalidates recovered authentication** in the new copy:
+it advances every account's session version, expires HTTP sessions, revokes legacy
+sessions, and consumes unused verification/password-reset/email-change tokens and
+pending MFA login challenges in one transaction. No source/live database or backup
+file is modified. Password hashes, account languages, verified addresses, enrolled
+courses, MFA enrollment/secrets and recovery-code records remain unchanged.
+Users must sign in again, request fresh email links, and restart any pending MFA
+login. This does not rotate credentials or recover security changes made after the
+backup; incident recovery still requires a separate credential/MFA review.
+
+The restored database therefore differs from the source snapshot. Its completion
+manifest contains recalculated database size/hash plus a `restoration` record
+with the policy, timestamp, affected-row counts and source database hash. Run
+`backup:verify` on either directory independently. Authentication changes failing
+roll back together, and no completion manifest is written. The restored schema
+must include `users.session_version`, `http_sessions`, `sessions`, `email_tokens`,
+`account_email_changes` and `auth_mfa_challenges`; older incompatible snapshots
+fail explicitly rather than skipping invalidation. Prepare/migrate a separate
+isolated copy before bundling such an older snapshot, never the preserved original.
+
+Pending outbox messages are preserved, including emails containing now-invalid
+links. Review the recovered queue before enabling the worker; recipients of old
+links must request new ones. Do not manually bypass outbox lease/retry invariants.
 
 The automated local recovery rehearsal runs with:
 
@@ -176,6 +200,8 @@ a certificate/PDF and records progress before backup. After stopping the source
 application and moving its database/storage offline, it restores and starts an
 isolated application to check old-revision MP4/Range/HLS, captions/poster,
 progress read/write, certificate verification/PDF bytes and access restrictions.
+It also rejects old learner/admin cookies and verification/reset/email-change
+links, then completes a fresh password recovery and login.
 This is HTTP delivery validation, not browser decoding or physical-device playback;
 no services or configuration on the target host are exercised.
 
@@ -191,7 +217,10 @@ Test restoration in an isolated directory first, running `PRAGMA integrity_check
 3. Place the verified backup in a **new** restoration directory with permissions for `maia-lms`; never overwrite a `.db` while leaving old WAL files alongside it.
 4. Set `DATABASE_URL` in `app.env` to the new file; restore the corresponding storage if applicable.
 5. Apply the selected release's migrations, restart and check `/readyz`, login and progress.
-6. Record recovery time and data loss since the backup. Decide whether old sessions and email tokens must be invalidated before reopening the site.
+6. Record recovery time and data loss since the backup. For bundle restoration,
+   verify the authentication invalidation record and require new sign-ins/links;
+   for manual SQLite-only recovery, invalidate recovered authentication separately.
+   Review pending mail and post-backup credential/MFA changes before reopening.
 
 ## Email and monitoring
 

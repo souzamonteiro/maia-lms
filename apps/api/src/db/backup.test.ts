@@ -120,6 +120,87 @@ it('creates a verifiable database-and-media bundle that can be restored in isola
   }
 });
 
+it.each([false, true])('invalidates restored authentication atomically (simulated failure: %s)', failure => {
+  const directory = mkdtempSync(join(tmpdir(), 'maia-backup-auth-test-'));
+  const source = join(directory, 'source.sqlite');
+  const storage = join(directory, 'storage');
+  const bundle = join(directory, 'bundle');
+  const recovery = join(directory, 'recovery');
+  mkdirSync(storage);
+  const db = new Database(source);
+  runMigrations(db);
+  try {
+    db.exec(`
+      INSERT INTO users(id,email,email_normalized,password_hash,locale)
+        VALUES('owner','owner@example.com','owner@example.com','unchanged-hash','es');
+      INSERT INTO http_sessions(sid,data,expires_at) VALUES('session','{"userId":"owner"}',9999999999999);
+      INSERT INTO sessions(id,user_id,hash,expires_at) VALUES('legacy','owner','hash','2099-01-01');
+      INSERT INTO email_tokens(id,user_id,token_hash,kind,expires_at)
+        VALUES('verify','owner','verify-hash','verify','2099-01-01'),
+          ('reset','owner','reset-hash','reset','2099-01-01'),
+          ('used','owner','used-hash','reset','2000-01-01');
+      UPDATE email_tokens SET used_at='2000-01-01' WHERE id='used';
+      INSERT INTO account_email_changes(id,user_id,email,email_normalized,token_hash,expires_at)
+        VALUES('change','owner','new@example.com','new@example.com','change-hash','2099-01-01');
+      INSERT INTO auth_mfa_challenges(token_hash,user_id,expires_at)
+        VALUES('challenge','owner','2099-01-01');
+      INSERT INTO totp_secrets(user_id,secret,verified_at) VALUES('owner','encrypted-secret','2000-01-01');
+      INSERT INTO totp_recovery_codes(user_id,code_hash) VALUES('owner','recovery-hash');
+    `);
+    if (failure) db.exec(`CREATE TRIGGER reject_recovery_challenge BEFORE UPDATE ON auth_mfa_challenges
+      BEGIN SELECT RAISE(ABORT,'Simulated invalidation failure'); END;`);
+    execFileSync(process.execPath, [resolve('scripts/backup-bundle.mjs'), bundle], {
+      env: { ...process.env, DATABASE_URL: source, STORAGE_ROOT: storage }, stdio: 'pipe',
+    });
+    const originalManifest = readFileSync(join(bundle, 'manifest.json'), 'utf8');
+    const originalDatabase = readFileSync(join(bundle, 'database.sqlite'));
+    const restore = () => execFileSync(process.execPath, [resolve('scripts/restore-bundle.mjs'), bundle, recovery],
+      { stdio: 'pipe' });
+    if (failure) {
+      expect(restore).toThrow(/Simulated invalidation failure/);
+      expect(existsSync(join(recovery, 'manifest.json'))).toBe(false);
+    } else {
+      restore();
+      const manifest = JSON.parse(readFileSync(join(recovery, 'manifest.json'), 'utf8'));
+      expect(manifest.restoration).toMatchObject({
+        authenticationPolicy: 'invalidate',
+        invalidated: { accounts: 1, httpSessions: 1, legacySessions: 1, emailTokens: 2, emailChanges: 1, mfaChallenges: 1 },
+        sourceDatabaseSha256: JSON.parse(originalManifest).database.sha256,
+      });
+      expect(manifest.database.sha256).not.toBe(manifest.restoration.sourceDatabaseSha256);
+      execFileSync(process.execPath, [resolve('scripts/restore-bundle.mjs'), '--verify', recovery], { stdio: 'pipe' });
+    }
+    const restored = new Database(join(recovery, 'database.sqlite'), { readonly: true });
+    try {
+      expect(restored.prepare('SELECT session_version,password_hash,locale,email FROM users').get())
+        .toEqual({ session_version: failure ? 0 : 1, password_hash: 'unchanged-hash', locale: 'es', email: 'owner@example.com' });
+      expect(restored.prepare('SELECT expires_at FROM http_sessions').get())
+        .toEqual({ expires_at: failure ? 9999999999999 : 0 });
+      expect(restored.prepare('SELECT revoked_at FROM sessions').get())
+        .toEqual({ revoked_at: failure ? null : expect.any(String) });
+      expect(restored.prepare('SELECT count(*) AS total FROM email_tokens WHERE used_at IS NULL').get())
+        .toEqual({ total: failure ? 2 : 0 });
+      expect(restored.prepare("SELECT used_at FROM email_tokens WHERE id='used'").get())
+        .toEqual({ used_at: '2000-01-01' });
+      expect(restored.prepare('SELECT used_at FROM account_email_changes').get())
+        .toEqual({ used_at: failure ? null : expect.any(String) });
+      expect(restored.prepare('SELECT consumed_at FROM auth_mfa_challenges').get())
+        .toEqual({ consumed_at: failure ? null : expect.any(String) });
+      expect(restored.prepare('SELECT secret FROM totp_secrets').get()).toEqual({ secret: 'encrypted-secret' });
+      expect(restored.prepare('SELECT used_at FROM totp_recovery_codes').get()).toEqual({ used_at: null });
+    } finally {
+      restored.close();
+    }
+    expect(readFileSync(join(bundle, 'manifest.json'), 'utf8')).toBe(originalManifest);
+    expect(readFileSync(join(bundle, 'database.sqlite'))).toEqual(originalDatabase);
+    expect(db.prepare('SELECT session_version FROM users').get()).toEqual({ session_version: 0 });
+    execFileSync(process.execPath, [resolve('scripts/restore-bundle.mjs'), '--verify', bundle], { stdio: 'pipe' });
+  } finally {
+    db.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 it.each([
   ['changed media', /checksum or size mismatch/],
   ['changed database', /checksum or size mismatch/],
