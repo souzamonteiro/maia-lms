@@ -1113,7 +1113,11 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   player, editor, and forms retain context when errors occur.
   Local delivery: application errors announce as assertive alerts and receive focus;
   successful notices remain polite status messages. E2E verifies translated login
-  errors and focus in en/pt-BR/es while retaining form input. Keep open for contrast,
+  errors and focus in en/pt-BR/es while retaining form input. Privacy-request
+  searches/pagination and saved reviews restore a useful keyboard focus;
+  failed list/history loads offer keyboard-operable retry with busy/live states,
+  preserving unsaved notes. Focused Chromium coverage checks failure/retry and
+  focus recovery. Keep open for contrast,
   zoom/mobile, captions, and the full author/learner workflow audit.
 - [ ] **SEO-01 — Indexable public pages (public SSR delivered locally; qualification open).**
   Useful server-rendered content, per-course title/description, canonical URLs,

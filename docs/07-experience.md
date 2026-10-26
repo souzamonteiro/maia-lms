@@ -207,6 +207,11 @@ The administrator navigation includes **Privacy requests** at `/admin/privacy`.
 Search by account email or request ID, filter by OPEN/IN_REVIEW/CLOSED, and use
 Previous/Next to browse pages of 25 requests. Empty, loading, error, and retry
 states are translated in en/pt-BR/es.
+Search and pagination updates focus the result summary; saving a review focuses
+the updated request heading. A failed list update focuses its retry button,
+and retrying keeps unsaved notes. Private history announces loading with
+`aria-busy` and exposes a keyboard-operable retry after failure; a successful
+retry returns focus to the history summary.
 
 Each non-closed request has a private review-note field and **Record review**.
 The first note changes OPEN to IN_REVIEW; additional notes preserve IN_REVIEW.

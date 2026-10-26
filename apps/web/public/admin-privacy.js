@@ -8,12 +8,14 @@ export async function mountAdminPrivacy({ app, api, t, e, notify, locale, me }) 
   const list = app.querySelector('#privacy-list');
   const previous = app.querySelector('#privacy-prev');
   const next = app.querySelector('#privacy-next');
+  const summary = app.querySelector('#privacy-summary');
+  summary.tabIndex = -1;
   search.elements.q.value = state.filters.q;
   search.elements.status.value = state.filters.status;
   let generation = 0;
   const date = value => e(new Date(value).toLocaleString(locale));
 
-  async function load() {
+  async function load({ focusResults = false, focusRequestId } = {}) {
     const current = ++generation;
     previous.disabled = true;
     next.disabled = true;
@@ -32,10 +34,16 @@ export async function mountAdminPrivacy({ app, api, t, e, notify, locale, me }) 
         const card = document.createElement('article');
         card.className = 'card privacy-request';
         card.innerHTML = `<h2>${e(request.email)}</h2><p>${e(request.id)}</p><p>${t('privacyRequestReceived')} · ${t(`privacyStatus${request.status}`)} · ${date(request.created_at)}</p><details><summary>${t('adminPrivacyHistory')}</summary><div class="privacy-history"></div></details>${request.status !== 'CLOSED' ? `<form class="privacy-review"><label>${t('adminPrivacyNote')}<textarea name="note" minlength="5" maxlength="1000" required></textarea></label><button type="submit">${t('adminPrivacyReview')}</button></form>` : ''}`;
+        const heading = card.querySelector('h2');
+        heading.tabIndex = -1;
         const history = card.querySelector('details');
-        history.addEventListener('toggle', async () => {
-          if (!history.open || history.dataset.loaded) return;
-          const content = card.querySelector('.privacy-history');
+        const content = card.querySelector('.privacy-history');
+        content.setAttribute('aria-live', 'polite');
+        let historyLoading = false;
+        async function loadHistory(focusAfterRetry = false) {
+          if (historyLoading) return;
+          historyLoading = true;
+          content.setAttribute('aria-busy', 'true');
           content.textContent = t('adminPrivacyLoading');
           try {
             const result = await api(`/admin/privacy/requests/${request.id}/history`);
@@ -43,9 +51,20 @@ export async function mountAdminPrivacy({ app, api, t, e, notify, locale, me }) 
               ? `<ol>${result.items.map(entry => `<li>${date(entry.occurred_at)} · ${e(entry.actor_id)}<p>${e(JSON.parse(entry.metadata).note)}</p></li>`).join('')}</ol>`
               : `<p>${t('adminPrivacyNoHistory')}</p>`;
             history.dataset.loaded = 'true';
+            if (focusAfterRetry) history.querySelector('summary').focus();
           } catch (error) {
-            content.textContent = error.message || t('genericError');
+            content.innerHTML = `<p role="alert">${e(error.message || t('genericError'))}</p><button type="button">${t('retry')}</button>`;
+            content.querySelector('button').addEventListener('click', () => {
+              void loadHistory(true);
+            });
+            if (focusAfterRetry) content.querySelector('button').focus();
+          } finally {
+            historyLoading = false;
+            content.setAttribute('aria-busy', 'false');
           }
+        }
+        history.addEventListener('toggle', () => {
+          if (history.open && !history.dataset.loaded) void loadHistory();
         });
         const reviewForm = card.querySelector('form');
         if (reviewForm) {
@@ -65,7 +84,7 @@ export async function mountAdminPrivacy({ app, api, t, e, notify, locale, me }) 
               { note });
             if (state.notes.get(request.id) === note) state.notes.delete(request.id);
             notify(t('adminPrivacySaved'));
-            await load();
+            await load({ focusResults: true, focusRequestId: request.id });
           } catch (error) {
             notify(error);
           } finally {
@@ -73,14 +92,19 @@ export async function mountAdminPrivacy({ app, api, t, e, notify, locale, me }) 
           }
         });
         list.append(card);
+        if (focusRequestId === request.id) heading.dataset.reviewFocus = 'true';
       }
       previous.disabled = state.offset === 0;
       next.disabled = state.offset + result.limit >= result.total;
+      if (focusResults)
+        (list.querySelector('[data-review-focus]') ?? summary).focus();
     } catch (error) {
       if (current !== generation) return;
       app.querySelector('#privacy-summary').textContent = '';
       list.innerHTML = `<p role="alert">${e(error.message || t('genericError'))}</p><button type="button">${t('retry')}</button>`;
-      list.querySelector('button').addEventListener('click', load);
+      const retry = list.querySelector('button');
+      retry.addEventListener('click', () => { void load({ focusResults: true }); });
+      if (focusResults) retry.focus();
     } finally {
       if (current === generation) list.setAttribute('aria-busy', 'false');
     }
@@ -89,9 +113,9 @@ export async function mountAdminPrivacy({ app, api, t, e, notify, locale, me }) 
     event.preventDefault();
     state.filters = Object.fromEntries(new FormData(search));
     state.offset = 0;
-    void load();
+    void load({ focusResults: true });
   });
-  previous.addEventListener('click', () => { state.offset = Math.max(0, state.offset - 25); void load(); });
-  next.addEventListener('click', () => { state.offset += 25; void load(); });
+  previous.addEventListener('click', () => { state.offset = Math.max(0, state.offset - 25); void load({ focusResults: true }); });
+  next.addEventListener('click', () => { state.offset += 25; void load({ focusResults: true }); });
   await load();
 }

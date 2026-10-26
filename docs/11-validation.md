@@ -1820,3 +1820,23 @@ decoding, physical-device playback or host/systemd/container recovery. No browse
 suite was rerun; no deploy, host changes or changes to the user's existing test
 instance were performed. OPS-02 remains open for configuration/session recovery
 policy, off-site encrypted retention and target-host qualification.
+
+## Privacy review keyboard recovery — October 26, 2026
+
+UX-01 advanced locally: privacy-request search/pagination focuses the result
+summary, while a successful review focuses its updated request heading. List
+failures focus a retry button and retain unsaved notes across retry. Private
+history now has a polite live region, busy state and explicit retry instead of
+requiring the user to close/reopen it. Keyboard retry returns focus to the
+history summary after success, or to retry after another failure.
+
+Validation: three targeted Chromium privacy/account workflows passed against a
+disposable fixture on port 4330. They check search-error retry using Enter,
+retained notes, focus after search/review, history-error retry using Enter,
+busy state, escaped private history and existing locale/access isolation.
+Seven focused API/privacy/i18n tests and lint passed; `git diff --check` passed.
+No build or full-suite rerun was needed for this static JavaScript-only change;
+the preceding full regression remains 202 tests, not a new full-suite result.
+No Firefox or screen-reader/device qualification, deploy, host changes or
+changes to the existing user-test instance were performed. UX-01 remains open
+for the full accessibility audit.
