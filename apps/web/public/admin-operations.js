@@ -18,11 +18,27 @@ const playbackResourceKeys = {
   hls_playlist: 'adminOpsPlaybackPlaylist',
   hls_segment: 'adminOpsPlaybackSegment',
 };
+const playbackStatusKeys = {
+  1: 'adminOpsPlaybackInformational',
+  2: 'adminOpsPlaybackSuccess',
+  3: 'adminOpsPlaybackRedirect',
+  4: 'adminOpsPlaybackClientError',
+  5: 'adminOpsPlaybackServerError',
+};
 
 export async function mountAdminOperations({ app, api, t, e, locale }) {
   app.innerHTML = `<a href="/admin">${t('administer')}</a><h1>${t('adminOperationsTitle')}</h1><div class="actions"><button type="button" id="ops-refresh">${t('adminOpsRefresh')}</button><a href="/admin/media">${t('adminMediaTitle')}</a><a href="/admin/orders">${t('adminOrdersTitle')}</a></div><p id="ops-updated" role="status" aria-live="polite"></p><p id="ops-error" role="alert"></p><section class="ops-section"><h2>${t('adminOpsWorkers')}</h2><div id="ops-workers"></div></section><section class="ops-section"><h2>${t('adminOpsMedia')}</h2><dl id="ops-media" class="ops-grid"></dl></section><section class="ops-section"><h2>${t('adminOpsOutbox')}</h2><dl id="ops-outbox" class="ops-grid"></dl></section><section class="ops-section"><h2>${t('adminOpsPayments')}</h2><dl id="ops-payments" class="ops-grid"></dl></section><section class="ops-section"><h2>${t('adminOpsStorage')}</h2><dl id="ops-storage" class="ops-grid"></dl></section><section class="ops-section"><h2>${t('adminOpsAlerts')}</h2><ul id="ops-alerts"></ul></section><section class="ops-section"><h2>${t('adminOpsPlayback')}</h2><p id="ops-playback-total"></p><dl id="ops-playback" class="ops-grid"></dl></section>`;
 
   const refresh = app.querySelector('#ops-refresh');
+  const playbackSection = app.querySelector('#ops-playback').parentElement;
+  const statusHeading = document.createElement('h3');
+  statusHeading.textContent = t('adminOpsPlaybackStatus');
+  const statusExplanation = document.createElement('p');
+  statusExplanation.textContent = t('adminOpsPlaybackStatusExplanation');
+  const statusCounts = document.createElement('dl');
+  statusCounts.id = 'ops-playback-status';
+  statusCounts.className = 'ops-grid';
+  playbackSection.append(statusHeading, statusExplanation, statusCounts);
   const number = value => new Intl.NumberFormat(locale).format(Number(value) || 0);
   const fact = (label, value) => `<div><dt>${e(label)}</dt><dd>${e(value)}</dd></div>`;
   const formatBytes = value => `${number(value / 1024 ** 3)} GiB`;
@@ -82,6 +98,9 @@ export async function mountAdminOperations({ app, api, t, e, locale }) {
             ? t('adminOpsPlaybackUnmeasured')
             : t('adminOpsPlaybackMilliseconds', { value: number(summary.playback.responseDuration.averageMs) })),
         ].join('');
+      statusCounts.innerHTML = Object.entries(playbackStatusKeys)
+        .map(([statusClass, key]) => fact(t(key), number(summary.playback.byStatusClass[statusClass] ?? 0)))
+        .join('');
 
       const alerts = app.querySelector('#ops-alerts');
       alerts.replaceChildren();

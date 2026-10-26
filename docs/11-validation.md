@@ -1840,3 +1840,23 @@ the preceding full regression remains 202 tests, not a new full-suite result.
 No Firefox or screen-reader/device qualification, deploy, host changes or
 changes to the existing user-test instance were performed. UX-01 remains open
 for the full accessibility audit.
+
+## Playback HTTP status breakdown — October 26, 2026
+
+OPS-03 now exposes the existing seven-day `byStatusClass` aggregates on the
+operations dashboard in en/pt-BR/es. All five classes (1xx–5xx) appear in stable
+order, including explicit zero counts. The panel explains that request counts
+are not viewer counts or failed playback sessions; 4xx includes denied access
+and missing resources, whereas 5xx indicates server errors. No new telemetry,
+personal data, schema migration or API contract change was introduced.
+
+Validation: the targeted Chromium operations workflow passed on disposable
+port 4330. It checks an empty window, a real missing-video 404 counted in 4xx,
+and mocked nonzero counts for every class across all three locales. Mocked
+counts validate presentation only, not actual informational/error responses.
+Eight focused operations API, playback service and translation tests passed;
+lint and `git diff --check` passed. This static UI change did not require a new
+build or full-suite run; the previous complete result remains 202 tests.
+OPS-03 stays open for remaining instrumentation and external alert delivery.
+No Firefox reruns, deployment, host changes or changes to the running user-test
+instance were performed.

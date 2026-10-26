@@ -1061,6 +1061,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   IDs, IPs, or paths are stored. Migration 094 adds the count and total duration of
   measured responses; the panel displays their weighted average completion time
   and sample count in en/pt-BR/es, excluding unmeasured historical requests.
+  The panel now exposes the existing HTTP status-class aggregates (1xx–5xx)
+  with explicit zero counts and localized explanations distinguishing requests,
+  access denials/missing resources and server errors from viewer/playback counts.
   This is server response completion, not time to first byte, client download
   completion, playback starts, or buffering. Those metrics, SMTP/payment
   reconciliation, and production log review remain uninstrumented; alerts are

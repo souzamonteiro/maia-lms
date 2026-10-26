@@ -211,6 +211,11 @@ IP addresses, or payloads. Migration 094 adds response-duration sums and measure
 response counts. The dashboard shows a seven-day UTC window, with a weighted
 average completion time in milliseconds and sample count; historical requests
 without timings do not lower the average and an empty sample shows "Not measured".
+The playback section also displays all five HTTP status classes (1xx–5xx),
+including zero counts, using the same seven-day window. These are request counts,
+not viewers or failed playback sessions: 4xx includes access denials and missing
+resources, while 5xx indicates server errors. A request may be a playlist,
+segment, caption, poster, or MP4 request; one viewing session can make many requests.
 The timing ends at the server's response `finish` event, not at the client's
 download completion; it is not time to first byte or playback startup/buffering.
 Aborted responses are excluded. Playback start/buffering and watch-time telemetry
