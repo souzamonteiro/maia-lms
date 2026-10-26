@@ -141,6 +141,34 @@ writes before a production recovery point that must be mutually consistent. The
 bundle feature is locally tested and does not replace off-site encryption,
 retention policy, or a rehearsed restore on the target host.
 
+Verify an existing bundle after transferring or storing it, then restore it to a
+new directory whose parent already exists:
+
+```bash
+npm run backup:verify -- /path/to/backup-directory
+npm run restore:bundle -- /path/to/backup-directory /path/to/new-recovery-directory
+```
+
+Verification recalculates database/media sizes and SHA-256 hashes, checks the
+exact storage inventory, reruns SQLite integrity and foreign-key checks, and
+requires every database-referenced object to be present. Unsupported manifests,
+duplicate/unsafe paths, symlinks, extra files and SQLite sidecars fail explicitly.
+Hashes detect accidental corruption, not deliberate replacement of both files and
+manifest; keep backups in trusted, access-controlled storage.
+
+Restoration verifies the source before creating the destination, refuses any
+existing destination or one nested inside the bundle, copies with private
+permissions, and revalidates the restored copy. It writes a completion manifest
+only for a successfully verified copy; failure can leave a partial directory
+without a completion manifest. Preserve it for diagnosis or choose a new directory
+for a retry. The command does not load `.env`, overwrite the live database,
+configure/start services, apply migrations, or invalidate sessions.
+
+New bundles normalize the SQLite snapshot (not the live database) to DELETE
+journal mode so recovery needs no WAL/SHM files. Older bundles using WAL mode must
+be recreated with the updated backup command; do not manually remove sidecars
+from a database that may depend on them.
+
 Test restoration in an isolated directory first, running `PRAGMA integrity_check` and `PRAGMA foreign_key_check` and starting a test instance with the restored file. For actual recovery:
 
 1. Stop `maia-lms-worker` and `maia-lms`.

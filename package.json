@@ -18,6 +18,8 @@
     "admin": "node scripts/admin.mjs",
     "backup": "node scripts/backup.mjs",
     "backup:bundle": "node scripts/backup-bundle.mjs",
+    "backup:verify": "node scripts/restore-bundle.mjs --verify",
+    "restore:bundle": "node scripts/restore-bundle.mjs",
     "test:e2e": "playwright test"
   },
   "devDependencies": {

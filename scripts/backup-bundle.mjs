@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import { referencedStorageKeys, validStorageKey } from './backup-utils.mjs';
 
 if (process.env.NODE_ENV !== 'production' && fs.existsSync('.env')) process.loadEnvFile('.env');
 
@@ -63,6 +64,7 @@ async function copyStorageDirectory(sourceDirectory, destinationDirectory, relat
       continue;
     }
     if (!before.isFile()) throw new Error(`Unsupported storage entry: ${relativePath}`);
+    if (!validStorageKey(relativePath)) throw new Error(`Invalid storage key: ${relativePath}`);
 
     const hash = crypto.createHash('sha256');
     const digest = new Transform({
@@ -91,26 +93,6 @@ async function copyStorageDirectory(sourceDirectory, destinationDirectory, relat
   }
 }
 
-function referencedStorageKeys(db) {
-  const references = [
-    ['assets', 'storage_key'],
-    ['video_chunks', 'storage_key'],
-    ['video_uploads', 'output_key'],
-    ['video_uploads', 'poster_key'],
-    ['video_uploads', 'hls_key'],
-    ['course_revisions', 'image_key'],
-    ['certificates', 'pdf_storage_key'],
-  ];
-  const keys = new Set();
-  for (const [table, column] of references) {
-    const columns = db.pragma(`table_info(${table})`);
-    if (!columns.some(item => item.name === column)) continue;
-    const rows = db.prepare(`SELECT "${column}" AS storage_key FROM "${table}" WHERE "${column}" IS NOT NULL`).all();
-    for (const row of rows) keys.add(row.storage_key);
-  }
-  return [...keys];
-}
-
 const databaseFile = path.join(target, 'database.sqlite');
 const databaseDescriptor = fs.openSync(databaseFile, 'wx', 0o600);
 fs.closeSync(databaseDescriptor);
@@ -121,8 +103,10 @@ try {
   source.close();
 }
 
-const backup = new Database(databaseFile, { readonly: true, fileMustExist: true });
+const backup = new Database(databaseFile, { fileMustExist: true });
 try {
+  // The standalone snapshot must not depend on WAL sidecars during recovery.
+  backup.pragma('journal_mode = DELETE');
   const integrity = backup.pragma('integrity_check', { simple: true });
   const foreignKeyViolations = backup.pragma('foreign_key_check');
   if (integrity !== 'ok' || foreignKeyViolations.length)
@@ -130,12 +114,7 @@ try {
 
   await copyStorageDirectory(sourceStorage, path.join(target, 'storage'));
   const copiedPaths = new Set(files.map(file => file.path));
-  const missingReferences = referencedStorageKeys(backup).filter(key => {
-    if (typeof key !== 'string' || !/^[a-zA-Z0-9_-]+(?:\/[a-zA-Z0-9_.-]+)*$/.test(key) ||
-      key.split('/').some(part => part === '.' || part === '..'))
-      throw new Error('Database contains an invalid storage key');
-    return !copiedPaths.has(key);
-  });
+  const missingReferences = referencedStorageKeys(backup).filter(key => !copiedPaths.has(key));
   if (missingReferences.length)
     throw new Error(`Backup is missing ${missingReferences.length} database-referenced storage object(s)`);
 } finally {

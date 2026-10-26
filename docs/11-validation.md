@@ -1756,3 +1756,36 @@ append-only history. Public web tests verify the new shell is noindex. OpenAPI
 YAML parsed successfully. No Firefox reruns, deployment, host changes, or changes
 to the existing user-test instance were performed. PRIV-01 stays open for legal/
 retention policy, support contact, resolution and export completeness review.
+
+## Backup bundle verification and isolated restoration — October 26, 2026
+
+OPS-02 now provides `backup:verify` to validate an existing bundle and
+`restore:bundle` to restore into a new private directory. Verification recomputes
+database/media hashes and sizes, checks exact storage inventory and manifest
+totals, reruns SQLite integrity/foreign-key checks and validates database storage
+references. Unsupported versions, unsafe/duplicate paths, symlinks, sidecars,
+missing/extra files and corrupted data fail explicitly before creating a restore
+destination. Restore refuses existing/nested destinations, rechecks the copied
+files and emits its completion manifest only after successful verification.
+It neither loads application environment files nor changes running services.
+
+The backup snapshot is normalized to standalone DELETE journal mode; the live
+source retains WAL mode. Shared storage-key/reference validation keeps backup
+and restore consistent. Earlier WAL-mode bundles must be recreated, not repaired
+by deleting potentially necessary sidecars. Hashes detect corruption, not an
+attacker replacing both the content and its manifest.
+
+Validation: all 201 tests passed across 63 files with `VIDEO_TEST_REAL=1`;
+build and lint passed. The 15 focused backup tests include creating/verifying a
+bundle from a live WAL database, restoring after moving the original storage
+out of its configured path, private permissions, overwrite/nesting rejection,
+corruption, traversal, duplicate paths, symlinks, missing/extra objects, sidecars,
+unsupported manifests, missing database references and foreign-key violations
+even when the manifest hash matches the modified database. Editor diagnostics
+and `git diff --check` were clean.
+
+This is a CLI/data-level restoration rehearsal, not a restored HTTP playback or
+certificate verification demonstration. OPS-02 remains open for that full
+published-course/old-revision rehearsal, configuration/session recovery policy,
+off-site encrypted retention and host qualification. No browser reruns, deploy,
+host changes or changes to the existing user-test instance were performed.

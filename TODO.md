@@ -1034,8 +1034,14 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Local progress: `npm run backup:bundle -- /path/to/new-directory` creates a
   verified SQLite snapshot plus a copy of the storage root, checks SQLite
   integrity/foreign keys and referenced storage objects, and writes per-file
-  SHA-256 hashes to a manifest. `.env` and secrets are excluded. Tests restore
-  the bundle in an isolated temporary directory. Keep open for an end-to-end
+  SHA-256 hashes to a manifest. `.env` and secrets are excluded.
+  `backup:verify` checks stored/transferred bundles; `restore:bundle` restores
+  into a new directory and verifies the result without changing live configuration.
+  Validation rejects corrupted/missing/extra files, unsafe/duplicate paths,
+  symlinks, sidecars and missing database references. New snapshots use DELETE
+  journal mode independently of the live database's WAL mode. Tests restore
+  the bundle in an isolated temporary directory with the original media offline.
+  Keep open for an end-to-end
   published-course/media/certificate restore rehearsal, configuration handling,
   off-site encryption/retention, and host qualification.
 - [ ] **OPS-03 — Observability and dashboard operations (local dashboard; telemetry and alert delivery open).**
