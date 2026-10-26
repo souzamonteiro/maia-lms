@@ -1789,3 +1789,34 @@ certificate verification demonstration. OPS-02 remains open for that full
 published-course/old-revision rehearsal, configuration/session recovery policy,
 off-site encrypted retention and host qualification. No browser reruns, deploy,
 host changes or changes to the existing user-test instance were performed.
+
+## Restored-application HTTP rehearsal — October 26, 2026
+
+OPS-02 now has an automated real-media recovery rehearsal in
+`apps/api/src/backup-recovery.test.ts`. It creates fictional users through the
+API, uploads and processes an FFmpeg-generated video, publishes a captioned
+course, enrolls a learner, saves completed progress and issues a certificate with
+its worker-generated PDF. A newer article-only revision is then published so
+the enrolled learner's video belongs only to the older revision.
+
+After stopping the source HTTP application and closing its WAL database, the
+test creates a bundle, moves the original database/storage away from their
+configured paths, restores into a separate directory, reapplies migrations and
+starts another loopback HTTP application using only the recovered paths.
+It checks readiness, fresh login, the new public title, old enrolled revision,
+retained completion/position, captions and poster, byte-identical MP4 delivery,
+Range responses, HLS master/variant/segment delivery, public certificate
+verification, byte-identical PDF download and idempotent issuance. Anonymous and
+unrelated-user restrictions remain enforced. Progress can be updated after
+recovery, and SQLite integrity and foreign keys remain valid.
+
+Validation: all 202 tests passed across 64 files with `VIDEO_TEST_REAL=1`;
+build, lint and `git diff --check` passed. The focused backup/recovery run passed
+16 tests before the final full regression. Editor diagnostics were clean.
+All fixtures, HTTP servers and recovery copies are temporary and cleaned up.
+
+This demonstrates local recovery through actual HTTP endpoints, not browser
+decoding, physical-device playback or host/systemd/container recovery. No browser
+suite was rerun; no deploy, host changes or changes to the user's existing test
+instance were performed. OPS-02 remains open for configuration/session recovery
+policy, off-site encrypted retention and target-host qualification.

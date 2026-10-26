@@ -1041,9 +1041,14 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   symlinks, sidecars and missing database references. New snapshots use DELETE
   journal mode independently of the live database's WAL mode. Tests restore
   the bundle in an isolated temporary directory with the original media offline.
-  Keep open for an end-to-end
-  published-course/media/certificate restore rehearsal, configuration handling,
-  off-site encryption/retention, and host qualification.
+  A real-media HTTP rehearsal now creates/publishes a video course, records
+  progress and a PDF certificate, publishes a newer article-only revision,
+  backs up/restores with the original database/media offline, and starts an
+  isolated application using only the recovered paths. It checks old-revision
+  access, MP4 Range/HLS delivery, captions/poster, progress resumption,
+  certificate verification/PDF identity and authorization after recovery.
+  Keep open for configuration/session recovery policy, off-site
+  encryption/retention, and host/device qualification.
 - [ ] **OPS-03 — Observability and dashboard operations (local dashboard; telemetry and alert delivery open).**
   Queue/transcode/playback/SMTP/payment/disk metrics, logs without tokens/PII,
   alerts, inspection, and administrative retries. Dependencies: JOB-01, PAY-03.

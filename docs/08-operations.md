@@ -164,6 +164,21 @@ without a completion manifest. Preserve it for diagnosis or choose a new directo
 for a retry. The command does not load `.env`, overwrite the live database,
 configure/start services, apply migrations, or invalidate sessions.
 
+The automated local recovery rehearsal runs with:
+
+```bash
+VIDEO_TEST_REAL=1 npm test -- --run apps/api/src/backup-recovery.test.ts apps/api/src/db/backup.test.ts
+```
+
+It uses fictional accounts, temporary directories and loopback HTTP servers on
+ephemeral ports. It processes real video, publishes a replacement revision, issues
+a certificate/PDF and records progress before backup. After stopping the source
+application and moving its database/storage offline, it restores and starts an
+isolated application to check old-revision MP4/Range/HLS, captions/poster,
+progress read/write, certificate verification/PDF bytes and access restrictions.
+This is HTTP delivery validation, not browser decoding or physical-device playback;
+no services or configuration on the target host are exercised.
+
 New bundles normalize the SQLite snapshot (not the live database) to DELETE
 journal mode so recovery needs no WAL/SHM files. Older bundles using WAL mode must
 be recreated with the updated backup command; do not manually remove sidecars
