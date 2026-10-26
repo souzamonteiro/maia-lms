@@ -2,11 +2,17 @@ import Database from 'better-sqlite3';
 import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
 import { once } from 'node:events';
-import { afterEach, beforeEach, expect, it } from 'vitest';
+import { statfsSync } from 'node:fs';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createApp } from './app.js';
 import { loadConfig } from './config.js';
 import { runMigrations } from './db/migrate.js';
 import { recordPlaybackMetric } from './services/playback-metrics.js';
+
+vi.mock('node:fs', async importOriginal => {
+  const fs = await importOriginal<typeof import('node:fs')>();
+  return { ...fs, statfsSync: vi.fn(fs.statfsSync) };
+});
 
 let db: Database.Database;
 let server: Server;
@@ -44,11 +50,38 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  vi.mocked(statfsSync).mockReset();
   server.closeAllConnections();
   await new Promise<void>((resolve, reject) =>
     server.close(error => error ? reject(error) : resolve()),
   );
   db.close();
+});
+
+it('distinguishes unavailable capacity from low space and clears the alert after recovery', async () => {
+  const cookie = await account('storage-admin@example.com', 'admin');
+  db.exec(`INSERT INTO worker_instances(instance_id,started_at,heartbeat_at)
+    VALUES('healthy-storage-worker',datetime('now'),datetime('now'));`);
+  const summary = () => request('/api/v1/admin/operations', 'GET', undefined, cookie);
+  for (const code of ['ENOENT', 'EACCES']) {
+    vi.mocked(statfsSync).mockImplementationOnce(() => {
+      throw new Error(`${code}: /private/storage/path token=do-not-expose`);
+    });
+    const result = await summary();
+    expect(result.status).toBe(200);
+    expect(result.data.storage).toBeNull();
+    expect(result.data.alerts).toEqual(['STORAGE_UNAVAILABLE']);
+    expect(result.data.workers).toHaveLength(1);
+    expect(JSON.stringify(result.data)).not.toMatch(/private\/storage|do-not-expose|ENOENT|EACCES/);
+  }
+  for (const [available, alerts] of [[9, ['STORAGE_LOW']], [10, []], [11, []]] as const) {
+    vi.mocked(statfsSync).mockReturnValueOnce({
+      type: 0, bsize: 1024, blocks: 100, bfree: 15, bavail: available, files: 100, ffree: 50,
+    });
+    const result = await summary();
+    expect(result.data.storage).toEqual({ availableBytes: available * 1024, totalBytes: 100 * 1024 });
+    expect(result.data.alerts).toEqual(alerts);
+  }
 });
 
 it('summarizes operational state for admins without exposing payloads or identities', async () => {

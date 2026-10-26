@@ -83,6 +83,53 @@ test('administrator inspects operational status and refreshes the summary', asyn
   await expect(page.locator('#ops-outbox')).toContainText('No messages ready');
 });
 
+test('storage measurement failures remain visible until a successful refresh in every locale', async ({ page }) => {
+  await page.goto('/auth/login');
+  await page.getByLabel('Email', { exact: true }).fill('admin@example.com');
+  await page.getByLabel('Password', { exact: true }).fill('Admin-test-password-123');
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  let storage: { availableBytes: number; totalBytes: number } | null = null;
+  await page.route('**/api/v1/admin/operations', async route => {
+    const response = await route.fetch();
+    const summary = await response.json();
+    summary.storage = storage;
+    summary.alerts = summary.alerts.filter((code: string) => !code.startsWith('STORAGE_'));
+    if (!storage) summary.alerts.push('STORAGE_UNAVAILABLE');
+    else if (storage.availableBytes / storage.totalBytes < 0.1) summary.alerts.push('STORAGE_LOW');
+    await route.fulfill({ response, json: summary });
+  });
+  await page.getByRole('link', { name: 'Operations', exact: true }).click();
+  for (const [locale, unavailable, warning, low] of [
+    ['en', 'Unavailable', 'Storage capacity could not be measured. Check the storage path and service permissions, then refresh.', 'Storage has less than 10% free space.'],
+    ['pt-BR', 'Indisponível', 'Não foi possível medir a capacidade do armazenamento. Confira o caminho e as permissões do serviço e atualize.', 'O armazenamento tem menos de 10% de espaço livre.'],
+    ['es', 'No disponible', 'No se pudo medir la capacidad del almacenamiento. Comprueba la ruta y los permisos del servicio y actualiza.', 'El almacenamiento tiene menos del 10% de espacio libre.'],
+  ]) {
+    storage = null;
+    await page.locator('#languageSelect').selectOption(locale);
+    await expect(page.locator('#ops-storage')).toHaveText(unavailable);
+    await expect(page.locator('#ops-alerts')).toContainText(warning);
+    await expect(page.locator('#ops-alerts')).not.toContainText(low);
+    await expect(page.locator('#ops-error')).toBeEmpty();
+    await expect(page.locator('#ops-snapshot')).toBeVisible();
+    await expect(page.locator('#ops-playback-status dd')).toHaveCount(5);
+
+    storage = { availableBytes: 9 * 1024 ** 3, totalBytes: 100 * 1024 ** 3 };
+    await page.locator('#ops-refresh').click();
+    await expect(page.locator('#ops-alerts')).toContainText(low);
+    await expect(page.locator('#ops-alerts')).not.toContainText(warning);
+    await expect(page.locator('#ops-storage dd')).toHaveText(['9 GiB', '100 GiB']);
+
+    storage = { availableBytes: 10 * 1024 ** 3, totalBytes: 100 * 1024 ** 3 };
+    await page.locator('#ops-refresh').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#ops-storage dd')).toHaveText(['10 GiB', '100 GiB']);
+    await expect(page.locator('#ops-alerts')).not.toContainText(warning);
+    await expect(page.locator('#ops-alerts')).not.toContainText(low);
+  }
+  await page.locator('#languageSelect').selectOption('en');
+  await expect(page.getByRole('heading', { name: 'Operations', exact: true })).toBeVisible();
+});
+
 test('operations distinguishes unavailable and outdated snapshots and recovers after retry', async ({ page }) => {
     await page.goto('/auth/login');
     await page.getByLabel('Email', { exact: true }).fill('admin@example.com');

@@ -1959,3 +1959,26 @@ the policy. Configuration recovery, encrypted off-site retention and host/device
 qualification remain open. No new full regression/browser suite was run; the last
 complete regression remains 206 tests. No deployment, host changes or changes to
 the user's running instance were performed.
+
+## Unavailable storage measurement alert — October 26, 2026
+
+OPS-03 now emits `STORAGE_UNAVAILABLE` when the filesystem capacity read fails.
+The response retains a null storage value and the remaining operational metrics,
+with no filesystem path or raw error text. The dashboard translates the alert
+and path/permission guidance in en/pt-BR/es. A successful refresh replaces the
+unknown state with measured capacity and removes the warning. The existing
+`STORAGE_LOW` rule remains strictly below 10% available, with no new threshold.
+OpenAPI now documents the nullable capacity fields and the additional alert code.
+
+Validation: eight focused operations API/translation tests passed, plus build,
+lint, editor diagnostics and `git diff --check`. API tests inject filesystem
+read failures representing missing paths/permissions, verify sanitized output,
+and check 9%, 10% and 11% available using deterministic filesystem counters.
+All three focused Chromium operations workflows passed on disposable port 4330.
+The new workflow simulates unknown/low/recovered capacity in all three languages,
+checks the other metrics remain visible, and recovers using keyboard refresh.
+These simulations do not qualify disk exhaustion or host service permissions.
+No new full regression or Firefox/WebKit/device runs were performed; the last
+full regression remains 206 tests. No deploy, host changes or changes to the
+user's running instance were performed. OPS-03 remains open for its remaining
+telemetry and external alert delivery.

@@ -241,6 +241,15 @@ outdated-data warning and its last successful timestamp. Errors receive keyboard
 focus; use the refresh button to retry. A successful retry clears the warning.
 These states are available in en/pt-BR/es. The timestamp is not a freshness SLA.
 
+If filesystem capacity cannot be read, the summary still returns the other
+metrics, but `storage` is null and alerts include `STORAGE_UNAVAILABLE`. The panel
+does not interpret missing capacity as zero free space or as a healthy measurement.
+Check the configured storage path and the service user's permissions, then refresh.
+Raw filesystem paths/errors are not returned. Successful measurement removes this
+alert; `STORAGE_LOW` is separate and applies only when measured free space is
+strictly below 10%, not exactly 10%. These remain dashboard-only alerts, without
+external notification delivery.
+
 Message queue diagnostics distinguish pending messages from those ready for
 processing: unprocessed jobs with fewer than five attempts whose `available_at`
 has arrived. The longest wait is rounded seconds since the earliest availability

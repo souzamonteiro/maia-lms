@@ -1085,6 +1085,12 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Future retries/active leases and exhausted messages are excluded; an empty
   ready queue has an explicit no-ready state, not a measured zero delay.
   This is neither SMTP delivery latency nor an automatic alert threshold.
+  Storage measurement failures now raise `STORAGE_UNAVAILABLE` alongside a null
+  capacity instead of allowing an apparently alert-free snapshot. The panel
+  explains the path/permission checks in en/pt-BR/es without exposing paths or
+  raw filesystem errors; successful refresh clears the warning. API tests cover
+  read failures and the existing strictly-below-10% low-space boundary;
+  focused Chromium tests cover unknown/low/recovered states and keyboard refresh.
 - [ ] **OPS-04 — Real capacity on Maia Edge.**
   Define audience/bitrate/upload limits and test host, VPN, and VPS bandwidth,
   disk, and SQLite/FFmpeg concurrency. Dependencies: PLAY-02, OPS-01. Acceptance:

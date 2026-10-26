@@ -95,6 +95,7 @@ export function adminOperationsRouter(db: Database.Database, config: Config): Ro
     if (stuckMedia) alerts.push('MEDIA_JOB_STUCK');
     if (Number(media.FAILED ?? 0)) alerts.push('MEDIA_JOB_FAILED');
     if (Number(outbox.exhausted)) alerts.push('OUTBOX_EXHAUSTED');
+    if (!storage) alerts.push('STORAGE_UNAVAILABLE');
     if (storage && storage.totalBytes > 0 && storage.availableBytes / storage.totalBytes < 0.1)
       alerts.push('STORAGE_LOW');
 

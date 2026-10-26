@@ -2329,7 +2329,13 @@ paths:
                         minimum: 0
                         description: Rounded seconds since the earliest available_at among ready messages. Null if none are ready. Not age since creation, SMTP delivery latency, or an alert threshold.
                   payments: {type: object, additionalProperties: {type: integer}}
-                  storage: {type: [object, 'null']}
+                  storage:
+                    type: [object, 'null']
+                    description: Filesystem capacity for the configured storage root. Null when measurement fails; alerts then includes STORAGE_UNAVAILABLE, not STORAGE_LOW. No filesystem paths or raw errors are exposed.
+                    required: [availableBytes, totalBytes]
+                    properties:
+                      availableBytes: {type: number}
+                      totalBytes: {type: number}
                   playback:
                     type: object
                     properties:
@@ -2348,7 +2354,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: [WORKER_MISSING, WORKER_NOT_HEALTHY, MEDIA_JOB_STUCK, MEDIA_JOB_FAILED, OUTBOX_EXHAUSTED, STORAGE_LOW]
+                      enum: [WORKER_MISSING, WORKER_NOT_HEALTHY, MEDIA_JOB_STUCK, MEDIA_JOB_FAILED, OUTBOX_EXHAUSTED, STORAGE_LOW, STORAGE_UNAVAILABLE]
         '401': {description: Authentication required}
         '403': {description: Administrator role required}
 components:

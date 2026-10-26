@@ -10,6 +10,7 @@ const alertKeys = {
   MEDIA_JOB_FAILED: 'adminOpsAlertMediaFailed',
   OUTBOX_EXHAUSTED: 'adminOpsAlertOutboxExhausted',
   STORAGE_LOW: 'adminOpsAlertStorageLow',
+  STORAGE_UNAVAILABLE: 'adminOpsAlertStorageUnavailable',
 };
 const playbackResourceKeys = {
   mp4: 'adminOpsPlaybackMp4',
