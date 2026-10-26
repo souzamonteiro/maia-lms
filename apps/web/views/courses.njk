@@ -15,9 +15,9 @@
       </article>
     </li>
     {% else %}
-    <li>No published courses are available yet.</li>
+    <li>{{ t('noCoursesPublished') }}</li>
     {% endfor %}
   </ul>
 </section>
-<noscript>JavaScript is required for search and filters. Published courses are listed above.</noscript>
+<noscript>{{ t('seoCatalogNoscript') }}</noscript>
 {% endblock %}

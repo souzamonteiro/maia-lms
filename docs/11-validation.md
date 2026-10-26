@@ -1903,3 +1903,28 @@ values; existing refresh-failure recovery remains covered. The OpenAPI contract
 and operations guide document both fields and their meaning. Full-suite/browser
 qualification is separate: the last full regression remains 202 tests.
 No deploy, host configuration changes or changes to the running user instance.
+
+## Localized initial public HTML — October 26, 2026
+
+SEO-01 now reuses the browser translation catalog during server rendering.
+Navigation, language selector, footer, empty states, noscript guidance and
+fallback titles/descriptions are localized in en/pt-BR/es before browser scripts
+run. Home/catalog Open Graph descriptions match their page descriptions;
+Brazilian Portuguese uses `pt_BR` for Open Graph and `pt-BR` for HTML language.
+Course cover alt text retains the supplied authored description. Existing
+content resolution, query-free canonical URLs, sitemap and private-page noindex
+behavior are preserved.
+
+Validation: 11 focused web/translation tests passed, including direct HTTP
+assertions for home, empty catalog, course and instructor in each language,
+escaping and invalid-query fallback. Full `VIDEO_TEST_REAL=1 npm test` passed
+206 tests in 64 files; all workspaces built and lint passed. Three focused
+Chromium workflows passed on disposable port 4330: home/catalog with JavaScript
+disabled and the two existing operations workflows with browser hydration.
+The new browser test initially assumed an empty catalog, but the fixture has
+published courses; it now checks visible published links and serialized localized
+noscript HTML. Editor diagnostics and `git diff --check` passed.
+
+SEO-01 stays open for external crawler and remaining public-page qualification.
+No new complete browser suite, Firefox/WebKit/device qualification, deployment,
+host changes or changes to the user's running instance were performed.

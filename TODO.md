@@ -1142,7 +1142,12 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   `robots.txt` and `sitemap.xml` include only public courses; private/admin/auth
   pages are `noindex`. Instructor profiles now server-render escaped public
   biographies and published courses with canonical/Open Graph metadata and
-  appear in the sitemap only when opted in. Keep SEO-01 open for full crawler
+  appear in the sitemap only when opted in. Initial HTML now shares the browser
+  translation catalog for navigation, language selection, footer, empty states,
+  noscript instructions and fallback metadata in en/pt-BR/es. Focused HTTP tests
+  cover all four public page types; Chromium checks home/catalog without
+  JavaScript. Full local regression: 206 tests; build/lint and three focused
+  Chromium workflows passed. Keep SEO-01 open for full crawler
   validation and the remaining public-page coverage.
 - [ ] **QA-01 — Complete product test suite and demonstration (current Chromium report recorded; cross-browser open).**
   Extend HTTP, database, job, and browser tests to all workflows below, including

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{% block htmlLanguage %}en{% endblock %}">
+<html lang="{% block htmlLanguage %}{{ displayLocale or 'en' }}{% endblock %}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,29 +9,29 @@
   <link rel="canonical" href="{{ canonicalUrl }}">
   <meta property="og:type" content="{% block metaType %}website{% endblock %}">
   <meta property="og:title" content="{% block metaTitle %}{{ title }} — Maia Learn{% endblock %}">
-  <meta property="og:description" content="{% block metaOgDescription %}Learn with Maia.{% endblock %}">
+  <meta property="og:description" content="{% block metaOgDescription %}{{ description or t('welcomeHeading') }}{% endblock %}">
   <meta property="og:url" content="{{ canonicalUrl }}">
-  <meta property="og:locale" content="{% block metaLocale %}en{% endblock %}">
+  <meta property="og:locale" content="{% block metaLocale %}{{ ogLocale or 'en' }}{% endblock %}">
   {% if ogImage %}<meta property="og:image" content="{{ ogImage }}">{% endif %}
   <link rel="stylesheet" href="/static/app.css">
   <script type="module" src="/static/app.js"></script>
 </head>
 <body>
-  <a class="skip" href="#content" data-i18n="skipToContent">Skip to content</a>
+  <a class="skip" href="#content" data-i18n="skipToContent">{{ t('skipToContent') }}</a>
   <header>
     <a class="logo" href="/">maia <span>learn</span></a>
-    <nav aria-label="Main" data-i18n-aria-label="mainNav">
-      <a href="/courses" data-i18n="navCourses">Courses</a>
-      <a href="/my-learning" data-i18n="navMyLearning">My learning</a>
-      <span id="account"><a href="/auth/login" data-i18n="navLogin">Log in</a></span>
-      <select id="languageSelect" aria-label="Language" data-i18n-aria-label="languageLabel">
-        <option value="en">English</option>
-        <option value="pt-BR">Português</option>
-        <option value="es">Español</option>
+    <nav aria-label="{{ t('mainNav') }}" data-i18n-aria-label="mainNav">
+      <a href="/courses" data-i18n="navCourses">{{ t('navCourses') }}</a>
+      <a href="/my-learning" data-i18n="navMyLearning">{{ t('navMyLearning') }}</a>
+      <span id="account"><a href="/auth/login" data-i18n="navLogin">{{ t('navLogin') }}</a></span>
+      <select id="languageSelect" aria-label="{{ t('languageLabel') }}" data-i18n-aria-label="languageLabel">
+        <option value="en"{% if displayLocale == 'en' %} selected{% endif %}>English</option>
+        <option value="pt-BR"{% if displayLocale == 'pt-BR' %} selected{% endif %}>Português</option>
+        <option value="es"{% if displayLocale == 'es' %} selected{% endif %}>Español</option>
       </select>
     </nav>
   </header>
   <main id="content">{% block content %}{% endblock %}</main>
-  <footer><span data-i18n="footerTagline">Maia Learn · Knowledge to create.</span><br><a href="https://maiaplatform.org" data-i18n="footerLink">Discover the Maia platform</a></footer>
+  <footer><span data-i18n="footerTagline">{{ t('footerTagline') }}</span><br><a href="https://maiaplatform.org" data-i18n="footerLink">{{ t('footerLink') }}</a></footer>
 </body>
 </html>

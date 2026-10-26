@@ -38,6 +38,18 @@ Category assignments change on publication; category metadata edits are immediat
 
 ## Account language behavior
 
+Public home, catalog, course and opted-in instructor pages render interface text
+and fallback metadata on the server using the same en/pt-BR/es catalog as the
+browser. A supported `displayLocale` selects the requested language; without it,
+home uses its selected hero language and course uses its resolved content
+language, while catalog/instructor default to English. Unsupported query values
+are ignored. Authored titles, summaries and biographies retain their resolved
+content rather than receiving invented translations. Canonical URLs remain
+query-free. The initial HTML includes localized navigation, footer, empty states,
+noscript guidance and Open Graph locale; browser preferences still take over when
+JavaScript runs. This is local rendering coverage, not external crawler or
+accessibility qualification.
+
 Registration sends the selected interface language and saves it as `users.locale`.
 Verification and password recovery emails are queued in that saved language for
 English, Brazilian Portuguese or Spanish. Other legacy locale values fall back to

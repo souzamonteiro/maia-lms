@@ -2,6 +2,7 @@ import express from 'express';
 import nunjucks from 'nunjucks';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { translate } from '../public/i18n.js';
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
 export type PublicCoursePage = {
@@ -37,6 +38,19 @@ export function createWebApp(options: WebAppOptions): express.Application {
   const baseUrl = options.publicBaseUrl.replace(/\/$/, '');
   nunjucks.configure(path.join(directory, '../views'), { autoescape: true, express: app });
   app.set('view engine', 'njk');
+  function localizedPage(locale = 'en') {
+    return {
+      displayLocale: locale,
+      ogLocale: locale.replace('-', '_'),
+      t: (key: string) => translate(locale, key),
+    };
+  }
+  app.use((req, res, next) => {
+    const locale = typeof req.query.displayLocale === 'string' &&
+      ['en', 'pt-BR', 'es'].includes(req.query.displayLocale) ? req.query.displayLocale : 'en';
+    Object.assign(res.locals, localizedPage(locale));
+    next();
+  });
   app.use(
     '/static/vendor/hls',
     express.static(path.resolve(directory, '../../../node_modules/hls.js/dist'), {
@@ -75,12 +89,13 @@ export function createWebApp(options: WebAppOptions): express.Application {
       : undefined;
     const selection = options.getHomeSelection(displayLocale);
     const hero = selection.hero[0];
+    const page = localizedPage(displayLocale ?? hero?.locale ?? 'en');
     res.render('home.njk', {
-      title: hero?.title ?? 'Learn with Maia',
-      description: hero?.summary ?? 'Courses to explore technology and turn knowledge into practice.',
+      ...page,
+      title: hero?.title ?? page.t('welcomeHeading'),
+      description: hero?.summary ?? page.t('heroText'),
       canonicalUrl: `${baseUrl}/`,
       noIndex: false,
-      displayLocale: displayLocale ?? hero?.locale ?? 'en',
       homeSelection: selection,
     });
   });
@@ -89,13 +104,13 @@ export function createWebApp(options: WebAppOptions): express.Application {
       ['en', 'pt-BR', 'es'].includes(req.query.displayLocale)
       ? req.query.displayLocale
       : undefined;
-    const titles: Record<string, string> = { en: 'Courses', 'pt-BR': 'Cursos', es: 'Cursos' };
+    const page = localizedPage(displayLocale ?? 'en');
     res.render('courses.njk', {
-      title: titles[displayLocale ?? 'en'],
-      description: 'Browse published courses from Maia Learn.',
+      ...page,
+      title: page.t('navCourses'),
+      description: page.t('seoCatalogDescription'),
       canonicalUrl: `${baseUrl}/courses`,
       noIndex: false,
-      displayLocale: displayLocale ?? 'en',
       courses: options.listPublicCourses(displayLocale),
     });
   });
@@ -126,6 +141,7 @@ export function createWebApp(options: WebAppOptions): express.Application {
       return;
     }
     res.render('course.njk', {
+      ...localizedPage(course.locale),
       title: course.title,
       description: course.summary,
       canonicalUrl,
@@ -151,14 +167,14 @@ export function createWebApp(options: WebAppOptions): express.Application {
       });
       return;
     }
-    const description = instructor.bio || `Courses by ${instructor.displayName} on Maia Learn.`;
+    const page = localizedPage(requestedLocale ?? 'en');
+    const description = instructor.bio || translate(page.displayLocale, 'seoInstructorDescription', { name: instructor.displayName });
     res.render('instructor.njk', {
+      ...page,
       title: instructor.displayName,
       description,
       canonicalUrl,
       ogType: 'profile',
-      ogLocale: requestedLocale ?? 'en',
-      displayLocale: requestedLocale ?? 'en',
       instructor,
     });
   });

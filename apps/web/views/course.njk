@@ -10,8 +10,8 @@
 <article id="app" class="seo-course">
   <p class="eyebrow">{{ course.locale }}</p>
   <h1>{{ course.title }}</h1>
-  {% if course.coverUrl %}<img src="{{ course.coverUrl }}" alt="">{% endif %}
+  {% if course.coverUrl %}<img src="{{ course.coverUrl }}" alt="{{ course.coverAlt }}">{% endif %}
   <p>{{ course.summary }}</p>
 </article>
-<noscript>JavaScript is required to enroll and access lessons.</noscript>
+<noscript>{{ t('seoCourseNoscript') }}</noscript>
 {% endblock %}

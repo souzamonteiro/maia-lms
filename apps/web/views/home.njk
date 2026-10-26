@@ -12,25 +12,25 @@
 		<h1>{{ hero.title }}</h1>
 		{% if hero.coverUrl %}<img src="{{ hero.coverUrl }}" alt="{{ hero.coverAlt }}">{% endif %}
 		<p>{{ hero.summary }}</p>
-		<a class="button" href="{{ hero.href }}">View course</a>
+		<a class="button" href="{{ hero.href }}">{{ t('viewCourse') }}</a>
 	</section>
 	{% else %}
-	<section class="hero"><h1 data-i18n="welcomeHeading">Learn with Maia</h1><p>Courses to explore technology and turn knowledge into practice.</p></section>
+	<section class="hero"><h1 data-i18n="welcomeHeading">{{ t('welcomeHeading') }}</h1><p>{{ t('heroText') }}</p></section>
 	{% endif %}
 	{% if homeSelection.featured %}
-	<section><h2>Featured courses</h2><div class="grid">
+	<section><h2>{{ t('homeFeatured') }}</h2><div class="grid">
 		{% for course in homeSelection.featured %}<article class="card"><h3><a href="{{ course.href }}">{{ course.title }}</a></h3><p>{{ course.summary }}</p></article>{% endfor %}
 	</div></section>
 	{% endif %}
 	{% if homeSelection.recommended %}
-	<section><h2>Recommended courses</h2><div class="grid">
+	<section><h2>{{ t('homeRecommended') }}</h2><div class="grid">
 		{% for course in homeSelection.recommended %}<article class="card"><h3><a href="{{ course.href }}">{{ course.title }}</a></h3><p>{{ course.summary }}</p></article>{% endfor %}
 	</div></section>
 	{% endif %}
-	<p><a href="/courses">Browse all courses</a></p>
+	<p><a href="/courses">{{ t('allCourses') }}</a></p>
 {% else %}
-	<h1 data-i18n="welcomeHeading">Learn with Maia</h1><p data-i18n="loadingCourses">Loading courses…</p>
+	<h1 data-i18n="welcomeHeading">{{ t('welcomeHeading') }}</h1><p data-i18n="loadingCourses">{{ t('loadingCourses') }}</p>
 {% endif %}
 </div>
-<noscript data-i18n="noscriptText">Enable JavaScript to browse courses and track your learning.</noscript>
+<noscript data-i18n="noscriptText">{{ t('noscriptText') }}</noscript>
 {% endblock %}

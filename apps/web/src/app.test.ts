@@ -2,8 +2,61 @@ import type { AddressInfo } from 'node:net';
 import { once } from 'node:events';
 import { afterEach, expect, it } from 'vitest';
 import { createWebApp } from './app.js';
+import { translate } from '../public/i18n.js';
 
 let server: ReturnType<ReturnType<typeof createWebApp>['listen']> | undefined;
+
+it.each(['en', 'pt-BR', 'es'])('localizes initial public HTML and metadata without browser JavaScript in %s', async locale => {
+  const course = {
+    slug: 'localized', href: '/courses/localized', title: 'Public course',
+    summary: 'Public summary', locale, coverUrl: null, coverAlt: '',
+  };
+  const app = createWebApp({
+    publicBaseUrl: 'https://learn.example.test',
+    getPublicCourse: () => course,
+    getPublicInstructor: () => ({
+      slug: 'teacher', displayName: 'Teacher <safe>', bio: '', websiteUrl: 'https://example.test',
+      courses: [],
+    }),
+    getHomeSelection: () => ({ hero: [], featured: [course], recommended: [course] }),
+    listPublicCourses: () => [],
+    listPublicCourseSlugs: () => ['localized'],
+    listPublicInstructorSlugs: () => ['teacher'],
+  });
+  server = app.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  const t = (key: string) => translate(locale, key);
+  for (const route of ['/', '/courses', '/courses/localized', '/instructors/teacher']) {
+    const response = await fetch(`${base}${route}?displayLocale=${locale}`);
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain(`<html lang="${locale}">`);
+    expect(html).toContain(`property="og:locale" content="${locale.replace('-', '_')}"`);
+    expect(html).toContain(`data-i18n="skipToContent">${t('skipToContent')}</a>`);
+    expect(html).toContain(`data-i18n="navLogin">${t('navLogin')}</a>`);
+    expect(html).toContain(`<option value="${locale}" selected>`);
+    expect(html).not.toContain('<script>safe</script>');
+    if (route === '/') {
+      expect(html).toContain(`<h2>${t('homeFeatured')}</h2>`);
+      expect(html).toContain(`<h2>${t('homeRecommended')}</h2>`);
+      expect(html).toContain(`name="description" content="${t('heroText')}"`);
+      expect(html).toContain(`property="og:description" content="${t('heroText')}"`);
+    } else if (route === '/courses') {
+      expect(html).toContain(`<li>${t('noCoursesPublished')}</li>`);
+      expect(html).toContain(`name="description" content="${t('seoCatalogDescription')}"`);
+      expect(html).toContain(`<noscript>${t('seoCatalogNoscript')}</noscript>`);
+    } else if (route.startsWith('/instructors')) {
+      expect(html).toContain(`<h2>${t('instructorCourses')}</h2>`);
+      expect(html).toContain(`${t('instructorProfileWebsiteLink')}</a>`);
+      expect(html).toContain('Teacher &lt;safe&gt;');
+    } else {
+      expect(html).toContain(`<noscript>${t('seoCourseNoscript')}</noscript>`);
+    }
+  }
+  const fallback = await (await fetch(`${base}/courses?displayLocale=invalid`)).text();
+  expect(fallback).toContain('<html lang="en">');
+});
 
 afterEach(async () => {
   if (!server) return;
