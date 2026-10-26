@@ -30,6 +30,16 @@ export async function mountAdminOperations({ app, api, t, e, locale }) {
   app.innerHTML = `<a href="/admin">${t('administer')}</a><h1>${t('adminOperationsTitle')}</h1><div class="actions"><button type="button" id="ops-refresh">${t('adminOpsRefresh')}</button><a href="/admin/media">${t('adminMediaTitle')}</a><a href="/admin/orders">${t('adminOrdersTitle')}</a></div><p id="ops-updated" role="status" aria-live="polite"></p><p id="ops-error" role="alert"></p><section class="ops-section"><h2>${t('adminOpsWorkers')}</h2><div id="ops-workers"></div></section><section class="ops-section"><h2>${t('adminOpsMedia')}</h2><dl id="ops-media" class="ops-grid"></dl></section><section class="ops-section"><h2>${t('adminOpsOutbox')}</h2><dl id="ops-outbox" class="ops-grid"></dl></section><section class="ops-section"><h2>${t('adminOpsPayments')}</h2><dl id="ops-payments" class="ops-grid"></dl></section><section class="ops-section"><h2>${t('adminOpsStorage')}</h2><dl id="ops-storage" class="ops-grid"></dl></section><section class="ops-section"><h2>${t('adminOpsAlerts')}</h2><ul id="ops-alerts"></ul></section><section class="ops-section"><h2>${t('adminOpsPlayback')}</h2><p id="ops-playback-total"></p><dl id="ops-playback" class="ops-grid"></dl></section>`;
 
   const refresh = app.querySelector('#ops-refresh');
+  const updated = app.querySelector('#ops-updated');
+  const errorMessage = app.querySelector('#ops-error');
+  errorMessage.tabIndex = -1;
+  const snapshot = document.createElement('div');
+  snapshot.id = 'ops-snapshot';
+  snapshot.hidden = true;
+  snapshot.append(...app.querySelectorAll('.ops-section'));
+  app.append(snapshot);
+  let lastUpdated = null;
+  let loading = false;
   const playbackSection = app.querySelector('#ops-playback').parentElement;
   const statusHeading = document.createElement('h3');
   statusHeading.textContent = t('adminOpsPlaybackStatus');
@@ -44,8 +54,12 @@ export async function mountAdminOperations({ app, api, t, e, locale }) {
   const formatBytes = value => `${number(value / 1024 ** 3)} GiB`;
 
   async function load() {
+    if (loading) return;
+    loading = true;
     refresh.disabled = true;
-    app.querySelector('#ops-error').textContent = '';
+    snapshot.setAttribute('aria-busy', 'true');
+    errorMessage.textContent = '';
+    updated.textContent = t('adminOpsLoading');
     try {
       const summary = await api('/admin/operations');
       const workers = app.querySelector('#ops-workers');
@@ -113,16 +127,24 @@ export async function mountAdminOperations({ app, api, t, e, locale }) {
           alerts.append(item);
         }
       }
-      app.querySelector('#ops-updated').textContent = t('adminOpsUpdated', {
-        time: new Date(summary.generatedAt).toLocaleString(locale),
+      lastUpdated = new Date(summary.generatedAt).toLocaleString(locale);
+      snapshot.hidden = false;
+      updated.textContent = t('adminOpsUpdated', {
+        time: lastUpdated,
       });
     } catch (error) {
-      app.querySelector('#ops-error').textContent = error.message || t('genericError');
+      updated.textContent = lastUpdated === null
+        ? t('adminOpsUnavailable')
+        : t('adminOpsStale', { time: lastUpdated });
+      errorMessage.textContent = error.message || t('genericError');
+      errorMessage.focus();
     } finally {
+      loading = false;
+      snapshot.setAttribute('aria-busy', 'false');
       refresh.disabled = false;
     }
   }
 
-  refresh.addEventListener('click', () => load().catch(() => {}));
+  refresh.addEventListener('click', () => { void load(); });
   await load();
 }

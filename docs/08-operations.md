@@ -203,7 +203,16 @@ Monitor readiness, errors, queue age, free space, backups, TLS renewal and VPN o
 
 The admin-only `/admin/operations` page summarizes worker heartbeat state, media
 jobs/stalls, outbox and email retries, payment order states, storage capacity, and
-safe alert codes. Migration 090 records each worker process every ten seconds;
+safe alert codes. The summary refreshes on entry or through **Refresh status**,
+not automatically.
+While loading, the button is disabled and the snapshot has `aria-busy`.
+An initial failure hides empty metrics rather than implying zeros or health.
+If a later refresh fails, the previous snapshot remains visible with an explicit
+outdated-data warning and its last successful timestamp. Errors receive keyboard
+focus; use the refresh button to retry. A successful retry clears the warning.
+These states are available in en/pt-BR/es. The timestamp is not a freshness SLA.
+
+Migration 090 records each worker process every ten seconds;
 heartbeats older than 45 seconds are stale. `/readyz` checks only API/SQLite
 readiness and is not a worker health check. Migration 092 stores daily playback
 counts by resource type and HTTP status class; it does not store paths, IDs,

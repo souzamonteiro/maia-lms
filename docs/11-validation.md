@@ -1860,3 +1860,25 @@ build or full-suite run; the previous complete result remains 202 tests.
 OPS-03 stays open for remaining instrumentation and external alert delivery.
 No Firefox reruns, deployment, host changes or changes to the running user-test
 instance were performed.
+
+## Operations refresh failure states — October 26, 2026
+
+OPS-03 now distinguishes an unavailable initial summary from an outdated
+previous snapshot. Before the first successful response, metrics are hidden
+rather than displayed as empty/healthy. Loading announces progress, sets the
+snapshot busy and disables duplicate refreshes. A failed later refresh keeps
+the previous data and its last successful timestamp with a localized outdated
+warning. Errors receive focus; the existing refresh button supports keyboard
+retry, and successful recovery clears the warning. No automatic polling or
+age-based freshness threshold was introduced.
+
+Validation: both targeted Chromium operations workflows passed in disposable
+port 4330. Injected 503 responses cover initial failure and recovery, held
+requests verify loading/button/busy states, and later failures preserve the
+snapshot and timestamp before keyboard recovery. All states are checked in
+en/pt-BR/es alongside the existing HTTP status breakdown. Six focused API and
+translation tests, lint and `git diff --check` passed. No full-suite/build
+rerun was needed for this static UI change; the last full result remains
+202 tests. OPS-03 remains open for telemetry and external alert delivery.
+No Firefox/device/screen-reader qualification, deploy, host changes or changes
+to the user's running instance were performed.
