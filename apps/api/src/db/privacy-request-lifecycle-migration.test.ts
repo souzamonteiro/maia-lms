@@ -7,6 +7,9 @@ it('keeps closed privacy requests terminal while allowing normal review transiti
   db.pragma('foreign_keys = ON');
   try {
     runMigrations(db);
+    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY rowid DESC LIMIT 2').all())
+      .toEqual([{ version: '100_privacy_request_review_monotonic' },
+        { version: '099_privacy_request_timestamps' }]);
     db.exec(`
       INSERT INTO users(id,email,email_normalized,password_hash)
       VALUES ('user','user@example.com','user@example.com','hash'),
@@ -33,6 +36,10 @@ it('keeps closed privacy requests terminal while allowing normal review transiti
       WHERE id='request'`).run()).not.toThrow();
     expect(() => db.prepare(`UPDATE account_privacy_requests SET status='IN_REVIEW'
       WHERE id='request'`).run()).not.toThrow();
+    expect(() => db.prepare(`UPDATE account_privacy_requests SET status='OPEN'
+      WHERE id='request'`).run()).toThrow(/privacy requests cannot return to open/);
+    expect(db.prepare('SELECT status FROM account_privacy_requests WHERE id=?').get('request'))
+      .toEqual({ status: 'IN_REVIEW' });
     expect(() => db.prepare(`UPDATE account_privacy_requests SET status='CLOSED'
       WHERE id='request'`).run()).not.toThrow();
     expect(() => db.prepare(`UPDATE account_privacy_requests SET status='CLOSED'

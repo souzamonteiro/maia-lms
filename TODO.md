@@ -1034,7 +1034,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   status and update timestamps remain mutable under their lifecycle rules. Migration
   099 rejects malformed privacy-request timestamps and update timestamps earlier
   than creation or the preceding update. Focused migration tests cover these
-  constraints and valid lifecycle updates; the complete invariant matrix remains open.
+  constraints and valid lifecycle updates. Migration 100 prevents a request from
+  regressing from IN_REVIEW to OPEN; migration sorting is numeric so three-digit
+  version rollover preserves application order. The complete invariant matrix
+  remains open.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:
@@ -1231,7 +1234,7 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   manuals, limits, and recovery procedures with every delivery. Dependency:
   cross-cutting. Acceptance: implemented API and future plans are separate;
   runnable examples do not depend on default credentials or omitted steps.
-  Local delivery: updated the data model through migrations 097–099 and documented
+  Local delivery: updated the data model through migrations 097–100 and documented
   privacy export/request semantics, production scanner behavior, worker/playback
   dashboard limits, SEO metadata, and validation results. `spec/openapi.yaml` now
   documents HLS playback plus the new operational and privacy endpoints; the future

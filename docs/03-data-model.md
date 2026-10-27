@@ -280,7 +280,7 @@ start, heartbeat, and stop timestamps. Worker processes refresh every ten second
 the operations dashboard treats heartbeats older than 45 seconds as stale. This is
 process liveness, not proof that SMTP, payments, or playback are healthy.
 
-## Account privacy requests — migrations 091, 097–099
+## Account privacy requests — migrations 091, 097–100
 
 `account_privacy_requests` records an authenticated user's deletion request and
 status. A partial unique index allows only one OPEN/IN_REVIEW request per account.
@@ -291,12 +291,15 @@ Migration 097 makes CLOSED terminal. Migration 098 makes request ID, owner, type
 and creation time immutable so review history cannot be reassigned to another
 account or rewritten. Migration 099 validates creation/update timestamps and
 requires `updated_at` to be no earlier than creation or its previous value.
+Migration 100 prevents an IN_REVIEW request from returning to OPEN; requests can
+remain in review or move to CLOSED, and CLOSED remains terminal.
 
 The admin review API uses the existing schema: an IMMEDIATE transaction changes
 OPEN to IN_REVIEW (or keeps IN_REVIEW), updates the request timestamp, and appends
 a `privacy_request.review` event in `audit_events` with actor, previous status,
 and private note. An audit failure rolls back the status update. CLOSED requests
-cannot be reopened through the API or direct SQL. No close/delete operation is provided.
+cannot be reopened through the API or direct SQL, and review status cannot regress
+to OPEN. No close/delete operation is provided.
 Self-service responses/export include request status but omit private audit notes;
 existing audit append-only protections apply to review history.
 

@@ -44,7 +44,11 @@ export function runMigrations(db: Database.Database): void {
   const migrationFiles = fs
     .readdirSync(MIGRATIONS_DIR)
     .filter(f => f.endsWith('.sql'))
-    .sort();
+    .sort((a, b) => {
+      const aVersion = Number(/^\d+/.exec(a)?.[0]);
+      const bVersion = Number(/^\d+/.exec(b)?.[0]);
+      return aVersion - bVersion || a.localeCompare(b);
+    });
 
   const applyMigration = db.transaction((version: string, sql: string) => {
     db.exec(sql);

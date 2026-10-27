@@ -2063,6 +2063,18 @@ Validation: the focused migration/API tests, build, lint and `git diff --check`
 passed. The full local regression passed all 215 tests across 65 files using a
 10-second timeout. No deployment or host changes were made.
 
+## Monotonic privacy-request review state — October 27, 2026
+
+Migration 100 prevents direct SQL updates from moving a privacy request from
+IN_REVIEW back to OPEN; repeated review and transition to CLOSED remain allowed.
+The migration runner now sorts numeric version prefixes so migration 100 follows
+migration 099 on fresh databases as well as databases with pending migrations.
+
+Validation: the focused privacy migration and API suites passed (4 tests), as did
+build, lint, editor diagnostics and `git diff --check`. The migration regression
+test also verifies version 100 is applied after 099 on a fresh database. No full
+suite, deployment, host or running-instance changes were performed.
+
 ## Email-change history in account export — October 27, 2026
 
 PRIV-01's authenticated JSON export now includes the requesting account's
