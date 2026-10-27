@@ -1233,7 +1233,13 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   `upgrade-insecure-requests` outside
   production, initiate preview playback with the video scrolled into view, and
   wait for logout redirects before navigating. Physical-device qualification
-  remains open; no deployment or host changes were made.
+  remains open. October 27 Firefox run: 38/39 E2E workflows passed, including both
+  real-media workflows; a 30-second navigation timeout recurred in course review
+  (at different navigation steps across two suite runs), while that workflow passed
+  in isolation. The privacy-review E2E now waits for locale rerender and refreshed
+  results before installing a one-shot API failure route, removing a Firefox race
+  where the route could intercept the locale reload instead of the intended retry.
+  Keep full Firefox qualification open; no deployment or host changes were made.
 - [ ] **DOC-01 — Keep contracts and operations aligned with implementation.**
   Update OpenAPI, data model, installation/configuration, author/learner/admin
   manuals, limits, and recovery procedures with every delivery. Dependency:

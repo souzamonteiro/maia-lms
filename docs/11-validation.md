@@ -2177,3 +2177,20 @@ excluded and recipient/link payload values are not copied into the manifest.
 Validation update: the focused 17-test backup/restore file passed with the
 recovery-queue count check; build, lint, editor diagnostics and `git diff --check`
 passed. No external qualification or host changes were performed.
+
+## Firefox privacy workflow synchronization — October 27, 2026
+
+The admin privacy E2E now waits for the localized page rerender and completed
+request-list refresh before adding the one-shot failure route. This prevents
+the route from racing the asynchronous locale change and intercepting its initial
+list request instead of the search retry. The workflow passes in Firefox alone.
+
+The complete Firefox run with `VIDEO_TEST_REAL=1` executed 39 workflows: 38 passed,
+including both real-media workflows; `course-review` timed out after 30 seconds
+waiting for page navigation at different steps in two suite runs. It passed in
+isolation, so no per-test navigation timeout workaround was applied. Firefox
+full-suite qualification remains open.
+
+Validation: the focused Firefox privacy and course-review workflows passed.
+The focused Chromium privacy workflow passed; build was not needed for this
+test-only change. Lint, editor diagnostics and `git diff --check` passed.

@@ -22,10 +22,13 @@ test('administrator reviews a privacy request and the requester sees its actual 
   await expect(card).toContainText('Open');
   await card.getByLabel('Private review note (5–1000 characters)').fill('Review pending retention policy. <script>private</script>');
   await page.locator('#languageSelect').selectOption('pt-BR');
+  await expect(page.getByRole('heading', { name: 'Pedidos de privacidade', exact: true })).toBeVisible();
   await expect(card.locator('textarea')).toHaveValue('Review pending retention policy. <script>private</script>');
   await expect(page.locator('#privacy-search input')).toHaveValue(email);
   await page.locator('#languageSelect').selectOption('en');
-  await page.route('**/admin/privacy/requests?**', route => route.fulfill({
+  await expect(page.getByRole('heading', { name: 'Privacy requests', exact: true })).toBeVisible();
+  await expect(page.locator('#privacy-summary')).toContainText('1 requests');
+  await page.route(/\/api\/v1\/admin\/privacy\/requests\?/, route => route.fulfill({
     status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'Requests temporarily unavailable' }),
   }), { times: 1 });
   await page.locator('#privacy-search button').click();
