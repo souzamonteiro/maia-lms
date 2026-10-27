@@ -155,6 +155,18 @@ it('reports a weighted duration average for measured responses within the seven-
   });
 });
 
+it('aggregates email transport attempts and weighted duration over seven UTC dates', async () => {
+  const cookie = await account('email-metrics-admin@example.com', 'admin');
+  const summary = async () => (await request('/api/v1/admin/operations', 'GET', undefined, cookie)).data.emailTransport;
+  expect(await summary()).toEqual({ windowDays: 7, attempts: 0, accepted: 0, failed: 0, averageMs: null });
+  db.exec(`INSERT INTO email_transport_metrics_daily VALUES
+    (date('now'),'accepted',2,100),
+    (date('now','-6 days'),'failed',1,200),
+    (date('now','-7 days'),'accepted',10,9999),
+    (date('now','+1 day'),'failed',10,9999);`);
+  expect(await summary()).toEqual({ windowDays: 7, attempts: 3, accepted: 2, failed: 1, averageMs: 100 });
+});
+
 it('reports ready queue count and delay using worker eligibility without exposing message data', async () => {
     const cookie = await account('queue-admin@example.com', 'admin');
     db.exec(`UPDATE outbox SET attempts=attempts+1,lease_token='fixture-claim' WHERE processed_at IS NULL;

@@ -51,6 +51,17 @@ export async function mountAdminOperations({ app, api, t, e, locale }) {
   statusCounts.className = 'ops-grid';
   playbackSection.append(statusHeading, statusExplanation, statusCounts);
   const number = value => new Intl.NumberFormat(locale).format(Number(value) || 0);
+  const emailSection = document.createElement('section');
+  emailSection.className = 'ops-section';
+  const emailHeading = document.createElement('h2');
+  emailHeading.textContent = t('adminOpsEmailTransport');
+  const emailExplanation = document.createElement('p');
+  emailExplanation.textContent = t('adminOpsEmailTransportExplanation');
+  const emailMetrics = document.createElement('dl');
+  emailMetrics.id = 'ops-email-transport';
+  emailMetrics.className = 'ops-grid';
+  emailSection.append(emailHeading, emailExplanation, emailMetrics);
+  snapshot.append(emailSection);
   const fact = (label, value) => `<div><dt>${e(label)}</dt><dd>${e(value)}</dd></div>`;
   const formatBytes = value => `${number(value / 1024 ** 3)} GiB`;
 
@@ -93,6 +104,14 @@ export async function mountAdminOperations({ app, api, t, e, locale }) {
       ].join('');
 
       const paymentEntries = Object.entries(summary.payments);
+      emailMetrics.innerHTML = [
+        fact(t('adminOpsEmailAttempts'), number(summary.emailTransport.attempts)),
+        fact(t('adminOpsEmailAccepted'), number(summary.emailTransport.accepted)),
+        fact(t('adminOpsEmailFailed'), number(summary.emailTransport.failed)),
+        fact(t('adminOpsEmailDuration'), summary.emailTransport.averageMs === null
+          ? t('adminOpsPlaybackUnmeasured')
+          : t('adminOpsPlaybackMilliseconds', { value: number(summary.emailTransport.averageMs) })),
+      ].join('');
       app.querySelector('#ops-payments').innerHTML = paymentEntries.length
         ? paymentEntries.map(([state, count]) => fact(state, number(count))).join('')
         : fact(t('adminOpsNoPayments'), number(0));

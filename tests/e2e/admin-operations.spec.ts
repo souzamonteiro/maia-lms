@@ -36,6 +36,7 @@ test('administrator inspects operational status and refreshes the summary', asyn
     summary.playback.byStatusClass = { 1: 1, 2: 2, 3: 3, 4: 4, 5: 5 };
     summary.outbox.ready = 2;
     summary.outbox.oldestReadyDelaySeconds = 123;
+    summary.emailTransport = { windowDays: 7, attempts: 5, accepted: 3, failed: 2, averageMs: 125 };
     await route.fulfill({ response, json: summary });
   });
 
@@ -55,6 +56,13 @@ test('administrator inspects operational status and refreshes the summary', asyn
       has: page.getByText(queueLabel, { exact: true }),
     }).locator('dd')).toHaveText('2');
     await expect(page.locator('#ops-outbox')).toContainText('123 s');
+    await expect(page.locator('#ops-email-transport dd')).toHaveText(['5', '3', '2', '125 ms']);
+    await expect(page.getByRole('heading', {
+      name: locale === 'en' ? 'Email transport · last 7 UTC days'
+        : locale === 'pt-BR' ? 'Transporte de e-mail · últimos 7 dias UTC'
+          : 'Transporte de correo · últimos 7 días UTC',
+      exact: true,
+    })).toBeVisible();
     await expect(page.locator('#ops-playback-status dd')).toHaveText(['1', '2', '3', '4', '5']);
     await expect(page.getByRole('heading', {
       name: locale === 'en' ? 'Media responses by HTTP status'
@@ -77,10 +85,12 @@ test('administrator inspects operational status and refreshes the summary', asyn
     const summary = await response.json();
     summary.outbox.ready = 0;
     summary.outbox.oldestReadyDelaySeconds = null;
+    summary.emailTransport = { windowDays: 7, attempts: 0, accepted: 0, failed: 0, averageMs: null };
     await route.fulfill({ response, json: summary });
   }, { times: 1 });
   await page.locator('#ops-refresh').click();
   await expect(page.locator('#ops-outbox')).toContainText('No messages ready');
+  await expect(page.locator('#ops-email-transport dd')).toHaveText(['0', '0', '0', 'Not measured']);
 });
 
 test('storage measurement failures remain visible until a successful refresh in every locale', async ({ page }) => {

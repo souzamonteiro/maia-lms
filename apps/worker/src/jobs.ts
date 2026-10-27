@@ -38,9 +38,25 @@ export async function pollOnce(
   await Promise.all(
     rows.map(async row => {
       try {
-        if (row.event_type === 'email.send')
-          await email.send(emailSchema.parse(JSON.parse(row.payload)));
-        else {
+        if (row.event_type === 'email.send') {
+          const message = emailSchema.parse(JSON.parse(row.payload));
+          const started = performance.now();
+          let outcome = 'failed';
+          try {
+            await email.send(message);
+            outcome = 'accepted';
+          } finally {
+            const duration = Math.max(0, Math.round(performance.now() - started));
+            try {
+              db.prepare(`INSERT INTO email_transport_metrics_daily(metric_date,outcome,attempt_count,duration_total_ms)
+                VALUES(?,?,1,?) ON CONFLICT(metric_date,outcome) DO UPDATE SET
+                attempt_count=attempt_count+1,duration_total_ms=duration_total_ms+excluded.duration_total_ms`)
+                .run(new Date().toISOString().slice(0, 10), outcome, duration);
+            } catch {
+              console.error('Email transport metrics write failed');
+            }
+          }
+        } else {
           const handler = handlers[row.event_type];
           if (!handler) throw new Error(`Unsupported event: ${row.event_type}`);
           await handler(JSON.parse(row.payload) as unknown, row.attempts + 1);

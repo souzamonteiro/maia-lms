@@ -1982,3 +1982,32 @@ No new full regression or Firefox/WebKit/device runs were performed; the last
 full regression remains 206 tests. No deploy, host changes or changes to the
 user's running instance were performed. OPS-03 remains open for its remaining
 telemetry and external alert delivery.
+
+## Email transport attempt telemetry — October 26, 2026
+
+OPS-03 now measures email-provider send attempts in the worker. Migration 095
+stores UTC date/outcome aggregates with integral count and duration totals,
+rejecting invalid calendar dates, outcomes and numeric values. Valid actual sends
+are timed using a monotonic clock; accepted and failed attempts both contribute
+to the weighted mean. Retries are separate attempts; invalid/unsupported jobs
+and historical uninstrumented sends are excluded. API/dashboard expose seven UTC
+dates with explicit zero counts/null duration when no samples exist, in en/pt-BR/es.
+No message identities, recipients, content, tokens or raw errors are persisted.
+Transport acceptance is not inbox delivery. A telemetry persistence error emits
+a fixed safe log without turning an accepted send into a retry.
+
+Validation: 13 focused worker/API/translation tests passed, including deterministic
+timings, repeated-outcome aggregation, failed send/retry, invalid job exclusion,
+schema constraints, UTC boundaries, weighted averages and telemetry write failure.
+Full `VIDEO_TEST_REAL=1 npm test` passed 212 tests in 64 files; build, lint,
+editor diagnostics, OpenAPI parsing and `git diff --check` passed. Three focused
+Chromium operations workflows passed on disposable port 4330, covering mocked
+email aggregates in all three languages and the unmeasured empty state, alongside
+existing storage/refresh recovery. The first full run overlapped the browser
+build and exceeded the existing five-second limit in one backup test (211 passed);
+a standalone full run passed without changing test timeouts or production code.
+
+This is local instrumentation with test providers/mocked browser counts, not
+qualification of external SMTP or final delivery, and adds no alert threshold or
+external notification channel. No Firefox/WebKit/device reruns, deployment,
+host changes or changes to the user's running instance were performed.

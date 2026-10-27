@@ -259,6 +259,23 @@ and active reservations do not, and exhausted/processed jobs are excluded.
 When no message is ready, the panel says so and the API returns a null delay.
 No new age-based alert threshold or automatic retry policy is introduced.
 
+Migration 095 records daily email-transport aggregates by UTC completion date and
+outcome (`accepted`/`failed`), with attempt counts and total duration in integer
+milliseconds. Only valid messages reaching `EmailProvider.send` are measured;
+invalid payloads, unsupported jobs and pre-instrumentation sends are excluded.
+Retries count as separate attempts, not unique messages. A resolved send means
+transport acceptance, not delivery to the recipient's inbox; failures include
+transport rejection/connection errors, without retaining their raw text.
+The dashboard/API `emailTransport` covers today and the preceding six UTC dates,
+showing both outcomes and a weighted average over all measured attempts.
+No samples yields zero counts and a null/unmeasured duration, not a measured zero.
+No recipient, subject, body, token, message ID or transport error is stored.
+Durations use a monotonic clock and include the provider send call only.
+Metrics write failures emit the fixed `Email transport metrics write failed` log
+and do not change acknowledgment/retry behavior, avoiding telemetry-induced
+duplicate sends. Such failures can leave incomplete samples. This adds no SMTP
+alert threshold and does not qualify external SMTP or final inbox delivery.
+
 Migration 090 records each worker process every ten seconds;
 heartbeats older than 45 seconds are stale. `/readyz` checks only API/SQLite
 readiness and is not a worker health check. Migration 092 stores daily playback

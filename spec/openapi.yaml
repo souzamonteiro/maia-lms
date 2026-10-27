@@ -2299,7 +2299,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [generatedAt, workers, media, outbox, payments, storage, playback, alerts]
+                required: [generatedAt, workers, media, outbox, emailTransport, payments, storage, playback, alerts]
                 properties:
                   generatedAt: {type: string, format: date-time}
                   workers:
@@ -2329,6 +2329,19 @@ paths:
                         minimum: 0
                         description: Rounded seconds since the earliest available_at among ready messages. Null if none are ready. Not age since creation, SMTP delivery latency, or an alert threshold.
                   payments: {type: object, additionalProperties: {type: integer}}
+                  emailTransport:
+                    type: object
+                    description: Seven UTC dates of measured transport send attempts, including retries, excluding invalid jobs. Accepted is transport acceptance, not inbox delivery. Historical uninstrumented sends are excluded. Contains no recipient, message, token, or raw error data.
+                    required: [windowDays, attempts, accepted, failed, averageMs]
+                    properties:
+                      windowDays: {type: integer, const: 7}
+                      attempts: {type: integer, minimum: 0}
+                      accepted: {type: integer, minimum: 0}
+                      failed: {type: integer, minimum: 0}
+                      averageMs:
+                        type: [number, 'null']
+                        minimum: 0
+                        description: Weighted average duration of accepted and failed send attempts. Null when no attempts were measured.
                   storage:
                     type: [object, 'null']
                     description: Filesystem capacity for the configured storage root. Null when measurement fails; alerts then includes STORAGE_UNAVAILABLE, not STORAGE_LOW. No filesystem paths or raw errors are exposed.

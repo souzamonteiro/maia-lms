@@ -1075,7 +1075,7 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   original timestamp. Busy state, focused errors and keyboard retry are covered
   in all three locales; a successful refresh clears the warning.
   This is server response completion, not time to first byte, client download
-  completion, playback starts, or buffering. Those metrics, SMTP/payment
+  completion, playback starts, or buffering. Those metrics, payment
   reconciliation, and production log review remain uninstrumented; alerts are
   visible in the panel but have no external delivery channel. Keep OPS-03 open for
   those metrics and alert-delivery qualification.
@@ -1091,6 +1091,14 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   raw filesystem errors; successful refresh clears the warning. API tests cover
   read failures and the existing strictly-below-10% low-space boundary;
   focused Chromium tests cover unknown/low/recovered states and keyboard refresh.
+  Migration 095 adds daily email-transport outcome/count/duration aggregates.
+  The worker records actual valid send attempts, including retries, without
+  recipients, content or raw errors. The panel displays seven UTC dates of
+  accepted/failed attempts and weighted mean duration in en/pt-BR/es; no samples
+  remains explicitly unmeasured. Transport acceptance is not inbox delivery.
+  Telemetry write failures log a safe message and do not retry an accepted email.
+  Full local regression: 212 tests; build/lint and three focused Chromium
+  operations workflows passed. External SMTP delivery qualification remains open.
 - [ ] **OPS-04 — Real capacity on Maia Edge.**
   Define audience/bitrate/upload limits and test host, VPN, and VPS bandwidth,
   disk, and SQLite/FFmpeg concurrency. Dependencies: PLAY-02, OPS-01. Acceptance:
