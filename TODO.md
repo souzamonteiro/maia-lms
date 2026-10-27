@@ -1075,8 +1075,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   original timestamp. Busy state, focused errors and keyboard retry are covered
   in all three locales; a successful refresh clears the warning.
   This is server response completion, not time to first byte, client download
-  completion, playback starts, or buffering. Those metrics, payment
-  reconciliation, and production log review remain uninstrumented; alerts are
+  completion, playback starts, or buffering. Those metrics and production log
+  review remain uninstrumented; alerts are
   visible in the panel but have no external delivery channel. Keep OPS-03 open for
   those metrics and alert-delivery qualification.
   Queue diagnostics now show the number of ready messages and the longest wait
@@ -1097,8 +1097,15 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   accepted/failed attempts and weighted mean duration in en/pt-BR/es; no samples
   remains explicitly unmeasured. Transport acceptance is not inbox delivery.
   Telemetry write failures log a safe message and do not retry an accepted email.
-  Full local regression: 212 tests; build/lint and three focused Chromium
+  Full local regression: 214 tests; build/lint and three focused Chromium
   operations workflows passed. External SMTP delivery qualification remains open.
+  Payment reconciliation checks now also record daily safe outcome/count/duration
+  aggregates. The seven-day dashboard distinguishes safely reconciled checks
+  (including handled pending/canceled states) from provider/settlement failures
+  and mismatches, with weighted average duration in all three languages. No order
+  identifiers or provider payloads are stored; telemetry write failure does not
+  replace the reconciliation result. Remaining gaps include external provider
+  latency/health and actual payment/refund settlement monitoring.
 - [ ] **OPS-04 — Real capacity on Maia Edge.**
   Define audience/bitrate/upload limits and test host, VPN, and VPS bandwidth,
   disk, and SQLite/FFmpeg concurrency. Dependencies: PLAY-02, OPS-01. Acceptance:

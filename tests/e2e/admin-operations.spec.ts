@@ -13,6 +13,7 @@ test('administrator inspects operational status and refreshes the summary', asyn
     'Media jobs',
     'Message queue',
     'Payments by state',
+    'Payment reconciliation · last 7 UTC days',
     'Storage',
     'Alerts',
     'Playback',
@@ -22,6 +23,7 @@ test('administrator inspects operational status and refreshes the summary', asyn
   await expect(page.getByText('0 playback requests in the last 7 days')).toBeVisible();
   await expect(page.locator('#ops-playback')).toContainText('Not measured');
   await expect(page.locator('#ops-playback-status dd')).toHaveText(['0', '0', '0', '0', '0']);
+  await expect(page.locator('#ops-payment-reconciliation')).toContainText('Not measured');
   expect((await page.request.get('/api/v1/lessons/missing-duration-test/video')).status()).toBe(404);
   await page.getByRole('button', { name: 'Refresh status', exact: true }).click();
   await expect(page.locator('#ops-updated')).toContainText('Updated');
@@ -37,6 +39,7 @@ test('administrator inspects operational status and refreshes the summary', asyn
     summary.outbox.ready = 2;
     summary.outbox.oldestReadyDelaySeconds = 123;
     summary.emailTransport = { windowDays: 7, attempts: 5, accepted: 3, failed: 2, averageMs: 125 };
+    summary.paymentReconciliation = { windowDays: 7, checks: 6, reconciled: 4, failed: 2, averageMs: 250 };
     await route.fulfill({ response, json: summary });
   });
 
@@ -63,6 +66,13 @@ test('administrator inspects operational status and refreshes the summary', asyn
           : 'Transporte de correo · últimos 7 días UTC',
       exact: true,
     })).toBeVisible();
+    await expect(page.locator('#ops-payment-reconciliation dd')).toHaveText(['6', '4', '2', '250 ms']);
+    await expect(page.getByRole('heading', {
+      name: locale === 'en' ? 'Payment reconciliation · last 7 UTC days'
+        : locale === 'pt-BR' ? 'Conciliação de pagamentos · últimos 7 dias UTC'
+          : 'Conciliación de pagos · últimos 7 días UTC',
+      exact: true,
+    })).toBeVisible();
     await expect(page.locator('#ops-playback-status dd')).toHaveText(['1', '2', '3', '4', '5']);
     await expect(page.getByRole('heading', {
       name: locale === 'en' ? 'Media responses by HTTP status'
@@ -86,11 +96,13 @@ test('administrator inspects operational status and refreshes the summary', asyn
     summary.outbox.ready = 0;
     summary.outbox.oldestReadyDelaySeconds = null;
     summary.emailTransport = { windowDays: 7, attempts: 0, accepted: 0, failed: 0, averageMs: null };
+    summary.paymentReconciliation = { windowDays: 7, checks: 0, reconciled: 0, failed: 0, averageMs: null };
     await route.fulfill({ response, json: summary });
   }, { times: 1 });
   await page.locator('#ops-refresh').click();
   await expect(page.locator('#ops-outbox')).toContainText('No messages ready');
   await expect(page.locator('#ops-email-transport dd')).toHaveText(['0', '0', '0', 'Not measured']);
+  await expect(page.locator('#ops-payment-reconciliation dd')).toHaveText(['0', '0', '0', 'Not measured']);
 });
 
 test('storage measurement failures remain visible until a successful refresh in every locale', async ({ page }) => {

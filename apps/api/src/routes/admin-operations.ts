@@ -83,6 +83,12 @@ export function adminOperationsRouter(db: Database.Database, config: Config): Ro
       GROUP BY outcome`).all() as Array<{ outcome: string; attempts: number; durationMs: number }>;
     const emailAttempts = emailRows.reduce((total, row) => total + row.attempts, 0);
     const emailDurationMs = emailRows.reduce((total, row) => total + row.durationMs, 0);
+    const reconciliationRows = db.prepare(`SELECT outcome,sum(check_count) AS checks,
+      sum(duration_total_ms) AS durationMs FROM payment_reconciliation_metrics_daily
+      WHERE metric_date BETWEEN date('now','-6 days') AND date('now')
+      GROUP BY outcome`).all() as Array<{ outcome: string; checks: number; durationMs: number }>;
+    const reconciliationChecks = reconciliationRows.reduce((total, row) => total + row.checks, 0);
+    const reconciliationDurationMs = reconciliationRows.reduce((total, row) => total + row.durationMs, 0);
 
     let storage: { availableBytes: number; totalBytes: number } | null = null;
     try {
@@ -116,6 +122,13 @@ export function adminOperationsRouter(db: Database.Database, config: Config): Ro
         accepted: emailRows.find(row => row.outcome === 'accepted')?.attempts ?? 0,
         failed: emailRows.find(row => row.outcome === 'failed')?.attempts ?? 0,
         averageMs: emailAttempts ? emailDurationMs / emailAttempts : null,
+      },
+      paymentReconciliation: {
+        windowDays: 7,
+        checks: reconciliationChecks,
+        reconciled: reconciliationRows.find(row => row.outcome === 'reconciled')?.checks ?? 0,
+        failed: reconciliationRows.find(row => row.outcome === 'failed')?.checks ?? 0,
+        averageMs: reconciliationChecks ? reconciliationDurationMs / reconciliationChecks : null,
       },
       payments,
       storage,

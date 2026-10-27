@@ -2011,3 +2011,28 @@ This is local instrumentation with test providers/mocked browser counts, not
 qualification of external SMTP or final delivery, and adds no alert threshold or
 external notification channel. No Firefox/WebKit/device reruns, deployment,
 host changes or changes to the user's running instance were performed.
+
+## Payment reconciliation check telemetry — October 27, 2026
+
+OPS-03 now records daily payment reconciliation check outcomes and elapsed time.
+Migration 096 enforces valid UTC dates, outcome names and positive integral counts
+with non-negative integral durations. The seven-day API/dashboard summary
+distinguishes safely handled results (including pending/canceled) from provider
+lookup failures or results that cannot be safely reconciled, including mismatches.
+It exposes count and weighted average duration in en/pt-BR/es, with null duration
+when no checks were measured. No order IDs, checkout references or provider
+payloads are retained. Telemetry persistence errors emit only a fixed safe log and
+do not alter the payment reconciliation result.
+
+Validation: 12 focused payment reconciliation, operations API and translation
+tests passed, including failed provider lookups, mismatched and pending results,
+seven-UTC-day aggregation, weighted average, schema constraints, sensitive-data
+exclusion and safe behavior when metrics persistence fails. Full
+`VIDEO_TEST_REAL=1 npm test` passed 214 tests in 64 files; build, lint, editor
+diagnostics, OpenAPI parsing and `git diff --check` passed. The first Chromium
+run had a disposed intercepted response in the existing storage test; its
+isolated rerun passed, then all three operations workflows passed together on
+disposable port 4330, covering mocked reconciliation metrics in all locales and
+the explicit empty state. No external provider latency/health, settlement-finality
+or refund-monitoring qualification was performed. No deployment, host changes or
+changes to the user's running instance.

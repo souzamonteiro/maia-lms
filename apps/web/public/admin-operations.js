@@ -62,6 +62,17 @@ export async function mountAdminOperations({ app, api, t, e, locale }) {
   emailMetrics.className = 'ops-grid';
   emailSection.append(emailHeading, emailExplanation, emailMetrics);
   snapshot.append(emailSection);
+  const reconciliationSection = document.createElement('section');
+  reconciliationSection.className = 'ops-section';
+  const reconciliationHeading = document.createElement('h2');
+  reconciliationHeading.textContent = t('adminOpsReconciliation');
+  const reconciliationExplanation = document.createElement('p');
+  reconciliationExplanation.textContent = t('adminOpsReconciliationExplanation');
+  const reconciliationMetrics = document.createElement('dl');
+  reconciliationMetrics.id = 'ops-payment-reconciliation';
+  reconciliationMetrics.className = 'ops-grid';
+  reconciliationSection.append(reconciliationHeading, reconciliationExplanation, reconciliationMetrics);
+  snapshot.append(reconciliationSection);
   const fact = (label, value) => `<div><dt>${e(label)}</dt><dd>${e(value)}</dd></div>`;
   const formatBytes = value => `${number(value / 1024 ** 3)} GiB`;
 
@@ -111,6 +122,14 @@ export async function mountAdminOperations({ app, api, t, e, locale }) {
         fact(t('adminOpsEmailDuration'), summary.emailTransport.averageMs === null
           ? t('adminOpsPlaybackUnmeasured')
           : t('adminOpsPlaybackMilliseconds', { value: number(summary.emailTransport.averageMs) })),
+      ].join('');
+      reconciliationMetrics.innerHTML = [
+        fact(t('adminOpsReconciliationChecks'), number(summary.paymentReconciliation.checks)),
+        fact(t('adminOpsReconciled'), number(summary.paymentReconciliation.reconciled)),
+        fact(t('adminOpsReconciliationFailed'), number(summary.paymentReconciliation.failed)),
+        fact(t('adminOpsReconciliationDuration'), summary.paymentReconciliation.averageMs === null
+          ? t('adminOpsPlaybackUnmeasured')
+          : t('adminOpsPlaybackMilliseconds', { value: number(summary.paymentReconciliation.averageMs) })),
       ].join('');
       app.querySelector('#ops-payments').innerHTML = paymentEntries.length
         ? paymentEntries.map(([state, count]) => fact(state, number(count))).join('')

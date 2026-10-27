@@ -28,18 +28,32 @@ export async function reconcilePendingPayments(
   let settled = 0;
   let failed = 0;
   for (const order of orders) {
+    const started = performance.now();
+    let outcome: 'reconciled' | 'failed' = 'failed';
     try {
       const payment = await provider.getPayment(order.provider_checkout_id);
       const result = applyProviderPayment(db, provider.name, payment, sellerId);
-      if (result.kind === 'paid' || result.kind === 'canceled' || result.kind === 'pending')
+      if (result.kind === 'paid' || result.kind === 'canceled' || result.kind === 'pending') {
         settled++;
-      else failed++;
+        outcome = 'reconciled';
+      } else failed++;
       db.prepare('UPDATE orders SET updated_at=datetime(\'now\') WHERE id=?')
         .run(order.id);
     } catch {
       failed++;
       db.prepare('UPDATE orders SET updated_at=datetime(\'now\') WHERE id=?')
         .run(order.id);
+    } finally {
+      const duration = Math.max(0, Math.round(performance.now() - started));
+      try {
+        db.prepare(`INSERT INTO payment_reconciliation_metrics_daily(
+          metric_date,outcome,check_count,duration_total_ms
+        ) VALUES(?,?,1,?) ON CONFLICT(metric_date,outcome) DO UPDATE SET
+          check_count=check_count+1,duration_total_ms=duration_total_ms+excluded.duration_total_ms`)
+          .run(new Date().toISOString().slice(0, 10), outcome, duration);
+      } catch {
+        console.error('Payment reconciliation metrics write failed');
+      }
     }
   }
   return { checked: orders.length, settled, failed };

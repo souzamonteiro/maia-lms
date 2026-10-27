@@ -2299,7 +2299,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [generatedAt, workers, media, outbox, emailTransport, payments, storage, playback, alerts]
+                required: [generatedAt, workers, media, outbox, emailTransport, paymentReconciliation, payments, storage, playback, alerts]
                 properties:
                   generatedAt: {type: string, format: date-time}
                   workers:
@@ -2342,6 +2342,19 @@ paths:
                         type: [number, 'null']
                         minimum: 0
                         description: Weighted average duration of accepted and failed send attempts. Null when no attempts were measured.
+                  paymentReconciliation:
+                    type: object
+                    description: Payment order lookup/reconciliation checks during seven UTC dates. Reconciled includes handled pending/canceled outcomes; failed includes provider/settlement errors and mismatched results. No order identifiers or provider payloads are stored.
+                    required: [windowDays, checks, reconciled, failed, averageMs]
+                    properties:
+                      windowDays: {type: integer, const: 7}
+                      checks: {type: integer, minimum: 0}
+                      reconciled: {type: integer, minimum: 0}
+                      failed: {type: integer, minimum: 0}
+                      averageMs:
+                        type: [number, 'null']
+                        minimum: 0
+                        description: Weighted average check duration. Null when no checks were measured.
                   storage:
                     type: [object, 'null']
                     description: Filesystem capacity for the configured storage root. Null when measurement fails; alerts then includes STORAGE_UNAVAILABLE, not STORAGE_LOW. No filesystem paths or raw errors are exposed.

@@ -276,6 +276,18 @@ and do not change acknowledgment/retry behavior, avoiding telemetry-induced
 duplicate sends. Such failures can leave incomplete samples. This adds no SMTP
 alert threshold and does not qualify external SMTP or final inbox delivery.
 
+Migration 096 records daily payment reconciliation outcome/count/duration
+aggregates by UTC date. A reconciled check includes safely handled pending or
+canceled results; failed includes provider lookup errors and results that could
+not be applied safely, such as mismatches. The seven-day `paymentReconciliation`
+summary reports checks, reconciled, failed and weighted mean duration; it does
+not expose order IDs, checkout references or provider payloads. Metrics represent
+the application reconciliation loop, not end-to-end provider latency, settlement
+finality, refund status monitoring or payment-provider availability. Persistence
+failure emits only `Payment reconciliation metrics write failed` and does not
+replace a payment result with a telemetry error. This remains a local dashboard,
+not an external alert channel.
+
 Migration 090 records each worker process every ten seconds;
 heartbeats older than 45 seconds are stale. `/readyz` checks only API/SQLite
 readiness and is not a worker health check. Migration 092 stores daily playback
