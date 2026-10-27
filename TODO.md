@@ -1217,6 +1217,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Local report, October 23, 2026: `VIDEO_TEST_REAL=1 npm test` passed all 186
   tests across 63 files; build and lint passed. The focused Chromium operations
   workflow passed, including measured/unmeasured durations and all three locales.
+  October 27 local Chromium E2E: all 39 workflows passed with `VIDEO_TEST_REAL=1`,
+  including real video playback and attachment workflows, on isolated port 4330.
+  This does not qualify Firefox/WebKit as a set or any physical device.
   Earlier complete Chromium and WebKit runs each passed all 35 workflows,
   including real video and 360×780 checks; these are not new full-suite runs. Firefox
   full-suite attempts remain intermittent: the October 22 run passed 34/35,

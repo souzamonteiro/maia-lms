@@ -2194,3 +2194,14 @@ full-suite qualification remains open.
 Validation: the focused Firefox privacy and course-review workflows passed.
 The focused Chromium privacy workflow passed; build was not needed for this
 test-only change. Lint, editor diagnostics and `git diff --check` passed.
+
+## Full Chromium E2E regression — October 27, 2026
+
+The complete Chromium browser suite passed all 39 workflows with
+`VIDEO_TEST_REAL=1`, including real video playback and attachment delivery, on
+isolated E2E port 4330. This verifies local Chromium behavior only; it does not
+close the intermittent Firefox full-suite result, constitute a WebKit rerun, or
+qualify a physical device or deployed host.
+
+Validation: 39/39 Chromium workflows passed. No source code changed and no
+deployment, host or running-instance changes were made.
