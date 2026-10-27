@@ -1224,11 +1224,11 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   manuals, limits, and recovery procedures with every delivery. Dependency:
   cross-cutting. Acceptance: implemented API and future plans are separate;
   runnable examples do not depend on default credentials or omitted steps.
-  Local delivery: updated the data model for migrations 089–092, privacy semantics,
-  production scanner behavior, worker/playback dashboard limits, SEO metadata, and
-  validation results. `spec/openapi.yaml` now documents HLS playback plus the new
-  operational and privacy endpoints; the future design remains separate in
-  `planned-openapi.yaml`.
+  Local delivery: updated the data model through migrations 097–099 and documented
+  privacy export/request semantics, production scanner behavior, worker/playback
+  dashboard limits, SEO metadata, and validation results. `spec/openapi.yaml` now
+  documents HLS playback plus the new operational and privacy endpoints; the future
+  design remains separate in `planned-openapi.yaml`.
   The implemented contract is still incomplete, and installation, recovery,
   author/learner/admin manuals and cross-document review need a full pass. Keep
   DOC-01 open.
