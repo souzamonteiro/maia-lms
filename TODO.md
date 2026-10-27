@@ -1108,6 +1108,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Telemetry write failures log a safe message and do not retry an accepted email.
   Full local regression: 214 tests; build/lint and three focused Chromium
   operations workflows passed. External SMTP delivery qualification remains open.
+  A failed email transport attempt within the seven-day summary window now raises
+  the localized `EMAIL_TRANSPORT_FAILED` dashboard alert; this is not confirmation
+  of inbox delivery or an external notification channel.
   Payment reconciliation checks now also record daily safe outcome/count/duration
   aggregates. The seven-day dashboard distinguishes safely reconciled checks
   (including handled pending/canceled states) from provider/settlement failures

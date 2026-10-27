@@ -82,6 +82,7 @@ export function adminOperationsRouter(db: Database.Database, config: Config): Ro
       WHERE metric_date BETWEEN date('now','-6 days') AND date('now')
       GROUP BY outcome`).all() as Array<{ outcome: string; attempts: number; durationMs: number }>;
     const emailAttempts = emailRows.reduce((total, row) => total + row.attempts, 0);
+    const emailFailures = emailRows.find(row => row.outcome === 'failed')?.attempts ?? 0;
     const emailDurationMs = emailRows.reduce((total, row) => total + row.durationMs, 0);
     const reconciliationRows = db.prepare(`SELECT outcome,sum(check_count) AS checks,
       sum(duration_total_ms) AS durationMs FROM payment_reconciliation_metrics_daily
@@ -109,6 +110,7 @@ export function adminOperationsRouter(db: Database.Database, config: Config): Ro
     if (stuckMedia) alerts.push('MEDIA_JOB_STUCK');
     if (Number(media.FAILED ?? 0)) alerts.push('MEDIA_JOB_FAILED');
     if (Number(outbox.exhausted)) alerts.push('OUTBOX_EXHAUSTED');
+    if (emailFailures) alerts.push('EMAIL_TRANSPORT_FAILED');
     if (reconciliationFailures) alerts.push('PAYMENT_RECONCILIATION_FAILED');
     if (!storage) alerts.push('STORAGE_UNAVAILABLE');
     if (storage && storage.totalBytes > 0 && storage.availableBytes / storage.totalBytes < 0.1)

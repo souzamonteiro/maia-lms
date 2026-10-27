@@ -2131,3 +2131,15 @@ Validation: 10 focused API/translation tests passed, all three Chromium operatio
 workflows passed on isolated port 4330, build and lint passed, OpenAPI YAML parsed,
 and `git diff --check` passed. No full-suite or external provider qualification
 was run. No deployment, host or running-instance changes were made.
+
+## Email transport dashboard alert — October 27, 2026
+
+The local operations summary now emits `EMAIL_TRANSPORT_FAILED` when the seven-day
+email-transport aggregate has failed attempts. The admin page translates it in en,
+pt-BR and es and clears it when failed attempts leave the window. It measures failed
+transport attempts, not inbox delivery, and does not create external notification.
+
+Validation: the focused operations API/localization tests and three Chromium
+operations workflows passed; build, lint, OpenAPI YAML parsing and
+`git diff --check` passed. No external SMTP qualification, deployment, host or
+running-instance changes were performed.

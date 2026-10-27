@@ -274,7 +274,11 @@ Durations use a monotonic clock and include the provider send call only.
 Metrics write failures emit the fixed `Email transport metrics write failed` log
 and do not change acknowledgment/retry behavior, avoiding telemetry-induced
 duplicate sends. Such failures can leave incomplete samples. This adds no SMTP
-alert threshold and does not qualify external SMTP or final inbox delivery.
+alert delivery and does not qualify external SMTP or final inbox delivery. A failed
+send attempt in the seven-day window adds the local dashboard alert
+`EMAIL_TRANSPORT_FAILED`; the alert clears when no failed attempts remain in the
+window. It reports transport attempts only, not whether an accepted message reached
+the recipient's inbox, and is translated in en, pt-BR and es.
 
 Migration 096 records daily payment reconciliation outcome/count/duration
 aggregates by UTC date. A reconciled check includes safely handled pending or

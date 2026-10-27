@@ -9,6 +9,7 @@ const alertKeys = {
   MEDIA_JOB_STUCK: 'adminOpsAlertMediaStuck',
   MEDIA_JOB_FAILED: 'adminOpsAlertMediaFailed',
   OUTBOX_EXHAUSTED: 'adminOpsAlertOutboxExhausted',
+  EMAIL_TRANSPORT_FAILED: 'adminOpsAlertEmailTransportFailed',
   PAYMENT_RECONCILIATION_FAILED: 'adminOpsAlertPaymentReconciliationFailed',
   STORAGE_LOW: 'adminOpsAlertStorageLow',
   STORAGE_UNAVAILABLE: 'adminOpsAlertStorageUnavailable',

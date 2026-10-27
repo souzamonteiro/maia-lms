@@ -157,14 +157,24 @@ it('reports a weighted duration average for measured responses within the seven-
 
 it('aggregates email transport attempts and weighted duration over seven UTC dates', async () => {
   const cookie = await account('email-metrics-admin@example.com', 'admin');
-  const summary = async () => (await request('/api/v1/admin/operations', 'GET', undefined, cookie)).data.emailTransport;
-  expect(await summary()).toEqual({ windowDays: 7, attempts: 0, accepted: 0, failed: 0, averageMs: null });
+  const summary = async () => (await request('/api/v1/admin/operations', 'GET', undefined, cookie)).data;
+  const initial = await summary();
+  expect(initial).toMatchObject({
+    emailTransport: { windowDays: 7, attempts: 0, accepted: 0, failed: 0, averageMs: null },
+    alerts: expect.not.arrayContaining(['EMAIL_TRANSPORT_FAILED']),
+  });
   db.exec(`INSERT INTO email_transport_metrics_daily VALUES
     (date('now'),'accepted',2,100),
     (date('now','-6 days'),'failed',1,200),
     (date('now','-7 days'),'accepted',10,9999),
     (date('now','+1 day'),'failed',10,9999);`);
-  expect(await summary()).toEqual({ windowDays: 7, attempts: 3, accepted: 2, failed: 1, averageMs: 100 });
+  const withFailures = await summary();
+  expect(withFailures.emailTransport)
+    .toEqual({ windowDays: 7, attempts: 3, accepted: 2, failed: 1, averageMs: 100 });
+  expect(withFailures.alerts).toContain('EMAIL_TRANSPORT_FAILED');
+  db.prepare(`DELETE FROM email_transport_metrics_daily WHERE outcome='failed'`).run();
+  const recovered = await summary();
+  expect(recovered.alerts).not.toContain('EMAIL_TRANSPORT_FAILED');
 });
 
 it('aggregates payment reconciliation checks over the seven-day UTC window', async () => {
