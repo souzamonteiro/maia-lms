@@ -285,7 +285,10 @@ not expose order IDs, checkout references or provider payloads. Metrics represen
 the application reconciliation loop, not end-to-end provider latency, settlement
 finality, refund status monitoring or payment-provider availability. Persistence
 failure emits only `Payment reconciliation metrics write failed` and does not
-replace a payment result with a telemetry error. This remains a local dashboard,
+replace a payment result with a telemetry error. Provider/check exceptions and
+structured rejected results emit fixed `Payment reconciliation check failed` and
+`Payment reconciliation result rejected` messages, respectively; no provider
+exception, payment identifier or payload is logged. This remains a local dashboard,
 not an external alert channel.
 
 Migration 090 records each worker process every ten seconds;

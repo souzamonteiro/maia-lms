@@ -112,32 +112,37 @@ it('records provider reconciliation outcomes without exposing payment identifier
       refund: async () => { throw new Error('Not used'); },
     };
     const run = () => reconcilePendingPayments(db, provider, 'seller');
-    expect(await run()).toMatchObject({ checked: 1, settled: 0, failed: 1 });
-    expect(db.prepare('SELECT outcome,check_count,duration_total_ms FROM payment_reconciliation_metrics_daily').all())
-      .toEqual([expect.objectContaining({ outcome: 'failed', check_count: 1 })]);
-    behavior = 'mismatch';
-    db.prepare("UPDATE orders SET updated_at=datetime('now','-10 minutes') WHERE id='order'").run();
-    expect(await run()).toMatchObject({ checked: 1, settled: 0, failed: 1 });
-    behavior = 'pending';
-    db.prepare("UPDATE orders SET updated_at=datetime('now','-10 minutes') WHERE id='order'").run();
-    expect(await run()).toMatchObject({ checked: 1, settled: 1, failed: 0 });
-    expect(db.prepare('SELECT outcome,check_count,duration_total_ms FROM payment_reconciliation_metrics_daily ORDER BY outcome').all())
-      .toEqual([
-        expect.objectContaining({ outcome: 'failed', check_count: 2 }),
-        expect.objectContaining({ outcome: 'reconciled', check_count: 1 }),
-      ]);
-    const serialized = JSON.stringify(db.prepare('SELECT * FROM payment_reconciliation_metrics_daily').all());
-    expect(serialized).not.toMatch(/buyer@example|private-provider|token|different-order/);
-    expect(() => db.prepare('INSERT INTO payment_reconciliation_metrics_daily VALUES(?,?,?,?)')
-      .run('2026-02-30', 'failed', 1, 0)).toThrow();
-    expect(() => db.prepare('INSERT INTO payment_reconciliation_metrics_daily VALUES(?,?,?,?)')
-      .run('2026-01-01', 'unknown', 1, 0)).toThrow();
-    expect(() => db.prepare('INSERT INTO payment_reconciliation_metrics_daily VALUES(?,?,?,?)')
-      .run('2026-01-01', 'failed', 1, -1)).toThrow();
-    db.exec(`CREATE TRIGGER reject_payment_metrics BEFORE INSERT ON payment_reconciliation_metrics_daily
-      BEGIN SELECT RAISE(ABORT,'Sensitive database error'); END;`);
     const log = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {
+      expect(await run()).toMatchObject({ checked: 1, settled: 0, failed: 1 });
+      expect(log).toHaveBeenNthCalledWith(1, 'Payment reconciliation check failed');
+      expect(db.prepare('SELECT outcome,check_count,duration_total_ms FROM payment_reconciliation_metrics_daily').all())
+        .toEqual([expect.objectContaining({ outcome: 'failed', check_count: 1 })]);
+      behavior = 'mismatch';
+      db.prepare("UPDATE orders SET updated_at=datetime('now','-10 minutes') WHERE id='order'").run();
+      expect(await run()).toMatchObject({ checked: 1, settled: 0, failed: 1 });
+      expect(log).toHaveBeenNthCalledWith(2, 'Payment reconciliation result rejected');
+      behavior = 'pending';
+      db.prepare("UPDATE orders SET updated_at=datetime('now','-10 minutes') WHERE id='order'").run();
+      expect(await run()).toMatchObject({ checked: 1, settled: 1, failed: 0 });
+      expect(log).toHaveBeenCalledTimes(2);
+      expect(log.mock.calls.flat().join(' ')).not.toMatch(/buyer@example|private-provider|token|different-order|Sensitive provider/);
+      expect(db.prepare('SELECT outcome,check_count,duration_total_ms FROM payment_reconciliation_metrics_daily ORDER BY outcome').all())
+        .toEqual([
+          expect.objectContaining({ outcome: 'failed', check_count: 2 }),
+          expect.objectContaining({ outcome: 'reconciled', check_count: 1 }),
+        ]);
+      const serialized = JSON.stringify(db.prepare('SELECT * FROM payment_reconciliation_metrics_daily').all());
+      expect(serialized).not.toMatch(/buyer@example|private-provider|token|different-order/);
+      expect(() => db.prepare('INSERT INTO payment_reconciliation_metrics_daily VALUES(?,?,?,?)')
+        .run('2026-02-30', 'failed', 1, 0)).toThrow();
+      expect(() => db.prepare('INSERT INTO payment_reconciliation_metrics_daily VALUES(?,?,?,?)')
+        .run('2026-01-01', 'unknown', 1, 0)).toThrow();
+      expect(() => db.prepare('INSERT INTO payment_reconciliation_metrics_daily VALUES(?,?,?,?)')
+        .run('2026-01-01', 'failed', 1, -1)).toThrow();
+      db.exec(`CREATE TRIGGER reject_payment_metrics BEFORE INSERT ON payment_reconciliation_metrics_daily
+        BEGIN SELECT RAISE(ABORT,'Sensitive database error'); END;`);
+      log.mockClear();
       db.prepare("UPDATE orders SET updated_at=datetime('now','-10 minutes') WHERE id='order'").run();
       expect(await run()).toMatchObject({ checked: 1, settled: 1, failed: 0 });
       expect(log).toHaveBeenCalledExactlyOnceWith('Payment reconciliation metrics write failed');

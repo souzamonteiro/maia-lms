@@ -1113,7 +1113,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   (including handled pending/canceled states) from provider/settlement failures
   and mismatches, with weighted average duration in all three languages. No order
   identifiers or provider payloads are stored; telemetry write failure does not
-  replace the reconciliation result. Remaining gaps include external provider
+  replace the reconciliation result. Provider/check exceptions and rejected
+  reconciliation results now emit fixed safe log messages without raw errors,
+  order identifiers or provider payloads. Remaining gaps include external provider
   latency/health and actual payment/refund settlement monitoring.
 - [ ] **OPS-04 — Real capacity on Maia Edge.**
   Define audience/bitrate/upload limits and test host, VPN, and VPS bandwidth,

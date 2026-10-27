@@ -2101,6 +2101,9 @@ when no checks were measured. No order IDs, checkout references or provider
 payloads are retained. Telemetry persistence errors emit only a fixed safe log and
 do not alter the payment reconciliation result.
 
+Reconciliation failures and rejected results also emit fixed category messages;
+provider exceptions and payment identifiers/payloads are not written to logs.
+
 Validation: 12 focused payment reconciliation, operations API and translation
 tests passed, including failed provider lookups, mismatched and pending results,
 seven-UTC-day aggregation, weighted average, schema constraints, sensitive-data

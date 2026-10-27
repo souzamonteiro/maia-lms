@@ -36,11 +36,15 @@ export async function reconcilePendingPayments(
       if (result.kind === 'paid' || result.kind === 'canceled' || result.kind === 'pending') {
         settled++;
         outcome = 'reconciled';
-      } else failed++;
+      } else {
+        failed++;
+        console.error('Payment reconciliation result rejected');
+      }
       db.prepare('UPDATE orders SET updated_at=datetime(\'now\') WHERE id=?')
         .run(order.id);
     } catch {
       failed++;
+      console.error('Payment reconciliation check failed');
       db.prepare('UPDATE orders SET updated_at=datetime(\'now\') WHERE id=?')
         .run(order.id);
     } finally {
