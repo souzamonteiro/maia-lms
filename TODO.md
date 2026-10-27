@@ -1065,6 +1065,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   hash; both source and recovery remain independently verifiable. Focused tests
   cover rollback, preserved credentials/preferences/MFA enrollment and rejection
   of old cookies/links before fresh recovery/login in the real-media HTTP rehearsal.
+  Failed backup or restore attempts now remove only their own incomplete destination,
+  preserve both source/bundle data and allow a corrected retry to reuse the path.
   Keep open for configuration recovery, post-backup credential/MFA review, off-site
   encryption/retention, and host/device qualification.
 - [ ] **OPS-03 — Observability and dashboard operations (local dashboard; telemetry and alert delivery open).**

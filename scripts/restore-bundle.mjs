@@ -124,6 +124,7 @@ if (verifyOnly) {
   if (relative === '' || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative)))
     throw new Error('Restore destination must be outside the backup bundle');
   fs.mkdirSync(path.join(parent, path.basename(destination)), { mode: 0o700 });
+  try {
   fs.mkdirSync(path.join(destination, 'storage'), { mode: 0o700 });
   const records = [
     { source: 'database.sqlite', destination: 'database.sqlite' },
@@ -183,4 +184,12 @@ if (verifyOnly) {
   console.log(`Verified restore: ${destination}`);
   console.log('Recovered sessions, pending email tokens and MFA login challenges have been invalidated.');
   console.log('Configuration, migrations and service startup remain operator actions.');
+  } catch (error) {
+    try {
+      fs.rmSync(destination, { recursive: true });
+    } catch (cleanupError) {
+      throw new AggregateError([error, cleanupError], 'Restore failed and its incomplete destination could not be removed');
+    }
+    throw error;
+  }
 }

@@ -2155,3 +2155,16 @@ Validation: the focused operations API/localization tests and three Chromium
 operations workflows passed; build, lint, OpenAPI YAML parsing and
 `git diff --check` passed. No external SMTP qualification, deployment, host or
 running-instance changes were performed.
+
+## Backup and restore failure cleanup — October 27, 2026
+
+The bundle and restore commands now remove the newly created destination if work
+fails before completion, leaving source data and the original bundle untouched.
+Cleanup errors are surfaced together with the original operation error. Tests
+verify that a missing referenced media object leaves no partial bundle and that
+the same destination can be reused after correcting the source; injected
+authentication-invalidation failure leaves no partial restore directory.
+
+Validation: all 17 focused backup/restore tests passed; build, lint, editor
+diagnostics and `git diff --check` passed. No full-suite run, deployment, host
+change or modification to the running instance was performed.

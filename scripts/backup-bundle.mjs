@@ -38,6 +38,7 @@ const resolvedStorage = fs.realpathSync(sourceStorage);
 if (resolvedStorage !== sourceStorage) throw new Error('Storage root cannot resolve through a symlink');
 
 fs.mkdirSync(target, { mode: 0o700 });
+try {
 fs.mkdirSync(path.join(target, 'storage'), { mode: 0o700 });
 const files = [];
 
@@ -147,3 +148,11 @@ fs.writeFileSync(
   { flag: 'wx', mode: 0o600 },
 );
 console.log(`Verified backup bundle: ${target}`);
+} catch (error) {
+  try {
+    fs.rmSync(target, { recursive: true });
+  } catch (cleanupError) {
+    throw new AggregateError([error, cleanupError], 'Backup failed and its incomplete destination could not be removed');
+  }
+  throw error;
+}

@@ -159,6 +159,7 @@ it.each([false, true])('invalidates restored authentication atomically (simulate
     if (failure) {
       expect(restore).toThrow(/Simulated invalidation failure/);
       expect(existsSync(join(recovery, 'manifest.json'))).toBe(false);
+      expect(existsSync(recovery)).toBe(false);
     } else {
       restore();
       const manifest = JSON.parse(readFileSync(join(recovery, 'manifest.json'), 'utf8'));
@@ -170,7 +171,10 @@ it.each([false, true])('invalidates restored authentication atomically (simulate
       expect(manifest.database.sha256).not.toBe(manifest.restoration.sourceDatabaseSha256);
       execFileSync(process.execPath, [resolve('scripts/restore-bundle.mjs'), '--verify', recovery], { stdio: 'pipe' });
     }
-    const restored = new Database(join(recovery, 'database.sqlite'), { readonly: true });
+    const restored = new Database(
+      join(failure ? bundle : recovery, 'database.sqlite'),
+      { readonly: true },
+    );
     try {
       expect(restored.prepare('SELECT session_version,password_hash,locale,email FROM users').get())
         .toEqual({ session_version: failure ? 0 : 1, password_hash: 'unchanged-hash', locale: 'es', email: 'owner@example.com' });
@@ -305,6 +309,14 @@ it('refuses to mark a bundle complete when a referenced media object is missing'
       }),
     ).toThrow();
     expect(existsSync(join(bundle, 'manifest.json'))).toBe(false);
+    expect(existsSync(bundle)).toBe(false);
+    mkdirSync(join(storage, 'missing'), { recursive: true });
+    writeFileSync(join(storage, 'missing', 'object.png'), 'recovered media');
+    expect(() => execFileSync(
+      process.execPath, [resolve('scripts/backup-bundle.mjs'), bundle],
+      { env: { ...process.env, DATABASE_URL: source, STORAGE_ROOT: storage }, stdio: 'pipe' },
+    )).not.toThrow();
+    expect(existsSync(join(bundle, 'manifest.json'))).toBe(true);
   } finally {
     db.close();
     rmSync(directory, { recursive: true, force: true });

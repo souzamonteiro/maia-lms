@@ -159,10 +159,12 @@ manifest; keep backups in trusted, access-controlled storage.
 Restoration verifies the source before creating the destination, refuses any
 existing destination or one nested inside the bundle, copies with private
 permissions, and revalidates the restored copy. It writes a completion manifest
-only for a successfully verified copy; failure can leave a partial directory
-without a completion manifest. Preserve it for diagnosis or choose a new directory
-for a retry. The command does not load `.env`, overwrite the live database,
-configure/start services or apply migrations.
+only for a successfully verified copy. If bundling or restoration fails after
+creating its new destination, the command removes that incomplete output so the
+same destination can be safely retried; if cleanup itself fails, the command
+reports both errors. Existing destinations are never cleaned or overwritten.
+The command does not load `.env`, overwrite the live database, configure/start
+services or apply migrations.
 
 Restoration now **always invalidates recovered authentication** in the new copy:
 it advances every account's session version, expires HTTP sessions, revokes legacy
