@@ -2026,6 +2026,19 @@ absent. No full-suite or browser rerun was needed for this isolated export field
 This is local implementation and validation only; no deployment or host changes
 were made.
 
+## Terminal privacy-request state — October 27, 2026
+
+Migration 097 adds a SQLite trigger preventing a CLOSED privacy request from being
+reopened through direct status updates. Existing OPEN and IN_REVIEW workflow
+updates, including closure and repeated review notes, remain permitted.
+
+Validation: the focused migration and privacy API tests passed (4 tests), as did
+build, lint and `git diff --check`. The full suite passed 214 tests across 65 files;
+one existing backup-restoration test timed out at its 5-second limit under suite
+load. All 17 tests in that backup test file passed when rerun alone. This strengthens
+the local database invariant only; it does not fulfill or delete privacy requests
+and does not change host or deployment state.
+
 ## Email-change history in account export — October 27, 2026
 
 PRIV-01's authenticated JSON export now includes the requesting account's

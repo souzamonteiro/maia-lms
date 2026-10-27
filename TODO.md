@@ -1026,6 +1026,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   an open attempt to have no score/pass and a submitted attempt to have an integer
   score in 0–100 plus an integer pass flag; focused tests cover invalid direct-SQL
   states while preserving the existing deadline and immutable-submission checks.
+  Migration 097 makes CLOSED privacy requests terminal, preventing direct-SQL
+  reactivation after closure while preserving OPEN/IN_REVIEW/CLOSED transitions
+  needed by the current request queue. Focused migration tests cover allowed updates
+  and rejected reopening; the complete invariant matrix remains open.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:
