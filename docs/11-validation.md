@@ -2216,3 +2216,16 @@ timeout. Neither run qualifies physical devices or the deployed host.
 
 Validation: 39/39 WebKit workflows passed. No source code changed and no
 deployment, host or running-instance changes were made.
+
+## Firefox full-suite rerun — October 27, 2026
+
+A further complete Firefox run with `VIDEO_TEST_REAL=1` again passed 38/39
+workflows, including both real-media cases. The 30-second `page.goto` timeout
+moved from `course-review` to `course-withdrawal` at `/my-learning`; the
+course-withdrawal test passed in isolation. Across full Firefox attempts the
+navigation timeout moves between workflows, so no test-specific timeout change
+was made and full-suite Firefox qualification remains open.
+
+Validation: 38/39 complete Firefox workflows passed; the isolated
+course-withdrawal workflow passed. No source code change, deployment, host or
+running-instance modification was made.

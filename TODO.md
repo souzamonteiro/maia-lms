@@ -1246,6 +1246,11 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   results before installing a one-shot API failure route, removing a Firefox race
   where the route could intercept the locale reload instead of the intended retry.
   Keep full Firefox qualification open; no deployment or host changes were made.
+  A further October 27 full Firefox run again passed 38/39 with both real-media
+  workflows; the 30-second `page.goto` timeout moved to `course-withdrawal`
+  (`/my-learning`) and that test passed alone. The affected workflow has moved
+  from `course-review` to `course-withdrawal` across full runs, so this remains
+  suite-level navigation intermittency, not a clean Firefox qualification.
 - [ ] **DOC-01 — Keep contracts and operations aligned with implementation.**
   Update OpenAPI, data model, installation/configuration, author/learner/admin
   manuals, limits, and recovery procedures with every delivery. Dependency:
