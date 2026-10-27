@@ -27,6 +27,8 @@ it('keeps closed privacy requests terminal while allowing normal review transiti
       WHERE id='request'`).run()).toThrow(/privacy request timestamps are invalid/);
     expect(() => db.prepare(`UPDATE account_privacy_requests SET updated_at='2099-01-01'
       WHERE id='request'`).run()).not.toThrow();
+    expect(() => db.prepare(`UPDATE account_privacy_requests SET updated_at='2098-01-01'
+      WHERE id='request'`).run()).toThrow(/privacy request timestamps are invalid/);
     expect(() => db.prepare(`UPDATE account_privacy_requests SET status='IN_REVIEW'
       WHERE id='request'`).run()).not.toThrow();
     expect(() => db.prepare(`UPDATE account_privacy_requests SET status='IN_REVIEW'

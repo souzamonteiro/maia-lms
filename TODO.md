@@ -1033,8 +1033,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   creation timestamps immutable so audit history cannot be reassigned or rewritten;
   status and update timestamps remain mutable under their lifecycle rules. Migration
   099 rejects malformed privacy-request timestamps and update timestamps earlier
-  than creation. Focused migration tests cover these constraints and valid lifecycle
-  updates; the complete invariant matrix remains open.
+  than creation or the preceding update. Focused migration tests cover these
+  constraints and valid lifecycle updates; the complete invariant matrix remains open.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:

@@ -2055,8 +2055,9 @@ and its 17-test file passed independently. No deployment or host changes were ma
 ## Privacy-request timestamp integrity — October 27, 2026
 
 Migration 099 rejects malformed request timestamps and ensures `updated_at` is
-not earlier than `created_at` when requests are inserted or their update timestamp
-changes. This preserves current database-default and ISO timestamp formats.
+not earlier than `created_at` or its previous value when requests are inserted or
+their update timestamp changes. This preserves current database-default and ISO
+timestamp formats.
 
 Validation: the focused migration/API tests, build, lint and `git diff --check`
 passed. The full local regression passed all 215 tests across 65 files using a
