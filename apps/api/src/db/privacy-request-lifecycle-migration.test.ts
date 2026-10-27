@@ -9,11 +9,20 @@ it('keeps closed privacy requests terminal while allowing normal review transiti
     runMigrations(db);
     db.exec(`
       INSERT INTO users(id,email,email_normalized,password_hash)
-      VALUES ('user','user@example.com','user@example.com','hash');
+      VALUES ('user','user@example.com','user@example.com','hash'),
+             ('other-user','other@example.com','other@example.com','hash');
       INSERT INTO account_privacy_requests(id,user_id,request_type,status)
       VALUES ('request','user','deletion','OPEN');
     `);
 
+    expect(() => db.prepare(`UPDATE account_privacy_requests SET id='other-id'
+      WHERE id='request'`).run()).toThrow(/privacy request identity is immutable/);
+    expect(() => db.prepare(`UPDATE account_privacy_requests SET user_id='other-user'
+      WHERE id='request'`).run()).toThrow(/privacy request identity is immutable/);
+    expect(() => db.prepare(`UPDATE account_privacy_requests SET created_at='2099-01-01'
+      WHERE id='request'`).run()).toThrow(/privacy request identity is immutable/);
+    expect(() => db.prepare(`UPDATE account_privacy_requests SET updated_at='2099-01-01'
+      WHERE id='request'`).run()).not.toThrow();
     expect(() => db.prepare(`UPDATE account_privacy_requests SET status='IN_REVIEW'
       WHERE id='request'`).run()).not.toThrow();
     expect(() => db.prepare(`UPDATE account_privacy_requests SET status='IN_REVIEW'

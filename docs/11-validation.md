@@ -2039,6 +2039,19 @@ load. All 17 tests in that backup test file passed when rerun alone. This streng
 the local database invariant only; it does not fulfill or delete privacy requests
 and does not change host or deployment state.
 
+## Immutable privacy-request identity — October 27, 2026
+
+Migration 098 makes each privacy request's ID, owner, type and creation timestamp
+immutable, preserving its audit subject and provenance. Status and update timestamps
+remain mutable according to the existing request workflow and terminal-state rule.
+
+Validation: the focused migration test verifies blocked ID/owner/creation-time
+rewrites, permitted update-time changes and ordinary status progression. Focused
+privacy/migration tests, build, lint and `git diff --check` passed. The full local
+regression passed all 215 tests across 65 files using a 10-second test timeout;
+the earlier default-timeout run had one backup-restoration timeout under suite load,
+and its 17-test file passed independently. No deployment or host changes were made.
+
 ## Email-change history in account export — October 27, 2026
 
 PRIV-01's authenticated JSON export now includes the requesting account's
