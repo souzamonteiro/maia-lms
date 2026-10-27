@@ -2168,3 +2168,12 @@ authentication-invalidation failure leaves no partial restore directory.
 Validation: all 17 focused backup/restore tests passed; build, lint, editor
 diagnostics and `git diff --check` passed. No full-suite run, deployment, host
 change or modification to the running instance was performed.
+
+The restored manifest now includes only the count of unprocessed `email.send`
+messages, so operators can see that preserved recovery work needs review before
+starting the worker. A regression test verifies processed/non-email jobs are
+excluded and recipient/link payload values are not copied into the manifest.
+
+Validation update: the focused 17-test backup/restore file passed with the
+recovery-queue count check; build, lint, editor diagnostics and `git diff --check`
+passed. No external qualification or host changes were performed.

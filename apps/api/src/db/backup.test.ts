@@ -146,6 +146,10 @@ it.each([false, true])('invalidates restored authentication atomically (simulate
         VALUES('challenge','owner','2099-01-01');
       INSERT INTO totp_secrets(user_id,secret,verified_at) VALUES('owner','encrypted-secret','2000-01-01');
       INSERT INTO totp_recovery_codes(user_id,code_hash) VALUES('owner','recovery-hash');
+      INSERT INTO outbox(id,event_type,payload,processed_at)
+        VALUES('pending-email','email.send','{"to":"private@example.com","token":"invalidated-link"}',NULL),
+          ('processed-email','email.send','{"to":"private@example.com"}','2026-01-01'),
+          ('pending-other','certificate.generate','{}',NULL);
     `);
     if (failure) db.exec(`CREATE TRIGGER reject_recovery_challenge BEFORE UPDATE ON auth_mfa_challenges
       BEGIN SELECT RAISE(ABORT,'Simulated invalidation failure'); END;`);
@@ -166,8 +170,13 @@ it.each([false, true])('invalidates restored authentication atomically (simulate
       expect(manifest.restoration).toMatchObject({
         authenticationPolicy: 'invalidate',
         invalidated: { accounts: 1, httpSessions: 1, legacySessions: 1, emailTokens: 2, emailChanges: 1, mfaChallenges: 1 },
+        unprocessedEmailMessages: 1,
         sourceDatabaseSha256: JSON.parse(originalManifest).database.sha256,
       });
+      expect(readFileSync(join(recovery, 'manifest.json'), 'utf8'))
+        .not.toContain('private@example.com');
+      expect(readFileSync(join(recovery, 'manifest.json'), 'utf8'))
+        .not.toContain('invalidated-link');
       expect(manifest.database.sha256).not.toBe(manifest.restoration.sourceDatabaseSha256);
       execFileSync(process.execPath, [resolve('scripts/restore-bundle.mjs'), '--verify', recovery], { stdio: 'pipe' });
     }

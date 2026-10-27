@@ -178,7 +178,9 @@ backup; incident recovery still requires a separate credential/MFA review.
 
 The restored database therefore differs from the source snapshot. Its completion
 manifest contains recalculated database size/hash plus a `restoration` record
-with the policy, timestamp, affected-row counts and source database hash. Run
+with the policy, timestamp, affected-row counts, count of unprocessed email
+messages requiring review, and source database hash. The count excludes payload
+and recipient details. Run
 `backup:verify` on either directory independently. Authentication changes failing
 roll back together, and no completion manifest is written. The restored schema
 must include `users.session_version`, `http_sessions`, `sessions`, `email_tokens`,
@@ -187,8 +189,10 @@ fail explicitly rather than skipping invalidation. Prepare/migrate a separate
 isolated copy before bundling such an older snapshot, never the preserved original.
 
 Pending outbox messages are preserved, including emails containing now-invalid
-links. Review the recovered queue before enabling the worker; recipients of old
-links must request new ones. Do not manually bypass outbox lease/retry invariants.
+links. The restore manifest reports the unprocessed email count but intentionally
+does not inspect or reveal message contents. Review the recovered queue before
+enabling the worker; recipients of old links must request new ones. Do not manually
+bypass outbox lease/retry invariants.
 
 The automated local recovery rehearsal runs with:
 

@@ -1067,6 +1067,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   of old cookies/links before fresh recovery/login in the real-media HTTP rehearsal.
   Failed backup or restore attempts now remove only their own incomplete destination,
   preserve both source/bundle data and allow a corrected retry to reuse the path.
+  The restored manifest also reports the number of unprocessed email messages to
+  review before restarting the worker, without exposing queue payloads or recipients
+  and without discarding any queued work.
   Keep open for configuration recovery, post-backup credential/MFA review, off-site
   encryption/retention, and host/device qualification.
 - [ ] **OPS-03 — Observability and dashboard operations (local dashboard; telemetry and alert delivery open).**

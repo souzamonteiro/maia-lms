@@ -147,6 +147,7 @@ if (verifyOnly) {
   const restored = new Database(databaseFile, { fileMustExist: true });
   const invalidatedAt = new Date().toISOString();
   let invalidated;
+  let unprocessedEmailMessages;
   try {
     restored.pragma('foreign_keys = ON');
     invalidated = restored.transaction(() => ({
@@ -161,6 +162,8 @@ if (verifyOnly) {
       mfaChallenges: restored.prepare('UPDATE auth_mfa_challenges SET consumed_at=? WHERE consumed_at IS NULL')
         .run(invalidatedAt).changes,
     })).immediate();
+    unprocessedEmailMessages = (restored.prepare(`SELECT count(*) AS total FROM outbox
+      WHERE event_type='email.send' AND processed_at IS NULL`).get()).total;
   } finally {
     restored.close();
   }
@@ -175,6 +178,7 @@ if (verifyOnly) {
       authenticationPolicy: 'invalidate',
       invalidatedAt,
       invalidated,
+      unprocessedEmailMessages,
       sourceDatabaseSha256: manifest.database.sha256,
     },
   };
