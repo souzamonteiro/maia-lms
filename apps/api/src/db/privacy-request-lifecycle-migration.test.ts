@@ -21,6 +21,10 @@ it('keeps closed privacy requests terminal while allowing normal review transiti
       WHERE id='request'`).run()).toThrow(/privacy request identity is immutable/);
     expect(() => db.prepare(`UPDATE account_privacy_requests SET created_at='2099-01-01'
       WHERE id='request'`).run()).toThrow(/privacy request identity is immutable/);
+    expect(() => db.prepare(`UPDATE account_privacy_requests SET updated_at='not-a-date'
+      WHERE id='request'`).run()).toThrow(/privacy request timestamps are invalid/);
+    expect(() => db.prepare(`UPDATE account_privacy_requests SET updated_at='2000-01-01'
+      WHERE id='request'`).run()).toThrow(/privacy request timestamps are invalid/);
     expect(() => db.prepare(`UPDATE account_privacy_requests SET updated_at='2099-01-01'
       WHERE id='request'`).run()).not.toThrow();
     expect(() => db.prepare(`UPDATE account_privacy_requests SET status='IN_REVIEW'
@@ -36,6 +40,18 @@ it('keeps closed privacy requests terminal while allowing normal review transiti
 
     expect(db.prepare('SELECT id,status FROM account_privacy_requests ORDER BY id').all())
       .toEqual([{ id: 'request', status: 'CLOSED' }]);
+    expect(() => db.prepare(`INSERT INTO account_privacy_requests
+      (id,user_id,request_type,created_at,updated_at)
+      VALUES ('bad-date','other-user','deletion','invalid','invalid')`).run())
+      .toThrow(/privacy request timestamps are invalid/);
+    expect(() => db.prepare(`INSERT INTO account_privacy_requests
+      (id,user_id,request_type,created_at,updated_at)
+      VALUES ('out-of-order','other-user','deletion','2099-01-01','2000-01-01')`).run())
+      .toThrow(/privacy request timestamps are invalid/);
+    expect(() => db.prepare(`INSERT INTO account_privacy_requests
+      (id,user_id,request_type,created_at,updated_at)
+      VALUES ('valid-dates','other-user','deletion','2026-01-01T10:00:00Z','2026-01-01T10:00:00Z')`).run())
+      .not.toThrow();
   } finally {
     db.close();
   }
