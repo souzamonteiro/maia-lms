@@ -2110,7 +2110,7 @@ paths:
   /auth/privacy/export:
     get:
       summary: Download the authenticated account's data export
-      description: Returns user-scoped profile, learning, assessment, entitlement, payment, certificate/consent, media metadata, and privacy-request records. Excludes password hashes, sessions, email-token hashes, provider references, and storage keys. No account deletion is performed.
+      description: Returns user-scoped profile, email-change request history, learning, assessment, entitlement, payment, certificate/consent, media metadata, and privacy-request records. Excludes password hashes, sessions, email-token hashes, email-change token hashes, provider references, and storage keys. No account deletion is performed.
       security:
         - cookieAuth: []
       responses:
@@ -2125,12 +2125,24 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [schemaVersion, generatedAt, account]
+                required: [schemaVersion, generatedAt, account, emailChanges]
                 properties:
                   schemaVersion: {type: string, const: maia-account-export-v1}
                   generatedAt: {type: string, format: date-time}
                   account: {type: object, description: Own account fields only; no credential hashes}
                   instructorProfile: {type: [object, 'null']}
+                  emailChanges:
+                    type: array
+                    description: The authenticated user's requested email changes; token hashes and email verification tokens are excluded.
+                    items:
+                      type: object
+                      required: [id, email, expires_at, used_at, created_at]
+                      properties:
+                        id: {type: string}
+                        email: {type: string, format: email}
+                        expires_at: {type: string, format: date-time}
+                        used_at: {type: [string, 'null'], format: date-time}
+                        created_at: {type: string, format: date-time}
                   enrollments: {type: array, items: {type: object}}
                   entitlements: {type: array, items: {type: object}}
                   lessonProgress: {type: array, items: {type: object}}

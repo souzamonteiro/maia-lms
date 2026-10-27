@@ -2012,6 +2012,24 @@ qualification of external SMTP or final delivery, and adds no alert threshold or
 external notification channel. No Firefox/WebKit/device reruns, deployment,
 host changes or changes to the user's running instance were performed.
 
+## Email-change history in account export — October 27, 2026
+
+PRIV-01's authenticated JSON export now includes the requesting account's
+historical and pending email-change requests: target addresses and creation,
+expiry and use timestamps. It deliberately omits token hashes and remains scoped
+to the authenticated user. OpenAPI, privacy documentation and the TODO describe
+the field; export schema version stays `maia-account-export-v1` because this is an
+additive optional consumer-facing change.
+
+Validation: all three focused privacy API tests passed; build, lint, editor
+diagnostics, OpenAPI parsing and `git diff --check` passed. The export test checks
+pending and used rows, excludes another account's email-change record, excludes
+token hashes and retains the existing exclusions for passwords, sessions,
+verification/reset tokens, storage keys and other-account media. No full-suite or
+browser rerun was needed for this isolated authenticated API field addition.
+Legal review, retention, support contact and fulfilling deletion requests remain
+open. No deployment, host changes or changes to the user's running instance.
+
 ## Payment reconciliation check telemetry — October 27, 2026
 
 OPS-03 now records daily payment reconciliation check outcomes and elapsed time.

@@ -1144,6 +1144,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   IN_REVIEW, which the requester sees in their own language; notes remain admin-only.
   Failed saves and language switches preserve unsaved notes in page memory.
   No account data is deleted, and review does not close or fulfill the request.
+  The self-service export now includes the account's historical and pending email
+  change requests with target address and lifecycle timestamps, while excluding
+  token hashes and other accounts' requests. API/OpenAPI and privacy documentation
+  describe this addition; cross-account and secret-exclusion tests cover it.
   Keep PRIV-01 open for retention/legal policy, support contact, resolution and export
   completeness review.
 - [ ] **UX-01 — Accessibility and real usage states (form-error feedback improved; full audit open).**

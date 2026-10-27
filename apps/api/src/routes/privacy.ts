@@ -16,6 +16,8 @@ export function privacyRouter(db: Database.Database): Router {
 
     const instructorProfile = db.prepare(`SELECT slug,display_name,bio,website_url,is_public,updated_at
       FROM instructor_profiles WHERE user_id=?`).get(userId) ?? null;
+    const emailChanges = db.prepare(`SELECT id,email,expires_at,used_at,created_at
+      FROM account_email_changes WHERE user_id=? ORDER BY created_at,id`).all(userId);
     const enrollments = db.prepare(`SELECT e.id,e.course_id,e.revision_id,r.title AS course_title,
       e.state,e.enrolled_at,e.completed_at,e.required_lesson_ids_snapshot,e.quiz_ids_snapshot
       FROM enrollments e JOIN course_revisions r ON r.id=e.revision_id
@@ -55,6 +57,7 @@ export function privacyRouter(db: Database.Database): Router {
       generatedAt: new Date().toISOString(),
       account,
       instructorProfile,
+      emailChanges,
       enrollments,
       entitlements,
       lessonProgress,

@@ -61,6 +61,15 @@ it('exports only the authenticated account data and never includes authenticatio
       ('other-media',?,'other-course','private-file.txt',16,'attachment')`).run(owner.id, other.id);
   db.prepare(`INSERT INTO email_tokens(id,user_id,token_hash,kind,expires_at)
     VALUES('private-token-row',?,'sensitive-token-hash','reset','2030-01-01T00:00:00Z')`).run(owner.id);
+  db.prepare(`INSERT INTO account_email_changes(id,user_id,email,email_normalized,token_hash,expires_at,used_at)
+    VALUES('owner-email-change-old',?,'old-owner-address@example.com','old-owner-address@example.com',
+      'old-sensitive-email-change-token-hash','2025-01-01T00:00:00Z','2024-01-01T00:00:00Z')`).run(owner.id);
+  db.prepare(`INSERT INTO account_email_changes(id,user_id,email,email_normalized,token_hash,expires_at)
+    VALUES('owner-email-change-pending',?,'next-owner-address@example.com','next-owner-address@example.com',
+      'pending-sensitive-email-change-token-hash','2030-01-01T00:00:00Z')`).run(owner.id);
+  db.prepare(`INSERT INTO account_email_changes(id,user_id,email,email_normalized,token_hash,expires_at)
+    VALUES('other-email-change',?,'private-other-target@example.com','private-other-target@example.com',
+      'other-sensitive-email-change-token-hash','2030-01-01T00:00:00Z')`).run(other.id);
 
   expect((await request('/api/v1/auth/privacy/export')).status).toBe(401);
   const exportResponse = await request('/api/v1/auth/privacy/export', 'GET', undefined, owner.cookie);
@@ -70,6 +79,20 @@ it('exports only the authenticated account data and never includes authenticatio
   expect(exportResponse.data).toMatchObject({
     schemaVersion: 'maia-account-export-v1',
     account: { id: owner.id, email: 'privacy-owner@example.com' },
+    emailChanges: [
+      {
+        id: 'owner-email-change-old',
+        email: 'old-owner-address@example.com',
+        expires_at: '2025-01-01T00:00:00Z',
+        used_at: '2024-01-01T00:00:00Z',
+      },
+      {
+        id: 'owner-email-change-pending',
+        email: 'next-owner-address@example.com',
+        expires_at: '2030-01-01T00:00:00Z',
+        used_at: null,
+      },
+    ],
     mediaUploads: [{ id: 'owner-media', filename: 'my-notes.txt' }],
   });
   const serialized = JSON.stringify(exportResponse.data);
@@ -78,6 +101,9 @@ it('exports only the authenticated account data and never includes authenticatio
   expect(serialized).not.toContain('sensitive-token-hash');
   expect(serialized).not.toContain('password_hash');
   expect(serialized).not.toContain('private-file.txt');
+  expect(serialized).not.toContain('other-email-change');
+  expect(serialized).not.toContain('private-other-target@example.com');
+  expect(serialized).not.toContain('email-change-token-hash');
 });
 
 it('records an idempotent deletion request without deleting or suspending the account', async () => {
