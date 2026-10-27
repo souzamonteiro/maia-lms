@@ -1115,8 +1115,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   identifiers or provider payloads are stored; telemetry write failure does not
   replace the reconciliation result. Provider/check exceptions and rejected
   reconciliation results now emit fixed safe log messages without raw errors,
-  order identifiers or provider payloads. Remaining gaps include external provider
-  latency/health and actual payment/refund settlement monitoring.
+  order identifiers or provider payloads. A failed check in the seven-day window
+  now raises a localized `PAYMENT_RECONCILIATION_FAILED` dashboard alert. Remaining
+  gaps include external provider latency/health and actual payment/refund settlement
+  monitoring; alert delivery remains local to the dashboard.
 - [ ] **OPS-04 — Real capacity on Maia Edge.**
   Define audience/bitrate/upload limits and test host, VPN, and VPS bandwidth,
   disk, and SQLite/FFmpeg concurrency. Dependencies: PLAY-02, OPS-01. Acceptance:

@@ -2103,6 +2103,9 @@ do not alter the payment reconciliation result.
 
 Reconciliation failures and rejected results also emit fixed category messages;
 provider exceptions and payment identifiers/payloads are not written to logs.
+The operations summary raises the localized `PAYMENT_RECONCILIATION_FAILED` alert
+when the seven-day aggregate contains failed checks, and clears it when the failures
+are absent from the window.
 
 Validation: 12 focused payment reconciliation, operations API and translation
 tests passed, including failed provider lookups, mismatched and pending results,
@@ -2116,3 +2119,15 @@ disposable port 4330, covering mocked reconciliation metrics in all locales and
 the explicit empty state. No external provider latency/health, settlement-finality
 or refund-monitoring qualification was performed. No deployment, host changes or
 changes to the user's running instance.
+
+## Payment reconciliation dashboard alert — October 27, 2026
+
+The local operations API now emits `PAYMENT_RECONCILIATION_FAILED` when the
+seven-day aggregate contains failed checks. The admin UI translates it in en,
+pt-BR and es, and the alert clears when no failures remain in the measurement
+window. This is dashboard-only; no external alert channel was configured.
+
+Validation: 10 focused API/translation tests passed, all three Chromium operations
+workflows passed on isolated port 4330, build and lint passed, OpenAPI YAML parsed,
+and `git diff --check` passed. No full-suite or external provider qualification
+was run. No deployment, host or running-instance changes were made.

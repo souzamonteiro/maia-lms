@@ -289,7 +289,9 @@ replace a payment result with a telemetry error. Provider/check exceptions and
 structured rejected results emit fixed `Payment reconciliation check failed` and
 `Payment reconciliation result rejected` messages, respectively; no provider
 exception, payment identifier or payload is logged. This remains a local dashboard,
-not an external alert channel.
+not an external alert channel. Any failed reconciliation check in the seven-day
+window adds the `PAYMENT_RECONCILIATION_FAILED` alert; it clears when no failures
+remain in that window. The alert is translated in en, pt-BR and es.
 
 Migration 090 records each worker process every ten seconds;
 heartbeats older than 45 seconds are stale. `/readyz` checks only API/SQLite

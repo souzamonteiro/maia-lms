@@ -2408,7 +2408,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: [WORKER_MISSING, WORKER_NOT_HEALTHY, MEDIA_JOB_STUCK, MEDIA_JOB_FAILED, OUTBOX_EXHAUSTED, STORAGE_LOW, STORAGE_UNAVAILABLE]
+                      enum: [WORKER_MISSING, WORKER_NOT_HEALTHY, MEDIA_JOB_STUCK, MEDIA_JOB_FAILED, OUTBOX_EXHAUSTED, PAYMENT_RECONCILIATION_FAILED, STORAGE_LOW, STORAGE_UNAVAILABLE]
         '401': {description: Authentication required}
         '403': {description: Administrator role required}
 components:

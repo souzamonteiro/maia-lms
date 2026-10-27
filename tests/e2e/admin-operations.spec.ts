@@ -40,15 +40,20 @@ test('administrator inspects operational status and refreshes the summary', asyn
     summary.outbox.oldestReadyDelaySeconds = 123;
     summary.emailTransport = { windowDays: 7, attempts: 5, accepted: 3, failed: 2, averageMs: 125 };
     summary.paymentReconciliation = { windowDays: 7, checks: 6, reconciled: 4, failed: 2, averageMs: 250 };
+    summary.alerts.push('PAYMENT_RECONCILIATION_FAILED');
     await route.fulfill({ response, json: summary });
   });
 
-  for (const [locale, measuredLabel, durationLabel] of [
-    ['en', 'Responses with duration measured', 'Average response completion time'],
-    ['pt-BR', 'Respostas com duração medida', 'Tempo médio até concluir a resposta'],
-    ['es', 'Respuestas con duración medida', 'Tiempo medio hasta completar la respuesta'],
+  for (const [locale, measuredLabel, durationLabel, reconciliationAlert] of [
+    ['en', 'Responses with duration measured', 'Average response completion time',
+      'One or more payment reconciliation checks failed in the last seven days.'],
+    ['pt-BR', 'Respostas com duração medida', 'Tempo médio até concluir a resposta',
+      'Uma ou mais verificações de conciliação de pagamentos falharam nos últimos sete dias.'],
+    ['es', 'Respuestas con duración medida', 'Tiempo medio hasta completar la respuesta',
+      'Una o más verificaciones de conciliación de pagos fallaron en los últimos siete días.'],
   ]) {
     await page.locator('#languageSelect').selectOption(locale);
+    await expect(page.locator('#ops-alerts')).toContainText(reconciliationAlert);
     const measured = page.locator('#ops-playback > div').filter({ has: page.getByText(measuredLabel, { exact: true }) });
     await expect(measured.locator('dd')).toHaveText('1');
     const duration = page.locator('#ops-playback > div').filter({ hasText: durationLabel });

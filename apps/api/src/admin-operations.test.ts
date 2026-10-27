@@ -177,6 +177,11 @@ it('aggregates payment reconciliation checks over the seven-day UTC window', asy
     (date('now','-7 days'),'reconciled',10,9999),
     (date('now','+1 day'),'failed',10,9999);`);
   expect(await summary()).toEqual({ windowDays: 7, checks: 3, reconciled: 2, failed: 1, averageMs: 100 });
+  const alerts = (await request('/api/v1/admin/operations', 'GET', undefined, cookie)).data.alerts as string[];
+  expect(alerts).toContain('PAYMENT_RECONCILIATION_FAILED');
+  db.prepare(`DELETE FROM payment_reconciliation_metrics_daily WHERE outcome='failed'`).run();
+  const recoveredAlerts = (await request('/api/v1/admin/operations', 'GET', undefined, cookie)).data.alerts as string[];
+  expect(recoveredAlerts).not.toContain('PAYMENT_RECONCILIATION_FAILED');
 });
 
 it('reports ready queue count and delay using worker eligibility without exposing message data', async () => {

@@ -88,6 +88,8 @@ export function adminOperationsRouter(db: Database.Database, config: Config): Ro
       WHERE metric_date BETWEEN date('now','-6 days') AND date('now')
       GROUP BY outcome`).all() as Array<{ outcome: string; checks: number; durationMs: number }>;
     const reconciliationChecks = reconciliationRows.reduce((total, row) => total + row.checks, 0);
+    const reconciliationFailures =
+      reconciliationRows.find(row => row.outcome === 'failed')?.checks ?? 0;
     const reconciliationDurationMs = reconciliationRows.reduce((total, row) => total + row.durationMs, 0);
 
     let storage: { availableBytes: number; totalBytes: number } | null = null;
@@ -107,6 +109,7 @@ export function adminOperationsRouter(db: Database.Database, config: Config): Ro
     if (stuckMedia) alerts.push('MEDIA_JOB_STUCK');
     if (Number(media.FAILED ?? 0)) alerts.push('MEDIA_JOB_FAILED');
     if (Number(outbox.exhausted)) alerts.push('OUTBOX_EXHAUSTED');
+    if (reconciliationFailures) alerts.push('PAYMENT_RECONCILIATION_FAILED');
     if (!storage) alerts.push('STORAGE_UNAVAILABLE');
     if (storage && storage.totalBytes > 0 && storage.availableBytes / storage.totalBytes < 0.1)
       alerts.push('STORAGE_LOW');
