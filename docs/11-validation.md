@@ -2027,8 +2027,16 @@ pending and used rows, excludes another account's email-change record, excludes
 token hashes and retains the existing exclusions for passwords, sessions,
 verification/reset tokens, storage keys and other-account media. No full-suite or
 browser rerun was needed for this isolated authenticated API field addition.
-Legal review, retention, support contact and fulfilling deletion requests remain
-open. No deployment, host changes or changes to the user's running instance.
+All export queries are also enclosed in one deferred SQLite transaction so the
+returned profile and related records share a consistent snapshot without taking a
+write reservation.
+
+Validation: the same three focused privacy API tests passed after the snapshot
+change; build, lint, editor diagnostics, OpenAPI parsing and `git diff --check`
+passed. No full-suite or browser rerun was needed for this isolated authenticated
+API transaction boundary. Legal review, retention, support contact and fulfilling
+deletion requests remain open. No deployment, host changes or changes to the
+user's running instance.
 
 ## Payment reconciliation check telemetry — October 27, 2026
 

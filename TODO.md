@@ -1148,6 +1148,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   change requests with target address and lifecycle timestamps, while excluding
   token hashes and other accounts' requests. API/OpenAPI and privacy documentation
   describe this addition; cross-account and secret-exclusion tests cover it.
+  Export sections are read in one deferred SQLite transaction to provide a
+  consistent snapshot while allowing concurrent account writes.
   Keep PRIV-01 open for retention/legal policy, support contact, resolution and export
   completeness review.
 - [ ] **UX-01 — Accessibility and real usage states (form-error feedback improved; full audit open).**

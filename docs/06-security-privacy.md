@@ -20,6 +20,8 @@ idempotent deletion-request record. The export is scoped to the requesting accou
 and includes that account's past and pending requested email changes (target address,
 expiry and use timestamps), but omits their token hashes along with password hashes,
 sessions, verification/reset token hashes, provider references and storage keys.
+All exported account sections are read within one deferred SQLite transaction so
+concurrent account updates cannot produce a mixed-time export.
 A deletion request does not suspend, delete, or anonymize the account.
 Administrators can search and paginate the request queue at `/admin/privacy`,
 filter by state, and record a private review note (5–1000 trimmed characters).
