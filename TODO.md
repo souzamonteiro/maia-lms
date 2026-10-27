@@ -1219,7 +1219,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   workflow passed, including measured/unmeasured durations and all three locales.
   October 27 local Chromium E2E: all 39 workflows passed with `VIDEO_TEST_REAL=1`,
   including real video playback and attachment workflows, on isolated port 4330.
-  This does not qualify Firefox/WebKit as a set or any physical device.
+  October 27 local WebKit E2E: all 39 workflows passed with `VIDEO_TEST_REAL=1`,
+  including both real-media workflows, on isolated port 4330. This does not qualify
+  Firefox as a full suite or any physical device.
   Earlier complete Chromium and WebKit runs each passed all 35 workflows,
   including real video and 360×780 checks; these are not new full-suite runs. Firefox
   full-suite attempts remain intermittent: the October 22 run passed 34/35,
@@ -1235,7 +1237,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   resolved locally: omit
   `upgrade-insecure-requests` outside
   production, initiate preview playback with the video scrolled into view, and
-  wait for logout redirects before navigating. Physical-device qualification
+  wait for logout redirects before navigating. WebKit's October 27 full local run
+  passed all 39 workflows including real media. Physical-device qualification
   remains open. October 27 Firefox run: 38/39 E2E workflows passed, including both
   real-media workflows; a 30-second navigation timeout recurred in course review
   (at different navigation steps across two suite runs), while that workflow passed

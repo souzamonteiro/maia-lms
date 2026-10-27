@@ -2205,3 +2205,14 @@ qualify a physical device or deployed host.
 
 Validation: 39/39 Chromium workflows passed. No source code changed and no
 deployment, host or running-instance changes were made.
+
+## Full WebKit E2E regression — October 27, 2026
+
+The complete WebKit browser suite passed all 39 workflows with
+`VIDEO_TEST_REAL=1`, including real video playback and attachment delivery, on
+isolated E2E port 4330. This is local WebKit automation only; Firefox full-suite
+qualification remains open because of its intermittent 30-second navigation
+timeout. Neither run qualifies physical devices or the deployed host.
+
+Validation: 39/39 WebKit workflows passed. No source code changed and no
+deployment, host or running-instance changes were made.
