@@ -56,9 +56,15 @@ it('exports only the authenticated account data and never includes authenticatio
   const other = await register('privacy-other@example.com');
   db.exec(`INSERT INTO courses(id,slug,author_id) VALUES('privacy-course','privacy-course','${owner.id}');
     INSERT INTO courses(id,slug,author_id) VALUES('other-course','other-course','${other.id}');`);
+  db.exec(`INSERT INTO course_revisions(id,course_id,title,summary) VALUES
+    ('privacy-revision','privacy-course','Owner course revision','Summary'),
+    ('other-revision','other-course','Other course revision','Summary');`);
   db.prepare(`INSERT INTO video_uploads(id,owner_id,course_id,filename,size,media_kind)
     VALUES('owner-media',?,'privacy-course','my-notes.txt',32,'attachment'),
       ('other-media',?,'other-course','private-file.txt',16,'attachment')`).run(owner.id, other.id);
+  db.prepare(`INSERT INTO course_attachments(id,revision_id,upload_id,title,description,sort_order)
+    VALUES('owner-attachment','privacy-revision','owner-media','Reference notes','Course handout',0),
+      ('other-attachment','other-revision','other-media','Private handout','Other course file',0)`).run();
   db.prepare(`INSERT INTO email_tokens(id,user_id,token_hash,kind,expires_at)
     VALUES('private-token-row',?,'sensitive-token-hash','reset','2030-01-01T00:00:00Z')`).run(owner.id);
   db.prepare(`INSERT INTO account_email_changes(id,user_id,email,email_normalized,token_hash,expires_at,used_at)
@@ -94,6 +100,16 @@ it('exports only the authenticated account data and never includes authenticatio
       },
     ],
     mediaUploads: [{ id: 'owner-media', filename: 'my-notes.txt' }],
+    mediaAttachments: [{
+      id: 'owner-attachment',
+      course_id: 'privacy-course',
+      revision_id: 'privacy-revision',
+      revision_title: 'Owner course revision',
+      upload_id: 'owner-media',
+      title: 'Reference notes',
+      description: 'Course handout',
+      sort_order: 0,
+    }],
   });
   const serialized = JSON.stringify(exportResponse.data);
   expect(serialized).not.toContain('privacy-other@example.com');
@@ -101,6 +117,9 @@ it('exports only the authenticated account data and never includes authenticatio
   expect(serialized).not.toContain('sensitive-token-hash');
   expect(serialized).not.toContain('password_hash');
   expect(serialized).not.toContain('private-file.txt');
+  expect(serialized).not.toContain('other-attachment');
+  expect(serialized).not.toContain('Other course revision');
+  expect(serialized).not.toContain('Private handout');
   expect(serialized).not.toContain('other-email-change');
   expect(serialized).not.toContain('private-other-target@example.com');
   expect(serialized).not.toContain('email-change-token-hash');

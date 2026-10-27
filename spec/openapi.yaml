@@ -2110,7 +2110,7 @@ paths:
   /auth/privacy/export:
     get:
       summary: Download the authenticated account's data export
-      description: Returns user-scoped profile, email-change request history, learning, assessment, entitlement, payment, certificate/consent, media metadata, and privacy-request records. Excludes password hashes, sessions, email-token hashes, email-change token hashes, provider references, and storage keys. No account deletion is performed.
+      description: Returns user-scoped profile, email-change request history, learning, assessment, entitlement, payment, certificate/consent, media metadata and course-attachment metadata for the authenticated user's own uploads in their courses, and privacy-request records. Excludes password hashes, sessions, email-token hashes, email-change token hashes, provider references, and storage keys. No account deletion is performed.
       security:
         - cookieAuth: []
       responses:
@@ -2125,7 +2125,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [schemaVersion, generatedAt, account, emailChanges]
+                required: [schemaVersion, generatedAt, account, emailChanges, mediaAttachments]
                 properties:
                   schemaVersion: {type: string, const: maia-account-export-v1}
                   generatedAt: {type: string, format: date-time}
@@ -2152,6 +2152,22 @@ paths:
                   refunds: {type: array, items: {type: object}}
                   certificates: {type: array, items: {type: object}}
                   mediaUploads: {type: array, items: {type: object}}
+                  mediaAttachments:
+                    type: array
+                    description: Attachment associations for uploads owned by the authenticated user and used in courses they author.
+                    items:
+                      type: object
+                      required: [id, course_id, revision_id, revision_title, upload_id, title, description, sort_order]
+                      properties:
+                        id: {type: string}
+                        course_id: {type: string}
+                        revision_id: {type: string}
+                        revision_title: {type: string}
+                        lesson_id: {type: [string, 'null']}
+                        upload_id: {type: string}
+                        title: {type: string}
+                        description: {type: string}
+                        sort_order: {type: integer, minimum: 0}
                   privacyRequests: {type: array, items: {type: object}}
         '401': {description: Authentication required}
         '429': {description: PRIVACY_RATE_LIMITED}

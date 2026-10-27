@@ -2012,6 +2012,20 @@ qualification of external SMTP or final delivery, and adds no alert threshold or
 external notification channel. No Firefox/WebKit/device reruns, deployment,
 host changes or changes to the user's running instance were performed.
 
+## Course attachment metadata in account export — October 27, 2026
+
+The authenticated account export now includes attachment titles, descriptions,
+ordering, and course/revision/lesson associations when the requesting user owns
+the upload and authors the course. The query requires both ownership relationships
+and does not expose attachments or uploads belonging to other accounts.
+
+Validation: the focused privacy API suite, build, lint, OpenAPI parse and
+`git diff --check` passed. The privacy test verifies the owner attachment data is
+present and another account's corresponding attachment and revision metadata are
+absent. No full-suite or browser rerun was needed for this isolated export field.
+This is local implementation and validation only; no deployment or host changes
+were made.
+
 ## Email-change history in account export — October 27, 2026
 
 PRIV-01's authenticated JSON export now includes the requesting account's

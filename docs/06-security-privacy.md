@@ -20,6 +20,10 @@ idempotent deletion-request record. The export is scoped to the requesting accou
 and includes that account's past and pending requested email changes (target address,
 expiry and use timestamps), but omits their token hashes along with password hashes,
 sessions, verification/reset token hashes, provider references and storage keys.
+The export also includes titles, descriptions and revision/lesson associations for
+attachments made from uploads owned by the requester and used in courses they
+author; it does not expose attachment associations from another account's courses
+or uploads.
 All exported account sections are read within one deferred SQLite transaction so
 concurrent account updates cannot produce a mixed-time export.
 A deletion request does not suspend, delete, or anonymize the account.

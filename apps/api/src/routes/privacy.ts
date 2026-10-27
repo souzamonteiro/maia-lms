@@ -47,6 +47,13 @@ export function privacyRouter(db: Database.Database): Router {
         WHERE e.user_id=? ORDER BY c.issued_at`).all(userId);
       const mediaUploads = db.prepare(`SELECT id,course_id,filename,size,media_kind,status,error,created_at,
         last_activity_at FROM video_uploads WHERE owner_id=? ORDER BY created_at`).all(userId);
+      const mediaAttachments = db.prepare(`SELECT a.id,c.id AS course_id,r.id AS revision_id,
+        r.title AS revision_title,a.lesson_id,a.upload_id,a.title,a.description,a.sort_order
+        FROM course_attachments a JOIN course_revisions r ON r.id=a.revision_id
+        JOIN courses c ON c.id=r.course_id
+        JOIN video_uploads v ON v.id=a.upload_id AND v.course_id=c.id
+        WHERE c.author_id=? AND v.owner_id=? AND v.media_kind='attachment'
+        ORDER BY c.id,r.created_at,a.lesson_id,a.sort_order,a.id`).all(userId, userId);
       const privacyRequests = db.prepare(`SELECT id,request_type,status,created_at,updated_at
         FROM account_privacy_requests WHERE user_id=? ORDER BY created_at`).all(userId);
 
@@ -65,6 +72,7 @@ export function privacyRouter(db: Database.Database): Router {
         refunds,
         certificates,
         mediaUploads,
+        mediaAttachments,
         privacyRequests,
       };
     }).deferred();
