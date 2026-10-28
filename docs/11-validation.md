@@ -2246,10 +2246,14 @@ modification to the running instance was performed.
 
 The learner E2E now uses Enter to open a lesson from the course outline, mark
 the lesson complete, and navigate to the next lesson, asserting focus before
-each keyboard activation. The focused Chromium workflow passed. This is a
-specific local keyboard-operability check, not a screen-reader, contrast,
-zoom, mobile-device, or full accessibility audit.
+each keyboard activation. This focused workflow passed in Chromium, Firefox,
+and WebKit. It is a specific local keyboard-operability check, not a
+screen-reader, contrast, zoom, mobile-device, or full accessibility audit, nor
+does it qualify the complete browser suites.
 
-Validation: `E2E_PORT=4330 npm run test:e2e -- tests/e2e/learning.spec.ts
---browser=chromium` (1/1). No deployment, host or running-instance changes were
-performed.
+Validation:
+- `E2E_PORT=4330 npm run test:e2e -- tests/e2e/learning.spec.ts --browser=chromium` (1/1).
+- `E2E_PORT=4331 npm run test:e2e -- tests/e2e/learning.spec.ts --browser=firefox` (1/1).
+- `E2E_PORT=4332 npm run test:e2e -- tests/e2e/learning.spec.ts --browser=webkit` (1/1).
+
+No deployment, host or running-instance changes were performed.
