@@ -198,8 +198,12 @@ test('recovers a local draft after reload and reorders lessons with keyboard-acc
   await page.locator('.lesson-title').fill('First');
   await page.locator('.lesson-editor > .row-controls').getByRole('button',{name:'Duplicate',exact:true}).click();
   await page.locator('.lesson-title').nth(1).fill('Second');
-  await page.locator('.lesson-editor').nth(1).locator(':scope > .row-controls').getByRole('button',{name:'Move up',exact:true}).click();
+  const moveUp = page.locator('.lesson-editor').nth(1).locator(':scope > .row-controls').getByRole('button',{name:'Move up',exact:true});
+  await moveUp.focus();
+  await expect(moveUp).toBeFocused();
+  await page.keyboard.press('Enter');
   await expect(page.locator('.lesson-title').first()).toHaveValue('Second');
+  await expect(page.locator('.lesson-title').first()).toBeFocused();
   await page.setViewportSize({width:390,height:844});
   await expect(page.locator('#editor')).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);

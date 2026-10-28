@@ -2258,6 +2258,21 @@ Validation:
 
 No deployment, host or running-instance changes were performed.
 
+## Authoring keyboard reordering — October 27, 2026
+
+The local-draft recovery E2E now moves a lesson with the keyboard-accessible
+Move up button, asserting focus before activation and after the move as well as
+the resulting lesson order. The focused workflow passed in Chromium, Firefox,
+and WebKit. This is a targeted control/flow check, not a complete accessibility
+audit.
+
+Validation:
+- `E2E_PORT=4339 npm run test:e2e -- tests/e2e/authoring.spec.ts --browser=chromium --grep "recovers a local draft"` (1/1).
+- `E2E_PORT=4340 npm run test:e2e -- tests/e2e/authoring.spec.ts --browser=firefox --grep "recovers a local draft"` (1/1).
+- `E2E_PORT=4341 npm run test:e2e -- tests/e2e/authoring.spec.ts --browser=webkit --grep "recovers a local draft"` (1/1).
+
+No deployment, host or running-instance changes were performed.
+
 ## Quiz preview dialog focus — October 27, 2026
 
 The quiz-builder E2E now verifies that opening the preview focuses its close
