@@ -2258,6 +2258,21 @@ Validation:
 
 No deployment, host or running-instance changes were performed.
 
+## Quiz preview dialog focus — October 27, 2026
+
+The quiz-builder E2E now verifies that opening the preview focuses its close
+button, Escape dismisses the modal dialog, and focus returns to the preview
+trigger. The focused authoring workflow passed in Chromium, Firefox, and
+WebKit. This is a targeted keyboard/focus check, not a complete accessibility
+audit.
+
+Validation:
+- `E2E_PORT=4336 npm run test:e2e -- tests/e2e/quiz-builder.spec.ts --browser=chromium` (1/1).
+- `E2E_PORT=4337 npm run test:e2e -- tests/e2e/quiz-builder.spec.ts --browser=firefox` (1/1).
+- `E2E_PORT=4338 npm run test:e2e -- tests/e2e/quiz-builder.spec.ts --browser=webkit` (1/1).
+
+No deployment, host or running-instance changes were performed.
+
 ## Learner quiz keyboard operation — October 27, 2026
 
 The quiz-attempt E2E now uses keyboard activation to start/resume an attempt,

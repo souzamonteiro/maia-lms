@@ -41,12 +41,17 @@ test('author builds final and lesson quizzes on the saved draft revision', async
   await builder.getByLabel('Maximum attempts', { exact: true }).fill('2');
   await builder.getByLabel('Shuffle question order', { exact: true }).check();
   await builder.getByLabel('Time limit (seconds, optional)', { exact: true }).fill('90');
-  await builder.getByRole('button', { name: 'Preview quiz', exact: true }).click();
+  const previewButton = builder.getByRole('button', { name: 'Preview quiz', exact: true });
+  await previewButton.click();
   const preview = page.getByRole('dialog', { name: 'Quiz preview' });
   await expect(preview).toContainText('Choose the correct final answer.');
   await expect(preview).toContainText('Correct answer');
   await expect(preview).toContainText('Correct option');
-  await preview.getByRole('button', { name: 'Close preview', exact: true }).click();
+  const closePreview = preview.getByRole('button', { name: 'Close preview', exact: true });
+  await expect(closePreview).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(preview).not.toBeVisible();
+  await expect(previewButton).toBeFocused();
   await builder.getByRole('button', { name: 'Save quiz', exact: true }).click();
   await expect(builder.getByText('Quiz definition saved.', { exact: true })).toBeVisible();
 

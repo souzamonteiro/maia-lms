@@ -1194,8 +1194,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Focused Chromium coverage checks failure/retry, focus recovery, and keyboard
   lesson navigation; that learner workflow also passes focused Firefox and WebKit
   runs. The quiz attempt workflow now also verifies keyboard start, answer
-  selection, and submission in all three browser engines. These are targeted
-  local workflows, not full browser-suite qualification. Keep open for contrast,
+  selection, and submission in all three browser engines. Quiz-builder preview
+  also verifies initial dialog focus, Escape dismissal, and focus restoration
+  across those engines. These are targeted local workflows, not full browser-suite
+  qualification. Keep open for contrast,
   zoom/mobile, captions, and the full author/learner workflow audit.
 - [ ] **SEO-01 — Indexable public pages (public SSR delivered locally; qualification open).**
   Useful server-rendered content, per-course title/description, canonical URLs,
