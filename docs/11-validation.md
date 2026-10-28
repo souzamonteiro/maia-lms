@@ -2241,3 +2241,15 @@ physical devices or the deployed host.
 Validation: `VIDEO_TEST_REAL=1 npm test -- --reporter=dot --testTimeout=10000`
 (215/215); `npm run build`; `npm run lint`. No deploy, host changes, or
 modification to the running instance was performed.
+
+## Learner keyboard navigation — October 27, 2026
+
+The learner E2E now uses Enter to open a lesson from the course outline, mark
+the lesson complete, and navigate to the next lesson, asserting focus before
+each keyboard activation. The focused Chromium workflow passed. This is a
+specific local keyboard-operability check, not a screen-reader, contrast,
+zoom, mobile-device, or full accessibility audit.
+
+Validation: `E2E_PORT=4330 npm run test:e2e -- tests/e2e/learning.spec.ts
+--browser=chromium` (1/1). No deployment, host or running-instance changes were
+performed.

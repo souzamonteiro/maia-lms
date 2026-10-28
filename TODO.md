@@ -1189,8 +1189,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   errors and focus in en/pt-BR/es while retaining form input. Privacy-request
   searches/pagination and saved reviews restore a useful keyboard focus;
   failed list/history loads offer keyboard-operable retry with busy/live states,
-  preserving unsaved notes. Focused Chromium coverage checks failure/retry and
-  focus recovery. Keep open for contrast,
+  preserving unsaved notes. The learner workflow also activates lesson outline,
+  completion, and next-lesson controls with Enter and checks focus before activation.
+  Focused Chromium coverage checks failure/retry, focus recovery, and keyboard
+  lesson navigation. Keep open for contrast,
   zoom/mobile, captions, and the full author/learner workflow audit.
 - [ ] **SEO-01 — Indexable public pages (public SSR delivered locally; qualification open).**
   Useful server-rendered content, per-course title/description, canonical URLs,
