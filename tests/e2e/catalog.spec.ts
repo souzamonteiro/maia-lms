@@ -5,7 +5,10 @@ test('catalog keeps filters in shared URLs and navigates real pages', async ({ p
     '/courses?q=Catalog+fixture&locale=en&level=beginner&accessMode=OPEN_FREE&sort=title',
   );
   await expect(page.locator('#catalog .card')).toHaveCount(12);
-  await page.getByRole('link', { name: 'Next page', exact: true }).click();
+  const nextPage = page.getByRole('link', { name: 'Next page', exact: true });
+  await nextPage.focus();
+  await expect(nextPage).toBeFocused();
+  await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/page=2/);
   await expect(page.locator('#catalog .card')).toHaveCount(1);
   await expect(page.locator('#catalog')).toContainText('Catalog fixture 12');
@@ -16,7 +19,10 @@ test('catalog keeps filters in shared URLs and navigates real pages', async ({ p
   await expect(page.locator('#catalog .card')).toHaveCount(1);
   await page.locator('#languageSelect').selectOption('en');
   await page.locator('#search [name=locale]').selectOption('es');
-  await page.getByRole('button', { name: 'Search', exact: true }).click();
+  const search = page.getByRole('button', { name: 'Search', exact: true });
+  await search.focus();
+  await expect(search).toBeFocused();
+  await page.keyboard.press('Enter');
   await expect(page.locator('#catalog')).toContainText('No courses match');
   await expect(page).not.toHaveURL(/page=2/);
   await page.goBack();

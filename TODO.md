@@ -1198,6 +1198,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   also verifies initial dialog focus, Escape dismissal, and focus restoration
   across those engines. The authoring workflow now activates lesson reordering
   with Enter and checks resulting order and focus in all three browser engines.
+  The catalog workflow also verifies keyboard activation and focus for pagination
+  and search in all three engines.
   These are targeted local workflows, not full browser-suite qualification.
   Keep open for contrast,
   zoom/mobile, captions, and the full author/learner workflow audit.

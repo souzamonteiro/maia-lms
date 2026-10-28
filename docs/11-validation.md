@@ -2258,6 +2258,21 @@ Validation:
 
 No deployment, host or running-instance changes were performed.
 
+## Catalog keyboard navigation — October 27, 2026
+
+The catalog E2E now uses keyboard focus and Enter to navigate to the next page
+and apply a search, asserting focus before activation and retaining URL,
+filter, and result assertions. The focused workflow passed in Chromium,
+Firefox, and WebKit. This is a targeted local interaction check, not a full
+accessibility audit or complete browser-suite qualification.
+
+Validation:
+- `E2E_PORT=4342 npm run test:e2e -- tests/e2e/catalog.spec.ts --browser=chromium` (1/1).
+- `E2E_PORT=4343 npm run test:e2e -- tests/e2e/catalog.spec.ts --browser=firefox` (1/1).
+- `E2E_PORT=4344 npm run test:e2e -- tests/e2e/catalog.spec.ts --browser=webkit` (1/1).
+
+No deployment, host or running-instance changes were performed.
+
 ## Authoring keyboard reordering — October 27, 2026
 
 The local-draft recovery E2E now moves a lesson with the keyboard-accessible
