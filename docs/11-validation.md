@@ -2257,3 +2257,19 @@ Validation:
 - `E2E_PORT=4332 npm run test:e2e -- tests/e2e/learning.spec.ts --browser=webkit` (1/1).
 
 No deployment, host or running-instance changes were performed.
+
+## Learner quiz keyboard operation — October 27, 2026
+
+The quiz-attempt E2E now uses keyboard activation to start/resume an attempt,
+select an answer with Space, and submit with Enter, checking focus on key
+actions and retaining the existing autosave/reload/result assertions. The
+focused workflow passed in Chromium, Firefox, and WebKit. This validates the
+tested controls and path only; it is not a screen-reader or full accessibility
+audit.
+
+Validation:
+- `E2E_PORT=4333 npm run test:e2e -- tests/e2e/quiz-attempts.spec.ts --browser=chromium` (1/1).
+- `E2E_PORT=4334 npm run test:e2e -- tests/e2e/quiz-attempts.spec.ts --browser=firefox` (1/1).
+- `E2E_PORT=4335 npm run test:e2e -- tests/e2e/quiz-attempts.spec.ts --browser=webkit` (1/1).
+
+No deployment, host or running-instance changes were performed.
