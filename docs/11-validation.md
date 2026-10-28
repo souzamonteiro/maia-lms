@@ -2229,3 +2229,15 @@ was made and full-suite Firefox qualification remains open.
 Validation: 38/39 complete Firefox workflows passed; the isolated
 course-withdrawal workflow passed. No source code change, deployment, host or
 running-instance modification was made.
+
+## Full local regression follow-up
+
+The full Vitest regression passed all 215 tests across 65 files with
+`VIDEO_TEST_REAL=1` and a 10-second test timeout. The workspace build and lint
+also passed. These checks cover the current local checkout only; they do not
+resolve the intermittent full-suite Firefox navigation timeout or qualify
+physical devices or the deployed host.
+
+Validation: `VIDEO_TEST_REAL=1 npm test -- --reporter=dot --testTimeout=10000`
+(215/215); `npm run build`; `npm run lint`. No deploy, host changes, or
+modification to the running instance was performed.
