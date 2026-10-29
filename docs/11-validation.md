@@ -2258,6 +2258,21 @@ Validation:
 
 No deployment, host or running-instance changes were performed.
 
+## Account-security keyboard errors — October 29, 2026
+
+The password-change E2E now submits mismatch cases with Enter in en, pt-BR,
+and es, then verifies that the localized assertive alert receives focus. The
+focused account-security workflow passed in Chromium, Firefox, and WebKit.
+This tests this form's keyboard/error-focus path only; it is not a full
+accessibility audit.
+
+Validation:
+- `E2E_PORT=4345 npm run test:e2e -- tests/e2e/account-security.spec.ts --browser=chromium --grep "learner changes password"` (1/1).
+- `E2E_PORT=4346 npm run test:e2e -- tests/e2e/account-security.spec.ts --browser=firefox --grep "learner changes password"` (1/1).
+- `E2E_PORT=4347 npm run test:e2e -- tests/e2e/account-security.spec.ts --browser=webkit --grep "learner changes password"` (1/1).
+
+No deployment, host or running-instance changes were performed.
+
 ## Catalog keyboard navigation — October 27, 2026
 
 The catalog E2E now uses keyboard focus and Enter to navigate to the next page

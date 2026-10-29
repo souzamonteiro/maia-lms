@@ -41,8 +41,13 @@ test('learner changes password from account security and must sign in again', as
     await expect(page.getByLabel(labels[0], { exact: true })).toHaveValue(oldPassword);
     await expect(page.getByLabel(labels[1], { exact: true })).toHaveValue(newPassword);
     await expect(page.getByLabel(labels[2], { exact: true })).toHaveValue('Mismatch-password-789');
-    await page.getByRole('button', { name: labels[3], exact: true }).click();
-    await expect(page.getByRole('alert')).toHaveText(mismatch);
+    const changePassword = page.getByRole('button', { name: labels[3], exact: true });
+    await changePassword.focus();
+    await expect(changePassword).toBeFocused();
+    await page.keyboard.press('Enter');
+    const alert = page.getByRole('alert');
+    await expect(alert).toHaveText(mismatch);
+    await expect(alert).toBeFocused();
   }
 
   await page.locator('#languageSelect').selectOption('pt-BR');

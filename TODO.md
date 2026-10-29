@@ -1200,6 +1200,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   with Enter and checks resulting order and focus in all three browser engines.
   The catalog workflow also verifies keyboard activation and focus for pagination
   and search in all three engines.
+  The account-security workflow verifies Enter submission and focus on translated
+  password-mismatch alerts in en, pt-BR, and es across the three browser engines.
   These are targeted local workflows, not full browser-suite qualification.
   Keep open for contrast,
   zoom/mobile, captions, and the full author/learner workflow audit.
