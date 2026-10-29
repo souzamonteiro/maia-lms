@@ -2258,6 +2258,22 @@ Validation:
 
 No deployment, host or running-instance changes were performed.
 
+## Privacy-review keyboard operation — October 29, 2026
+
+The admin privacy E2E now uses Enter to submit the request search and record
+the review, asserting focus on each action and retaining the post-save focus
+check. Existing failure/retry, unsaved-note preservation, localized state, and
+private-note exclusion checks remain in the same workflow. The focused test
+passed in Chromium, Firefox, and WebKit. This is a targeted local interaction
+check, not a full accessibility audit or browser-suite qualification.
+
+Validation:
+- `E2E_PORT=4348 npm run test:e2e -- tests/e2e/admin-privacy.spec.ts --browser=chromium` (1/1).
+- `E2E_PORT=4349 npm run test:e2e -- tests/e2e/admin-privacy.spec.ts --browser=firefox` (1/1).
+- `E2E_PORT=4350 npm run test:e2e -- tests/e2e/admin-privacy.spec.ts --browser=webkit` (1/1).
+
+No deployment, host or running-instance changes were performed.
+
 ## Account-security keyboard errors — October 29, 2026
 
 The password-change E2E now submits mismatch cases with Enter in en, pt-BR,

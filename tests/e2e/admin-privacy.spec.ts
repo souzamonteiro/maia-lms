@@ -16,7 +16,10 @@ test('administrator reviews a privacy request and the requester sees its actual 
   await page.getByRole('link', { name: 'Privacy requests', exact: true }).click();
   await expect(page).toHaveURL('/admin/privacy');
   await page.locator('#privacy-search input').fill(email);
-  await page.locator('#privacy-search button').click();
+  const search = page.locator('#privacy-search button');
+  await search.focus();
+  await expect(search).toBeFocused();
+  await page.keyboard.press('Enter');
   await expect(page.locator('#privacy-summary')).toBeFocused();
   const card = page.locator('.privacy-request').filter({ hasText: id });
   await expect(card).toContainText('Open');
@@ -31,7 +34,9 @@ test('administrator reviews a privacy request and the requester sees its actual 
   await page.route(/\/api\/v1\/admin\/privacy\/requests\?/, route => route.fulfill({
     status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'Requests temporarily unavailable' }),
   }), { times: 1 });
-  await page.locator('#privacy-search button').click();
+  await search.focus();
+  await expect(search).toBeFocused();
+  await page.keyboard.press('Enter');
   await expect(page.locator('#privacy-list').getByRole('alert')).toContainText('Requests temporarily unavailable');
   await expect(page.locator('#privacy-list').getByRole('button')).toBeFocused();
   await page.keyboard.press('Enter');
@@ -40,10 +45,15 @@ test('administrator reviews a privacy request and the requester sees its actual 
   await page.route(`**/admin/privacy/requests/${id}/review`, route => route.fulfill({
     status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'Review temporarily unavailable' }),
   }), { times: 1 });
-  await card.getByRole('button', { name: 'Record review', exact: true }).click();
+  const recordReview = card.getByRole('button', { name: 'Record review', exact: true });
+  await recordReview.focus();
+  await expect(recordReview).toBeFocused();
+  await page.keyboard.press('Enter');
   await expect(page.getByRole('alert')).toContainText('Review temporarily unavailable');
   await expect(card.locator('textarea')).toHaveValue('Review pending retention policy. <script>private</script>');
-  await card.getByRole('button', { name: 'Record review', exact: true }).click();
+  await recordReview.focus();
+  await expect(recordReview).toBeFocused();
+  await page.keyboard.press('Enter');
   await expect(card).toContainText('In review');
   await expect(card.getByRole('heading', { level: 2 })).toBeFocused();
   await page.route(`**/admin/privacy/requests/${id}/history`, route => route.fulfill({

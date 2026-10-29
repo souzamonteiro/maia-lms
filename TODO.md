@@ -1202,6 +1202,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   and search in all three engines.
   The account-security workflow verifies Enter submission and focus on translated
   password-mismatch alerts in en, pt-BR, and es across the three browser engines.
+  The privacy-review workflow now verifies keyboard search and review submission,
+  including focus restoration after saving, in all three browser engines.
   These are targeted local workflows, not full browser-suite qualification.
   Keep open for contrast,
   zoom/mobile, captions, and the full author/learner workflow audit.
