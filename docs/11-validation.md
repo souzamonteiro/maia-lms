@@ -2258,6 +2258,19 @@ Validation:
 
 No deployment, host or running-instance changes were performed.
 
+## Sitemap visibility transitions — October 29, 2026
+
+The public instructor integration test now checks sitemap membership across
+visibility changes: private profiles are omitted, published courses and an
+opted-in profile are included, draft courses are omitted, and disabling the
+profile removes it again. The focused API integration test passed; lint and
+`git diff --check` passed. No sitemap implementation change was needed.
+
+Validation: `npm test -- --reporter=dot apps/api/src/app.test.ts -t "allows
+authors to opt in"` (1 passed, 55 skipped by the name filter); `npm run lint`;
+`git diff --check`. No deployment, host or running-instance changes were
+performed.
+
 ## Privacy-review keyboard operation — October 29, 2026
 
 The admin privacy E2E now uses Enter to submit the request search and record

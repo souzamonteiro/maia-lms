@@ -1830,6 +1830,8 @@ describe('public instructor profiles', () => {
       ).status,
     ).toBe(200);
     expect((await request('/api/v1/instructors/ada-lovelace')).status).toBe(404);
+    const privateProfileSitemap = await (await fetch(`${base}/sitemap.xml`)).text();
+    expect(privateProfileSitemap).not.toContain('/instructors/ada-lovelace');
 
     const created = await request(
       '/api/v1/admin/courses',
@@ -1879,8 +1881,10 @@ describe('public instructor profiles', () => {
     expect(profileHtml).toContain('An educator and software engineer.');
     expect(profileHtml).toContain('<h3><a href="/courses/profile-published-course">Curso de teste</a></h3>');
     expect(profileHtml).not.toContain('profile-draft-course');
-    expect((await (await fetch(`${base}/sitemap.xml`)).text())
-      .match(/<loc>[^<]*\/instructors\/ada-lovelace<\/loc>/)).not.toBeNull();
+    const publicSitemap = await (await fetch(`${base}/sitemap.xml`)).text();
+    expect(publicSitemap).toMatch(/<loc>[^<]*\/courses\/profile-published-course<\/loc>/);
+    expect(publicSitemap).not.toContain('/courses/profile-draft-course');
+    expect(publicSitemap).toMatch(/<loc>[^<]*\/instructors\/ada-lovelace<\/loc>/);
     expect(
       (await request('/api/v1/courses/profile-published-course')).data.instructor_profile_slug,
     ).toBe('ada-lovelace');
@@ -1896,6 +1900,8 @@ describe('public instructor profiles', () => {
       ).status,
     ).toBe(200);
     expect((await request('/api/v1/instructors/ada-lovelace')).status).toBe(404);
+    const disabledProfileSitemap = await (await fetch(`${base}/sitemap.xml`)).text();
+    expect(disabledProfileSitemap).not.toContain('/instructors/ada-lovelace');
   });
 });
 

@@ -1222,7 +1222,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   noscript instructions and fallback metadata in en/pt-BR/es. Focused HTTP tests
   cover all four public page types; Chromium checks home/catalog without
   JavaScript. Full local regression: 206 tests; build/lint and three focused
-  Chromium workflows passed. Keep SEO-01 open for full crawler
+  Chromium workflows passed. The sitemap integration test now confirms that
+  published courses and opted-in instructor profiles are included, drafts and
+  private profiles are omitted, and disabling a profile removes it from the
+  sitemap. Keep SEO-01 open for full crawler
   validation and the remaining public-page coverage.
 - [ ] **QA-01 — Complete product test suite and demonstration (current Chromium report recorded; cross-browser open).**
   Extend HTTP, database, job, and browser tests to all workflows below, including
