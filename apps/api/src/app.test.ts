@@ -3336,6 +3336,23 @@ describe('public course SEO rendering', () => {
     const privatePage = await fetch(`${base}/my-learning`);
     expect(privatePage.headers.get('x-robots-tag')).toContain('noindex');
     const robots = await fetch(`${base}/robots.txt`);
-    expect(await robots.text()).toContain('Disallow: /my-learning');
+    const robotsText = await robots.text();
+    for (const route of ['/admin', '/auth', '/my-learning', '/my-orders', '/lessons', '/dev']) {
+      expect(robotsText).toContain(`Disallow: ${route}`);
+    }
+    expect(robotsText).toMatch(/^Sitemap: https?:\/\/[^/\s]+\/sitemap\.xml$/m);
+
+    for (const route of [
+      '/admin',
+      '/admin/privacy',
+      '/auth/login',
+      '/my-learning',
+      '/my-orders',
+      '/lessons/private-lesson',
+      '/dev/fake-checkout/test-payment',
+    ]) {
+      const response = await fetch(`${base}${route}`);
+      expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow, noarchive');
+    }
   });
 });

@@ -1225,7 +1225,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Chromium workflows passed. The sitemap integration test now confirms that
   published courses and opted-in instructor profiles are included, drafts and
   private profiles are omitted, and disabling a profile removes it from the
-  sitemap. Keep SEO-01 open for full crawler
+  sitemap. The crawler-exclusion check now also verifies the absolute sitemap
+  reference, all six private-path disallow rules, and `noindex` headers across
+  seven representative private routes. Keep SEO-01 open for full crawler
   validation and the remaining public-page coverage.
 - [ ] **QA-01 — Complete product test suite and demonstration (current Chromium report recorded; cross-browser open).**
   Extend HTTP, database, job, and browser tests to all workflows below, including

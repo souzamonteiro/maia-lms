@@ -2258,6 +2258,19 @@ Validation:
 
 No deployment, host or running-instance changes were performed.
 
+## Private-route crawler exclusion — October 30, 2026
+
+The public SEO integration test now verifies all six private-path `Disallow`
+rules in `robots.txt`, its absolute sitemap reference, and the `noindex,
+nofollow, noarchive` header on seven representative admin, authentication,
+learner, lesson, and development routes. The focused integration test, lint,
+and `git diff --check` passed. No implementation change was needed.
+
+Validation: `npm test -- --reporter=dot apps/api/src/app.test.ts -t "renders
+only the published revision"` (1 passed, 55 skipped by the name filter);
+`npm run lint`; `git diff --check`. No deployment, host or running-instance
+changes were performed.
+
 ## Sitemap visibility transitions — October 29, 2026
 
 The public instructor integration test now checks sitemap membership across
