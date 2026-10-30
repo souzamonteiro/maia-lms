@@ -1334,6 +1334,10 @@ usable for free video courses but does not complete the full P0/P1 scope.
     context to authenticate, resume and play the enrolled lesson without
     horizontal overflow (`tests/e2e/video.spec.ts`). Physical-device playback
     qualification remains pending.
+  - [x] Local Chromium quiz E2E opens a second attempt in a touch-enabled mobile
+    context, selects an answer with a tap, verifies autosave, and submits the
+    passing result without horizontal overflow (`tests/e2e/quiz-attempts.spec.ts`).
+    This does not qualify a physical device.
 - [ ] No media URL or browser response grants access to an unauthorized user.
   - [x] Local real-media Chromium E2E requests a published enrolled-only lesson's
     MP4, poster, captions, HLS master and HLS segment without a session; all return

@@ -2485,6 +2485,24 @@ Validation:
 
 No deployment, host or running-instance changes were performed.
 
+## Quiz interaction in mobile browser emulation — October 30, 2026
+
+The quiz-attempt E2E now uses a separate Chromium context configured with a
+390×844 mobile viewport, touch input, and device scale factor. The learner opens
+the remaining attempt, selects an answer with a touchscreen tap, confirms the
+autosave status, and submits the passing result. The page is checked for
+horizontal overflow. This is local browser emulation, not physical-device
+qualification.
+
+Validation:
+- `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome E2E_PORT=4346 npm run test:e2e -- tests/e2e/quiz-attempts.spec.ts --browser=chromium` (1/1).
+- `E2E_PORT=4347 npm run test:e2e -- tests/e2e/quiz-attempts.spec.ts --browser=firefox` (1/1; standard browser flow).
+- `E2E_PORT=4348 npm run test:e2e -- tests/e2e/quiz-attempts.spec.ts --browser=webkit` (1/1; standard browser flow).
+- `npm run lint` passed.
+- `git diff --check` passed.
+
+No deployment, host or running-instance changes were performed.
+
 ## Quiz attempt resumption across interface languages — October 30, 2026
 
 The learner quiz E2E now changes the interface language among Portuguese,

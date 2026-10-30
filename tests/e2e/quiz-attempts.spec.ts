@@ -131,5 +131,39 @@ test('enrolled learner completes a lesson quiz through the lesson player', async
   await expect(learnerPage.getByRole('button', { name: 'Lesson completed ✓', exact: true })).toBeVisible();
   await learnerPage.goto('/my-learning');
   await expect(learnerPage.getByText(/Course completed/)).toBeVisible();
+  const learnerStorageState = await learnerContext.storageState();
   await learnerContext.close();
+
+  if (browser.browserType().name() === 'chromium') {
+    const mobileContext = await browser.newContext({
+      baseURL: new URL(learnerPage.url()).origin,
+      storageState: learnerStorageState,
+      viewport: { width: 390, height: 844 },
+      deviceScaleFactor: 2,
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const mobilePage = await mobileContext.newPage();
+      await mobilePage.goto(`/lessons/${course.lessonId}`);
+      expect(await mobilePage.evaluate(() => navigator.maxTouchPoints)).toBeGreaterThan(0);
+      expect(
+        await mobilePage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+      ).toBe(true);
+      await mobilePage.getByRole('button', { name: 'Start quiz', exact: true }).click();
+      await expect(mobilePage.locator('#quiz-content').getByText('Which option is correct?')).toBeVisible();
+      const choice = mobilePage.getByLabel('This one', { exact: true });
+      const choiceLabel = mobilePage.locator('label.quiz-choice').filter({ has: choice });
+      await choiceLabel.tap();
+      await expect(choice).toBeChecked();
+      await expect(mobilePage.getByText('Answers saved.', { exact: true })).toBeVisible();
+      expect(
+        await mobilePage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+      ).toBe(true);
+      await mobilePage.getByRole('button', { name: 'Submit answers', exact: true }).click();
+      await expect(mobilePage.getByText('Quiz passed.', { exact: true })).toBeVisible();
+    } finally {
+      await mobileContext.close();
+    }
+  }
 });
