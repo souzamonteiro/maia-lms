@@ -73,5 +73,42 @@ test('administrator manages accounts and an author publishes a public profile', 
   );
   await expect(learnerPage.locator('body')).not.toContainText(email);
 
+  const courseTitle = `Managed course ${Date.now()}`;
+  const courseSlug = `managed-course-${Date.now()}`;
+  await learnerPage.getByRole('link', { name: 'Administer', exact: true }).click();
+  await learnerPage.locator('[name=title]').fill(courseTitle);
+  await learnerPage.locator('[name=slug]').fill(courseSlug);
+  await learnerPage.locator('[name=summary]').fill('A course created by a delegated author.');
+  await learnerPage.locator('[name=accessMode]').selectOption('OPEN_FREE');
+  await learnerPage.locator('.module-title').fill('Introduction');
+  await learnerPage.locator('.lesson-title').fill('First lesson');
+  await learnerPage.locator('.lesson-content').fill('A published article lesson.');
+  await learnerPage.getByRole('button', { name: 'Save draft', exact: true }).click();
+  const courseCard = learnerPage.locator('#admin-list .card').filter({
+    has: learnerPage.getByRole('heading', { name: courseTitle, exact: true }),
+  });
+  await courseCard.getByRole('button', { name: 'Submit for review', exact: true }).click();
+  await expect(courseCard).toContainText('REVIEW');
+
+  await page.goto('/admin');
+  const reviewCard = page.locator('#admin-list .card').filter({
+    has: page.getByRole('heading', { name: courseTitle, exact: true }),
+  });
+  await reviewCard.getByRole('button', { name: 'Publish', exact: true }).click();
+  await expect(reviewCard).toContainText('PUBLISHED');
+
+  const courses = await (await page.request.get('/api/v1/admin/courses')).json();
+  const course = courses.find((item: { slug: string }) => item.slug === courseSlug);
+  expect(course).toBeDefined();
+  await page.getByRole('link', { name: 'Manage homepage', exact: true }).click();
+  await page.getByRole('button', { name: 'Add course placement' }).click();
+  await page.locator('.placement-course').selectOption(course.id);
+  await page.locator('.placement-slot').selectOption('featured');
+  await page.getByRole('button', { name: 'Save homepage' }).click();
+  await expect(page.locator('#home-status')).toHaveText('Homepage saved.');
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Featured courses', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: courseTitle, exact: true })).toBeVisible();
+
   await learnerContext.close();
 });

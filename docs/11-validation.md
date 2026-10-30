@@ -2206,6 +2206,20 @@ qualify a physical device or deployed host.
 Validation: 39/39 Chromium workflows passed. No source code changed and no
 deployment, host or running-instance changes were made.
 
+## Delegated author to editorial homepage — October 30, 2026
+
+The local integrated Chromium workflow now follows the author-management path
+through to public homepage curation: an administrator promotes a registered user
+to author, the author creates a course and submits it for review, an administrator
+publishes it and places it in the featured homepage section, and the public home
+renders the course. This joins existing admin-user and homepage-curation behavior
+without treating local E2E coverage as full-product or deployed-domain acceptance.
+
+Validation: the focused `tests/e2e/admin-users.spec.ts` workflow passed in Chromium.
+No application runtime code, production database, deployment, host or running
+instance was changed. The remaining final-acceptance criteria and public-domain
+qualification remain open.
+
 ## Full WebKit E2E regression — October 27, 2026
 
 The complete WebKit browser suite passed all 39 workflows with

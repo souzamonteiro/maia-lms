@@ -1309,6 +1309,10 @@ usable for free video courses but does not complete the full P0/P1 scope.
 ## Final product acceptance test
 
 - [ ] Administrator creates an author and configures editorial homepage selection.
+  - [x] Local integrated E2E promotes a learner to author, has the author submit a
+    course for review, publishes it as administrator, selects it for the featured
+    homepage, and verifies it appears publicly (`tests/e2e/admin-users.spec.ts`).
+    This does not qualify the complete product journey or the public domain.
 - [ ] Author creates a course with cover/objectives, reorderable modules, Markdown,
   video, captions, and supplementary materials (PDF, ZIP, and source code) with
   descriptions; interrupts/resumes an upload and fixes a processing error.
