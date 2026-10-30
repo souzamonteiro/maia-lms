@@ -2220,6 +2220,17 @@ No application runtime code, production database, deployment, host or running
 instance was changed. The remaining final-acceptance criteria and public-domain
 qualification remain open.
 
+## Published revision remains live during draft editing — October 30, 2026
+
+The authoring browser workflow now checks the learner-facing lesson page after a
+new draft has autosaved but before publication. The public page must retain the
+previous published Markdown and must not expose draft-only text; the editor then
+reopens with its draft intact. This is local Chromium evidence for revision
+isolation, not the full video-course/revision workflow or deployed-domain acceptance.
+
+Validation: the focused authoring E2E passed in Chromium. No production runtime,
+database, deployment, host or running instance was changed.
+
 ## Full WebKit E2E regression — October 27, 2026
 
 The complete WebKit browser suite passed all 39 workflows with

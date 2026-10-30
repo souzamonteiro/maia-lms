@@ -48,6 +48,10 @@ test('Markdown draft, language switching, autosave, safe preview, conflicts and 
   expect((await (await page.request.get(`/api/v1/lessons/${old}`)).json()).body).toBe(markdown);
   const draft=await (await page.request.get(`/api/v1/admin/courses/${course.id}`)).json();
   expect(draft.modules[0].lessons[0].body).toContain('Only the author');
+  await page.goto(`/lessons/${old}`);
+  await expect(page.locator('.lesson-body h1')).toHaveText('Hello');
+  await expect(page.locator('.lesson-body')).not.toContainText('Only the author');
+  await page.goto('/admin');
   await card.getByRole('button',{name:'Edit',exact:true}).click();
   await expect(page.locator('.lesson-content')).toHaveValue('## A new draft\n\nOnly the author sees this.');
   // A second editor saves first: local work must not overwrite it silently.

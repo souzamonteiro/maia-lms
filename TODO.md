@@ -1317,6 +1317,9 @@ usable for free video courses but does not complete the full P0/P1 scope.
   video, captions, and supplementary materials (PDF, ZIP, and source code) with
   descriptions; interrupts/resumes an upload and fixes a processing error.
 - [ ] Author prepares a new revision while the old publication remains accessible.
+  - [x] Local Chromium E2E saves edits to a published course and verifies the
+    learner-facing old lesson still renders its published Markdown while the new
+    draft remains author-only (`tests/e2e/authoring.spec.ts`).
 - [ ] Visitor finds a course through search/filters and watches only permitted previews.
 - [ ] Learner registers, verifies email, enrolls or pays, watches on desktop/mobile,
   resumes position, takes an assessment, and receives a certificate according to policy.
