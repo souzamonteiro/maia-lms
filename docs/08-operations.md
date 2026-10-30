@@ -166,6 +166,33 @@ reports both errors. Existing destinations are never cleaned or overwritten.
 The command does not load `.env`, overwrite the live database, configure/start
 services or apply migrations.
 
+### Recovering configuration safely
+
+The bundle intentionally excludes `app.env`, credentials, systemd units, VPN and
+proxy configuration. Maintain an access-controlled recovery inventory separately
+from the database/media bundle; record secret-manager references rather than
+secret values. Include the release/domain, bind address and port, storage and
+database paths, proxy trust address, service account, firewall/VPN ownership,
+TLS certificate/renewal ownership, and the approved mail sender/transport.
+
+For recovery, build a fresh environment file for the destination from its
+approved secret store and reviewed non-secret settings. Do not copy an old
+environment file blindly or put credentials in the bundle, its manifest, logs,
+or a recovery checklist. Verify `DATABASE_URL` and `STORAGE_ROOT` point to the
+restored paths, and verify `PUBLIC_BASE_URL`, `HOST`, `PORT`, and `TRUST_PROXY`
+match the destination's topology. Set `PAYMENTS_CHECKOUT_ENABLED=false` for a
+free pilot; production payment credentials and issuer configuration require
+their separate owner qualification. Set the environment file to root ownership, group
+`maia-lms`, and mode `0640`, then validate service access without printing its
+contents.
+
+Before starting the worker, review the restoration manifest's pending-email
+count and follow the outbox review procedure below. Recovered authentication
+links are invalidated, so users must request new links after service resumes.
+Review credential and MFA changes made since the backup; if their state is
+uncertain or secrets may have been exposed, pause reopening and rotate the
+affected credentials/keys through the approved secret-management process.
+
 Restoration now **always invalidates recovered authentication** in the new copy:
 it advances every account's session version, expires HTTP sessions, revokes legacy
 sessions, and consumes unused verification/password-reset/email-change tokens and
