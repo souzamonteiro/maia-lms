@@ -2244,6 +2244,20 @@ Validation: `tests/e2e/learning.spec.ts` passed in Chromium. This is local
 authorization and discovery evidence, not device or deployed-domain qualification.
 No production runtime, database, deployment, host or running instance was changed.
 
+## Anonymous direct video-asset requests — October 30, 2026
+
+The real-media Chromium workflow now captures the published lesson ID and, in a
+separate browser context with no session cookie, requests its enrolled-only MP4,
+poster, English captions, HLS master playlist and HLS segment directly. Every
+request is rejected with HTTP 403 before the learner enrolls. The same workflow
+later enrolls and plays the video, so the denial assertions coexist with the
+authorized playback path.
+
+Validation: the focused real-video workflow passed with `VIDEO_TEST_REAL=1`;
+`npx eslint tests/e2e/video.spec.ts` passed. This is local Chromium evidence only,
+not device or deployed-host qualification. No production runtime, database,
+deployment, host or running instance was changed.
+
 ## Full WebKit E2E regression — October 27, 2026
 
 The complete WebKit browser suite passed all 39 workflows with

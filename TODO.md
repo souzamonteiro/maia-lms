@@ -1327,6 +1327,9 @@ usable for free video courses but does not complete the full P0/P1 scope.
 - [ ] Learner registers, verifies email, enrolls or pays, watches on desktop/mobile,
   resumes position, takes an assessment, and receives a certificate according to policy.
 - [ ] No media URL or browser response grants access to an unauthorized user.
+  - [x] Local real-media Chromium E2E requests a published enrolled-only lesson's
+    MP4, poster, captions, HLS master and HLS segment without a session; all return
+    403 before the learner enrolls (`tests/e2e/video.spec.ts`).
 - [ ] Administrator checks an order, refunds/revokes, and verifies effects on access and certificates.
 - [ ] Switching among English/Portuguese/Spanish preserves drafts and translates the entire workflow.
 - [ ] Operator recovers from worker failure and restores database/media into another working installation.

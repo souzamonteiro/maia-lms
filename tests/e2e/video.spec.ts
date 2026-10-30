@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-test('author uploads a real video, publishes, and browser plays it', async ({ page }) => {
+test('author uploads a real video, publishes, and browser plays it', async ({ page, browser: browserInstance }) => {
   test.skip(process.env.VIDEO_TEST_REAL !== '1', 'Requires FFmpeg and FFprobe on PATH');
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'maia-browser-video-'));
   try {
@@ -121,6 +121,33 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
           `${error.message}\nUI: ${await page.locator('#message').textContent()}\nSave: ${await page.locator('#save-status').textContent()}`,
         );
       });
+    const courses = await (await page.request.get('/api/v1/admin/courses')).json();
+    const course = courses.find((item: { slug: string }) => item.slug === 'browser-video-course');
+    const courseDetails = await (
+      await page.request.get(`/api/v1/admin/courses/${course.id}`)
+    ).json();
+    const lesson = courseDetails.modules[0].lessons[0];
+    const visitorContext = await browserInstance.newContext({
+      baseURL: new URL(page.url()).origin,
+      extraHTTPHeaders: { 'X-Forwarded-For': '10.253.1.21' },
+    });
+    try {
+      for (const asset of [
+        'video',
+        'poster',
+        'captions/en',
+        'hls/master.m3u8',
+        'hls/v0/segment_00000.ts',
+      ]) {
+        const response = await visitorContext.request.get(
+          `/api/v1/lessons/${lesson.id}/${asset}`,
+        );
+        expect(response.status(), `Anonymous request for ${asset}`).toBe(403);
+      }
+    } finally {
+      await visitorContext.close();
+    }
+
     const hlsResponses: string[] = [];
     page.on('response', response => {
       if (response.url().includes('/trailer/hls/'))
