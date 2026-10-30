@@ -1335,6 +1335,11 @@ usable for free video courses but does not complete the full P0/P1 scope.
     remains available after a partial refund, and is denied again after a full
     refund, alongside the learner entitlement state (`tests/e2e/admin-orders.spec.ts`).
 - [ ] Switching among English/Portuguese/Spanish preserves drafts and translates the entire workflow.
+  - [x] Local quiz E2E in Chromium, Firefox, and WebKit switches among all three
+    interface languages during an active attempt, resumes it, and verifies the
+    server-saved answer remains selected before completing the quiz
+    (`tests/e2e/quiz-attempts.spec.ts`). Full workflow translation and
+    external/device qualification remain pending.
 - [ ] Operator recovers from worker failure and restores database/media into another working installation.
 - [ ] The entire journey above works at `learn.maiaplatform.org`, beyond local tests.
 

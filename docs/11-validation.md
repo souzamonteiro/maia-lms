@@ -2452,3 +2452,22 @@ Validation:
 - `E2E_PORT=4335 npm run test:e2e -- tests/e2e/quiz-attempts.spec.ts --browser=webkit` (1/1).
 
 No deployment, host or running-instance changes were performed.
+
+## Quiz attempt resumption across interface languages — October 30, 2026
+
+The learner quiz E2E now changes the interface language among Portuguese,
+Spanish, and English during an active attempt. After each full page rerender,
+the learner resumes the attempt and the test verifies the saved answer is still
+selected and the in-progress status is translated. The workflow then continues
+through submission and the existing result checks. This is local
+Chromium/Firefox/WebKit coverage of this quiz path, not qualification of all
+translated workflows or external devices.
+
+Validation:
+- `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome E2E_PORT=4339 npm run test:e2e -- tests/e2e/quiz-attempts.spec.ts` (1/1).
+- `E2E_PORT=4340 npm run test:e2e -- tests/e2e/quiz-attempts.spec.ts --browser=firefox` (1/1).
+- `E2E_PORT=4341 npm run test:e2e -- tests/e2e/quiz-attempts.spec.ts --browser=webkit` (1/1).
+- `npm run lint` passed.
+- `git diff --check` passed.
+
+No deployment, host or running-instance changes were performed.

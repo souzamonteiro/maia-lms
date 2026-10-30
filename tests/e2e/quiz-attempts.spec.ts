@@ -91,6 +91,18 @@ test('enrolled learner completes a lesson quiz through the lesson player', async
   await learnerPage.keyboard.press('Space');
   await expect(correctAnswer).toBeChecked();
   await expect(learnerPage.getByText('Answers saved.', { exact: true })).toBeVisible();
+  for (const [locale, startLabel, inProgressLabel] of [
+    ['pt-BR', 'Iniciar questionário', 'Tentativa em andamento.'],
+    ['es', 'Iniciar cuestionario', 'Intento en curso.'],
+    ['en', 'Start quiz', 'Attempt in progress.'],
+  ]) {
+    await learnerPage.locator('#languageSelect').selectOption(locale);
+    await expect(learnerPage.locator('html')).toHaveAttribute('lang', locale);
+    await learnerPage.getByRole('button', { name: startLabel, exact: true }).click();
+    await expect(learnerPage.getByText('Which option is correct?')).toBeVisible();
+    await expect(learnerPage.getByLabel('This one', { exact: true })).toBeChecked();
+    await expect(learnerPage.getByText(inProgressLabel, { exact: true })).toBeVisible();
+  }
   await learnerPage.reload();
   await learnerPage.getByRole('button', { name: 'Start quiz', exact: true }).focus();
   await learnerPage.keyboard.press('Enter');
