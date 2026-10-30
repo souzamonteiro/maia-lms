@@ -2470,6 +2470,21 @@ Validation:
 
 No deployment, host or running-instance changes were performed.
 
+## Real video playback in mobile browser emulation — October 30, 2026
+
+The real-media E2E now opens a separate Chromium context with a narrow mobile
+viewport, touch input, and device scale factor. It signs in the learner, opens
+the enrolled video lesson, verifies the saved playback position is restored,
+checks for horizontal overflow, and plays the video. This is local browser
+emulation and does not qualify playback on a physical device.
+
+Validation:
+- `VIDEO_TEST_REAL=1 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome E2E_PORT=4345 npm run test:e2e -- tests/e2e/video.spec.ts --browser=chromium --grep "author uploads a real video"` (1/1).
+- Focused ESLint passed.
+- `git diff --check` passed.
+
+No deployment, host or running-instance changes were performed.
+
 ## Quiz attempt resumption across interface languages — October 30, 2026
 
 The learner quiz E2E now changes the interface language among Portuguese,

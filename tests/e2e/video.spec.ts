@@ -276,6 +276,40 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     expect((await savedLesson.json()).progress.position_seconds).toBe(trailingPosition);
     await page.reload();
     await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.currentTime)).toBeGreaterThan(0.9);
+    const mobileContext = await browserInstance.newContext({
+      baseURL: new URL(page.url()).origin,
+      viewport: { width: 390, height: 844 },
+      deviceScaleFactor: 2,
+      isMobile: true,
+      hasTouch: true,
+      extraHTTPHeaders: { 'X-Forwarded-For': '10.253.1.22' },
+    });
+    try {
+      const mobilePage = await mobileContext.newPage();
+      await mobilePage.goto('/auth/login');
+      await mobilePage.getByLabel('Email', { exact: true }).fill('video-learner@example.com');
+      await mobilePage.getByLabel('Password', { exact: true }).fill('Video-learner-password-123');
+      await mobilePage.getByRole('button', { name: 'Continue', exact: true }).click();
+      await expect(mobilePage.getByRole('heading', { name: 'My learning' })).toBeVisible();
+      await mobilePage.goto(`/lessons/${lesson.id}`);
+      const mobileVideo = mobilePage.locator('video');
+      await expect(mobileVideo).toBeVisible();
+      expect(
+        await mobilePage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+      ).toBe(true);
+      await expect
+        .poll(() => mobileVideo.evaluate((element: HTMLVideoElement) => element.currentTime))
+        .toBeGreaterThan(0.9);
+      await mobileVideo.evaluate((element: HTMLVideoElement) => {
+        element.muted = true;
+        return element.play();
+      });
+      await expect
+        .poll(() => mobileVideo.evaluate((element: HTMLVideoElement) => element.currentTime))
+        .toBeGreaterThan(1);
+    } finally {
+      await mobileContext.close();
+    }
     await page.getByRole('button', { name: 'Sign out', exact: true }).click();
     const origin = new URL(page.url()).origin;
     const browser = page.context().browser();

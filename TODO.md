@@ -1330,6 +1330,10 @@ usable for free video courses but does not complete the full P0/P1 scope.
     enrollment, lesson playback view, and learning progress at a 360×780 mobile
     viewport without horizontal overflow (`tests/e2e/learning.spec.ts`). This is
     not physical-device qualification.
+  - [x] Local real-media Chromium E2E uses a touch-enabled mobile browser
+    context to authenticate, resume and play the enrolled lesson without
+    horizontal overflow (`tests/e2e/video.spec.ts`). Physical-device playback
+    qualification remains pending.
 - [ ] No media URL or browser response grants access to an unauthorized user.
   - [x] Local real-media Chromium E2E requests a published enrolled-only lesson's
     MP4, poster, captions, HLS master and HLS segment without a session; all return
