@@ -1326,6 +1326,10 @@ usable for free video courses but does not complete the full P0/P1 scope.
     before the learner enrolls (`tests/e2e/learning.spec.ts`).
 - [ ] Learner registers, verifies email, enrolls or pays, watches on desktop/mobile,
   resumes position, takes an assessment, and receives a certificate according to policy.
+  - [x] Local learner E2E in Chromium, Firefox, and WebKit checks course
+    enrollment, lesson playback view, and learning progress at a 360×780 mobile
+    viewport without horizontal overflow (`tests/e2e/learning.spec.ts`). This is
+    not physical-device qualification.
 - [ ] No media URL or browser response grants access to an unauthorized user.
   - [x] Local real-media Chromium E2E requests a published enrolled-only lesson's
     MP4, poster, captions, HLS master and HLS segment without a session; all return

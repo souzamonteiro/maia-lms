@@ -2453,6 +2453,23 @@ Validation:
 
 No deployment, host or running-instance changes were performed.
 
+## Learner narrow-viewport layout — October 30, 2026
+
+The integrated learning E2E now exercises enrollment, lesson navigation and
+completion, and the learning-progress page at a 360×780 viewport. It checks that
+the course, lesson, and progress pages do not overflow horizontally. This is
+local responsive-layout coverage in Chromium, Firefox, and WebKit, not
+physical-device playback or qualification.
+
+Validation:
+- `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome E2E_PORT=4342 npm run test:e2e -- tests/e2e/learning.spec.ts --browser=chromium` (1/1).
+- `E2E_PORT=4343 npm run test:e2e -- tests/e2e/learning.spec.ts --browser=firefox` (1/1).
+- `E2E_PORT=4344 npm run test:e2e -- tests/e2e/learning.spec.ts --browser=webkit` (1/1).
+- `npm run lint` passed.
+- `git diff --check` passed.
+
+No deployment, host or running-instance changes were performed.
+
 ## Quiz attempt resumption across interface languages — October 30, 2026
 
 The learner quiz E2E now changes the interface language among Portuguese,
