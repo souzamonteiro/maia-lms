@@ -2271,6 +2271,18 @@ only the published revision"` (1 passed, 55 skipped by the name filter);
 `npm run lint`; `git diff --check`. No deployment, host or running-instance
 changes were performed.
 
+## Full local regression rerun — October 30, 2026
+
+The complete Vitest suite passed all 215 tests across 65 files with
+`VIDEO_TEST_REAL=1` and a 10-second test timeout. The workspace build and lint
+also passed. This is local validation only; the intermittent full-suite
+Firefox navigation timeout, physical-device checks, host qualification, and
+other external launch criteria remain open.
+
+Validation: `VIDEO_TEST_REAL=1 npm test -- --reporter=dot --testTimeout=10000`
+(215/215); `npm run build`; `npm run lint`. No deployment, host or
+running-instance changes were performed.
+
 ## Sitemap visibility transitions — October 29, 2026
 
 The public instructor integration test now checks sitemap membership across

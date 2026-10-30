@@ -1275,6 +1275,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   --testTimeout=10000` passed all 215 tests across 65 files; `npm run build`
   and `npm run lint` passed. This does not resolve the Firefox full-suite
   intermittency or qualify physical devices or the deployed host.
+  October 30 local regression rerun: all 215 tests across 65 files passed with
+  real-media coverage enabled and a 10-second test timeout; build and lint also
+  passed. The full Firefox and external qualification gaps remain open.
 - [ ] **DOC-01 — Keep contracts and operations aligned with implementation.**
   Update OpenAPI, data model, installation/configuration, author/learner/admin
   manuals, limits, and recovery procedures with every delivery. Dependency:
