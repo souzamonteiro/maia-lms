@@ -16,6 +16,7 @@ test('administrator publishes; a learner enrolls and completes an article', asyn
   await page
     .getByLabel('Content (text)')
     .fill('Your first project starts here. <script>alert("xss")</script>');
+  await page.getByLabel('Public preview', { exact: true }).check();
   await page.getByRole('button', { name: 'Add lesson' }).click();
   await page.getByLabel('Title', { exact: true }).nth(2).fill('Build your first project');
   await page.getByLabel('Content (text)').nth(1).fill('Create a small project with Maia.');
@@ -23,8 +24,29 @@ test('administrator publishes; a learner enrolls and completes an article', asyn
   const courseCard = page.locator('#admin-list .card').filter({has:page.getByRole('heading',{name:'First steps with Maia',exact:true})});
   await courseCard.getByRole('button', { name: 'Publish', exact: true }).click();
   await expect(courseCard.getByText('PUBLISHED', { exact: true })).toBeVisible();
+  const courseList = await (await page.request.get('/api/v1/admin/courses')).json();
+  const createdCourse = courseList.find((course: { slug: string }) => course.slug === 'first-steps');
+  const courseDraft = await (await page.request.get(`/api/v1/admin/courses/${createdCourse.id}`)).json();
+  const [previewLesson, lockedLesson] = courseDraft.modules[0].lessons;
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await expect(page).toHaveURL('/');
+  await page.goto('/courses');
+  await page.locator('#search [name=q]').fill('First steps with Maia');
+  await page.locator('#search [name=accessMode]').selectOption('ENROLLED_FREE');
+  await page.getByRole('button', { name: 'Search', exact: true }).click();
+  await expect(page).toHaveURL(/q=First\+steps\+with\+Maia/);
+  await expect(page.locator('#catalog .card')).toHaveCount(1);
+  await page.getByRole('link', { name: 'First steps with Maia', exact: true }).click();
+  const previewEntry = page.locator('li').filter({
+    has: page.getByRole('link', { name: 'Welcome', exact: true }),
+  });
+  await expect(previewEntry).toContainText('Open preview');
+  expect((await page.request.get(`/api/v1/lessons/${previewLesson.id}`)).status()).toBe(200);
+  expect((await page.request.get(`/api/v1/lessons/${lockedLesson.id}`)).status()).toBe(403);
+  await page.goto(`/lessons/${previewLesson.id}`);
+  await expect(page.locator('.lesson-body')).toContainText(
+    '<script>alert("xss")</script>',
+  );
   await page.goto('/auth/register');
   await page.getByLabel('Email', { exact: true }).fill('learner@example.com');
   await page.getByLabel('Password', { exact: true }).fill('Learner-test-password-123');

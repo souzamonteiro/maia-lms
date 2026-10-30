@@ -2231,6 +2231,19 @@ isolation, not the full video-course/revision workflow or deployed-domain accept
 Validation: the focused authoring E2E passed in Chromium. No production runtime,
 database, deployment, host or running instance was changed.
 
+## Anonymous catalog discovery and lesson preview — October 30, 2026
+
+The local learning workflow now has an unauthenticated visitor search the catalog
+by course title and enrolled-free access mode, open the published course, and
+access the lesson explicitly marked as a public preview. The paired non-preview
+lesson API request is rejected with HTTP 403 before registration or enrollment.
+Afterward, the existing learner registration, enrollment and lesson-completion
+workflow continues.
+
+Validation: `tests/e2e/learning.spec.ts` passed in Chromium. This is local
+authorization and discovery evidence, not device or deployed-domain qualification.
+No production runtime, database, deployment, host or running instance was changed.
+
 ## Full WebKit E2E regression — October 27, 2026
 
 The complete WebKit browser suite passed all 39 workflows with

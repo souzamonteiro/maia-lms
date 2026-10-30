@@ -1321,6 +1321,9 @@ usable for free video courses but does not complete the full P0/P1 scope.
     learner-facing old lesson still renders its published Markdown while the new
     draft remains author-only (`tests/e2e/authoring.spec.ts`).
 - [ ] Visitor finds a course through search/filters and watches only permitted previews.
+  - [x] Local Chromium E2E searches the enrolled-free catalog, opens a published
+    preview lesson anonymously, and verifies a non-preview lesson returns 403
+    before the learner enrolls (`tests/e2e/learning.spec.ts`).
 - [ ] Learner registers, verifies email, enrolls or pays, watches on desktop/mobile,
   resumes position, takes an assessment, and receives a certificate according to policy.
 - [ ] No media URL or browser response grants access to an unauthorized user.
