@@ -2258,6 +2258,19 @@ Validation: the focused real-video workflow passed with `VIDEO_TEST_REAL=1`;
 not device or deployed-host qualification. No production runtime, database,
 deployment, host or running instance was changed.
 
+## Refunds enforce lesson access — October 30, 2026
+
+The local admin-order browser workflow now probes the paid lesson API directly
+through the learner's authenticated browser context: it returns 403 before payment,
+200 after approval, remains 200 after a partial refund, and returns 403 after a full
+refund. The existing assertions also verify the matching active/revoked enrollment
+state and the order's partial/full refund history. This does not qualify provider
+sandbox settlement or certificate reversal policy.
+
+Validation: `tests/e2e/admin-orders.spec.ts` passed in Chromium and
+`npx eslint tests/e2e/admin-orders.spec.ts` passed. No production runtime, database,
+deployment, host or running instance was changed.
+
 ## Full WebKit E2E regression — October 27, 2026
 
 The complete WebKit browser suite passed all 39 workflows with

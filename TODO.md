@@ -1331,6 +1331,9 @@ usable for free video courses but does not complete the full P0/P1 scope.
     MP4, poster, captions, HLS master and HLS segment without a session; all return
     403 before the learner enrolls (`tests/e2e/video.spec.ts`).
 - [ ] Administrator checks an order, refunds/revokes, and verifies effects on access and certificates.
+  - [x] Local Chromium E2E confirms paid lesson access is denied before approval,
+    remains available after a partial refund, and is denied again after a full
+    refund, alongside the learner entitlement state (`tests/e2e/admin-orders.spec.ts`).
 - [ ] Switching among English/Portuguese/Spanish preserves drafts and translates the entire workflow.
 - [ ] Operator recovers from worker failure and restores database/media into another working installation.
 - [ ] The entire journey above works at `learn.maiaplatform.org`, beyond local tests.

@@ -39,10 +39,18 @@ test('administrator issues partial and full refunds while access follows the ref
   await expect(learnerPage.getByRole('heading', { name: 'My learning' })).toBeVisible();
   await learnerPage.goto(coursePath!);
   await expect(learnerPage.getByRole('heading', { name: 'Refund support course' })).toBeVisible();
+  const lessonPath = await learnerPage
+    .getByRole('link', { name: 'Lesson', exact: true })
+    .getAttribute('href');
+  expect(lessonPath).toBeTruthy();
+  const lessonId = new URL(lessonPath!, new URL(learnerPage.url()).origin).pathname.split('/').at(-1);
+  const lessonApiPath = `/api/v1/lessons/${lessonId}`;
+  expect((await learnerPage.request.get(lessonApiPath)).status()).toBe(403);
   await learnerPage.getByRole('button', { name: 'Buy course', exact: true }).click();
   await expect(learnerPage).toHaveURL(/\/dev\/fake-checkout\//);
   await learnerPage.getByRole('button', { name: 'Simulate approval', exact: true }).click();
   await expect(learnerPage).toHaveURL(/\/my-orders\?order=/);
+  expect((await learnerPage.request.get(lessonApiPath)).status()).toBe(200);
 
   await page.goto('/admin/orders');
   await expect(page.getByRole('heading', { name: 'Manage orders' })).toBeVisible();
@@ -66,6 +74,7 @@ test('administrator issues partial and full refunds while access follows the ref
     return enrollments.find((enrollment: { slug: string }) => enrollment.slug === slug)?.state;
   }, courseSlug);
   expect(partialAccess).toBe('active');
+  expect((await learnerPage.request.get(lessonApiPath)).status()).toBe(200);
 
   await order.getByText('Issue refund', { exact: true }).click();
   const remainingRefundForm = order.locator('.admin-refund-form');
@@ -83,5 +92,6 @@ test('administrator issues partial and full refunds while access follows the ref
     return enrollments.find((enrollment: { slug: string }) => enrollment.slug === slug)?.state;
   }, courseSlug);
   expect(fullRefundAccess).toBe('revoked');
+  expect((await learnerPage.request.get(lessonApiPath)).status()).toBe(403);
   await learnerContext.close();
 });
