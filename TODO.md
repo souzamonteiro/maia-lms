@@ -1065,6 +1065,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   hash; both source and recovery remain independently verifiable. Focused tests
   cover rollback, preserved credentials/preferences/MFA enrollment and rejection
   of old cookies/links before fresh recovery/login in the real-media HTTP rehearsal.
+  Rehearsed again locally on October 31, 2026: all 18 focused recovery/bundle tests
+  passed with fictional data, temporary storage and loopback HTTP.
   Failed backup or restore attempts now remove only their own incomplete destination,
   preserve both source/bundle data and allow a corrected retry to reuse the path.
   The restored manifest also reports the number of unprocessed email messages to

@@ -2521,3 +2521,19 @@ Validation:
 - `git diff --check` passed.
 
 No deployment, host or running-instance changes were performed.
+
+## Isolated backup and restoration rehearsal — October 31, 2026
+
+Repeated the local real-media recovery rehearsal and focused bundle tests. They
+use fictional accounts, temporary directories and loopback HTTP servers; the
+rehearsal removes the source database/media from service before starting the
+recovered copy. Coverage includes old published-revision playback, MP4 Range/HLS,
+captions/poster, progress, certificate verification/PDF identity, authorization,
+and invalidation of recovered sessions and one-time links. All 18 selected tests
+passed. This does not rehearse destination configuration, off-site recovery,
+encryption/retention, or a target host.
+
+Validation:
+- `VIDEO_TEST_REAL=1 npm test -- --run apps/api/src/backup-recovery.test.ts apps/api/src/db/backup.test.ts` (18/18).
+
+No deployment, host or running-instance changes were performed.
