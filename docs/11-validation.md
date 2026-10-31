@@ -2366,6 +2366,20 @@ No production media was deleted, and no deployment, host or running-instance
 changes were performed. Host disk-space behavior and restoration remain
 operational qualification.
 
+## Real-video desktop browser coverage — October 31, 2026
+
+The real-video E2E workflow passed in both Firefox and WebKit desktop browsers.
+Each run covered upload, publication, and learner playback against an isolated
+local fixture server.
+
+Validation:
+- `VIDEO_TEST_REAL=1 E2E_PORT=4360 npm run test:e2e -- tests/e2e/video.spec.ts --browser=firefox --grep "author uploads a real video"` (1/1).
+- `VIDEO_TEST_REAL=1 E2E_PORT=4361 npm run test:e2e -- tests/e2e/video.spec.ts --browser=webkit --grep "author uploads a real video"` (1/1).
+
+These focused desktop runs do not qualify the full Firefox suite, Android Chrome,
+physical iOS Safari, or long playback through the deployed host/session renewal.
+No deployment, host or running-instance changes were performed.
+
 ## Private-route crawler exclusion — October 30, 2026
 
 The public SEO integration test now verifies all six private-path `Disallow`

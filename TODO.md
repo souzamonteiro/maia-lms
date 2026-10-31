@@ -557,8 +557,11 @@ does not satisfy a task. Preserve local internationalization changes and prototy
     fullscreen controls; speed, loading, error, and fallback states are localized.
   - [x] Chromium real-video coverage verifies HLS master/variant/segment playback,
     quality switching, and MP4 fallback after an HLS playlist failure.
+  - [x] Focused Firefox and WebKit desktop real-video workflows pass upload,
+    publication, and browser playback with the local isolated E2E server.
   - [ ] Qualify seeking/quality switching on Android Chrome and Safari/iOS, and run
-    long lessons through HTTP-session renewal on the deployed host.
+    long lessons through HTTP-session renewal on the deployed host. Focused
+    desktop Firefox/WebKit passes do not certify physical devices or the full suites.
 - [x] **PLAY-03 — Captions and transcripts.**
   WebVTT upload/validation, language and track selection, accessible text transcripts,
   replacement workflow, and availability indication. Dependencies: MEDIA-04, PLAY-02.
@@ -1288,6 +1291,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   October 30 local regression rerun: all 215 tests across 65 files passed with
   real-media coverage enabled and a 10-second test timeout; build and lint also
   passed. The full Firefox and external qualification gaps remain open.
+  October 31 focused real-video E2E passed in Firefox and WebKit desktop, each
+  covering upload, publication, and playback using isolated fixture ports 4360
+  and 4361. These do not resolve Firefox full-suite navigation intermittency or
+  qualify Android/iOS physical devices or the deployed host.
 - [ ] **DOC-01 — Keep contracts and operations aligned with implementation.**
   Update OpenAPI, data model, installation/configuration, author/learner/admin
   manuals, limits, and recovery procedures with every delivery. Dependency:
