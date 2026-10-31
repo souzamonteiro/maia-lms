@@ -20,6 +20,7 @@ export interface StorageProvider {
   // Bounded convenience operation for small objects. Stream large media instead.
   readAuthorized(key: string, maxBytes?: number): Promise<Buffer>;
   delete(key: string): Promise<void>;
+  deletePrefix(prefix: string): Promise<void>;
   generateDeliveryGrant(key: string, expiresInSeconds: number): Promise<DeliveryGrant>;
   stat(key: string): Promise<StatResult>;
 }

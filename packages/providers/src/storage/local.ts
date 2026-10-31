@@ -87,6 +87,34 @@ export class LocalStorageProvider implements StorageProvider {
   async delete(key: string): Promise<void> {
     fs.rmSync(this.keyToPath(key), { force: true });
   }
+  async deletePrefix(prefix: string): Promise<void> {
+    const parts = prefix.split('/');
+    if (parts.length !== 3 || parts[0] !== 'videos' || !parts[2]?.endsWith('-hls'))
+      throw new Error('Storage prefix must be a single video HLS directory');
+    const removeDirectory = async (key: string): Promise<void> => {
+      const target = this.keyToPath(key);
+      let entries: fs.Dirent[];
+      try {
+        entries = fs.readdirSync(target, { withFileTypes: true });
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') return;
+        throw error;
+      }
+      if (!fs.lstatSync(target).isDirectory()) throw new Error('Storage prefix is not a directory');
+      for (const entry of entries) {
+        const childKey = `${key}/${entry.name}`;
+        if (entry.isDirectory()) await removeDirectory(childKey);
+        else if (entry.isFile()) await this.delete(childKey);
+        else throw new Error('Unsupported storage entry');
+      }
+      try {
+        fs.rmdirSync(target);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      }
+    };
+    await removeDirectory(prefix);
+  }
   async stat(key: string): Promise<StatResult> {
     const fd = fs.openSync(this.keyToPath(key), fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
     try {

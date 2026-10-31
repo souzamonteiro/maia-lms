@@ -29,8 +29,11 @@ it('rejects rewriting a ready media artifact referenced by a published revision'
     `);
 
     expect(() =>
-      db.prepare('UPDATE video_uploads SET output_key=? WHERE id=?').run('private/replaced.mp4', 'video'),
-    ).toThrow(/published revision media is immutable/);
+        db.prepare("UPDATE video_uploads SET orphaned_since=datetime('now') WHERE id=?").run('video'),
+      ).not.toThrow();
+      expect(() =>
+        db.prepare('UPDATE video_uploads SET output_key=? WHERE id=?').run('private/replaced.mp4', 'video'),
+      ).toThrow(/published revision media is immutable/);
     expect(() =>
       db.prepare('UPDATE video_uploads SET poster_key=? WHERE id=?').run('private/replaced.jpg', 'video'),
     ).toThrow(/published revision media is immutable/);

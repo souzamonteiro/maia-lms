@@ -503,7 +503,7 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   during media jobs, retry, cancellation races, stale-lease recovery, and real-media
   completion. JOB-01 is complete locally; long-duration VPS qualification remains
   operational validation, not an unimplemented queue workflow.
-- [ ] **MEDIA-04 — Media library and lifecycle (blocked on retention policy).**
+- [x] **MEDIA-04 — Media library and lifecycle (local implementation).**
   List by author/course, search, select, replace with a new version, associate
   images/covers/posters/attachments, and display queue/errors. Dependencies:
   MEDIA-02/03, EDIT-03. Acceptance: authors follow the entire process without a
@@ -513,9 +513,12 @@ does not satisfy a task. Preserve local internationalization changes and prototy
     filters, pagination, processing/error state, reference counts, and owner-scoped
     results; never expose storage keys. Existing course editor selectors continue
     to handle association and replacement.
-  - [ ] Define orphan retention and implement collection that rechecks every old
-    revision before deleting only unreferenced media; no retention period or cleanup
-    has been activated without an owner policy.
+  - [x] Owner policy: collect media only after 90 consecutive days with no
+    references. The hourly worker rechecks lessons, attachments, and cover/trailer
+    links across every revision, blocks new references once collection starts,
+    retries failed file deletions, and removes only registered READY media.
+    Unregistered files, empty directories, failed transcodes, and host disk/restore
+    qualification remain operational follow-up.
 - [x] **MEDIA-05 — Supplementary materials with descriptions.**
   Allow multiple attachments per course or lesson, including PDF, ZIP, source code,
   and other permitted formats. Each attachment has an editable title and description;

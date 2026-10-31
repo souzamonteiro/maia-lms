@@ -75,9 +75,12 @@ error notice is cleared and processing status is shown.
   every 15 seconds, and reclaiming jobs with no heartbeat for two minutes.
 - Original chunks are retained for retries. Reserve space for temporary files and
   outputs too; the originals quota is not a total disk-usage limit.
-- There is no automatic expiration of abandoned uploads or orphan cleanup after
-  crashes yet. Cancel incomplete uploads through the dashboard and monitor disk space.
-  Do not delete video directories referenced by older revisions.
+- The worker expires incomplete uploads after seven inactive days and collects
+  registered READY media only after 90 consecutive days without references in any
+  revision. A reference recheck and database lock prevent deleting media while a
+  revision uses it; failed deletions are retried. Unregistered files, empty
+  directories, and failed transcodes are not collected automatically. Do not delete
+  video directories referenced by older revisions.
 
 Objects have server-generated names, temporary writes followed by atomic publication,
 and are not overwritten. The adapter rejects traversal and symlinks. Only the service

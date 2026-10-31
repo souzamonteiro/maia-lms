@@ -138,6 +138,8 @@ export function videosRouter(
       poster_key: undefined,
       hls_key: undefined,
       lease: undefined,
+      orphaned_since: undefined,
+      collection_started_at: undefined,
       chunks: db
         .prepare('SELECT offset,size,sha256 FROM video_chunks WHERE upload_id=? ORDER BY offset')
         .all(v.id),

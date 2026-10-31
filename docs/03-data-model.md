@@ -294,6 +294,15 @@ requires `updated_at` to be no earlier than creation or its previous value.
 Migration 100 prevents an IN_REVIEW request from returning to OPEN; requests can
 remain in review or move to CLOSED, and CLOSED remains terminal.
 
+Migration 101 adds `orphaned_since` and `collection_started_at` to READY uploads.
+The hourly worker starts the 90-day clock only when no lesson, attachment, cover,
+or trailer reference exists in any revision. New references reset the clock, while
+collection locks prevent reattachment after deletion begins. The published-media
+immutability trigger permits only the internal orphan-timer update. After 90
+consecutive days, the worker deletes registered output/poster/HLS/chunk files and
+then the upload row; failures retain the lock for retry. This does not collect
+unregistered files, empty directories, or failed transcodes.
+
 The admin review API uses the existing schema: an IMMEDIATE transaction changes
 OPEN to IN_REVIEW (or keeps IN_REVIEW), updates the request timestamp, and appends
 a `privacy_request.review` event in `audit_events` with actor, previous status,

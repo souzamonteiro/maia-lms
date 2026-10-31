@@ -57,7 +57,9 @@ the image library and VPS qualification were still pending in the [TODO](../TODO
 at this stage.
 
 Update: captions and transcripts are now available; see the [guide](15-captions.md).
-Earlier references to pending captions describe the first delivery.
+The author/admin media library and 90-day registered-orphan collection are also
+implemented locally. HLS and VPS qualification remain open; see the current
+[TODO](../TODO.md). Earlier references to pending captions describe the first delivery.
 
 ## Optional malware inspection
 

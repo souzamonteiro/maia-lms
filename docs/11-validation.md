@@ -2342,6 +2342,30 @@ Validation:
 
 No deployment, host or running-instance changes were performed.
 
+## Registered media orphan retention — October 31, 2026
+
+The worker now records the start of an unreferenced period and collects only
+registered READY media after the owner-selected 90-day policy. A sweep rechecks
+lesson, attachment, cover, and trailer references across all revisions, resets the
+timer when media is reused, and locks candidates against new references before
+deleting output, poster, HLS-prefix, and upload-chunk files. Failed deletions keep
+the lock and are retried. Unregistered files, empty directories, and failed
+transcodes are intentionally not collected.
+
+Validation:
+- Focused storage, orphan-collection, published-media immutability, upload-cleanup,
+  and video API tests: 18 passed, 1 skipped.
+- `npm test -- --reporter=dot --testTimeout=10000` (222 passed, 3 skipped;
+  64 files passed, 2 skipped).
+- `npm run build` passed.
+- `npm run lint` passed.
+- `git diff --check` passed.
+
+These are local tests using temporary directories and an in-memory database.
+No production media was deleted, and no deployment, host or running-instance
+changes were performed. Host disk-space behavior and restoration remain
+operational qualification.
+
 ## Private-route crawler exclusion — October 30, 2026
 
 The public SEO integration test now verifies all six private-path `Disallow`

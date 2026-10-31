@@ -1,5 +1,6 @@
 import { attachmentScanMode } from './attachment-scan.js';
 import { cleanupUploads } from './upload-cleanup.js';
+import { cleanupOrphanedMedia } from './orphan-media-cleanup.js';
 import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import { NodemailerEmailProvider } from '@maia/providers';
@@ -76,6 +77,14 @@ while (running) {
     } catch (error) {
       console.error(
         'Upload cleanup failed',
+        error instanceof Error ? error.message : 'Unknown error',
+      );
+    }
+    try {
+      await cleanupOrphanedMedia(db, process.env.STORAGE_ROOT ?? './data/storage');
+    } catch (error) {
+      console.error(
+        'Orphaned media cleanup failed',
         error instanceof Error ? error.message : 'Unknown error',
       );
     }

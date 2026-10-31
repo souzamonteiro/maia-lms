@@ -64,6 +64,30 @@ it('streams a large object and refuses unbounded buffered reads', async () => {
   }
 });
 
+it('deletes only objects under a validated storage prefix', async () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'maia-storage-prefix-'));
+  try {
+    const store = new LocalStorageProvider(temp, 'key', 'http://localhost');
+    await store.putPrivate('videos/course/old-hls/master.m3u8', Buffer.from('master'), '');
+    await store.putPrivate('videos/course/old-hls/v0/index.m3u8', Buffer.from('variant'), '');
+    await store.putPrivate('videos/course/keep.mp4', Buffer.from('keep'), '');
+
+    await store.deletePrefix('videos/course/old-hls');
+
+    await expect(store.readAuthorized('videos/course/old-hls/master.m3u8')).rejects.toThrow();
+    expect((await store.readAuthorized('videos/course/keep.mp4')).toString()).toBe('keep');
+    await expect(store.deletePrefix('videos')).rejects.toThrow('single video HLS directory');
+
+    fs.writeFileSync(path.join(temp, 'sentinel'), 'untouched');
+    fs.mkdirSync(path.join(temp, 'videos/course/unsafe-hls'));
+    fs.symlinkSync(temp, path.join(temp, 'videos/course/unsafe-hls/link'));
+    await expect(store.deletePrefix('videos/course/unsafe-hls')).rejects.toThrow();
+    expect(fs.readFileSync(path.join(temp, 'sentinel'), 'utf8')).toBe('untouched');
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true });
+  }
+});
+
 it('rejects symlinks and traversal for reads, stat, deletion and writes without altering the target', async () => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'maia-storage-links-'));
   try {

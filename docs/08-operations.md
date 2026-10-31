@@ -399,8 +399,17 @@ also retried in batches of up to 50. Failed deletions remain recorded for the ne
 sweep and produce an `Upload cleanup failed` worker log. Check storage permissions
 and disk health if that message recurs. No published output files are removed.
 Resume an expired upload by starting a new upload; the old offset is no longer usable.
-Unregistered orphan files, empty directories, failed transcodes, and referenced
-abandoned drafts require the future media lifecycle workflow, not this sweep.
+The same hourly worker sweep collects registered READY media after 90 consecutive
+days without references in any lesson, attachment, or course revision, including
+old drafts and published revisions. The timer begins at the first sweep after the
+last reference is removed and resets whenever media is referenced again. A database
+lock prevents new references once deletion starts; storage failures leave the record
+locked and are retried on a later sweep. Review `Orphaned media cleanup failed`
+logs and check storage permissions/disk health before retrying.
+
+This collection does not scan for unregistered files, remove empty directories,
+or collect failed transcodes. Those require separate review; never remove a media
+directory based only on its age or current course pointer.
 
 ## Attachment scanner configuration
 
