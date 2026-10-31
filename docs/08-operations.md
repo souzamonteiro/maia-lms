@@ -182,9 +182,23 @@ or a recovery checklist. Verify `DATABASE_URL` and `STORAGE_ROOT` point to the
 restored paths, and verify `PUBLIC_BASE_URL`, `HOST`, `PORT`, and `TRUST_PROXY`
 match the destination's topology. Set `PAYMENTS_CHECKOUT_ENABLED=false` for a
 free pilot; production payment credentials and issuer configuration require
-their separate owner qualification. Set the environment file to root ownership, group
-`maia-lms`, and mode `0640`, then validate service access without printing its
-contents.
+their separate owner qualification. Set the environment file to root ownership,
+group `maia-lms`, and mode `0640`, then validate service access without printing
+its contents.
+
+Run the read-only static preflight from the release checkout after its dependencies
+are installed:
+
+```bash
+npm run config:check -- --env-file=/etc/maia-lms/app.env
+```
+
+It reads only the named regular environment file (mode `0600` or `0640`), checks
+the production schema and required explicit settings, requires checkout disabled,
+absolute database/storage paths, and a non-loopback SMTP URL. It does not print
+configuration values. It cannot verify DNS, SMTP delivery, service-user filesystem
+access, VPN/TLS connectivity, or payment/issuer qualification; perform those
+checks separately on the destination.
 
 Before starting the worker, review the restoration manifest's pending-email
 count and follow the outbox review procedure below. Recovered authentication

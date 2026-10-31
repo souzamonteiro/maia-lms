@@ -2323,6 +2323,25 @@ Validation:
 
 No deployment, host or running-instance changes were performed.
 
+## Production pilot configuration preflight — October 31, 2026
+
+Added a read-only preflight for a named production environment file. It clears
+ambient application settings before loading that file, requires production
+settings to be explicit, enforces checkout disabled and persistent absolute
+paths, rejects local SMTP and unsafe file modes, and never prints environment
+values. It validates configuration only; it does not test service-user access,
+SMTP, VPN/TLS connectivity, or owner/provider qualification.
+
+Validation:
+- `npm test -- --run apps/api/src/config.test.ts` (12/12).
+- `npm run build` passed.
+- `npm run lint` passed.
+- CLI integration tests verified successful pilot configuration and rejection
+  of enabled checkout without disclosing a test secret.
+- `git diff --check` passed.
+
+No deployment, host or running-instance changes were performed.
+
 ## Private-route crawler exclusion — October 30, 2026
 
 The public SEO integration test now verifies all six private-path `Disallow`

@@ -1074,9 +1074,11 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   and without discarding any queued work.
   The operations runbook now documents destination configuration recovery without
   copying secrets into the data bundle, including pilot checkout-off verification,
-  permissions, topology checks, and post-backup credential/MFA review. Keep open
-  for rehearsing that procedure on a representative target, off-site
-  encryption/retention, and host/device qualification.
+  permissions, topology checks, and post-backup credential/MFA review. A local
+  read-only preflight now checks the production schema, explicit pilot settings,
+  persistent paths, SMTP target and environment-file mode without printing values.
+  Keep open for rehearsing the recovery/configuration procedure on a representative
+  target, off-site encryption/retention, and host/device qualification.
 - [ ] **OPS-03 — Observability and dashboard operations (local dashboard; telemetry and alert delivery open).**
   Queue/transcode/playback/SMTP/payment/disk metrics, logs without tokens/PII,
   alerts, inspection, and administrative retries. Dependencies: JOB-01, PAY-03.
