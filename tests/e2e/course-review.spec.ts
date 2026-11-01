@@ -31,7 +31,7 @@ test('author submits a ready course for review before administrator publication'
   expect(authorLogin.status()).toBe(200);
   expect((await authorLogin.json()).role).toBe('author');
   const authorPage = await authorContext.newPage();
-  await authorPage.goto('/admin');
+  await authorPage.goto('/admin', { waitUntil: 'domcontentloaded' });
   const course = await authorPage.evaluate(async slug => {
     const response = await fetch('/api/v1/admin/courses', {
       method: 'POST',

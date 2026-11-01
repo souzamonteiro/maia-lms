@@ -2295,6 +2295,33 @@ Validation: 38/39 complete Firefox workflows passed; the isolated
 course-withdrawal workflow passed. No source code change, deployment, host or
 running-instance modification was made.
 
+## Firefox suite stability follow-up — October 31, 2026
+
+Two homepage-authoring E2E selectors were scoped to the most recently added
+placement; the authoring/admin subset passed 9/9 in Firefox. The course-review
+test's auxiliary author-page navigation now waits for `domcontentloaded` rather
+than the full `load` event; its state/API assertions remain in place. The
+course-review workflow passed in isolation and in the subsequent full run.
+
+The latest complete Firefox run with `VIDEO_TEST_REAL=1` passed 37/39. The
+remaining 30-second timeouts occurred in paid-checkout's login navigation and
+the video workflow's enrollment-response wait. Paid checkout and both video
+workflows passed together in isolation (3/3). Earlier full runs also placed the
+timeout in course review, while the affected workflows passed in isolation.
+Because the timeout moves between workflows, this is still suite-level
+intermittency; Firefox full-suite qualification remains open. These are local
+E2E test changes only, not application-behavior changes.
+
+Validation:
+- `E2E_PORT=4363 npm run test:e2e -- tests/e2e/authoring.spec.ts tests/e2e/admin-users.spec.ts --browser=firefox` (9/9).
+- `E2E_PORT=4366 npm run test:e2e -- tests/e2e/course-review.spec.ts --browser=firefox` (1/1).
+- `VIDEO_TEST_REAL=1 E2E_PORT=4369 npm run test:e2e -- tests/e2e/paid-checkout.spec.ts tests/e2e/video.spec.ts --browser=firefox` (3/3).
+- Full real-media Firefox run on port 4368: 37/39; timeouts in paid-checkout and video noted above.
+- `git diff --check` passed. No build/lint was needed because application code was unchanged.
+
+No deploy, host changes, production data access, or running-instance modification
+was performed. Physical-device and deployed-host qualification remain pending.
+
 ## Full local regression follow-up
 
 The full Vitest regression passed all 215 tests across 65 files with

@@ -1295,6 +1295,15 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   covering upload, publication, and playback using isolated fixture ports 4360
   and 4361. These do not resolve Firefox full-suite navigation intermittency or
   qualify Android/iOS physical devices or the deployed host.
+  October 31 follow-up: fixed two homepage-authoring E2E selectors to scope
+  controls to the newly added placement; 9/9 Firefox authoring/admin tests passed.
+  After changing the auxiliary author-page navigation in course-review to wait
+  for DOMContentLoaded, that workflow passed in the full run and in isolation.
+  The latest full real-media Firefox run passed 37/39; 30-second timeouts moved
+  to paid-checkout navigation and the real-video enrollment response. Those three
+  checkout/video workflows passed together in isolation (3/3). Full Firefox
+  qualification remains open because the timeout shifts between workflows.
+  These are E2E-only changes; no app behavior or external environment changed.
 - [ ] **DOC-01 — Keep contracts and operations aligned with implementation.**
   Update OpenAPI, data model, installation/configuration, author/learner/admin
   manuals, limits, and recovery procedures with every delivery. Dependency:

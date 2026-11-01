@@ -102,8 +102,9 @@ test('administrator manages accounts and an author publishes a public profile', 
   expect(course).toBeDefined();
   await page.getByRole('link', { name: 'Manage homepage', exact: true }).click();
   await page.getByRole('button', { name: 'Add course placement' }).click();
-  await page.locator('.placement-course').selectOption(course.id);
-  await page.locator('.placement-slot').selectOption('featured');
+  const placement = page.locator('#placements .placement').last();
+  await placement.locator('.placement-course').selectOption(course.id);
+  await placement.locator('.placement-slot').selectOption('featured');
   await page.getByRole('button', { name: 'Save homepage' }).click();
   await expect(page.locator('#home-status')).toHaveText('Homepage saved.');
   await page.goto('/');
