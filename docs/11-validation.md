@@ -2776,9 +2776,14 @@ test now guards this status-surface pair as well.
 The shared text-field, select, and textarea border measured 2.79:1 against the
 page paper background. It was darkened to `#71877e`, measuring 3.56:1 on paper
 and 3.84:1 on white; both combinations are covered by the regression test.
+Disabled primary buttons rendered at only 2.87:1 against white (2.91:1 on paper)
+because the shared disabled rule applied 60% opacity to both foreground and
+background. They now use opaque `#132a34` text on `#d9e3df`, which exceeds 4.5:1,
+at 11.36:1. A regression test prevents reintroducing opacity and checks the text
+ratio.
 
 Validation:
-- `npm test -- --run apps/web/src/focus-contrast.test.ts` (5/5).
+- `npm test -- --run apps/web/src/focus-contrast.test.ts` (6/6).
 - `npm run build` passed for all workspaces.
 - `npm run lint` passed.
 - `git diff --check` passed.

@@ -9,8 +9,20 @@ const errorBorderColor = errorMessage?.match(/border:\s*1px solid (#[\da-f]{6})/
 const errorBackgroundColor = errorMessage?.match(/background:\s*(#[\da-f]{6})/i)?.[1];
 const formControl = appCss.match(/input,\s*select,\s*textarea\s*\{([^}]*)\}/i)?.[1];
 const formControlBorderColor = formControl?.match(/border:\s*1px solid (#[\da-f]{6})/i)?.[1];
+const disabledButton = appCss.match(/button:disabled\s*\{([^}]*)\}/i)?.[1];
+const disabledBackgroundColor = disabledButton?.match(/background:\s*(#[\da-f]{6})/i)?.[1];
+const disabledForeground = disabledButton?.match(/color:\s*var\(--ink\)/i) ? '#132a34' : undefined;
 
-if (!focusColor || !paperColor || !errorBorderColor || !errorBackgroundColor || !formControlBorderColor) {
+if (
+  !focusColor
+  || !paperColor
+  || !errorBorderColor
+  || !errorBackgroundColor
+  || !formControlBorderColor
+  || !disabledButton
+  || !disabledBackgroundColor
+  || !disabledForeground
+) {
   throw new Error('Could not read the tested colors from app.css');
 }
 
@@ -42,4 +54,9 @@ it('keeps the form error border at least 3:1 against its background', () => {
 
 it.each([paperColor, '#ffffff'])('keeps form control borders at least 3:1 on %s', background => {
   expect(contrastRatio(formControlBorderColor, background)).toBeGreaterThanOrEqual(3);
+});
+
+it('keeps disabled button text at least 4.5:1 without opacity reduction', () => {
+  expect(disabledButton).not.toMatch(/opacity\s*:/i);
+  expect(contrastRatio(disabledForeground, disabledBackgroundColor)).toBeGreaterThanOrEqual(4.5);
 });
