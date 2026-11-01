@@ -1227,9 +1227,11 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   password-mismatch alerts in en, pt-BR, and es across the three browser engines.
   The privacy-review workflow now verifies keyboard search and review submission,
   including focus restoration after saving, in all three browser engines.
+  The shared keyboard-focus ring now has at least 3:1 contrast against the paper
+  and white surfaces, with a regression test for both combinations.
   These are targeted local workflows, not full browser-suite qualification.
-  Keep open for contrast,
-  zoom/mobile, captions, and the full author/learner workflow audit.
+  Keep open for the broader contrast, zoom/mobile, captions, and full
+  author/learner workflow audit.
 - [ ] **SEO-01 — Indexable public pages (public SSR delivered locally; qualification open).**
   Useful server-rendered content, per-course title/description, canonical URLs,
   sitemap, Open Graph/covers, and locale; prevent indexing of private areas.

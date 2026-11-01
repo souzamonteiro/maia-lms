@@ -2762,3 +2762,21 @@ Validation:
 - `VIDEO_TEST_REAL=1 npm test -- --run apps/api/src/backup-recovery.test.ts apps/api/src/db/backup.test.ts` (18/18).
 
 No deployment, host or running-instance changes were performed.
+
+## Keyboard focus indicator contrast — November 1, 2026
+
+The shared `:focus-visible` outline was darkened from `#c18317` to `#b5750c`
+after a local contrast check measured 2.98:1 against the page paper surface,
+below the 3:1 non-text contrast target for a visible focus indicator. The new
+color measures 3.53:1 against paper (`#f5f7f3`) and 3.81:1 against white.
+A regression test reads the CSS tokens and checks both surface combinations.
+
+Validation:
+- `npm test -- --run apps/web/src/focus-contrast.test.ts` (2/2).
+- `npm run build` passed for all workspaces.
+- `npm run lint` passed.
+- `git diff --check` passed.
+
+This is a focused local contrast check, not a complete WCAG/accessibility audit
+or screen-reader, browser-suite, physical-device, or deployed-host qualification.
+No deployment, host or running-instance changes were performed.

@@ -311,7 +311,7 @@ footer {
   padding: 10px;
 }
 :focus-visible {
-  outline: 3px solid #c18317;
+  outline: 3px solid #b5750c;
   outline-offset: 4px;
 }
 .muted {
