@@ -116,6 +116,8 @@ support details, receipt wording/invoice responsibilities, taxes, and consumer/L
 requirements. Sandbox purchase, refund, chargeback notification, and webhook
 qualification still require the owner's test account and credentials. References:
 [Mercado Pago credentials](https://www.mercadopago.com.br/developers/en/docs/checkout-api-orders/resources/credentials) and [test accounts](https://www.mercadopago.com.br/developers/en/docs/checkout-api-orders/resources/test-accounts).
+The [operator readiness checklist](16-operator-readiness-checklists.md#2-mercado-pago-checkout-and-certificates)
+lists staging setup, webhook routing, sandbox acceptance, and the production gate.
 
 ## Confirmation and reconciliation — October 13, 2026
 

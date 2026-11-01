@@ -468,6 +468,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   ClamAV path is fail-closed when enabled and tested with scanner outcomes, but
   `ATTACHMENT_SCAN_MODE` defaults to `disabled`. Keep this item open until the real
   worker host has ClamAV enabled and its scan behavior is qualified.
+  The operator preparation/qualification sequence is documented in
+  [the readiness checklist](docs/16-operator-readiness-checklists.md#1-clamav-attachment-scanning).
   The isolated E2E server now always starts its temporary worker so image/attachment
   workflows run even when real-video conversion tests are skipped; this does not
   change the production scanner policy or qualify host scanning.
@@ -875,6 +877,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   currency/payment methods, buyer-facing terms/support/receipt wording, tax/accounting
   review, and sandbox credentials/test-user setup. Configure credentials through the
   deployment secret store, never in chat.
+  The operator checklist defines an isolated nonproduction sandbox, webhook routing,
+  test purchase/refund criteria, and the production activation gate:
+  [Mercado Pago readiness](docs/16-operator-readiness-checklists.md#2-mercado-pago-checkout-and-certificates).
 
 ## P1 — certificates
 
@@ -897,6 +902,7 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   - [ ] Owner confirms institutional issuer policy before production issuance.
     Locally, workload is the published revision's declared minutes and issuer is
     the course revision's instructor name.
+    Owner/operator review checklist: [Mercado Pago checkout and certificates](docs/16-operator-readiness-checklists.md#2-mercado-pago-checkout-and-certificates).
 - [x] **CERT-02 — PDF, QR, and public verification.**
   Asynchronous generation, authorized download, opaque code, public verification
   with minimal data and valid/revoked status; learner certificates screen.

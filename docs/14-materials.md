@@ -88,6 +88,8 @@ Enabling scanning does not rescan existing READY attachments. Originals remain i
 private storage according to the current lifecycle policy. Antivirus results are
 not a guarantee that a file is harmless, and real scanner deployment/signatures
 must be validated separately from the automated integration tests.
+The [operator readiness checklist](16-operator-readiness-checklists.md#1-clamav-attachment-scanning)
+covers host installation, signature updates, staging failure tests, and activation.
 
 ## PNG and JPEG materials
 
