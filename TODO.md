@@ -1337,7 +1337,14 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Chromium runs each passed all 39 workflows with `VIDEO_TEST_REAL=1` on isolated
   ports 4396 and 4397, including both real-media workflows. These do not resolve
   Firefox full-suite intermittency or qualify physical devices or the deployed
-  host.
+  host. After migration 103, the next complete Firefox run passed 37/39: one
+  operations route interception saw a disposed API response body, and quiz
+  navigation timed out; operations passed focused in isolation (1/1). A full
+  rerun passed 38/39, with the timeout moving to the auxiliary `/admin`
+  navigation in course-review, which had passed earlier. The two video/media
+  workflows passed both runs. Firefox remains unqualified; no workaround was
+  applied because the failures are intermittent and the underlying cause is
+  not established.
 - [ ] **DOC-01 — Keep contracts and operations aligned with implementation.**
   Update OpenAPI, data model, installation/configuration, author/learner/admin
   manuals, limits, and recovery procedures with every delivery. Dependency:

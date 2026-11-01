@@ -2513,6 +2513,27 @@ devices, the deployed host, and public-domain capacity remain unqualified. No
 deployment, host change, production data access, or running-instance
 modification was performed.
 
+## Firefox full-suite follow-up against migrations 102–103 — November 1, 2026
+
+The first current-checkout Firefox run passed 37/39. The operations storage
+measurement workflow encountered a disposed Playwright API response body while
+modifying the intercepted response, and the quiz workflow timed out during
+lesson navigation. The operations workflow passed by itself (1/1). A second
+complete run passed 38/39; the remaining timeout moved to the auxiliary
+author-context `/admin` navigation in course-review while waiting for
+`DOMContentLoaded`. Course-review passed in the prior complete run. The two
+real-media workflows passed in both runs. The failures move between unrelated
+flows, so no timeout or assertion workaround was added.
+
+Validation:
+- Full real-media Firefox run on port 4398: 37/39.
+- Focused Firefox operations storage workflow on port 4399: 1/1.
+- Full real-media Firefox rerun on port 4400: 38/39.
+
+Firefox remains unqualified at full-suite level. The local WebKit and Chromium
+runs recorded above each passed 39/39. No deployment, host change, production
+data access, or physical-device qualification was performed.
+
 ## Real-video desktop browser coverage — October 31, 2026
 
 The real-video E2E workflow passed in both Firefox and WebKit desktop browsers.
