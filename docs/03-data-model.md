@@ -303,6 +303,11 @@ consecutive days, the worker deletes registered output/poster/HLS/chunk files an
 then the upload row; failures retain the lock for retry. This does not collect
 unregistered files, empty directories, or failed transcodes.
 
+Migration 102 rejects invalid orphan/collection timestamps and retention state on
+non-READY media. A collection lock requires a valid orphan timestamp, and media
+cannot transition away from READY while either timer/lock is active. The same
+checks apply to direct SQL inserts and updates.
+
 The admin review API uses the existing schema: an IMMEDIATE transaction changes
 OPEN to IN_REVIEW (or keeps IN_REVIEW), updates the request timestamp, and appends
 a `privacy_request.review` event in `audit_events` with actor, previous status,

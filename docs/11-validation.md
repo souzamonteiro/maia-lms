@@ -2459,6 +2459,26 @@ qualification remains open. These are local E2E changes only. No deployment,
 host change, production data access, or physical-device qualification was
 performed.
 
+## Media orphan-retention invariants
+
+Migration 102 now rejects malformed orphan/collection timestamps and retention
+markers on non-READY media. Starting collection requires an existing valid
+orphan timestamp, and the worker cannot leave media in a non-READY state while
+its retention timer or collection lock is active. The migration test exercises
+direct SQL rejection and valid cleanup-lock state; the existing worker regression
+continues to verify 90-day selection, reference resets, and retry after storage
+failure.
+
+Validation:
+- Focused migration and worker cleanup tests: 4 passed across 2 files.
+- `npm test -- --reporter=dot`: 223 passed, 3 skipped across 65 passed and 2 skipped files.
+- `npm run build` and `npm run lint` passed.
+- `git diff --check` passed.
+
+This adds local database enforcement only; it does not change cleanup retention,
+delete production media, qualify host disk/storage behavior, or perform a
+deployment.
+
 ## Real-video desktop browser coverage — October 31, 2026
 
 The real-video E2E workflow passed in both Firefox and WebKit desktop browsers.

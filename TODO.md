@@ -1042,8 +1042,11 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   than creation or the preceding update. Focused migration tests cover these
   constraints and valid lifecycle updates. Migration 100 prevents a request from
   regressing from IN_REVIEW to OPEN; migration sorting is numeric so three-digit
-  version rollover preserves application order. The complete invariant matrix
-  remains open.
+  version rollover preserves application order. Migration 102 validates orphan
+  and collection timestamps and restricts both to READY media, preventing stale
+  or malformed collection locks from persisting through direct SQL. Focused
+  migration and worker-cleanup tests cover valid and rejected states. The complete
+  invariant matrix remains open.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:
