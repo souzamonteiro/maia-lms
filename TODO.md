@@ -1061,7 +1061,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   migration and reconciliation tests cover allowed settlement, rejected direct
   regressions, and delayed pending events. The complete invariant matrix remains
   open. The follow-up on November 1 retained migration 102 unchanged after
-  publication and added the boundary as migration 103.
+  publication and added the boundary as migration 103. Migration 106 freezes a
+  provider checkout ID/URL after initial assignment while preserving the normal
+  NULL-to-assigned creation flow; focused migration tests cover assignment,
+  replacement, and clearing attempts.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:

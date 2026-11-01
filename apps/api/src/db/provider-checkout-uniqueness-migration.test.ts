@@ -40,12 +40,12 @@ it('deduplicates non-null checkout references within each provider', () => {
     ).toThrow(/duplicate provider checkout reference/);
     expect(() =>
       db.prepare('UPDATE orders SET provider_checkout_id=NULL WHERE id=?').run('order-b'),
-    ).not.toThrow();
+    ).toThrow(/provider checkout identity is immutable/);
     expect(() =>
       db.prepare('UPDATE orders SET provider_checkout_id=NULL WHERE id=?').run('order-d'),
     ).not.toThrow();
     expect(db.prepare('SELECT count(*) AS n FROM orders WHERE provider_checkout_id IS NULL').get()).toEqual({
-      n: 3,
+      n: 2,
     });
   } finally {
     db.close();
