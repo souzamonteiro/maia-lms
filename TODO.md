@@ -1228,7 +1228,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   The privacy-review workflow now verifies keyboard search and review submission,
   including focus restoration after saving, in all three browser engines.
   The shared keyboard-focus ring now has at least 3:1 contrast against the paper
-  and white surfaces, with a regression test for both combinations.
+  and white surfaces, with a regression test for both combinations. The form
+  error-message border also meets 3:1 against its background, covered by the same
+  focused contrast test.
   These are targeted local workflows, not full browser-suite qualification.
   Keep open for the broader contrast, zoom/mobile, captions, and full
   author/learner workflow audit.

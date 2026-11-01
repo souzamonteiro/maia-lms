@@ -2770,9 +2770,12 @@ after a local contrast check measured 2.98:1 against the page paper surface,
 below the 3:1 non-text contrast target for a visible focus indicator. The new
 color measures 3.53:1 against paper (`#f5f7f3`) and 3.81:1 against white.
 A regression test reads the CSS tokens and checks both surface combinations.
+The same focused check found that the form error-message border measured 2.97:1
+against its background; it was darkened to `#b87358`, measuring 3.38:1, and the
+test now guards this status-surface pair as well.
 
 Validation:
-- `npm test -- --run apps/web/src/focus-contrast.test.ts` (2/2).
+- `npm test -- --run apps/web/src/focus-contrast.test.ts` (3/3).
 - `npm run build` passed for all workspaces.
 - `npm run lint` passed.
 - `git diff --check` passed.

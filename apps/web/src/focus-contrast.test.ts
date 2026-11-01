@@ -4,9 +4,12 @@ import { expect, it } from 'vitest';
 const appCss = readFileSync(new URL('../public/app.css', import.meta.url), 'utf8');
 const focusColor = appCss.match(/:focus-visible\s*\{[^}]*outline:\s*\d+px solid (#[\da-f]{6})/i)?.[1];
 const paperColor = appCss.match(/:root\s*\{[^}]*--paper:\s*(#[\da-f]{6})/i)?.[1];
+const errorMessage = appCss.match(/#message:not\(:empty\)\s*\{([^}]*)\}/i)?.[1];
+const errorBorderColor = errorMessage?.match(/border:\s*1px solid (#[\da-f]{6})/i)?.[1];
+const errorBackgroundColor = errorMessage?.match(/background:\s*(#[\da-f]{6})/i)?.[1];
 
-if (!focusColor || !paperColor) {
-  throw new Error('Could not read the focus or paper color from app.css');
+if (!focusColor || !paperColor || !errorBorderColor || !errorBackgroundColor) {
+  throw new Error('Could not read the tested colors from app.css');
 }
 
 function luminance(color: string): number {
@@ -29,4 +32,8 @@ function contrastRatio(first: string, second: string): number {
 
 it.each([paperColor, '#ffffff'])('keeps the keyboard focus indicator at least 3:1 on %s', background => {
   expect(contrastRatio(focusColor, background)).toBeGreaterThanOrEqual(3);
+});
+
+it('keeps the form error border at least 3:1 against its background', () => {
+  expect(contrastRatio(errorBorderColor, errorBackgroundColor)).toBeGreaterThanOrEqual(3);
 });
