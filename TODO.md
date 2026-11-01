@@ -1068,6 +1068,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   paid-order snapshots against the referenced revision's course, title, access
   terms, amount and currency; payment fixtures now use complete matching snapshots,
   and migration tests reject each mismatch while preserving the valid checkout path.
+  Migration 108 freezes provider payment ownership and provider reference while
+  allowing reconciled state/raw metadata updates; focused migration tests exercise
+  both forbidden identity changes and the valid reconciliation update.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:

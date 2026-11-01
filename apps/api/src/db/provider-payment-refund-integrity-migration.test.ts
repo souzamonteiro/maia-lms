@@ -37,7 +37,7 @@ it('deduplicates provider payment/refund references and validates refund amounts
     ).not.toThrow();
     expect(() =>
       db.prepare('UPDATE provider_payments SET provider_payment_id=? WHERE id=?').run('payment-1', 'payment-b'),
-    ).toThrow(/duplicate provider payment reference/);
+    ).toThrow(/provider payment identity is immutable/);
 
     expect(() =>
       db.prepare('INSERT INTO refunds(id,order_id,provider_ref,amount_minor,status) VALUES(?,?,?,?,?)')
