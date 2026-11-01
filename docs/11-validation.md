@@ -2385,6 +2385,28 @@ No key was generated, package installed, backup encrypted, or host/environment
 changed. The command sequence is guidance and must be rehearsed with the selected
 OS package and recovery identity before operational use.
 
+## Firefox full-suite follow-up — October 31, 2026
+
+The public HTML workflow with JavaScript disabled now waits for
+`domcontentloaded`, the lifecycle point relevant to inspecting server-rendered
+HTML. Its focused Firefox, Chromium and WebKit runs passed (1/1 each). A
+subsequent full Firefox run with real video passed 38/39; the remaining timeout
+was at the initial `/auth/login` navigation in the category workflow. That
+workflow passed in isolation (1/1), continuing the pattern of the timeout
+moving among otherwise passing workflows.
+
+Validation:
+- `E2E_PORT=4371 npm run test:e2e -- tests/e2e/public-html.spec.ts --browser=firefox` (1/1).
+- `E2E_PORT=4372 npm run test:e2e -- tests/e2e/public-html.spec.ts --browser=chromium` (1/1).
+- `E2E_PORT=4373 npm run test:e2e -- tests/e2e/public-html.spec.ts --browser=webkit` (1/1).
+- `E2E_PORT=4375 npm run test:e2e -- tests/e2e/categories.spec.ts --browser=firefox` (1/1).
+- Full real-media Firefox run on port 4374: 38/39; category login navigation timed out.
+
+Firefox full-suite qualification remains open. This test-only adjustment does
+not claim to resolve the broader suite-level intermittency or qualify physical
+devices or the deployed host. No deploy, host change, production data access, or
+running-instance modification was performed.
+
 ## Registered media orphan retention — October 31, 2026
 
 The worker now records the start of an unreferenced period and collects only
