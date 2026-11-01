@@ -48,6 +48,7 @@ function synchronizeProviderRefunds(
       }
     }
     if (existing && existing.amount_minor !== amountMinor) return false;
+    if (existing && existing.status !== 'pending') continue;
     if (existing?.status === status) continue;
     if (existing)
       db.prepare('UPDATE refunds SET status=? WHERE id=?').run(status, existing.id);

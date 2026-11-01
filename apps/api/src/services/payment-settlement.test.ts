@@ -209,6 +209,15 @@ it('reconciles provider refund records while preserving partial access and revok
       .toEqual({ total: 1 });
     expect(db.prepare('SELECT revoked_at FROM entitlements WHERE source_id=?').get('order'))
       .toEqual({ revoked_at: null });
+    expect(applyProviderPayment(db, 'mercado_pago', {
+      ...partial,
+      metadata: {
+        external_reference: 'order',
+        transactions: { refunds: [{ id: 'partial-1', amount: '5.00', status: 'pending' }] },
+      },
+    }).kind).toBe('partially_refunded');
+    expect(db.prepare('SELECT status FROM refunds WHERE provider_ref=?').get('partial-1'))
+      .toEqual({ status: 'approved' });
 
     const full = {
       ...approved,

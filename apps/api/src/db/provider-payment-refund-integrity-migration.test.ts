@@ -78,7 +78,7 @@ it('deduplicates provider payment/refund references and validates refund amounts
     ).toThrow(/refund total exceeds order snapshot/);
     expect(() =>
       db.prepare('UPDATE refunds SET status=? WHERE id=?').run('pending', 'refund-rejected'),
-    ).toThrow(/refund total exceeds order snapshot/);
+    ).toThrow(/invalid refund status transition/);
     expect(() =>
       db.prepare('UPDATE refunds SET amount_minor=? WHERE id=?').run(901, 'refund-at-limit'),
     ).toThrow(/refund order and amount are immutable/);

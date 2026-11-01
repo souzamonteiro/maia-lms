@@ -1056,9 +1056,12 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   follow-up in migration 104 makes a recorded refund's order and amount immutable
   while preserving provider-reference and status reconciliation; focused migration
   tests cover rejected reassignment/amount changes and the valid reconciliation
-  update. The complete invariant matrix remains open. The follow-up on November 1
-  retained migration 102 unchanged after publication and added the boundary as
-  migration 103.
+  update. Migration 105 makes approved/rejected refunds terminal after leaving
+  pending; delayed provider states no longer regress a settled refund. Focused
+  migration and reconciliation tests cover allowed settlement, rejected direct
+  regressions, and delayed pending events. The complete invariant matrix remains
+  open. The follow-up on November 1 retained migration 102 unchanged after
+  publication and added the boundary as migration 103.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:
