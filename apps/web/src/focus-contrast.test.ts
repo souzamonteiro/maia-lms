@@ -16,6 +16,10 @@ const fieldset = appCss.match(/fieldset\s*\{([^}]*)\}/i)?.[1];
 const fieldsetBorderColor = fieldset?.match(/border:\s*1px solid (#[\da-f]{6})/i)?.[1];
 const dragging = appCss.match(/\.dragging\s*\{([^}]*)\}/i)?.[1];
 const dragOutlineColor = dragging?.match(/outline:\s*3px dashed var\(--green\)/i) ? '#14644b' : undefined;
+const secondaryButton = appCss.match(/button\.secondary\s*\{([^}]*)\}/i)?.[1];
+const secondaryForeground = secondaryButton?.match(/color:\s*var\(--ink\)/i) ? '#132a34' : undefined;
+const hoverRule = appCss.match(/\.markdown-toolbar button:hover,\s*\.row-controls button:hover\s*\{([^}]*)\}/i)?.[1];
+const hoverBackgroundColor = hoverRule?.match(/background:\s*(#[\da-f]{6})/i)?.[1];
 
 if (
   !focusColor
@@ -29,6 +33,10 @@ if (
   || !fieldsetBorderColor
   || !dragging
   || !dragOutlineColor
+  || !secondaryButton
+  || !secondaryForeground
+  || !hoverRule
+  || !hoverBackgroundColor
 ) {
   throw new Error('Could not read the tested colors from app.css');
 }
@@ -75,4 +83,8 @@ it.each(['#ffffff', paperColor, '#f8faf7'])('keeps fieldset boundaries at least 
 it.each(['#ffffff', '#f8faf7'])('keeps dragged editor content visible on %s', background => {
   expect(dragging).not.toMatch(/opacity\s*:/i);
   expect(contrastRatio(dragOutlineColor, background)).toBeGreaterThanOrEqual(3);
+});
+
+it('keeps hovered Markdown and row-control button labels at least 4.5:1', () => {
+  expect(contrastRatio(secondaryForeground, hoverBackgroundColor)).toBeGreaterThanOrEqual(4.5);
 });

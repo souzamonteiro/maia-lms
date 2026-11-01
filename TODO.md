@@ -1236,6 +1236,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   reduced the rendered text contrast below 3:1. Semantic fieldset boundaries
   now exceed 3:1 on their white, paper, and editor panel surfaces. Dragging a
   lesson or module now uses a contrasting outline instead of dimming its text.
+  A regression test also verifies the editor Markdown/row-control hover label
+  contrast remains above 4.5:1.
   These are targeted local workflows, not full browser-suite qualification.
   Keep open for the broader contrast, zoom/mobile, captions, and full
   author/learner workflow audit.

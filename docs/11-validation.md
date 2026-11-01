@@ -2789,9 +2789,12 @@ The lesson/module drag state used 60% opacity on the entire fieldset, reducing
 muted helper text to 2.58:1 on white. It now uses a dashed green outline instead,
 which distinguishes the dragged item without lowering text contrast; tests check
 the outline against white and the editor's pale panel and reject opacity.
+The Markdown toolbar and lesson/module row controls were verified to use
+secondary buttons on hover. Their inherited ink text on the pale hover fill
+exceeds 4.5:1; the focused contrast suite now guards that combination.
 
 Validation:
-- `npm test -- --run apps/web/src/focus-contrast.test.ts` (11/11).
+- `npm test -- --run apps/web/src/focus-contrast.test.ts` (12/12).
 - `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome E2E_PORT=4394 npm run test:e2e -- tests/e2e/authoring.spec.ts --grep "focused studio"` (1/1).
 - `npm run build` passed for all workspaces.
 - `npm run lint` passed.
