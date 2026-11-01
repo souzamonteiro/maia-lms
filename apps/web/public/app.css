@@ -590,7 +590,7 @@ button.icon-only {
 .studio-outline [aria-current="true"] { outline: 2px solid currentColor; outline-offset: 1px; }
 .studio-outline[hidden], #course-settings[hidden], .module-editor[hidden], .lesson-editor[hidden] { display: none; }
 .drag-handle { cursor: grab; display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; user-select: none; border: 1px solid currentColor; border-radius: .4rem; }
-.dragging { opacity: .6; }
+.dragging { outline: 3px dashed var(--green); outline-offset: 3px; }
 
 .course-preview { width: min(900px, 92vw); max-height: 90vh; overflow: auto; padding: 1.5rem; }
 .course-preview::backdrop { background: #0008; }

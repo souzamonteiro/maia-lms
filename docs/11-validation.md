@@ -2785,9 +2785,14 @@ Semantic `fieldset` boundaries inherited a 1.31:1 line color on white. They now
 use `#71877e`, measuring 3.84:1 on white, 3.56:1 on paper, and 3.66:1 on the
 editor's pale panel background; all three surfaces are covered by regression
 tests. Other decorative separators retain the lighter line color.
+The lesson/module drag state used 60% opacity on the entire fieldset, reducing
+muted helper text to 2.58:1 on white. It now uses a dashed green outline instead,
+which distinguishes the dragged item without lowering text contrast; tests check
+the outline against white and the editor's pale panel and reject opacity.
 
 Validation:
-- `npm test -- --run apps/web/src/focus-contrast.test.ts` (9/9).
+- `npm test -- --run apps/web/src/focus-contrast.test.ts` (11/11).
+- `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome E2E_PORT=4394 npm run test:e2e -- tests/e2e/authoring.spec.ts --grep "focused studio"` (1/1).
 - `npm run build` passed for all workspaces.
 - `npm run lint` passed.
 - `git diff --check` passed.
