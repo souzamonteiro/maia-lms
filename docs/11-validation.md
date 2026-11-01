@@ -2387,20 +2387,23 @@ OS package and recovery identity before operational use.
 
 ## Firefox full-suite follow-up — October 31, 2026
 
-The public HTML workflow with JavaScript disabled now waits for
-`domcontentloaded`, the lifecycle point relevant to inspecting server-rendered
-HTML. Its focused Firefox, Chromium and WebKit runs passed (1/1 each). A
+The public HTML workflow with JavaScript disabled now waits for the initial
+response commit, then uses DOM assertions to verify the server-rendered
+document. Its focused Firefox, Chromium and WebKit runs passed (1/1 each). A
 subsequent full Firefox run with real video passed 38/39; the remaining timeout
-was at the initial `/auth/login` navigation in the category workflow. That
-workflow passed in isolation (1/1), continuing the pattern of the timeout
-moving among otherwise passing workflows.
+was at the initial `/auth/login` navigation in the course-withdrawal workflow.
+That workflow passed in isolation (1/1), continuing the pattern of the timeout
+moving among otherwise passing workflows. The categories workflow now waits for
+`domcontentloaded` on its initial login navigation; it passed in the full run
+and in a focused Firefox rerun.
 
 Validation:
 - `E2E_PORT=4371 npm run test:e2e -- tests/e2e/public-html.spec.ts --browser=firefox` (1/1).
 - `E2E_PORT=4372 npm run test:e2e -- tests/e2e/public-html.spec.ts --browser=chromium` (1/1).
 - `E2E_PORT=4373 npm run test:e2e -- tests/e2e/public-html.spec.ts --browser=webkit` (1/1).
-- `E2E_PORT=4375 npm run test:e2e -- tests/e2e/categories.spec.ts --browser=firefox` (1/1).
-- Full real-media Firefox run on port 4374: 38/39; category login navigation timed out.
+- `E2E_PORT=4383 npm run test:e2e -- tests/e2e/categories.spec.ts --browser=firefox` (1/1).
+- `E2E_PORT=4382 npm run test:e2e -- tests/e2e/course-withdrawal.spec.ts --browser=firefox` (1/1).
+- Full real-media Firefox run on port 4381: 38/39; course-withdrawal login navigation timed out.
 
 Firefox full-suite qualification remains open. This test-only adjustment does
 not claim to resolve the broader suite-level intermittency or qualify physical

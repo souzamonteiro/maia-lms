@@ -9,13 +9,13 @@ test('public home and catalog are localized before JavaScript executes', async (
       ['pt-BR', 'Aprenda com a Maia', 'Cursos', 'Entrar', 'JavaScript é necessário para a busca e os filtros. Os cursos publicados estão listados acima.'],
       ['es', 'Aprende con Maia', 'Cursos', 'Iniciar sesión', 'JavaScript es necesario para la búsqueda y los filtros. Los cursos publicados se muestran arriba.'],
     ]) {
-      await page.goto(`/?displayLocale=${locale}`, { waitUntil: 'domcontentloaded' });
+      await page.goto(`/?displayLocale=${locale}`, { waitUntil: 'commit' });
       await expect(page.locator('html')).toHaveAttribute('lang', locale);
       await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
       await expect(page.locator('#account a')).toHaveText(login);
       await expect(page.locator('#languageSelect')).toHaveValue(locale);
       await expect(page.locator('meta[property="og:locale"]')).toHaveAttribute('content', locale.replace('-', '_'));
-      await page.goto(`/courses?displayLocale=${locale}`, { waitUntil: 'domcontentloaded' });
+      await page.goto(`/courses?displayLocale=${locale}`, { waitUntil: 'commit' });
       await expect(page.getByRole('heading', { name: courses, exact: true })).toBeVisible();
       await expect(page.locator('#account a')).toHaveText(login);
       expect(await page.content()).toContain(`<noscript>${noscript}</noscript>`);

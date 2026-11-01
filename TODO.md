@@ -1309,11 +1309,13 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   qualification remains open because the timeout shifts between workflows.
   These are E2E-only changes; no app behavior or external environment changed.
   Follow-up on October 31: the no-JavaScript public HTML workflow now waits for
-  DOMContentLoaded, matching its initial-document assertion; it passed focused in
-  Firefox, Chromium, and WebKit. The next complete Firefox real-media run passed
-  38/39, with a timeout at the initial login navigation in categories; categories
-  passed alone (1/1). This is another moving suite-level timeout, not a clean
-  Firefox qualification.
+  the initial response commit, matching its server-rendered HTML assertion; it
+  passed focused in Firefox, Chromium, and WebKit. The next complete Firefox
+  real-media run passed 38/39, with a timeout at the initial login navigation in
+  course withdrawal; that workflow passed alone (1/1). The category test's
+  initial login now waits for DOMContentLoaded; it passed alone (1/1) and in that
+  full run. This remains a moving suite-level timeout, not clean Firefox
+  qualification.
 - [ ] **DOC-01 — Keep contracts and operations aligned with implementation.**
   Update OpenAPI, data model, installation/configuration, author/learner/admin
   manuals, limits, and recovery procedures with every delivery. Dependency:

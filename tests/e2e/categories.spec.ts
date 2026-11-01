@@ -3,7 +3,7 @@ import { test, expect } from './fixtures';
 test('administrator manages categories and authors publish categorized courses', async ({
   page,
 }) => {
-  await page.goto('/auth/login');
+  await page.goto('/auth/login', { waitUntil: 'domcontentloaded' });
   await page.getByLabel('Email', { exact: true }).fill('admin@example.com');
   await page.getByLabel('Password', { exact: true }).fill('Admin-test-password-123');
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
