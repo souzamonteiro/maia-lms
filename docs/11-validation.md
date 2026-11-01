@@ -2781,9 +2781,13 @@ because the shared disabled rule applied 60% opacity to both foreground and
 background. They now use opaque `#132a34` text on `#d9e3df`, which exceeds 4.5:1,
 at 11.36:1. A regression test prevents reintroducing opacity and checks the text
 ratio.
+Semantic `fieldset` boundaries inherited a 1.31:1 line color on white. They now
+use `#71877e`, measuring 3.84:1 on white, 3.56:1 on paper, and 3.66:1 on the
+editor's pale panel background; all three surfaces are covered by regression
+tests. Other decorative separators retain the lighter line color.
 
 Validation:
-- `npm test -- --run apps/web/src/focus-contrast.test.ts` (6/6).
+- `npm test -- --run apps/web/src/focus-contrast.test.ts` (9/9).
 - `npm run build` passed for all workspaces.
 - `npm run lint` passed.
 - `git diff --check` passed.

@@ -1233,7 +1233,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   focused contrast test. Shared text-field, select, and textarea borders now
   exceed 3:1 against both paper and white surfaces, also regression-tested.
   Disabled buttons use opaque, high-contrast colors rather than opacity that
-  reduced the rendered text contrast below 3:1.
+  reduced the rendered text contrast below 3:1. Semantic fieldset boundaries
+  now exceed 3:1 on their white, paper, and editor panel surfaces.
   These are targeted local workflows, not full browser-suite qualification.
   Keep open for the broader contrast, zoom/mobile, captions, and full
   author/learner workflow audit.

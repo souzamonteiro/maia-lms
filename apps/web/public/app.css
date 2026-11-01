@@ -194,7 +194,7 @@ textarea {
   min-height: 130px;
 }
 fieldset {
-  border: 1px solid var(--line);
+  border: 1px solid #71877e;
   border-radius: 10px;
   margin: 18px 0;
   padding: 18px;
