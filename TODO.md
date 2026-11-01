@@ -1239,7 +1239,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   A regression test also verifies the editor Markdown/row-control hover label
   contrast remains above 4.5:1. Body, link, muted, certificate, badge, and
   button text now have explicit regression checks against their rendered
-  backgrounds, each at or above 4.5:1 in this local palette review.
+  backgrounds, each at or above 4.5:1 in this local palette review. Coverage
+  also includes helper text in the module editor, form errors, draft-save
+  feedback, and code blocks.
   These are targeted local workflows, not full browser-suite qualification.
   Keep open for the broader contrast, zoom/mobile, captions, and full
   author/learner workflow audit.

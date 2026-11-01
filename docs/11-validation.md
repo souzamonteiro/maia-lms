@@ -2793,12 +2793,13 @@ The Markdown toolbar and lesson/module row controls were verified to use
 secondary buttons on hover. Their inherited ink text on the pale hover fill
 exceeds 4.5:1; the focused contrast suite now guards that combination.
 The same suite now checks regular body text, links, muted and certificate labels,
-valid/revoked certificate states, badges, and primary/secondary buttons on their
-declared backgrounds. The lowest text ratio among these combinations is 5.62:1
-(muted text on the page), above the 4.5:1 normal-text target.
+valid/revoked certificate states, badges, primary/secondary buttons, module-editor
+helper text, form errors, draft-save feedback, and code blocks on their declared
+backgrounds. The lowest text ratio among these combinations is 5.62:1 (muted
+text on the page), above the 4.5:1 normal-text target.
 
 Validation:
-- `npm test -- --run apps/web/src/focus-contrast.test.ts` (25/25).
+- `npm test -- --run apps/web/src/focus-contrast.test.ts` (30/30).
 - `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome E2E_PORT=4394 npm run test:e2e -- tests/e2e/authoring.spec.ts --grep "focused studio"` (1/1).
 - `npm run build` passed for all workspaces.
 - `npm run lint` passed.
