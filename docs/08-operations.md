@@ -141,6 +141,73 @@ writes before a production recovery point that must be mutually consistent. The
 bundle feature is locally tested and does not replace off-site encryption,
 retention policy, or a rehearsed restore on the target host.
 
+### Encrypting an off-site copy with age
+
+The application creates and verifies plaintext bundles locally; encryption is a
+separate operator-controlled step using [age](https://age-encryption.org/). Install
+`age` on the backup and recovery machines from their trusted OS package source.
+Generate the recovery identity on a separate, access-controlled system with
+`age-keygen`; keep the private identity outside the application host and off-site
+storage, restrict it to its owner (mode `0600`), and record the corresponding
+public recipient in an access-controlled recipients file. Keep a tested recovery
+copy of the identity: an encrypted backup cannot be recovered if every private
+identity is lost. Rotate recipients only after verifying that the new identity
+can decrypt a test copy; retain old identities while backups encrypted to them
+are still within the retention window.
+
+After creating and verifying a bundle, archive its directory and encrypt the
+stream to every authorized recipient. Use a new unique name, a private staging
+directory, and `pipefail`; do not overwrite an existing encrypted copy:
+
+```bash
+set -o pipefail
+set -o noclobber
+umask 077
+mkdir -m 0700 /var/lib/maia-lms/backups/age-staging-2026-10-31
+tar -C /var/lib/maia-lms/backups -cf - bundle-2026-10-31 |
+  age --encrypt --recipients-file /etc/maia-lms/backup-recipients.txt \
+  > /var/lib/maia-lms/backups/age-staging-2026-10-31/maia-lms-bundle-2026-10-31.tar.age.partial
+```
+
+Only after the pipeline succeeds, verify the encrypted file has non-zero size,
+then transfer that specific file under a unique final name to access-controlled
+off-site storage using the provider's no-overwrite operation. Verify the remote
+object against the local encrypted file's SHA-256 digest. If encryption fails,
+leave the partial output unusable and remove only that named partial after
+checking the command has stopped. The recipients file contains public keys, not
+private identities; never put the private identity in the bundle, source host,
+application configuration, or same off-site account as the only encrypted copy.
+
+For recovery, first decrypt into a new empty staging directory with private
+permissions; do not extract over an existing directory. Enable `pipefail` so a
+decryption failure is visible, and do not use the extracted bundle until
+`backup:verify` succeeds:
+
+```bash
+set -o pipefail
+umask 077
+mkdir -m 0700 /var/lib/maia-lms/restore-stage-2026-10-31
+age --decrypt --identity /secure/recovery/backup-identity.txt \
+  /mnt/off-site/maia-lms-bundle-2026-10-31.tar.age |
+  tar --no-same-owner --no-same-permissions -xf - \
+  -C /var/lib/maia-lms/restore-stage-2026-10-31
+npm run backup:verify -- \
+  /var/lib/maia-lms/restore-stage-2026-10-31/bundle-2026-10-31
+npm run restore:bundle -- \
+  /var/lib/maia-lms/restore-stage-2026-10-31/bundle-2026-10-31 \
+  /var/lib/maia-lms/recovery-2026-10-31
+```
+
+Run this only for archives from storage controlled by the operator. Public-key
+encryption protects confidentiality and detects ciphertext corruption, but does
+not prove who created an archive; the bundle manifest hashes detect accidental
+damage, not a deliberate rewrite of both data and manifest. Off-site storage
+access control and trusted provenance remain necessary. This procedure does not
+select a backup retention period or automatically delete backups. Choose retention
+with the data owner before enabling scheduled pruning. The commands above are
+runbook guidance; the `age` utility and off-site provider are not installed,
+configured, or qualified by the Maia LMS scripts.
+
 Verify an existing bundle after transferring or storing it, then restore it to a
 new directory whose parent already exists:
 

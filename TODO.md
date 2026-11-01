@@ -1083,8 +1083,12 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   permissions, topology checks, and post-backup credential/MFA review. A local
   read-only preflight now checks the production schema, explicit pilot settings,
   persistent paths, SMTP target and environment-file mode without printing values.
-  Keep open for rehearsing the recovery/configuration procedure on a representative
-  target, off-site encryption/retention, and host/device qualification.
+  The runbook now also documents age-encrypted off-site copies, private identity
+  handling, decrypt-to-new-staging verification, and explicitly notes that age
+  encryption does not prove sender identity. This is operator guidance, not an
+  integrated or locally exercised age workflow. Keep open for retention policy,
+  exercising recovery/configuration on a representative target, and host/device
+  qualification.
 - [ ] **OPS-03 — Observability and dashboard operations (local dashboard; telemetry and alert delivery open).**
   Queue/transcode/playback/SMTP/payment/disk metrics, logs without tokens/PII,
   alerts, inspection, and administrative retries. Dependencies: JOB-01, PAY-03.

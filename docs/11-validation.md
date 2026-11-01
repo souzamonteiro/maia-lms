@@ -2369,6 +2369,22 @@ Validation:
 
 No deployment, host or running-instance changes were performed.
 
+## Off-site backup encryption runbook — October 31, 2026
+
+Documented an operator-managed `age` workflow for encrypting verified backup
+bundles to recipient public keys and decrypting into a new private staging
+directory before `backup:verify` and isolated restore. The procedure keeps
+private identities outside the application host and off-site storage, uses
+unique output names, and states that encryption does not establish sender
+identity. Backup retention remains a data-owner decision; automatic pruning is
+not enabled.
+
+This was a documentation-only change. The local environment does not have the
+`age` executable, so no age interoperability or off-site storage test was run.
+No key was generated, package installed, backup encrypted, or host/environment
+changed. The command sequence is guidance and must be rehearsed with the selected
+OS package and recovery identity before operational use.
+
 ## Registered media orphan retention — October 31, 2026
 
 The worker now records the start of an unreferenced period and collects only
