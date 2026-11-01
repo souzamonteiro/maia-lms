@@ -1237,7 +1237,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   now exceed 3:1 on their white, paper, and editor panel surfaces. Dragging a
   lesson or module now uses a contrasting outline instead of dimming its text.
   A regression test also verifies the editor Markdown/row-control hover label
-  contrast remains above 4.5:1.
+  contrast remains above 4.5:1. Body, link, muted, certificate, badge, and
+  button text now have explicit regression checks against their rendered
+  backgrounds, each at or above 4.5:1 in this local palette review.
   These are targeted local workflows, not full browser-suite qualification.
   Keep open for the broader contrast, zoom/mobile, captions, and full
   author/learner workflow audit.
