@@ -1064,7 +1064,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   publication and added the boundary as migration 103. Migration 106 freezes a
   provider checkout ID/URL after initial assignment while preserving the normal
   NULL-to-assigned creation flow; focused migration tests cover assignment,
-  replacement, and clearing attempts.
+  replacement, and clearing attempts. Migration 107 validates new revision-backed
+  paid-order snapshots against the referenced revision's course, title, access
+  terms, amount and currency; payment fixtures now use complete matching snapshots,
+  and migration tests reject each mismatch while preserving the valid checkout path.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:

@@ -12,8 +12,8 @@ function setup() {
       ('buyer','buyer@example.com','buyer@example.com','hash','en'),
       ('admin','admin@example.com','admin@example.com','hash','admin');
     INSERT INTO courses(id,slug,author_id,status,access_mode) VALUES('course','course','admin','DRAFT','PAID');
-    INSERT INTO course_revisions(id,course_id,title,summary,slug,access_mode,locale,price_amount_minor,price_currency,duration_minutes,instructor_name)
-      VALUES('revision','course','Paid course','Summary','course','PAID','en',1000,'BRL',60,'Admin');
+    INSERT INTO course_revisions(id,course_id,title,summary,slug,access_mode,locale,access_terms,price_amount_minor,price_currency,duration_minutes,instructor_name)
+      VALUES('revision','course','Paid course','Summary','course','PAID','en','One year',1000,'BRL',60,'Admin');
     UPDATE courses SET current_revision_id='revision' WHERE id='course';
     UPDATE course_revisions SET published_at=datetime('now') WHERE id='revision';
     UPDATE courses SET status='PUBLISHED',published_revision_id='revision' WHERE id='course';

@@ -13,8 +13,8 @@ it('reconciles aged pending orders and recovers paid orders missing access exact
         VALUES('buyer','buyer@example.com','buyer@example.com','hash','en');
       INSERT INTO courses(id,slug,author_id,status,access_mode)
         VALUES('course','course','buyer','DRAFT','PAID');
-      INSERT INTO course_revisions(id,course_id,title,summary,slug,access_mode,locale,price_amount_minor,price_currency)
-        VALUES('revision','course','Paid course','Summary','course','PAID','en',2599,'BRL');
+      INSERT INTO course_revisions(id,course_id,title,summary,slug,access_mode,locale,access_terms,price_amount_minor,price_currency)
+        VALUES('revision','course','Paid course','Summary','course','PAID','en','One year',2599,'BRL');
       UPDATE courses SET current_revision_id='revision' WHERE id='course';
       UPDATE course_revisions SET published_at=datetime('now') WHERE id='revision';
       UPDATE courses SET status='PUBLISHED',published_revision_id='revision' WHERE id='course';
@@ -85,8 +85,8 @@ it('records provider reconciliation outcomes without exposing payment identifier
     db.exec(`
       INSERT INTO users(id,email,email_normalized,password_hash) VALUES('buyer','buyer@example.com','buyer@example.com','hash');
       INSERT INTO courses(id,slug,author_id,status,access_mode) VALUES('course','course','buyer','DRAFT','PAID');
-      INSERT INTO course_revisions(id,course_id,title,summary,slug,access_mode,locale,price_amount_minor,price_currency)
-        VALUES('revision','course','Paid course','Summary','course','PAID','en',2599,'BRL');
+      INSERT INTO course_revisions(id,course_id,title,summary,slug,access_mode,locale,access_terms,price_amount_minor,price_currency)
+        VALUES('revision','course','Paid course','Summary','course','PAID','en','One year',2599,'BRL');
       INSERT INTO orders(id,user_id,course_id,course_revision_id,course_title_snapshot,access_terms_snapshot,
         price_snapshot,currency,provider,idempotency_key,state,provider_checkout_id,updated_at)
         VALUES('order','buyer','course','revision','Paid course','One year',2599,'BRL',

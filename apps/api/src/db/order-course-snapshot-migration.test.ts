@@ -10,8 +10,8 @@ it('preserves immutable course and revision terms on new orders without rewritin
       INSERT INTO users(id,email,email_normalized,password_hash)
         VALUES('buyer','buyer@example.com','buyer@example.com','hash');
       INSERT INTO courses(id,slug,author_id) VALUES('course','course','buyer');
-      INSERT INTO course_revisions(id,course_id,title,summary,access_mode,price_amount_minor,price_currency)
-        VALUES('revision','course','Published title','Access for one year','PAID',2500,'BRL');
+      INSERT INTO course_revisions(id,course_id,title,summary,access_mode,access_terms,price_amount_minor,price_currency)
+        VALUES('revision','course','Published title','Summary','PAID','Access for one year',2500,'BRL');
       INSERT INTO orders(id,user_id,course_id,course_revision_id,course_title_snapshot,
         access_terms_snapshot,price_snapshot,currency,provider,idempotency_key)
         VALUES('order','buyer','course','revision','Published title','Access for one year',2500,'BRL','fake','buyer-key');

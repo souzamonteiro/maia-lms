@@ -12,8 +12,8 @@ it('matches the immutable provider order snapshot and grants an entitlement exac
         VALUES('buyer','buyer@example.com','buyer@example.com','hash');
       INSERT INTO courses(id,slug,author_id,status,access_mode)
         VALUES('course','course','buyer','DRAFT','PAID');
-      INSERT INTO course_revisions(id,course_id,title,summary,slug,access_mode,locale,price_amount_minor,price_currency)
-        VALUES('revision','course','Paid course','Summary','course','PAID','en',2599,'BRL');
+      INSERT INTO course_revisions(id,course_id,title,summary,slug,access_mode,locale,access_terms,price_amount_minor,price_currency)
+        VALUES('revision','course','Paid course','Summary','course','PAID','en','One-year access',2599,'BRL');
       UPDATE courses SET current_revision_id='revision' WHERE id='course';
       UPDATE course_revisions SET published_at=datetime('now') WHERE id='revision';
       UPDATE courses SET status='PUBLISHED',published_revision_id='revision' WHERE id='course';
@@ -62,13 +62,15 @@ it('does not grant access when provider amount, currency or external reference d
     db.exec(`
       INSERT INTO users(id,email,email_normalized,password_hash) VALUES('buyer','b@e.test','b@e.test','hash');
       INSERT INTO courses(id,slug,author_id,status,access_mode) VALUES('course','course','buyer','DRAFT','PAID');
-      INSERT INTO course_revisions(id,course_id,title,summary,slug,access_mode,locale,price_amount_minor,price_currency)
-        VALUES('revision','course','Paid course','Summary','course','PAID','en',2599,'BRL');
+      INSERT INTO course_revisions(id,course_id,title,summary,slug,access_mode,locale,access_terms,price_amount_minor,price_currency)
+        VALUES('revision','course','Paid course','Summary','course','PAID','en','One-year access',2599,'BRL');
       UPDATE courses SET current_revision_id='revision' WHERE id='course';
       UPDATE course_revisions SET published_at=datetime('now') WHERE id='revision';
       UPDATE courses SET status='PUBLISHED',published_revision_id='revision' WHERE id='course';
-      INSERT INTO orders(id,user_id,course_id,course_revision_id,price_snapshot,currency,provider,idempotency_key,state,provider_checkout_id)
-        VALUES('order','buyer','course','revision',2599,'BRL','mercado_pago','key','CHECKOUT_PENDING','provider-order');
+      INSERT INTO orders(id,user_id,course_id,course_revision_id,course_title_snapshot,access_terms_snapshot,
+        price_snapshot,currency,provider,idempotency_key,state,provider_checkout_id)
+        VALUES('order','buyer','course','revision','Paid course','One-year access',2599,'BRL',
+          'mercado_pago','key','CHECKOUT_PENDING','provider-order');
     `);
     expect(applyProviderPayment(db, 'mercado_pago', {
       providerPaymentId: 'provider-order',
@@ -92,13 +94,15 @@ it('does not grant access when authoritative provider seller differs from config
     db.exec(`
       INSERT INTO users(id,email,email_normalized,password_hash) VALUES('buyer','b@e.test','b@e.test','hash');
       INSERT INTO courses(id,slug,author_id,status,access_mode) VALUES('course','course','buyer','DRAFT','PAID');
-      INSERT INTO course_revisions(id,course_id,title,summary,slug,access_mode,locale,price_amount_minor,price_currency)
-        VALUES('revision','course','Paid course','Summary','course','PAID','en',2599,'BRL');
+      INSERT INTO course_revisions(id,course_id,title,summary,slug,access_mode,locale,access_terms,price_amount_minor,price_currency)
+        VALUES('revision','course','Paid course','Summary','course','PAID','en','One-year access',2599,'BRL');
       UPDATE courses SET current_revision_id='revision' WHERE id='course';
       UPDATE course_revisions SET published_at=datetime('now') WHERE id='revision';
       UPDATE courses SET status='PUBLISHED',published_revision_id='revision' WHERE id='course';
-      INSERT INTO orders(id,user_id,course_id,course_revision_id,price_snapshot,currency,provider,idempotency_key,state,provider_checkout_id)
-        VALUES('order','buyer','course','revision',2599,'BRL','mercado_pago','key','CHECKOUT_PENDING','provider-order');
+      INSERT INTO orders(id,user_id,course_id,course_revision_id,course_title_snapshot,access_terms_snapshot,
+        price_snapshot,currency,provider,idempotency_key,state,provider_checkout_id)
+        VALUES('order','buyer','course','revision','Paid course','One-year access',2599,'BRL',
+          'mercado_pago','key','CHECKOUT_PENDING','provider-order');
     `);
     expect(applyProviderPayment(db, 'mercado_pago', {
       providerPaymentId: 'provider-order',
@@ -122,13 +126,15 @@ it('revokes order access on an authoritative chargeback and ignores stale approv
     db.exec(`
       INSERT INTO users(id,email,email_normalized,password_hash) VALUES('buyer','buyer@example.com','buyer@example.com','hash');
       INSERT INTO courses(id,slug,author_id,status,access_mode) VALUES('course','course','buyer','DRAFT','PAID');
-      INSERT INTO course_revisions(id,course_id,title,summary,slug,access_mode,locale,price_amount_minor,price_currency)
-        VALUES('revision','course','Paid course','Summary','course','PAID','en',2599,'BRL');
+      INSERT INTO course_revisions(id,course_id,title,summary,slug,access_mode,locale,access_terms,price_amount_minor,price_currency)
+        VALUES('revision','course','Paid course','Summary','course','PAID','en','One-year access',2599,'BRL');
       UPDATE courses SET current_revision_id='revision' WHERE id='course';
       UPDATE course_revisions SET published_at=datetime('now') WHERE id='revision';
       UPDATE courses SET status='PUBLISHED',published_revision_id='revision' WHERE id='course';
-      INSERT INTO orders(id,user_id,course_id,course_revision_id,price_snapshot,currency,provider,idempotency_key,state,provider_checkout_id)
-        VALUES('order','buyer','course','revision',2599,'BRL','mercado_pago','key','CHECKOUT_PENDING','provider-order');
+      INSERT INTO orders(id,user_id,course_id,course_revision_id,course_title_snapshot,access_terms_snapshot,
+        price_snapshot,currency,provider,idempotency_key,state,provider_checkout_id)
+        VALUES('order','buyer','course','revision','Paid course','One-year access',2599,'BRL',
+          'mercado_pago','key','CHECKOUT_PENDING','provider-order');
     `);
     const approved = {
       providerPaymentId: 'provider-order',
@@ -171,13 +177,15 @@ it('reconciles provider refund records while preserving partial access and revok
     db.exec(`
       INSERT INTO users(id,email,email_normalized,password_hash) VALUES('buyer','buyer@example.com','buyer@example.com','hash');
       INSERT INTO courses(id,slug,author_id,status,access_mode) VALUES('course','course','buyer','DRAFT','PAID');
-      INSERT INTO course_revisions(id,course_id,title,summary,slug,access_mode,locale,price_amount_minor,price_currency)
-        VALUES('revision','course','Paid course','Summary','course','PAID','en',2599,'BRL');
+      INSERT INTO course_revisions(id,course_id,title,summary,slug,access_mode,locale,access_terms,price_amount_minor,price_currency)
+        VALUES('revision','course','Paid course','Summary','course','PAID','en','One-year access',2599,'BRL');
       UPDATE courses SET current_revision_id='revision' WHERE id='course';
       UPDATE course_revisions SET published_at=datetime('now') WHERE id='revision';
       UPDATE courses SET status='PUBLISHED',published_revision_id='revision' WHERE id='course';
-      INSERT INTO orders(id,user_id,course_id,course_revision_id,price_snapshot,currency,provider,idempotency_key,state,provider_checkout_id)
-        VALUES('order','buyer','course','revision',2599,'BRL','mercado_pago','key','CHECKOUT_PENDING','provider-order');
+      INSERT INTO orders(id,user_id,course_id,course_revision_id,course_title_snapshot,access_terms_snapshot,
+        price_snapshot,currency,provider,idempotency_key,state,provider_checkout_id)
+        VALUES('order','buyer','course','revision','Paid course','One-year access',2599,'BRL',
+          'mercado_pago','key','CHECKOUT_PENDING','provider-order');
     `);
     const approved = {
       providerPaymentId: 'provider-order',
