@@ -63,6 +63,10 @@ it('deduplicates provider payment/refund references and validates refund amounts
     ).toThrow(/invalid or duplicate provider refund reference/);
     expect(() =>
       db.prepare('UPDATE refunds SET amount_minor=? WHERE id=?').run(-1, 'refund-a'),
+    ).toThrow(/refund order and amount are immutable/);
+    expect(() =>
+      db.prepare('INSERT INTO refunds(id,order_id,provider_ref,amount_minor,status) VALUES(?,?,?,?,?)')
+        .run('refund-negative', 'order-b', 'refund-negative', -1, 'pending'),
     ).toThrow(/invalid or duplicate provider refund reference/);
     expect(() =>
       db.prepare('INSERT INTO refunds(id,order_id,provider_ref,amount_minor,status) VALUES(?,?,?,?,?)')
@@ -77,7 +81,7 @@ it('deduplicates provider payment/refund references and validates refund amounts
     ).toThrow(/refund total exceeds order snapshot/);
     expect(() =>
       db.prepare('UPDATE refunds SET amount_minor=? WHERE id=?').run(901, 'refund-at-limit'),
-    ).toThrow(/refund total exceeds order snapshot/);
+    ).toThrow(/refund order and amount are immutable/);
   } finally {
     db.close();
   }

@@ -1053,9 +1053,12 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   requires the collection lock to start no earlier than the 90-day retention
   boundary, preventing malformed direct-SQL state from triggering early deletion.
   Focused migration and worker-cleanup tests cover valid and rejected states. The
-  complete invariant matrix remains open. The follow-up on November 1 retained
-  migration 102 unchanged after publication and added the boundary as migration
-  103.
+  follow-up in migration 104 makes a recorded refund's order and amount immutable
+  while preserving provider-reference and status reconciliation; focused migration
+  tests cover rejected reassignment/amount changes and the valid reconciliation
+  update. The complete invariant matrix remains open. The follow-up on November 1
+  retained migration 102 unchanged after publication and added the boundary as
+  migration 103.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:
