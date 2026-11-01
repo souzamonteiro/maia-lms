@@ -2461,13 +2461,14 @@ performed.
 
 ## Media orphan-retention invariants
 
-Migration 102 now rejects malformed orphan/collection timestamps and retention
-markers on non-READY media. Starting collection requires an existing valid
-orphan timestamp, and the worker cannot leave media in a non-READY state while
-its retention timer or collection lock is active. The migration test exercises
-direct SQL rejection and valid cleanup-lock state; the existing worker regression
-continues to verify 90-day selection, reference resets, and retry after storage
-failure.
+Migration 102 rejects malformed orphan/collection timestamps and retention
+markers on non-READY media. Migration 103 requires an existing valid orphan
+timestamp at least 90 days before collection begins; the worker cannot leave
+media in a non-READY state while its retention timer or collection lock is active.
+The migration test exercises direct SQL rejection and valid cleanup-lock state;
+the existing worker regression continues to verify 90-day selection, reference
+resets, and retry after storage failure. Migration 102 remains unchanged; the
+additional collection-boundary invariant is a new migration 103.
 
 Validation:
 - Focused migration and worker cleanup tests: 4 passed across 2 files.
@@ -2475,9 +2476,25 @@ Validation:
 - `npm run build` and `npm run lint` passed.
 - `git diff --check` passed.
 
-This adds local database enforcement only; it does not change cleanup retention,
-delete production media, qualify host disk/storage behavior, or perform a
-deployment.
+This adds local database enforcement only; it does not change the 90-day
+retention period, delete production media, qualify host disk/storage behavior,
+or perform a deployment.
+
+## Firefox full-suite rerun — November 1, 2026
+
+The complete local Firefox E2E run with real video enabled passed 38/39
+workflows, including both media workflows. The remaining 30-second timeout
+moved to the initial `/auth/login` navigation in course-withdrawal, waiting for
+`load`. The affected test passed in isolation (1/1), but that does not establish
+the cause or resolve the full-suite failure. No further navigation workaround
+was added. Firefox full-suite qualification remains open.
+
+Validation:
+- Full real-media Firefox run on port 4394: 38/39.
+- Focused Firefox course-withdrawal run on port 4395: 1/1.
+
+No deploy, host change, production data access, or physical-device qualification
+was performed.
 
 ## Real-video desktop browser coverage — October 31, 2026
 

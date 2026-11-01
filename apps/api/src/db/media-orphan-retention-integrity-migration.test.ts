@@ -7,8 +7,11 @@ it('keeps orphan-retention timestamps valid and restricted to ready media', () =
   db.pragma('foreign_keys = ON');
   try {
     runMigrations(db);
-    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY rowid DESC LIMIT 1').get())
-      .toEqual({ version: '102_media_orphan_retention_integrity' });
+    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY rowid DESC LIMIT 2').all())
+      .toEqual([
+        { version: '103_media_collection_retention_boundary' },
+        { version: '102_media_orphan_retention_integrity' },
+      ]);
     db.exec(`
       INSERT INTO users(id,email,email_normalized,password_hash)
       VALUES('owner','owner@example.com','owner@example.com','hash');
@@ -35,6 +38,9 @@ it('keeps orphan-retention timestamps valid and restricted to ready media', () =
     `);
     expect(() => db.prepare(
       "UPDATE video_uploads SET collection_started_at='not-a-date' WHERE id='upload'",
+    ).run()).toThrow(/media retention state is invalid/);
+    expect(() => db.prepare(
+      "UPDATE video_uploads SET collection_started_at='2026-03-31T00:00:00Z' WHERE id='upload'",
     ).run()).toThrow(/media retention state is invalid/);
     expect(() => db.prepare(
       "UPDATE video_uploads SET collection_started_at=NULL,orphaned_since=NULL WHERE id='upload'",

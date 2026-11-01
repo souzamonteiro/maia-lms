@@ -1043,10 +1043,13 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   constraints and valid lifecycle updates. Migration 100 prevents a request from
   regressing from IN_REVIEW to OPEN; migration sorting is numeric so three-digit
   version rollover preserves application order. Migration 102 validates orphan
-  and collection timestamps and restricts both to READY media, preventing stale
-  or malformed collection locks from persisting through direct SQL. Focused
-  migration and worker-cleanup tests cover valid and rejected states. The complete
-  invariant matrix remains open.
+  and collection timestamps and restricts both to READY media; migration 103
+  requires the collection lock to start no earlier than the 90-day retention
+  boundary, preventing malformed direct-SQL state from triggering early deletion.
+  Focused migration and worker-cleanup tests cover valid and rejected states. The
+  complete invariant matrix remains open. The follow-up on November 1 retained
+  migration 102 unchanged after publication and added the boundary as migration
+  103.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:
@@ -1327,7 +1330,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   context's `/admin` navigation in course-review, waiting for DOMContentLoaded;
   that workflow passed alone (1/1). These focused adjustments do not resolve
   suite-level navigation intermittency. Firefox remains unqualified; no host,
-  deployment, or external environment was changed.
+  deployment, or external environment was changed. November 1 full Firefox
+  rerun also passed 38/39, with the 30-second login `load` timeout in
+  course-withdrawal; that workflow passed alone (1/1). No test change was made
+  because the cause remains unestablished.
 - [ ] **DOC-01 — Keep contracts and operations aligned with implementation.**
   Update OpenAPI, data model, installation/configuration, author/learner/admin
   manuals, limits, and recovery procedures with every delivery. Dependency:

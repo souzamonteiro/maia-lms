@@ -305,8 +305,10 @@ unregistered files, empty directories, or failed transcodes.
 
 Migration 102 rejects invalid orphan/collection timestamps and retention state on
 non-READY media. A collection lock requires a valid orphan timestamp, and media
-cannot transition away from READY while either timer/lock is active. The same
-checks apply to direct SQL inserts and updates.
+cannot transition away from READY while either timer/lock is active. Migration
+103 additionally requires the lock timestamp to be at least 90 days after the
+orphan timestamp, so a malformed or premature direct-SQL lock cannot bypass the
+retention period. The same checks apply to direct SQL inserts and updates.
 
 The admin review API uses the existing schema: an IMMEDIATE transaction changes
 OPEN to IN_REVIEW (or keeps IN_REVIEW), updates the request timestamp, and appends
