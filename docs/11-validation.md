@@ -2496,6 +2496,23 @@ Validation:
 No deploy, host change, production data access, or physical-device qualification
 was performed.
 
+## Chromium and WebKit full-suite reruns — November 1, 2026
+
+The complete local E2E suite passed in both Chromium and WebKit with
+`VIDEO_TEST_REAL=1`: each engine passed 39/39 workflows, including real video
+upload/playback and supplementary-material workflows. Runs used separate
+isolated fixture ports and were performed serially.
+
+Validation:
+- Full real-media WebKit run on port 4396: 39/39.
+- Full real-media Chromium run on port 4397: 39/39.
+
+These runs qualify the local browser automation only. Firefox remains
+intermittent at full-suite level (38/39 on its latest run); Android/iOS physical
+devices, the deployed host, and public-domain capacity remain unqualified. No
+deployment, host change, production data access, or running-instance
+modification was performed.
+
 ## Real-video desktop browser coverage — October 31, 2026
 
 The real-video E2E workflow passed in both Firefox and WebKit desktop browsers.

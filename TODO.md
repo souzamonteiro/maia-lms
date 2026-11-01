@@ -1333,7 +1333,11 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   deployment, or external environment was changed. November 1 full Firefox
   rerun also passed 38/39, with the 30-second login `load` timeout in
   course-withdrawal; that workflow passed alone (1/1). No test change was made
-  because the cause remains unestablished.
+  because the cause remains unestablished. November 1 full local WebKit and
+  Chromium runs each passed all 39 workflows with `VIDEO_TEST_REAL=1` on isolated
+  ports 4396 and 4397, including both real-media workflows. These do not resolve
+  Firefox full-suite intermittency or qualify physical devices or the deployed
+  host.
 - [ ] **DOC-01 — Keep contracts and operations aligned with implementation.**
   Update OpenAPI, data model, installation/configuration, author/learner/admin
   manuals, limits, and recovery procedures with every delivery. Dependency:
