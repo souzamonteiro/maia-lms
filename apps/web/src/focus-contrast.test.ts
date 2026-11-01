@@ -7,8 +7,10 @@ const paperColor = appCss.match(/:root\s*\{[^}]*--paper:\s*(#[\da-f]{6})/i)?.[1]
 const errorMessage = appCss.match(/#message:not\(:empty\)\s*\{([^}]*)\}/i)?.[1];
 const errorBorderColor = errorMessage?.match(/border:\s*1px solid (#[\da-f]{6})/i)?.[1];
 const errorBackgroundColor = errorMessage?.match(/background:\s*(#[\da-f]{6})/i)?.[1];
+const formControl = appCss.match(/input,\s*select,\s*textarea\s*\{([^}]*)\}/i)?.[1];
+const formControlBorderColor = formControl?.match(/border:\s*1px solid (#[\da-f]{6})/i)?.[1];
 
-if (!focusColor || !paperColor || !errorBorderColor || !errorBackgroundColor) {
+if (!focusColor || !paperColor || !errorBorderColor || !errorBackgroundColor || !formControlBorderColor) {
   throw new Error('Could not read the tested colors from app.css');
 }
 
@@ -36,4 +38,8 @@ it.each([paperColor, '#ffffff'])('keeps the keyboard focus indicator at least 3:
 
 it('keeps the form error border at least 3:1 against its background', () => {
   expect(contrastRatio(errorBorderColor, errorBackgroundColor)).toBeGreaterThanOrEqual(3);
+});
+
+it.each([paperColor, '#ffffff'])('keeps form control borders at least 3:1 on %s', background => {
+  expect(contrastRatio(formControlBorderColor, background)).toBeGreaterThanOrEqual(3);
 });

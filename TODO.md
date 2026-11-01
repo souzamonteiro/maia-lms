@@ -1230,7 +1230,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   The shared keyboard-focus ring now has at least 3:1 contrast against the paper
   and white surfaces, with a regression test for both combinations. The form
   error-message border also meets 3:1 against its background, covered by the same
-  focused contrast test.
+  focused contrast test. Shared text-field, select, and textarea borders now
+  exceed 3:1 against both paper and white surfaces, also regression-tested.
   These are targeted local workflows, not full browser-suite qualification.
   Keep open for the broader contrast, zoom/mobile, captions, and full
   author/learner workflow audit.

@@ -2773,9 +2773,12 @@ A regression test reads the CSS tokens and checks both surface combinations.
 The same focused check found that the form error-message border measured 2.97:1
 against its background; it was darkened to `#b87358`, measuring 3.38:1, and the
 test now guards this status-surface pair as well.
+The shared text-field, select, and textarea border measured 2.79:1 against the
+page paper background. It was darkened to `#71877e`, measuring 3.56:1 on paper
+and 3.84:1 on white; both combinations are covered by the regression test.
 
 Validation:
-- `npm test -- --run apps/web/src/focus-contrast.test.ts` (3/3).
+- `npm test -- --run apps/web/src/focus-contrast.test.ts` (5/5).
 - `npm run build` passed for all workspaces.
 - `npm run lint` passed.
 - `git diff --check` passed.
