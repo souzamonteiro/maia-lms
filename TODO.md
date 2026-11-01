@@ -1316,6 +1316,15 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   initial login now waits for DOMContentLoaded; it passed alone (1/1) and in that
   full run. This remains a moving suite-level timeout, not clean Firefox
   qualification.
+  Latest local follow-up: the real-video lifecycle now has a 60-second
+  test-specific limit (it passed in 27.8 seconds in the full Firefox run);
+  the initial login in the quiz and learning workflows waits for response
+  commit and their focused Firefox runs passed. The full real-media Firefox
+  suite again passed 38/39. Its lone timeout moved to the auxiliary author
+  context's `/admin` navigation in course-review, waiting for DOMContentLoaded;
+  that workflow passed alone (1/1). These focused adjustments do not resolve
+  suite-level navigation intermittency. Firefox remains unqualified; no host,
+  deployment, or external environment was changed.
 - [ ] **DOC-01 — Keep contracts and operations aligned with implementation.**
   Update OpenAPI, data model, installation/configuration, author/learner/admin
   manuals, limits, and recovery procedures with every delivery. Dependency:

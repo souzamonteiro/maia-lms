@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 test('author uploads a real video, publishes, and browser plays it', async ({ page, browser: browserInstance }) => {
   test.skip(process.env.VIDEO_TEST_REAL !== '1', 'Requires FFmpeg and FFprobe on PATH');
+  test.setTimeout(60_000);
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'maia-browser-video-'));
   try {
     const file = path.join(directory, 'lesson.mp4');

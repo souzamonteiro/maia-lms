@@ -5,7 +5,7 @@ test('enrolled learner completes a lesson quiz through the lesson player', async
   const learnerPassword = 'Quiz-learner-password-123';
   const slug = `quiz-player-course-${Date.now()}`;
 
-  await page.goto('/auth/login');
+  await page.goto('/auth/login', { waitUntil: 'commit' });
   await page.getByLabel('Email', { exact: true }).fill('admin@example.com');
   await page.getByLabel('Password', { exact: true }).fill('Admin-test-password-123');
   await page.getByRole('button', { name: 'Continue', exact: true }).click();

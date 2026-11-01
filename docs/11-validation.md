@@ -2434,6 +2434,31 @@ No production media was deleted, and no deployment, host or running-instance
 changes were performed. Host disk-space behavior and restoration remain
 operational qualification.
 
+## Latest Firefox full-suite follow-up
+
+The full local Firefox run with `VIDEO_TEST_REAL=1` again passed 38/39
+workflows. Both real-media workflows passed; the video lifecycle uses a scoped
+60-second test limit and completed in under 30 seconds. Initial login navigation
+in the quiz and learner article workflows now waits for response commit, with
+subsequent locators checking readiness; both focused Firefox runs passed. The
+remaining timeout moved to the auxiliary author context's `/admin` navigation
+in course-review while waiting for `DOMContentLoaded`. Its UI was present in the
+failure snapshot, and the course-review workflow passed focused Firefox
+validation (1/1). Focused ESLint and `git diff --check` passed.
+
+Validation:
+- Focused Firefox quiz workflow on port 4387: 1/1.
+- Focused Firefox real-video lifecycle on port 4389: 1/1.
+- Full real-media Firefox run on port 4390: 38/39; learner article login timed out.
+- Focused Firefox learner article workflow on port 4391: 1/1.
+- Full real-media Firefox rerun on port 4392: 38/39; auxiliary course-review navigation timed out.
+- Focused Firefox course-review workflow on port 4393: 1/1.
+
+The timeout continues to move between workflows; Firefox full-suite
+qualification remains open. These are local E2E changes only. No deployment,
+host change, production data access, or physical-device qualification was
+performed.
+
 ## Real-video desktop browser coverage — October 31, 2026
 
 The real-video E2E workflow passed in both Firefox and WebKit desktop browsers.
