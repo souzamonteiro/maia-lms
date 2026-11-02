@@ -16,7 +16,7 @@ SQLite stores UUIDs as TEXT, UTC timestamps as TEXT (ISO 8601 or SQLite datetime
 | prices | id, course_id, currency, amount_minor, active_from, active_to | order snapshots price; historical rows retained |
 | enrollments | id, user_id, course_id, revision_id, state, enrolled_at | unique user/course; assignment immutable; revision must belong to course; entitlement not inferred from row alone |
 | entitlements | id, enrollment_id, source_type, source_id, starts_at, ends_at, revoked_at | order source must match enrollment user/course; active access derived from interval/revocation |
-| lesson_progress | enrollment_id, lesson_id, position_seconds, completed_at | unique enrollment/lesson; non-negative integer position; triggers preserve lesson/enrollment revision agreement, validate timestamps and keep completion irreversible |
+| lesson_progress | enrollment_id, lesson_id, position_seconds, completed_at | unique enrollment/lesson; non-negative integer position; triggers preserve lesson/enrollment revision agreement and row identity, validate timestamps and keep completion irreversible |
 | quizzes | id, revision_id, lesson_id?, pass_percent, max_attempts, time_limit_seconds? | integer pass percent 1–100; positive integer attempt limit; optional positive integer time limit; one final quiz per revision; settings freeze when attempts exist |
 | questions | id, quiz_id, prompt, choices_json, correct_choice_keys, points, sort_order | positive integer points; non-negative integer unique sort position; definition freezes when attempts exist; answer keys never returned with public payload |
 | attempts | id, enrollment_id, quiz_id, revision_id, started_at, submitted_at, score, pass | enrollment, quiz, and attempt revisions agree; max_attempts enforced per enrollment/quiz; submitted rows immutable; API flow/grading still require QUIZ-02 |
@@ -105,6 +105,8 @@ Migration 122 freezes daily-metric dimensions and prevents playback, email-trans
 Migration 123 keeps playback duration totals consistent with measured samples: duration totals cannot increase without a new sample, and measured samples cannot increase faster than request counts. Zero-millisecond measurements and unmeasured requests remain valid.
 
 Migration 124 validates lesson-progress update/completion timestamps and prevents an established completion timestamp from being cleared or rewritten. Playback position remains mutable for seeking and resumption.
+
+Migration 125 makes each progress row's enrollment/lesson identity immutable. The API preserves the initial completion timestamp on repeated completion requests, while progress position and update time remain mutable.
 
 Migration 058 requires entitlement `starts_at` to be parseable and, when present, `ends_at` to be parseable and strictly later. Open-ended grants remain valid; malformed, zero-length, or reversed windows cannot be inserted or updated.
 

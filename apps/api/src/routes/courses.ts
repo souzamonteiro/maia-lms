@@ -953,7 +953,7 @@ export function coursesRouter(db: Database.Database, publicBaseUrl: string): Rou
     const progress = db.transaction(() => {
       db.prepare(
         `INSERT INTO lesson_progress (enrollment_id, lesson_id, position_seconds, completed_at) VALUES (?, ?, ?, ?)
-      ON CONFLICT(enrollment_id, lesson_id) DO UPDATE SET position_seconds = COALESCE(?, position_seconds), completed_at = COALESCE(excluded.completed_at, completed_at), updated_at = datetime('now')`,
+      ON CONFLICT(enrollment_id, lesson_id) DO UPDATE SET position_seconds = COALESCE(?, position_seconds), completed_at = COALESCE(completed_at, excluded.completed_at), updated_at = datetime('now')`,
       ).run(
         e.id,
         req.params.id,

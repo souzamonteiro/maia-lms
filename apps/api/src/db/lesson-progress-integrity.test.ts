@@ -9,7 +9,8 @@ it('enforces lesson progress revision and position invariants', () => {
     runMigrations(db);
     db.exec(`
       INSERT INTO users(id,email,email_normalized,password_hash)
-      VALUES ('user','user@example.com','user@example.com','hash');
+      VALUES ('user','user@example.com','user@example.com','hash'),
+             ('user-b','user-b@example.com','user-b@example.com','hash');
       INSERT INTO courses(id,slug,author_id)
       VALUES ('course-a','course-a','user'),('course-b','course-b','user');
       INSERT INTO course_revisions(id,course_id,title,summary)
@@ -21,9 +22,11 @@ it('enforces lesson progress revision and position invariants', () => {
              ('module-b','revision-b',0,'Module B');
       INSERT INTO lessons(id,module_id,sort_order,title)
       VALUES ('lesson-a','module-a',0,'Lesson A'),
+             ('lesson-a2','module-a',1,'Lesson A2'),
              ('lesson-b','module-b',0,'Lesson B');
       INSERT INTO enrollments(id,user_id,course_id,revision_id)
       VALUES ('enrollment-a','user','course-a','revision-a'),
+             ('enrollment-a2','user-b','course-a','revision-a'),
              ('enrollment-b','user','course-b','revision-b');
     `);
 
@@ -78,6 +81,12 @@ it('enforces lesson progress revision and position invariants', () => {
       .toThrow(/invalid or immutable lesson completion/);
     db.prepare(`UPDATE lesson_progress SET completed_at=datetime('now'),updated_at=datetime('now')
       WHERE enrollment_id='enrollment-a' AND lesson_id='lesson-a'`).run();
+    expect(() => db.prepare(`UPDATE lesson_progress SET lesson_id='lesson-a2'
+      WHERE enrollment_id='enrollment-a' AND lesson_id='lesson-a'`).run())
+      .toThrow(/lesson progress identity is immutable/);
+    expect(() => db.prepare(`UPDATE lesson_progress SET enrollment_id='enrollment-a2'
+      WHERE enrollment_id='enrollment-a' AND lesson_id='lesson-a'`).run())
+      .toThrow(/lesson progress identity is immutable/);
     expect(() => db.prepare(`UPDATE lesson_progress SET completed_at=NULL
       WHERE enrollment_id='enrollment-a' AND lesson_id='lesson-a'`).run())
       .toThrow(/invalid or immutable lesson completion/);
@@ -109,7 +118,7 @@ it('enforces lesson progress revision and position invariants', () => {
       db
         .prepare('UPDATE lesson_progress SET lesson_id=? WHERE enrollment_id=? AND lesson_id=?')
         .run('lesson-b', 'enrollment-a', 'lesson-a'),
-    ).toThrow(/lesson progress revision mismatch/);
+    ).toThrow(/lesson progress identity is immutable/);
     expect(() =>
       db.prepare('UPDATE enrollments SET state=? WHERE id=?').run('revoked', 'enrollment-a'),
     ).not.toThrow();
@@ -119,6 +128,9 @@ it('enforces lesson progress revision and position invariants', () => {
     expect(
       db.prepare('SELECT lesson_id,position_seconds FROM lesson_progress').all(),
     ).toEqual([{ lesson_id: 'lesson-a', position_seconds: 5 }]);
+    expect(() => db.prepare(`UPDATE lesson_progress
+      SET position_seconds=7,updated_at=datetime('now')
+      WHERE enrollment_id='enrollment-a' AND lesson_id='lesson-a'`).run()).not.toThrow();
   } finally {
     db.close();
   }

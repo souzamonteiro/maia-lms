@@ -2973,6 +2973,19 @@ describe('revision completion policy', () => {
     const completedAt = completed.completed_at;
 
     await request(`/api/v1/lessons/${lessons[0].id}/progress`, 'PUT', { positionSeconds: 12 }, learner.cookie);
+    const progressBeforeRepeatedCompletion = db.prepare(`SELECT completed_at FROM lesson_progress
+      WHERE enrollment_id=(SELECT id FROM enrollments WHERE user_id=? AND course_id=?)
+        AND lesson_id=?`).get(learner.id, created.data.id, lessons[0].id) as {
+          completed_at: string;
+        };
+    const repeatedCompletion = await request(
+      `/api/v1/lessons/${lessons[0].id}/progress`,
+      'PUT',
+      { complete: true },
+      learner.cookie,
+    );
+    expect(repeatedCompletion.status).toBe(200);
+    expect(repeatedCompletion.data.completed_at).toBe(progressBeforeRepeatedCompletion.completed_at);
     const repeated = (await request('/api/v1/me/enrollments', 'GET', undefined, learner.cookie)).data[0];
     expect(repeated.completed_at).toBe(completedAt);
     expect(repeated.completion_ready).toBe(true);
