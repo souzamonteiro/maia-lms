@@ -28,7 +28,7 @@ SQLite stores UUIDs as TEXT, UTC timestamps as TEXT (ISO 8601 or SQLite datetime
 | certificates | id, enrollment_id, supersedes_id?, public_code, confirmed_name, payload_hash, issued_at, revoked_at, reason | supersession links a revoked prior certificate from same enrollment; public code at least 32 characters; unique code; one active per enrollment; revocation reason required; snapshot immutable; history retained |
 | promotions | id, slot, course_id, starts_at, ends_at, priority | bounded placement, audited |
 | home_settings | id=1, version | optimistic concurrency for editorial changes |
-| audit_events | id, actor_id, action, subject_type, subject_id, occurred_at, metadata | append-only privileged actions |
+| audit_events | id, actor_id, action, subject_type, subject_id, occurred_at, metadata | append-only privileged actions; occurrence timestamp must parse |
 | outbox | id, event_type, payload, available_at, processed_at, attempts, lease_token | retryable async work |
 
 Published course revisions bind a consistent set of modules, lessons, quiz and certificate policy. Enrollment stores assigned revision; course pages may show latest. Future revisions require an explicit migration policy for existing learners. Certificate snapshot includes canonical learner name, title, workload, completion and issuer; subsequent profile edits do not silently rewrite history.

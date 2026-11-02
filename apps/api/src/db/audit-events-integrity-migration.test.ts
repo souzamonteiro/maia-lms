@@ -25,7 +25,17 @@ it('keeps audit events append-only', () => {
         .prepare('INSERT INTO audit_events(id,action,subject_type,subject_id,metadata) VALUES(?,?,?,?,?)')
         .run('event-b', 'home.update', 'home', '1', '{}'),
     ).not.toThrow();
-    expect(db.prepare('SELECT count(*) AS n FROM audit_events').get()).toEqual({ n: 2 });
+    expect(() => db.prepare(`
+      INSERT INTO audit_events(id,action,subject_type,subject_id,occurred_at,metadata)
+      VALUES(?,?,?,?,?,?)
+    `).run('event-c', 'course.update', 'course', 'course-a', '2026-11-02T12:00:00-03:00', '{}'))
+      .not.toThrow();
+    expect(() => db.prepare(`
+      INSERT INTO audit_events(id,action,subject_type,subject_id,occurred_at,metadata)
+      VALUES(?,?,?,?,?,?)
+    `).run('event-invalid', 'course.update', 'course', 'course-a', 'not-a-time', '{}'))
+      .toThrow(/audit event timestamp is invalid/);
+    expect(db.prepare('SELECT count(*) AS n FROM audit_events').get()).toEqual({ n: 3 });
   } finally {
     db.close();
   }
