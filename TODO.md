@@ -1092,6 +1092,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   JSON metadata. Migration 116 requires nonblank webhook provider/event IDs and
   a lowercase SHA-256 payload digest on insert and update; focused event-integrity
   tests cover rejected shapes and preserve valid payment webhook processing/retry.
+  Migration 117 freezes queued outbox job identity/payload, requires object JSON
+  and nonblank event types, and validates queue timestamps while preserving
+  retries, lease transitions and unsupported event handling.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:

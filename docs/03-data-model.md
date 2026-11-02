@@ -29,7 +29,7 @@ SQLite stores UUIDs as TEXT, UTC timestamps as TEXT (ISO 8601 or SQLite datetime
 | promotions | id, slot, course_id, starts_at, ends_at, priority | bounded placement, audited |
 | home_settings | id=1, version | optimistic concurrency for editorial changes |
 | audit_events | id, actor_id, action, subject_type, subject_id, occurred_at, metadata | append-only privileged actions; nonblank action/subject; object-shaped JSON metadata; occurrence timestamp must parse |
-| outbox | id, event_type, payload, available_at, processed_at, attempts, lease_token | retryable async work |
+| outbox | id, event_type, payload, available_at, processed_at, attempts, lease_token | immutable queued job identity/payload; nonblank event type; object JSON; parseable timestamps; retryable async work |
 
 Published course revisions bind a consistent set of modules, lessons, quiz and certificate policy. Enrollment stores assigned revision; course pages may show latest. Future revisions require an explicit migration policy for existing learners. Certificate snapshot includes canonical learner name, title, workload, completion and issuer; subsequent profile edits do not silently rewrite history.
 
@@ -90,6 +90,7 @@ Migration 056 constrains assessment attempt result shape: open attempts require 
 Migration 057 protects outbox processing state: retry count must remain a non-negative integer; a lease requires an unprocessed job and at least one claim; and a processed job cannot retain a lease. Normal worker claim, retry release, and completion transitions remain valid.
 
 Migration 060 makes outbox lifecycle monotonic: attempts cannot decrease, acquiring/replacing a lease advances exactly one attempt, a lease can only be released with a failure or completion recorded, and `processed_at` cannot be cleared or rewritten. This prevents SQL-level job reopening, lease theft, and completion without a claimed worker.
+Migration 117 freezes each queued job's ID, type, payload and creation time, requires a nonblank type and object-shaped JSON payload, and validates availability, creation and completion timestamps. Retry scheduling, leases, errors and completion remain mutable under their lifecycle rules.
 
 Migration 058 requires entitlement `starts_at` to be parseable and, when present, `ends_at` to be parseable and strictly later. Open-ended grants remain valid; malformed, zero-length, or reversed windows cannot be inserted or updated.
 

@@ -13,6 +13,37 @@ it('keeps outbox retry counters and lease/processed state structurally valid', (
     insert.run('failed-job', 'email.send');
     insert.run('processed-job', 'email.send');
 
+    expect(() => db.prepare('INSERT INTO outbox(id,event_type,payload) VALUES(?,?,?)')
+      .run('blank-type', '  ', '{}')).toThrow(/invalid outbox payload/);
+    for (const payload of ['{invalid', '[]', '"not-an-object"']) {
+      expect(() => db.prepare('INSERT INTO outbox(id,event_type,payload) VALUES(?,?,?)')
+        .run('invalid-payload', 'email.send', payload)).toThrow(/invalid outbox payload/);
+    }
+    for (const [createdAt, availableAt, processedAt] of [
+      ['not-a-time', '2026-11-02 12:00:00', null],
+      ['2026-11-02 12:00:00', 'not-a-time', null],
+      ['2026-11-02 12:00:00', '2026-11-02 12:00:00', 'not-a-time'],
+    ]) {
+      expect(() => db.prepare(`
+        INSERT INTO outbox(id,event_type,created_at,available_at,processed_at)
+        VALUES('invalid-timestamp','email.send',?,?,?)
+      `).run(
+        createdAt,
+        availableAt,
+        processedAt,
+      )).toThrow(/invalid outbox timestamp/);
+    }
+    expect(() => db.prepare('UPDATE outbox SET available_at=? WHERE id=?')
+      .run('not-a-time', 'new-job')).toThrow(/invalid outbox timestamp/);
+    expect(() => db.prepare('UPDATE outbox SET id=? WHERE id=?')
+      .run('replacement-id', 'new-job')).toThrow(/outbox record identity is immutable/);
+    expect(() => db.prepare('UPDATE outbox SET payload=? WHERE id=?')
+      .run('{"changed":true}', 'new-job')).toThrow(/outbox record identity is immutable/);
+    expect(() => db.prepare('UPDATE outbox SET event_type=? WHERE id=?')
+      .run('replacement.type', 'new-job')).toThrow(/outbox record identity is immutable/);
+    expect(() => db.prepare('UPDATE outbox SET created_at=? WHERE id=?')
+      .run('2026-11-02 12:00:00', 'new-job')).toThrow(/outbox record identity is immutable/);
+
     expect(() => db.prepare('UPDATE outbox SET attempts=? WHERE id=?').run(-1, 'new-job'))
       .toThrow(/invalid outbox (processing state|lifecycle transition)/);
     expect(() => db.prepare('UPDATE outbox SET attempts=? WHERE id=?').run(1.5, 'new-job'))
