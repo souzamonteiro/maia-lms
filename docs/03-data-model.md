@@ -5,8 +5,8 @@ SQLite stores UUIDs as TEXT, UTC timestamps as TEXT (ISO 8601 or SQLite datetime
 | Table | Principal fields | Constraints |
 |---|---|---|
 | users | id, email, display_name, password_hash, verified_at, status, locale, session_version | unique normalized email; private display name; no plaintext credentials |
-| http_sessions | sid, data, expires_at | SQLite session store; expires_at in Unix milliseconds; signed cookie rotated on login |
-| sessions | original reserved schema | not used by the runtime |
+| http_sessions | sid, data, expires_at | SQLite session store; object JSON; nonnegative integer Unix-millisecond expiry; signed cookie rotated on login |
+| sessions | id, user_id, hash, expires_at, revoked_at | legacy schema; identity immutable; revocation one-way; revoked on restore |
 | courses | id, slug, access_mode, status, locale, author_id, current_revision_id, published_revision_id | unique slug; revision pointers must reference revisions owned by this course; controlled transitions |
 | course_revisions | id, course_id, title, summary, slug, access_mode, locale, learning_outcomes, policy_json, cover_file_id, trailer_video_id, published_at | immutable once published; cover/trailer uploads belong to course and match media kind |
 | modules | id, revision_id, sort_order, title | unique revision/order |
@@ -97,6 +97,8 @@ Migration 118 freezes email verification/reset and email-change token identity a
 Migration 119 validates MFA challenge/recovery-code timestamps, freezes challenge and recovery-code identity, allows failed-attempt counters to advance by one only, and makes challenge/recovery consumption immutable. Expired and consumed challenges can still be deleted by the normal cleanup path; recovery codes can still be deleted during rotation or MFA disable.
 
 Migration 120 validates TOTP secret state and freezes the secret/setup timestamp after MFA is enabled. The replay guard must advance to a strictly higher non-negative integer step; unverified setup may still replace its secret, and disabling MFA may still delete the credential.
+
+Migration 121 validates active HTTP session shape/expiry while permitting the store to refresh session data and expiry. The unused legacy session table validates timestamps, freezes row identity, and only allows a valid one-way revocation for compatibility with backup recovery.
 
 Migration 058 requires entitlement `starts_at` to be parseable and, when present, `ends_at` to be parseable and strictly later. Open-ended grants remain valid; malformed, zero-length, or reversed windows cannot be inserted or updated.
 

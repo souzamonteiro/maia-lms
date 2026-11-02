@@ -1107,6 +1107,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   secret state, and requires replay-protection counters to increase strictly;
   pending setup can still replace its unverified secret and MFA disable/rotation
   still remove the credential through the existing flow.
+  Migration 121 requires HTTP session rows to contain object JSON and nonnegative
+  integer Unix-millisecond expiry while allowing normal refreshes; legacy session
+  identity is immutable and revocation is irreversible. Focused tests cover
+  invalid records, session refresh, and restore-compatible revocation.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:
