@@ -1095,6 +1095,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Migration 117 freezes queued outbox job identity/payload, requires object JSON
   and nonblank event types, and validates queue timestamps while preserving
   retries, lease transitions and unsupported event handling.
+  Migration 118 freezes verification/reset and email-change token identity and
+  expiry, validates token timestamps, and prevents consumed tokens from being
+  restored or their use time moved backwards; focused route/migration tests
+  preserve verification, reset, resend and email-change flows.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:

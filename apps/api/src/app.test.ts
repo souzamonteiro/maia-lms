@@ -1247,7 +1247,18 @@ describe('localized account workflows', () => {
       (await request('/api/v1/auth/reset-password', 'POST', { token, password: 'short' })).data
         .code,
     ).toBe('AUTH_PASSWORD_LENGTH');
-    db.prepare("UPDATE email_tokens SET expires_at='2000-01-01T00:00:00Z'").run();
+    const resetToken = db.prepare(`
+      SELECT id,user_id,token_hash FROM email_tokens WHERE kind='reset' AND token_hash=?
+    `).get(createHash('sha256').update(token).digest('hex')) as {
+      id: string;
+      user_id: string;
+      token_hash: string;
+    };
+    db.prepare('DELETE FROM email_tokens WHERE id=?').run(resetToken.id);
+    db.prepare(`
+      INSERT INTO email_tokens(id,user_id,token_hash,kind,expires_at)
+      VALUES(?,?,?,'reset','2000-01-01T00:00:00Z')
+    `).run(resetToken.id, resetToken.user_id, resetToken.token_hash);
     expect(
       (await request('/api/v1/auth/reset-password', 'POST', { token, password })).data.code,
     ).toBe('AUTH_TOKEN_EXPIRED');
@@ -1616,7 +1627,18 @@ describe('account interface language preference', () => {
         }
       ).payload,
     ).text.match(/token=([a-f0-9]+)/)[1];
-    db.prepare("UPDATE email_tokens SET expires_at='2000-01-01T00:00:00Z'").run();
+    const verifyToken = db.prepare(`
+      SELECT id,user_id,token_hash FROM email_tokens WHERE kind='verify' AND token_hash=?
+    `).get(createHash('sha256').update(verification).digest('hex')) as {
+      id: string;
+      user_id: string;
+      token_hash: string;
+    };
+    db.prepare('DELETE FROM email_tokens WHERE id=?').run(verifyToken.id);
+    db.prepare(`
+      INSERT INTO email_tokens(id,user_id,token_hash,kind,expires_at)
+      VALUES(?,?,?,'verify','2000-01-01T00:00:00Z')
+    `).run(verifyToken.id, verifyToken.user_id, verifyToken.token_hash);
     expect(
       (await request('/api/v1/auth/verify-email', 'POST', { token: verification })).data.code,
     ).toBe('AUTH_TOKEN_EXPIRED');

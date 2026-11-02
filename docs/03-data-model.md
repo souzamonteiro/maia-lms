@@ -92,6 +92,8 @@ Migration 057 protects outbox processing state: retry count must remain a non-ne
 Migration 060 makes outbox lifecycle monotonic: attempts cannot decrease, acquiring/replacing a lease advances exactly one attempt, a lease can only be released with a failure or completion recorded, and `processed_at` cannot be cleared or rewritten. This prevents SQL-level job reopening, lease theft, and completion without a claimed worker.
 Migration 117 freezes each queued job's ID, type, payload and creation time, requires a nonblank type and object-shaped JSON payload, and validates availability, creation and completion timestamps. Retry scheduling, leases, errors and completion remain mutable under their lifecycle rules.
 
+Migration 118 freezes email verification/reset and email-change token identity and expiry, validates creation/expiry/consumption timestamps, and prevents a consumed token from being restored or its consumption time moved backwards. Expired token records remain representable for cleanup and verification behavior.
+
 Migration 058 requires entitlement `starts_at` to be parseable and, when present, `ends_at` to be parseable and strictly later. Open-ended grants remain valid; malformed, zero-length, or reversed windows cannot be inserted or updated.
 
 Migration 059 constrains upload status changes to `UPLOADING → QUEUED/CANCELLED`, `QUEUED → PROCESSING`, `PROCESSING → READY/FAILED` (including same-state lease recovery), and `FAILED → QUEUED` retry. Idempotent same-state writes are allowed; READY and CANCELLED are terminal. Fixture setup and test updates follow this worker/API lifecycle.
