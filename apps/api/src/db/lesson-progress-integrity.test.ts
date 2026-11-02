@@ -65,6 +65,31 @@ it('enforces lesson progress revision and position invariants', () => {
     db.prepare(
       'INSERT INTO lesson_progress(enrollment_id,lesson_id,position_seconds) VALUES(?,?,?)',
     ).run('enrollment-a', 'lesson-a', 12);
+    expect(() => db.prepare(`INSERT INTO lesson_progress(
+      enrollment_id,lesson_id,completed_at
+    ) VALUES('enrollment-b','lesson-b','not-a-time')`).run())
+      .toThrow(/invalid lesson progress timestamp/);
+    expect(() => db.prepare(`INSERT INTO lesson_progress(
+      enrollment_id,lesson_id,updated_at
+    ) VALUES('enrollment-b','lesson-b','not-a-time')`).run())
+      .toThrow(/invalid lesson progress timestamp/);
+    expect(() => db.prepare(`UPDATE lesson_progress SET completed_at='not-a-time'
+      WHERE enrollment_id='enrollment-a' AND lesson_id='lesson-a'`).run())
+      .toThrow(/invalid or immutable lesson completion/);
+    db.prepare(`UPDATE lesson_progress SET completed_at=datetime('now'),updated_at=datetime('now')
+      WHERE enrollment_id='enrollment-a' AND lesson_id='lesson-a'`).run();
+    expect(() => db.prepare(`UPDATE lesson_progress SET completed_at=NULL
+      WHERE enrollment_id='enrollment-a' AND lesson_id='lesson-a'`).run())
+      .toThrow(/invalid or immutable lesson completion/);
+    expect(() => db.prepare(`UPDATE lesson_progress SET completed_at='2000-01-01'
+      WHERE enrollment_id='enrollment-a' AND lesson_id='lesson-a'`).run())
+      .toThrow(/invalid or immutable lesson completion/);
+    expect(() => db.prepare(`UPDATE lesson_progress SET updated_at='not-a-time'
+      WHERE enrollment_id='enrollment-a' AND lesson_id='lesson-a'`).run())
+      .toThrow(/invalid or immutable lesson completion/);
+    expect(() => db.prepare(`UPDATE lesson_progress SET position_seconds=5,
+      updated_at=datetime('now') WHERE enrollment_id='enrollment-a' AND lesson_id='lesson-a'`).run())
+      .not.toThrow();
     expect(() =>
       db
         .prepare('INSERT INTO lesson_progress(enrollment_id,lesson_id,position_seconds) VALUES(?,?,?)')
@@ -93,7 +118,7 @@ it('enforces lesson progress revision and position invariants', () => {
     ).toThrow(/enrolled revision structure is immutable/);
     expect(
       db.prepare('SELECT lesson_id,position_seconds FROM lesson_progress').all(),
-    ).toEqual([{ lesson_id: 'lesson-a', position_seconds: 12 }]);
+    ).toEqual([{ lesson_id: 'lesson-a', position_seconds: 5 }]);
   } finally {
     db.close();
   }

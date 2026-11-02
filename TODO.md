@@ -1118,6 +1118,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Migration 123 requires playback duration totals to advance with a measured
   sample and keeps measured-sample increases within the request-count increase;
   zero-duration and unmeasured requests remain supported.
+  Migration 124 validates lesson-progress timestamps and makes recorded
+  completion irreversible while leaving playback position mutable for normal
+  seeking and resumption.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:
