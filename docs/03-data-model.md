@@ -116,6 +116,8 @@ Migration 128 validates worker start/heartbeat/stop timestamp ordering, prevents
 
 Migration 129 rejects blank worker instance IDs. Worker registration is insert-only: a process instance ID cannot be reused to overwrite an active or stopped history row.
 
+Migration 130 requires entitlement creation and revocation timestamps to parse and freezes entitlement ID/creation time. Entitlement validity windows and existing revocation behavior remain unchanged.
+
 Migration 058 requires entitlement `starts_at` to be parseable and, when present, `ends_at` to be parseable and strictly later. Open-ended grants remain valid; malformed, zero-length, or reversed windows cannot be inserted or updated.
 
 Migration 059 constrains upload status changes to `UPLOADING → QUEUED/CANCELLED`, `QUEUED → PROCESSING`, `PROCESSING → READY/FAILED` (including same-state lease recovery), and `FAILED → QUEUED` retry. Idempotent same-state writes are allowed; READY and CANCELLED are terminal. Fixture setup and test updates follow this worker/API lifecycle.

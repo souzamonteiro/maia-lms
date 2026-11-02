@@ -22,6 +22,24 @@ it('requires parseable entitlement start times and strictly later optional end t
     );
     insert.run('open-ended', 'enrollment', 'free', '2026-10-04T10:00:00.000Z', null);
     insert.run('bounded', 'enrollment', 'admin', '2026-10-04T10:00:00.000Z', '2026-10-04T11:00:00.000Z');
+    db.prepare(`UPDATE entitlements SET revoked_at='2026-10-05T10:00:00.000Z'
+      WHERE id='bounded'`).run();
+    expect(() => db.prepare(`UPDATE entitlements SET revoked_at='not-a-date'
+      WHERE id='bounded'`).run()).toThrow(/entitlement record timestamp is invalid/);
+    expect(() => db.prepare(`UPDATE entitlements SET created_at='not-a-date'
+      WHERE id='bounded'`).run()).toThrow(/entitlement record timestamp is invalid/);
+    expect(() => db.prepare(`UPDATE entitlements SET created_at='2026-10-06T10:00:00.000Z'
+      WHERE id='bounded'`).run()).toThrow(/entitlement identity is immutable/);
+    expect(() => db.prepare(`UPDATE entitlements SET id='changed'
+      WHERE id='bounded'`).run()).toThrow(/entitlement identity is immutable/);
+    expect(() => db.prepare(`INSERT INTO entitlements(
+      id,enrollment_id,source_type,starts_at,created_at
+    ) VALUES('bad-created','enrollment','free','2026-10-04T10:00:00.000Z','not-a-date')`).run())
+      .toThrow(/entitlement record is invalid/);
+    expect(() => db.prepare(`INSERT INTO entitlements(
+      id,enrollment_id,source_type,starts_at,revoked_at
+    ) VALUES('bad-revoked','enrollment','free','2026-10-04T10:00:00.000Z','not-a-date')`).run())
+      .toThrow(/entitlement record is invalid/);
 
     expect(() =>
       insert.run('end-before-start', 'enrollment', 'admin', '2026-10-04T10:00:00.000Z', '2026-10-04T09:59:59.000Z'),

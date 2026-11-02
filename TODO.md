@@ -1133,6 +1133,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   stopped instances as terminal history.
   Migration 129 rejects blank worker instance IDs; registration is insert-only
   so a reused process ID cannot overwrite active or stopped history.
+  Migration 130 validates entitlement creation/revocation timestamps and freezes
+  entitlement identity/creation time without changing access-window or revocation
+  behavior.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:
