@@ -140,6 +140,17 @@ it('records provider reconciliation outcomes without exposing payment identifier
         .run('2026-01-01', 'unknown', 1, 0)).toThrow();
       expect(() => db.prepare('INSERT INTO payment_reconciliation_metrics_daily VALUES(?,?,?,?)')
         .run('2026-01-01', 'failed', 1, -1)).toThrow();
+      db.prepare(`INSERT INTO payment_reconciliation_metrics_daily VALUES
+        ('1900-11-02','failed',2,100)`).run();
+      expect(() => db.prepare(`UPDATE payment_reconciliation_metrics_daily
+        SET metric_date='2026-11-01' WHERE outcome='failed'`).run())
+        .toThrow(/reconciliation metric dimensions are immutable/);
+      expect(() => db.prepare(`UPDATE payment_reconciliation_metrics_daily
+        SET check_count=1 WHERE outcome='failed'`).run())
+        .toThrow(/reconciliation metric counters cannot decrease/);
+      db.prepare(`UPDATE payment_reconciliation_metrics_daily
+        SET check_count=check_count+1,duration_total_ms=duration_total_ms+50
+        WHERE outcome='failed'`).run();
       db.exec(`CREATE TRIGGER reject_payment_metrics BEFORE INSERT ON payment_reconciliation_metrics_daily
         BEGIN SELECT RAISE(ABORT,'Sensitive database error'); END;`);
       log.mockClear();

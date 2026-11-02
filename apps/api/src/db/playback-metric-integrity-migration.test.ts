@@ -51,16 +51,28 @@ it('preserves valid daily playback metrics and rejects invalid dates and fractio
     ] as const) {
       expect(() => insert.run(date, type, statusClass, count)).toThrow(/CHECK constraint failed/);
     }
+    expect(() => db.prepare(`INSERT INTO playback_metrics_daily(
+      metric_date,resource_type,status_class,request_count,updated_at
+    ) VALUES('2026-10-22','mp4',5,1,'not-a-time')`).run())
+      .toThrow(/playback metric timestamp is invalid/);
 
     expect(() =>
       db.prepare('UPDATE playback_metrics_daily SET metric_date=?').run('2026-02-30'),
-    ).toThrow(/CHECK constraint failed/);
+    ).toThrow(/playback metric dimensions are immutable/);
     expect(() =>
       db.prepare('UPDATE playback_metrics_daily SET status_class=?').run(3.5),
-    ).toThrow(/CHECK constraint failed/);
+    ).toThrow(/playback metric dimensions are immutable/);
     expect(() =>
       db.prepare('UPDATE playback_metrics_daily SET request_count=?').run(17.5),
     ).toThrow(/CHECK constraint failed/);
+    expect(() => db.prepare('UPDATE playback_metrics_daily SET metric_date=?')
+      .run('2026-10-23')).toThrow(/playback metric dimensions are immutable/);
+    expect(() => db.prepare('UPDATE playback_metrics_daily SET request_count=?')
+      .run(1)).toThrow(/playback metric counters or timestamp are invalid/);
+    expect(() => db.prepare('UPDATE playback_metrics_daily SET updated_at=?')
+      .run('not-a-time')).toThrow(/playback metric counters or timestamp are invalid/);
+    expect(() => db.prepare('UPDATE playback_metrics_daily SET request_count=?,duration_count=?,duration_total_ms=?,updated_at=?')
+      .run(18, 0, 0, '2026-10-22T13:00:00.000Z')).not.toThrow();
   } finally {
     db.close();
   }
@@ -98,10 +110,14 @@ it('adds unmeasured duration defaults to historical aggregates and enforces dura
     for (const [count, total] of [[-1, 0], [18, 100], [0.5, 1], [1, -1], [1, 1.5], [0, 100]]) {
       expect(() => db.prepare(`UPDATE playback_metrics_daily
         SET duration_count=?,duration_total_ms=?`).run(count, total))
-        .toThrow(/CHECK constraint failed/);
+        .toThrow(/CHECK constraint failed|playback metric counters or timestamp are invalid/);
     }
     db.prepare(`UPDATE playback_metrics_daily
       SET duration_count=2,duration_total_ms=300`).run();
+    expect(() => db.prepare('UPDATE playback_metrics_daily SET duration_count=1').run())
+      .toThrow(/playback metric counters or timestamp are invalid/);
+    expect(() => db.prepare('UPDATE playback_metrics_daily SET duration_total_ms=200').run())
+      .toThrow(/playback metric counters or timestamp are invalid/);
     expect(db.pragma('integrity_check', { simple: true })).toBe('ok');
   } finally {
     db.close();

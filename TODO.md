@@ -1111,6 +1111,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   integer Unix-millisecond expiry while allowing normal refreshes; legacy session
   identity is immutable and revocation is irreversible. Focused tests cover
   invalid records, session refresh, and restore-compatible revocation.
+  Migration 122 freezes daily-metric dimensions, prevents aggregate counters from
+  decreasing, and validates playback update timestamps while preserving additive
+  UPSERTs and retention deletes; playback, email transport, and payment
+  reconciliation tests cover valid aggregation and rejected direct-SQL rewrites.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:

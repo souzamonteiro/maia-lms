@@ -34,6 +34,15 @@ describe('outbox worker', () => {
         { metric_date: new Date().toISOString().slice(0, 10), outcome: 'failed', attempt_count: 1, duration_total_ms: 40 },
       ]);
       expect(JSON.stringify(rows)).not.toMatch(/private|secret|SMTP|token/);
+      expect(() => db.prepare(`UPDATE email_transport_metrics_daily
+        SET metric_date='2026-11-01' WHERE outcome='accepted'`).run())
+        .toThrow(/email metric dimensions are immutable/);
+      expect(() => db.prepare(`UPDATE email_transport_metrics_daily
+        SET attempt_count=1 WHERE outcome='accepted'`).run())
+        .toThrow(/email metric counters cannot decrease/);
+      db.prepare(`UPDATE email_transport_metrics_daily
+        SET attempt_count=attempt_count+1,duration_total_ms=duration_total_ms+5
+        WHERE outcome='accepted'`).run();
       expect(db.prepare("SELECT attempts,processed_at FROM outbox WHERE id='measured'").get())
         .toEqual({ attempts: 2, processed_at: expect.any(String) });
       for (const [date, outcome, attempts, duration] of [
