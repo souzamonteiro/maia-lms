@@ -1079,6 +1079,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Migration 111 enforces webhook pending/processed/failed timestamp consistency
   and parseable completion times on insert and update; focused tests cover valid
   processing/retry paths and reject mismatched or malformed timestamps.
+  Migration 112 freezes webhook row IDs, provider/event deduplication identity and
+  creation time while retaining the existing retry hash/lifecycle update path;
+  focused tests reject identity rewrites and preserve retry metadata updates.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:
