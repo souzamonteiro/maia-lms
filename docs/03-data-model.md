@@ -102,6 +102,8 @@ Migration 121 validates active HTTP session shape/expiry while permitting the st
 
 Migration 122 freezes daily-metric dimensions and prevents playback, email-transport, and payment-reconciliation aggregates from decreasing. Playback `updated_at` must parse on insert and update; additive UPSERTs and row deletion for retention remain valid.
 
+Migration 123 keeps playback duration totals consistent with measured samples: duration totals cannot increase without a new sample, and measured samples cannot increase faster than request counts. Zero-millisecond measurements and unmeasured requests remain valid.
+
 Migration 058 requires entitlement `starts_at` to be parseable and, when present, `ends_at` to be parseable and strictly later. Open-ended grants remain valid; malformed, zero-length, or reversed windows cannot be inserted or updated.
 
 Migration 059 constrains upload status changes to `UPLOADING → QUEUED/CANCELLED`, `QUEUED → PROCESSING`, `PROCESSING → READY/FAILED` (including same-state lease recovery), and `FAILED → QUEUED` retry. Idempotent same-state writes are allowed; READY and CANCELLED are terminal. Fixture setup and test updates follow this worker/API lifecycle.

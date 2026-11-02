@@ -68,7 +68,7 @@ it('preserves valid daily playback metrics and rejects invalid dates and fractio
     expect(() => db.prepare('UPDATE playback_metrics_daily SET metric_date=?')
       .run('2026-10-23')).toThrow(/playback metric dimensions are immutable/);
     expect(() => db.prepare('UPDATE playback_metrics_daily SET request_count=?')
-      .run(1)).toThrow(/playback metric counters or timestamp are invalid/);
+      .run(1)).toThrow(/playback metric counters or timestamp are invalid|playback duration totals require measured samples/);
     expect(() => db.prepare('UPDATE playback_metrics_daily SET updated_at=?')
       .run('not-a-time')).toThrow(/playback metric counters or timestamp are invalid/);
     expect(() => db.prepare('UPDATE playback_metrics_daily SET request_count=?,duration_count=?,duration_total_ms=?,updated_at=?')
@@ -110,10 +110,22 @@ it('adds unmeasured duration defaults to historical aggregates and enforces dura
     for (const [count, total] of [[-1, 0], [18, 100], [0.5, 1], [1, -1], [1, 1.5], [0, 100]]) {
       expect(() => db.prepare(`UPDATE playback_metrics_daily
         SET duration_count=?,duration_total_ms=?`).run(count, total))
-        .toThrow(/CHECK constraint failed|playback metric counters or timestamp are invalid/);
+        .toThrow(/CHECK constraint failed|playback metric counters or timestamp are invalid|playback duration totals require measured samples/);
     }
     db.prepare(`UPDATE playback_metrics_daily
-      SET duration_count=2,duration_total_ms=300`).run();
+      SET request_count=request_count+2,duration_count=2,duration_total_ms=300`).run();
+    expect(() => db.prepare(`UPDATE playback_metrics_daily
+      SET duration_total_ms=duration_total_ms+50`).run())
+      .toThrow(/playback duration totals require measured samples/);
+    expect(() => db.prepare(`UPDATE playback_metrics_daily
+      SET duration_count=duration_count+1`).run())
+      .toThrow(/playback duration totals require measured samples/);
+    db.prepare(`UPDATE playback_metrics_daily
+      SET request_count=request_count+1,duration_count=duration_count+1`).run();
+    expect(db.prepare(`SELECT request_count,duration_count,duration_total_ms
+      FROM playback_metrics_daily`).get()).toEqual({
+      request_count: 20, duration_count: 3, duration_total_ms: 300,
+    });
     expect(() => db.prepare('UPDATE playback_metrics_daily SET duration_count=1').run())
       .toThrow(/playback metric counters or timestamp are invalid/);
     expect(() => db.prepare('UPDATE playback_metrics_daily SET duration_total_ms=200').run())
