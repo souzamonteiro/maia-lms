@@ -1071,6 +1071,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Migration 108 freezes provider payment ownership and provider reference while
   allowing reconciled state/raw metadata updates; focused migration tests exercise
   both forbidden identity changes and the valid reconciliation update.
+  Migration 109 restricts provider payment states to the normalized provider
+  contract on both insert and update; focused tests cover every supported state
+  and reject unknown states.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:
