@@ -95,7 +95,10 @@ it('enforces lesson progress revision and position invariants', () => {
       .toThrow(/invalid or immutable lesson completion/);
     expect(() => db.prepare(`UPDATE lesson_progress SET updated_at='not-a-time'
       WHERE enrollment_id='enrollment-a' AND lesson_id='lesson-a'`).run())
-      .toThrow(/invalid or immutable lesson completion/);
+      .toThrow(/invalid or immutable lesson completion|lesson progress update timestamp cannot move backward/);
+    expect(() => db.prepare(`UPDATE lesson_progress SET updated_at='2000-01-01'
+      WHERE enrollment_id='enrollment-a' AND lesson_id='lesson-a'`).run())
+      .toThrow(/lesson progress update timestamp cannot move backward/);
     expect(() => db.prepare(`UPDATE lesson_progress SET position_seconds=5,
       updated_at=datetime('now') WHERE enrollment_id='enrollment-a' AND lesson_id='lesson-a'`).run())
       .not.toThrow();

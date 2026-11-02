@@ -1124,6 +1124,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Migration 125 freezes the enrollment/lesson identity for each progress row.
   Repeated completion requests now preserve the first completion timestamp,
   remaining idempotent under the irreversible-completion rule.
+  Migration 126 prevents lesson-progress update timestamps from moving backward
+  while allowing same-time updates and normal playback seeking.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:
