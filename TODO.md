@@ -1103,6 +1103,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   challenge/recovery identity, restricts failed-attempt updates to monotonic
   single increments and makes challenge/recovery consumption immutable; login
   MFA tests cover one-time recovery, challenge lockout and rejected SQL rewrites.
+  Migration 120 freezes verified TOTP secret identity and setup time, validates
+  secret state, and requires replay-protection counters to increase strictly;
+  pending setup can still replace its unverified secret and MFA disable/rotation
+  still remove the credential through the existing flow.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:

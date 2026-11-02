@@ -96,6 +96,8 @@ Migration 118 freezes email verification/reset and email-change token identity a
 
 Migration 119 validates MFA challenge/recovery-code timestamps, freezes challenge and recovery-code identity, allows failed-attempt counters to advance by one only, and makes challenge/recovery consumption immutable. Expired and consumed challenges can still be deleted by the normal cleanup path; recovery codes can still be deleted during rotation or MFA disable.
 
+Migration 120 validates TOTP secret state and freezes the secret/setup timestamp after MFA is enabled. The replay guard must advance to a strictly higher non-negative integer step; unverified setup may still replace its secret, and disabling MFA may still delete the credential.
+
 Migration 058 requires entitlement `starts_at` to be parseable and, when present, `ends_at` to be parseable and strictly later. Open-ended grants remain valid; malformed, zero-length, or reversed windows cannot be inserted or updated.
 
 Migration 059 constrains upload status changes to `UPLOADING → QUEUED/CANCELLED`, `QUEUED → PROCESSING`, `PROCESSING → READY/FAILED` (including same-state lease recovery), and `FAILED → QUEUED` retry. Idempotent same-state writes are allowed; READY and CANCELLED are terminal. Fixture setup and test updates follow this worker/API lifecycle.
