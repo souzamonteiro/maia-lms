@@ -1088,6 +1088,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Migration 114 rejects audit events with unparseable occurrence timestamps while
   preserving default and timezone-qualified valid inserts; the append-only audit
   migration test covers valid and invalid direct-SQL inserts.
+  Migration 115 requires nonblank audit action/subject fields and object-shaped
+  JSON metadata. Migration 116 requires nonblank webhook provider/event IDs and
+  a lowercase SHA-256 payload digest on insert and update; focused event-integrity
+  tests cover rejected shapes and preserve valid payment webhook processing/retry.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:

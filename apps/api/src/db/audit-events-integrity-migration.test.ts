@@ -35,6 +35,18 @@ it('keeps audit events append-only', () => {
       VALUES(?,?,?,?,?,?)
     `).run('event-invalid', 'course.update', 'course', 'course-a', 'not-a-time', '{}'))
       .toThrow(/audit event timestamp is invalid/);
+    for (const [action, subjectType, subjectId, metadata] of [
+      ['', 'course', 'course-a', '{}'],
+      ['course.update', '  ', 'course-a', '{}'],
+      ['course.update', 'course', 'course-a', '{invalid'],
+      ['course.update', 'course', 'course-a', '[]'],
+    ]) {
+      expect(() => db.prepare(`
+        INSERT INTO audit_events(id,action,subject_type,subject_id,metadata)
+        VALUES(?,?,?,?,?)
+      `).run('event-invalid-payload', action, subjectType, subjectId, metadata))
+        .toThrow(/audit event payload is invalid/);
+    }
     expect(db.prepare('SELECT count(*) AS n FROM audit_events').get()).toEqual({ n: 3 });
   } finally {
     db.close();

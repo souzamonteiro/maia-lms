@@ -11,18 +11,18 @@ it('keeps webhook event status and processed timestamp consistent', () => {
       VALUES(?,?,?,?,?,?)
     `);
 
-    expect(() => insertEvent.run('pending', 'provider', 'event-pending', 'hash', 'pending', null))
+    expect(() => insertEvent.run('pending', 'provider', 'event-pending', 'a'.repeat(64), 'pending', null))
       .not.toThrow();
-    expect(() => insertEvent.run('processed', 'provider', 'event-processed', 'hash', 'processed', '2026-11-02 12:00:00'))
+    expect(() => insertEvent.run('processed', 'provider', 'event-processed', 'a'.repeat(64), 'processed', '2026-11-02 12:00:00'))
       .not.toThrow();
-    expect(() => insertEvent.run('failed', 'provider', 'event-failed', 'hash', 'failed', '2026-11-02 12:00:00'))
+    expect(() => insertEvent.run('failed', 'provider', 'event-failed', 'a'.repeat(64), 'failed', '2026-11-02 12:00:00'))
       .not.toThrow();
 
-    expect(() => insertEvent.run('pending-time', 'provider', 'event-pending-time', 'hash', 'pending', '2026-11-02 12:00:00'))
+    expect(() => insertEvent.run('pending-time', 'provider', 'event-pending-time', 'a'.repeat(64), 'pending', '2026-11-02 12:00:00'))
       .toThrow(/invalid webhook event lifecycle/);
-    expect(() => insertEvent.run('processed-null', 'provider', 'event-processed-null', 'hash', 'processed', null))
+    expect(() => insertEvent.run('processed-null', 'provider', 'event-processed-null', 'a'.repeat(64), 'processed', null))
       .toThrow(/invalid webhook event lifecycle/);
-    expect(() => insertEvent.run('failed-malformed', 'provider', 'event-failed-malformed', 'hash', 'failed', 'not-a-time'))
+    expect(() => insertEvent.run('failed-malformed', 'provider', 'event-failed-malformed', 'a'.repeat(64), 'failed', 'not-a-time'))
       .toThrow(/invalid webhook event lifecycle/);
 
     db.prepare('UPDATE webhook_events SET status=?,processed_at=? WHERE id=?')

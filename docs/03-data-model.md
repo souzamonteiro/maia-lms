@@ -23,12 +23,12 @@ SQLite stores UUIDs as TEXT, UTC timestamps as TEXT (ISO 8601 or SQLite datetime
 | attempt_answers | attempt_id, question_id, selected_keys, awarded_points | question belongs to attempt quiz; awarded points are an integer from zero to question points; answer rows freeze on submission; score calculation still requires QUIZ-02 |
 | orders | id, user_id, course_id, price_snapshot, currency, provider, state, idempotency_key, provider_checkout_id | positive integer price; immutable commercial snapshot; checkout ID unique per provider; lifecycle transitions constrained |
 | provider_payments | id, order_id, provider_payment_id, state, raw_ref | provider payment ID unique within provider |
-| webhook_events | id, provider, external_event_id, payload_hash, processed_at, status | unique provider/event ID; event identity and creation time immutable; lifecycle timestamps consistent |
+| webhook_events | id, provider, external_event_id, payload_hash, processed_at, status | unique nonblank provider/event ID; lowercase SHA-256 payload digest; event identity and creation time immutable; lifecycle timestamps consistent |
 | refunds | id, order_id, provider_ref, amount_minor, status | refund ID/creation time and request snapshot immutable; provider reference reconciled; provider refund ID unique within provider; positive integer amount; pending+approved total capped at order snapshot |
 | certificates | id, enrollment_id, supersedes_id?, public_code, confirmed_name, payload_hash, issued_at, revoked_at, reason | supersession links a revoked prior certificate from same enrollment; public code at least 32 characters; unique code; one active per enrollment; revocation reason required; snapshot immutable; history retained |
 | promotions | id, slot, course_id, starts_at, ends_at, priority | bounded placement, audited |
 | home_settings | id=1, version | optimistic concurrency for editorial changes |
-| audit_events | id, actor_id, action, subject_type, subject_id, occurred_at, metadata | append-only privileged actions; occurrence timestamp must parse |
+| audit_events | id, actor_id, action, subject_type, subject_id, occurred_at, metadata | append-only privileged actions; nonblank action/subject; object-shaped JSON metadata; occurrence timestamp must parse |
 | outbox | id, event_type, payload, available_at, processed_at, attempts, lease_token | retryable async work |
 
 Published course revisions bind a consistent set of modules, lessons, quiz and certificate policy. Enrollment stores assigned revision; course pages may show latest. Future revisions require an explicit migration policy for existing learners. Certificate snapshot includes canonical learner name, title, workload, completion and issuer; subsequent profile edits do not silently rewrite history.
