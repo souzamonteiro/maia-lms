@@ -1128,6 +1128,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   while allowing same-time updates and normal playback seeking.
   Migration 127 validates non-null enrollment completion timestamps on direct
   inserts and updates, retaining the existing irreversible history rule.
+  Migration 128 validates worker heartbeat timestamp order, makes active
+  heartbeats monotonic, freezes process identity/start time, and preserves
+  stopped instances as terminal history.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:

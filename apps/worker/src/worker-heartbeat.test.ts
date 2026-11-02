@@ -22,6 +22,26 @@ it('records worker lifecycle and prevents heartbeats after shutdown', () => {
       heartbeat_at: new Date(start.getTime() + 20_000).toISOString(),
       stopped_at: new Date(start.getTime() + 20_000).toISOString(),
     });
+    expect(() => db.prepare(`UPDATE worker_instances SET heartbeat_at=?
+      WHERE instance_id='worker-a'`).run(new Date(start.getTime() + 10_000).toISOString()))
+      .toThrow(/worker heartbeat lifecycle is invalid/);
+    expect(() => db.prepare(`UPDATE worker_instances SET stopped_at=NULL
+      WHERE instance_id='worker-a'`).run())
+      .toThrow(/worker heartbeat lifecycle is invalid/);
+    expect(() => db.prepare(`UPDATE worker_instances SET heartbeat_at=?
+      WHERE instance_id='worker-a'`).run(new Date(start.getTime() + 40_000).toISOString()))
+      .toThrow(/worker heartbeat lifecycle is invalid/);
+    expect(() => db.prepare(`INSERT INTO worker_instances(
+      instance_id,started_at,heartbeat_at
+    ) VALUES('worker-invalid','not-a-time','not-a-time')`).run())
+      .toThrow(/worker heartbeat timestamps are invalid/);
+    expect(() => db.prepare(`INSERT INTO worker_instances(
+      instance_id,started_at,heartbeat_at,stopped_at
+    ) VALUES('worker-stopped-invalid',?,?,?)`).run(
+      start.toISOString(),
+      new Date(start.getTime() + 10_000).toISOString(),
+      start.toISOString(),
+    )).toThrow(/worker heartbeat timestamps are invalid/);
   } finally {
     db.close();
   }
