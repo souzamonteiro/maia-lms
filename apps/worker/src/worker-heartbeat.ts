@@ -7,8 +7,7 @@ export function registerWorkerHeartbeat(
 ): void {
   const timestamp = now.toISOString();
   db.prepare(`INSERT INTO worker_instances(instance_id,started_at,heartbeat_at)
-    VALUES(?,?,?) ON CONFLICT(instance_id) DO UPDATE SET
-    started_at=excluded.started_at,heartbeat_at=excluded.heartbeat_at,stopped_at=NULL`)
+    VALUES(?,?,?)`)
     .run(instanceId, timestamp, timestamp);
 }
 

@@ -114,6 +114,8 @@ Migration 127 validates non-null enrollment completion timestamps on insert and 
 
 Migration 128 validates worker start/heartbeat/stop timestamp ordering, prevents heartbeat regression, freezes each process instance identity/start time, and makes stopped heartbeat records terminal. Heartbeats remain mutable while the instance is active.
 
+Migration 129 rejects blank worker instance IDs. Worker registration is insert-only: a process instance ID cannot be reused to overwrite an active or stopped history row.
+
 Migration 058 requires entitlement `starts_at` to be parseable and, when present, `ends_at` to be parseable and strictly later. Open-ended grants remain valid; malformed, zero-length, or reversed windows cannot be inserted or updated.
 
 Migration 059 constrains upload status changes to `UPLOADING → QUEUED/CANCELLED`, `QUEUED → PROCESSING`, `PROCESSING → READY/FAILED` (including same-state lease recovery), and `FAILED → QUEUED` retry. Idempotent same-state writes are allowed; READY and CANCELLED are terminal. Fixture setup and test updates follow this worker/API lifecycle.

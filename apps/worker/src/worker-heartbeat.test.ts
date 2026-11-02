@@ -13,6 +13,12 @@ it('records worker lifecycle and prevents heartbeats after shutdown', () => {
     runMigrations(db);
     const start = new Date('2026-10-20T10:00:00.000Z');
     registerWorkerHeartbeat(db, 'worker-a', start);
+    expect(() => registerWorkerHeartbeat(db, 'worker-a', new Date(start.getTime() + 5_000)))
+      .toThrow(/UNIQUE constraint failed/);
+    expect(() => db.prepare(`INSERT INTO worker_instances(
+      instance_id,started_at,heartbeat_at
+    ) VALUES('   ',?,?)`).run(start.toISOString(), start.toISOString()))
+      .toThrow(/worker instance ID is required/);
     expect(refreshWorkerHeartbeat(db, 'worker-a', new Date(start.getTime() + 10_000))).toBe(true);
     expect(stopWorkerHeartbeat(db, 'worker-a', new Date(start.getTime() + 20_000))).toBe(true);
     expect(refreshWorkerHeartbeat(db, 'worker-a', new Date(start.getTime() + 30_000))).toBe(false);
@@ -35,6 +41,9 @@ it('records worker lifecycle and prevents heartbeats after shutdown', () => {
       instance_id,started_at,heartbeat_at
     ) VALUES('worker-invalid','not-a-time','not-a-time')`).run())
       .toThrow(/worker heartbeat timestamps are invalid/);
+    expect(() => db.prepare(`UPDATE worker_instances SET instance_id=' '
+      WHERE instance_id='worker-a'`).run())
+      .toThrow(/worker instance ID is required/);
     expect(() => db.prepare(`INSERT INTO worker_instances(
       instance_id,started_at,heartbeat_at,stopped_at
     ) VALUES('worker-stopped-invalid',?,?,?)`).run(
