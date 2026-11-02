@@ -1099,6 +1099,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   expiry, validates token timestamps, and prevents consumed tokens from being
   restored or their use time moved backwards; focused route/migration tests
   preserve verification, reset, resend and email-change flows.
+  Migration 119 validates MFA challenge and recovery-code timestamps, freezes
+  challenge/recovery identity, restricts failed-attempt updates to monotonic
+  single increments and makes challenge/recovery consumption immutable; login
+  MFA tests cover one-time recovery, challenge lockout and rejected SQL rewrites.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:

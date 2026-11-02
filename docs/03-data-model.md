@@ -94,6 +94,8 @@ Migration 117 freezes each queued job's ID, type, payload and creation time, req
 
 Migration 118 freezes email verification/reset and email-change token identity and expiry, validates creation/expiry/consumption timestamps, and prevents a consumed token from being restored or its consumption time moved backwards. Expired token records remain representable for cleanup and verification behavior.
 
+Migration 119 validates MFA challenge/recovery-code timestamps, freezes challenge and recovery-code identity, allows failed-attempt counters to advance by one only, and makes challenge/recovery consumption immutable. Expired and consumed challenges can still be deleted by the normal cleanup path; recovery codes can still be deleted during rotation or MFA disable.
+
 Migration 058 requires entitlement `starts_at` to be parseable and, when present, `ends_at` to be parseable and strictly later. Open-ended grants remain valid; malformed, zero-length, or reversed windows cannot be inserted or updated.
 
 Migration 059 constrains upload status changes to `UPLOADING → QUEUED/CANCELLED`, `QUEUED → PROCESSING`, `PROCESSING → READY/FAILED` (including same-state lease recovery), and `FAILED → QUEUED` retry. Idempotent same-state writes are allowed; READY and CANCELLED are terminal. Fixture setup and test updates follow this worker/API lifecycle.
