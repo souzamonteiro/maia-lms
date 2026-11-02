@@ -1076,6 +1076,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   and reject unknown states. Migration 110 constrains provider payment state
   transitions, permits late approvals after provider rejection/cancellation and
   valid refund/chargeback progression, and blocks stale regressions.
+  Migration 111 enforces webhook pending/processed/failed timestamp consistency
+  and parseable completion times on insert and update; focused tests cover valid
+  processing/retry paths and reject mismatched or malformed timestamps.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:
