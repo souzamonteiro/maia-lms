@@ -33,6 +33,8 @@ it('preserves the home settings singleton and advances its version exactly once'
       .toThrow(/home settings version must advance by one/);
     expect(() => db.prepare('DELETE FROM home_settings WHERE id=1').run())
       .toThrow(/home settings singleton cannot be deleted/);
+    expect(() => db.prepare('UPDATE home_settings SET id=2 WHERE id=1').run())
+      .toThrow(/home settings identity is immutable/);
     expect(() => db.prepare('INSERT OR REPLACE INTO home_settings(id,version) VALUES(1,0)').run())
       .toThrow(/home settings singleton already exists/);
     expect(db.prepare('SELECT id,version FROM home_settings').get()).toEqual({

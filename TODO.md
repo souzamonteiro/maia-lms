@@ -1152,6 +1152,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   updates and deletion.
   Migration 137 rejects a replacement insert that could reset the singleton's
   version through SQLite conflict handling.
+  Migration 138 freezes the singleton key at `id=1` so the settings lookup
+  cannot be disabled by direct SQL updates.
   Local validation: 270 tests passed and 3 skipped with one Vitest worker;
   build and lint passed. Firefox/WebKit and physical-device qualification
   remain external and pending.
