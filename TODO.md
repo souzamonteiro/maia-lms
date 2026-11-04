@@ -1243,7 +1243,11 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   attempts below five, availability reached, including expired leases).
   Future retries/active leases and exhausted messages are excluded; an empty
   ready queue has an explicit no-ready state, not a measured zero delay.
-  This is neither SMTP delivery latency nor an automatic alert threshold.
+  A local `OUTBOX_READY_DELAYED` alert now fires when any eligible message has
+  waited more than five minutes; processing the queue clears the alert. This is
+  not SMTP delivery latency or an external alert channel. The alert is localized
+  in en/pt-BR/es and included in the documented alert enum. Local validation:
+  275 tests passed and 3 skipped with one Vitest worker; build and lint passed.
   Storage measurement failures now raise `STORAGE_UNAVAILABLE` alongside a null
   capacity instead of allowing an apparently alert-free snapshot. The panel
   explains the path/permission checks in en/pt-BR/es without exposing paths or

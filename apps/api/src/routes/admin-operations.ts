@@ -4,6 +4,8 @@ import type Database from 'better-sqlite3';
 import type { Config } from '../config.js';
 import { requireRole } from '../middleware/auth.js';
 
+const OUTBOX_READY_DELAY_ALERT_SECONDS = 5 * 60;
+
 type WorkerRow = {
   started_at: string;
   heartbeat_at: string;
@@ -43,14 +45,18 @@ export function adminOperationsRouter(db: Database.Database, config: Config): Ro
       COALESCE(sum(CASE WHEN event_type='email.send' AND processed_at IS NULL AND attempts>=5 THEN 1 ELSE 0 END),0) AS emailExhausted,
       COALESCE(sum(CASE WHEN processed_at IS NULL AND attempts<5 AND julianday(available_at)<=julianday('now') THEN 1 ELSE 0 END),0) AS ready,
       CAST(round(max(CASE WHEN processed_at IS NULL AND attempts<5 AND julianday(available_at)<=julianday('now')
-        THEN (julianday('now')-julianday(available_at))*86400 END)) AS INTEGER) AS oldestReadyDelaySeconds
-      FROM outbox`).get() as {
+        THEN (julianday('now')-julianday(available_at))*86400 END)) AS INTEGER) AS oldestReadyDelaySeconds,
+      COALESCE(max(CASE WHEN processed_at IS NULL AND attempts<5 AND
+        julianday(available_at)<julianday('now','-' || ? || ' seconds')
+        THEN 1 ELSE 0 END),0) AS readyDelayed
+      FROM outbox`).get(OUTBOX_READY_DELAY_ALERT_SECONDS) as {
       pending: number;
       exhausted: number;
       emailPending: number;
       emailExhausted: number;
       ready: number;
       oldestReadyDelaySeconds: number | null;
+      readyDelayed: number;
     };
     const payments = Object.fromEntries((db.prepare(`SELECT state,count(*) AS total
       FROM orders GROUP BY state`).all() as Array<{ state: string; total: number }>)
@@ -110,6 +116,7 @@ export function adminOperationsRouter(db: Database.Database, config: Config): Ro
     if (stuckMedia) alerts.push('MEDIA_JOB_STUCK');
     if (Number(media.FAILED ?? 0)) alerts.push('MEDIA_JOB_FAILED');
     if (Number(outbox.exhausted)) alerts.push('OUTBOX_EXHAUSTED');
+    if (outbox.readyDelayed) alerts.push('OUTBOX_READY_DELAYED');
     if (emailFailures) alerts.push('EMAIL_TRANSPORT_FAILED');
     if (reconciliationFailures) alerts.push('PAYMENT_RECONCILIATION_FAILED');
     if (!storage) alerts.push('STORAGE_UNAVAILABLE');

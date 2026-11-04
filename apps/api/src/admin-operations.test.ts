@@ -220,3 +220,26 @@ it('reports ready queue count and delay using worker eligibility without exposin
     expect(justReady.oldestReadyDelaySeconds).toBeGreaterThanOrEqual(0);
     expect(justReady.oldestReadyDelaySeconds).toBeLessThan(5);
 });
+
+it('alerts on ready outbox messages delayed beyond five minutes and clears after processing', async () => {
+  const cookie = await account('queue-delay-admin@example.com', 'admin');
+  db.exec(`UPDATE outbox SET attempts=attempts+1,lease_token='fixture-claim' WHERE processed_at IS NULL;
+    UPDATE outbox SET processed_at=datetime('now'),lease_token=NULL WHERE processed_at IS NULL;`);
+  db.exec(`INSERT INTO outbox(id,event_type,payload,available_at)
+    VALUES('delayed-message','email.send','{}',datetime('now','-240 seconds'));`);
+  const summary = async () => (await request('/api/v1/admin/operations', 'GET', undefined, cookie)).data;
+  expect((await summary()).alerts).not.toContain('OUTBOX_READY_DELAYED');
+
+  db.exec(`UPDATE outbox SET available_at=datetime('now','-360 seconds')
+    WHERE id='delayed-message';`);
+  const delayed = await summary();
+  expect(delayed.outbox).toMatchObject({ ready: 1, readyDelayed: 1 });
+  expect(delayed.outbox.oldestReadyDelaySeconds).toBeGreaterThan(300);
+  expect(delayed.alerts).toContain('OUTBOX_READY_DELAYED');
+  expect(JSON.stringify(delayed)).not.toContain('delayed-message');
+
+  db.exec(`UPDATE outbox SET attempts=attempts+1,lease_token='fixture-complete'
+    WHERE id='delayed-message';
+    UPDATE outbox SET processed_at=datetime('now'),lease_token=NULL WHERE id='delayed-message';`);
+  expect((await summary()).alerts).not.toContain('OUTBOX_READY_DELAYED');
+});

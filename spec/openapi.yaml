@@ -2342,7 +2342,7 @@ paths:
                   media: {type: object}
                   outbox:
                     type: object
-                    required: [pending, exhausted, emailPending, emailExhausted, ready, oldestReadyDelaySeconds]
+                    required: [pending, exhausted, emailPending, emailExhausted, ready, oldestReadyDelaySeconds, readyDelayed]
                     properties:
                       pending: {type: integer, minimum: 0}
                       exhausted: {type: integer, minimum: 0}
@@ -2355,7 +2355,11 @@ paths:
                       oldestReadyDelaySeconds:
                         type: [integer, 'null']
                         minimum: 0
-                        description: Rounded seconds since the earliest available_at among ready messages. Null if none are ready. Not age since creation, SMTP delivery latency, or an alert threshold.
+                        description: Rounded seconds since the earliest available_at among ready messages. Null if none are ready. Not age since creation or SMTP delivery latency. A local alert is raised when a ready message exceeds 300 seconds.
+                      readyDelayed:
+                        type: integer
+                        enum: [0, 1]
+                        description: 1 when an eligible message has been available for strictly more than 300 seconds; otherwise 0.
                   payments: {type: object, additionalProperties: {type: integer}}
                   emailTransport:
                     type: object
@@ -2408,7 +2412,7 @@ paths:
                     type: array
                     items:
                       type: string
-                      enum: [WORKER_MISSING, WORKER_NOT_HEALTHY, MEDIA_JOB_STUCK, MEDIA_JOB_FAILED, OUTBOX_EXHAUSTED, EMAIL_TRANSPORT_FAILED, PAYMENT_RECONCILIATION_FAILED, STORAGE_LOW, STORAGE_UNAVAILABLE]
+                      enum: [WORKER_MISSING, WORKER_NOT_HEALTHY, MEDIA_JOB_STUCK, MEDIA_JOB_FAILED, OUTBOX_EXHAUSTED, OUTBOX_READY_DELAYED, EMAIL_TRANSPORT_FAILED, PAYMENT_RECONCILIATION_FAILED, STORAGE_LOW, STORAGE_UNAVAILABLE]
         '401': {description: Authentication required}
         '403': {description: Administrator role required}
 components:
