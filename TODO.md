@@ -1143,10 +1143,13 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   No production update path for entitlement windows was found.
   Migration 133 requires source IDs only for order grants and rejects missing
   order references or stray source IDs on free/admin grants.
-  Local validation: 268 tests passed and 3 skipped with one Vitest worker;
-  build and lint passed. Parallel full-suite runs hit the existing 5-second
-  backup-test timeout under concurrent test load; the backup test passes alone.
-  Firefox/WebKit and physical-device qualification remain external and pending.
+  Migration 134 enforces the admin route's homepage slot, priority, and time
+  window rules at the SQLite boundary without rewriting existing rows.
+  Local validation: 269 tests passed and 3 skipped with one Vitest worker;
+  build and lint passed. Firefox/WebKit and physical-device qualification
+  remain external and pending.
+  Parallel full-suite runs can hit the existing 5-second backup-test timeout
+  under concurrent test load; the backup test passes alone.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:
