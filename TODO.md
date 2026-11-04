@@ -1535,6 +1535,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   The operations guide now documents the worker-alert classification, 20-record
   evaluation scope, stopped-worker behavior, and dashboard-only delivery;
   focused worker-alert API tests passed (8).
+  The OpenAPI alert-array description now records these worker rules and the
+  absence of external alert delivery.
   The implemented contract is still incomplete, and installation, recovery,
   author/learner/admin manuals and cross-document review need a full pass. Keep
   DOC-01 open.

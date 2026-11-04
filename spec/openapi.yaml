@@ -2418,6 +2418,7 @@ paths:
                           averageMs: {type: [number, 'null'], minimum: 0}
                   alerts:
                     type: array
+                    description: Current dashboard-only conditions; this endpoint does not deliver alerts externally. WORKER_MISSING means no worker records are returned; WORKER_STALE means at least one non-stopped worker heartbeat is older than 45 seconds, even if another worker is healthy; WORKER_NOT_HEALTHY means records exist but none is healthy or stale (for example, all are stopped). Worker evaluation is limited to the 20 most recent heartbeat records.
                     items:
                       type: string
                       enum: [WORKER_MISSING, WORKER_NOT_HEALTHY, WORKER_STALE, MEDIA_JOB_STUCK, MEDIA_JOB_FAILED, OUTBOX_EXHAUSTED, OUTBOX_READY_DELAYED, EMAIL_TRANSPORT_FAILED, PAYMENT_RECONCILIATION_FAILED, STORAGE_LOW, STORAGE_UNAVAILABLE]
