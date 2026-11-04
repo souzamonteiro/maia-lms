@@ -11,6 +11,7 @@ it('validates promotion slot, priority, and time window on insert and update', (
       INSERT INTO users(id,email,email_normalized,password_hash)
       VALUES('user','user@example.com','user@example.com','hash');
       INSERT INTO courses(id,slug,author_id) VALUES('course','course','user');
+      INSERT INTO courses(id,slug,author_id) VALUES('other-course','other-course','user');
     `);
     const insert = db.prepare(
       'INSERT INTO promotions(id,slot,course_id,starts_at,ends_at,priority) VALUES(?,?,?,?,?,?)',
@@ -50,11 +51,13 @@ it('validates promotion slot, priority, and time window on insert and update', (
         0,
       ),
     ).toThrow(/invalid promotion schedule/);
+    insert.run('hero', 'hero', 'course', '2026-10-04T10:00:00.000Z', null, 0);
+
     expect(() =>
       insert.run(
         'end-before-start',
-        'hero',
-        'course',
+        'featured',
+        'other-course',
         '2026-10-04T10:00:00.000Z',
         '2026-10-04T09:00:00.000Z',
         0,
@@ -63,17 +66,40 @@ it('validates promotion slot, priority, and time window on insert and update', (
     expect(() =>
       insert.run(
         'zero-duration',
-        'hero',
-        'course',
+        'featured',
+        'other-course',
         '2026-10-04T10:00:00.000Z',
         '2026-10-04T10:00:00.000Z',
         0,
       ),
     ).toThrow(/invalid promotion schedule/);
+    expect(() =>
+      insert.run(
+        'duplicate-placement',
+        'featured',
+        'course',
+        '2026-10-04T10:00:00.000Z',
+        null,
+        1,
+      ),
+    ).toThrow(/duplicate promotion placement/);
+    expect(() =>
+      insert.run(
+        'second-hero',
+        'hero',
+        'other-course',
+        '2026-10-04T10:00:00.000Z',
+        null,
+        1,
+      ),
+    ).toThrow(/duplicate promotion placement/);
 
     expect(() =>
       db.prepare('UPDATE promotions SET priority=5 WHERE id=?').run('valid'),
     ).not.toThrow();
+    expect(() =>
+      db.prepare("UPDATE promotions SET slot='featured' WHERE id='open-ended'").run(),
+    ).toThrow(/duplicate promotion placement/);
     expect(() =>
       db.prepare("UPDATE promotions SET slot='sidebar' WHERE id=?").run('valid'),
     ).toThrow(/invalid promotion schedule/);

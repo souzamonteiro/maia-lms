@@ -1145,6 +1145,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   order references or stray source IDs on free/admin grants.
   Migration 134 enforces the admin route's homepage slot, priority, and time
   window rules at the SQLite boundary without rewriting existing rows.
+  Migration 135 enforces one hero placement and prohibits repeating a course
+  within a slot while preserving existing promotion rows.
   Local validation: 269 tests passed and 3 skipped with one Vitest worker;
   build and lint passed. Firefox/WebKit and physical-device qualification
   remain external and pending.
