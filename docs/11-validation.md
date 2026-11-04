@@ -2808,3 +2808,28 @@ Validation:
 This is a focused local contrast check, not a complete WCAG/accessibility audit
 or screen-reader, browser-suite, physical-device, or deployed-host qualification.
 No deployment, host or running-instance changes were performed.
+
+## Full Chromium, WebKit, and Firefox E2E follow-up — November 4, 2026
+
+The complete local Chromium E2E suite passed 39/39 with real video enabled,
+including upload/playback and supplementary-material workflows. The complete
+local WebKit suite also passed 39/39 with real video enabled. An earlier WebKit
+attempt had a navigation interruption during admin MFA followed by browser
+closure errors; that focused MFA workflow passed alone (1/1), and the subsequent
+full WebKit rerun passed. Do not count the interrupted attempt as a full run.
+
+The complete local Firefox suite passed 38/39. Course withdrawal timed out while
+loading `/my-learning`; the same workflow passed alone (1/1). This repeats the
+existing moving full-suite navigation intermittency, so no timeout workaround
+was introduced and Firefox full-suite qualification remains open.
+
+Validation:
+- Full real-media Chromium E2E on isolated port 4326: 39/39.
+- Full real-media WebKit E2E on isolated port 4329: 39/39.
+- Focused WebKit admin-MFA rerun on isolated port 4328: 1/1.
+- Full real-media Firefox E2E on isolated port 4324: 38/39.
+- Focused Firefox course-withdrawal rerun on isolated port 4325: 1/1.
+
+These are local browser-automation results only. Firefox is not yet qualified
+for a clean complete run; physical Android/iOS devices and the deployed host
+remain unqualified. No deployment, host, or running-instance changes were made.
