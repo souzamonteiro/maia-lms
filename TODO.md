@@ -1519,6 +1519,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   passed. The full Firefox rerun remains 38/39, with course withdrawal timing out
   on `/my-learning` and passing in isolation. Full Firefox, physical-device and
   deployed-host qualification remain open; see `docs/11-validation.md`.
+  A further full Firefox rerun passed 38/39; the timeout moved to the initial
+  login in admin date localization, which passed alone (1/1). No workaround was
+  added. Firefox full-suite qualification remains open.
 - [ ] **DOC-01 — Keep contracts and operations aligned with implementation.**
   Update OpenAPI, data model, installation/configuration, author/learner/admin
   manuals, limits, and recovery procedures with every delivery. Dependency:

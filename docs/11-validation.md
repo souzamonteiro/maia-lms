@@ -2833,3 +2833,19 @@ Validation:
 These are local browser-automation results only. Firefox is not yet qualified
 for a clean complete run; physical Android/iOS devices and the deployed host
 remain unqualified. No deployment, host, or running-instance changes were made.
+
+## Firefox full-suite follow-up — November 4, 2026
+
+A further full local Firefox run with real video enabled passed 38/39. The
+remaining timeout moved to the initial `/auth/login` navigation in the admin
+date-localization workflow; course withdrawal passed in this run. The
+date-localization workflow passed alone (1/1). This confirms that the
+navigation timeout continues to move between workflows and does not establish
+the cause. No per-test timeout workaround was applied.
+
+Validation:
+- Full real-media Firefox E2E on isolated port 4330: 38/39.
+- Focused Firefox admin date-localization rerun on isolated port 4331: 1/1.
+
+Firefox remains unqualified at full-suite level. No deployment, host, or
+running-instance changes were made.
