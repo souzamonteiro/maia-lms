@@ -48,6 +48,25 @@ class DeploymentTests(unittest.TestCase):
         self.assertIn('/etc/letsencrypt/live/staging.example.test/fullchain.pem', result.stdout)
         self.assertIn('return 301 https://staging.example.test$request_uri;', result.stdout)
 
+    def test_vps_acme_only_dry_run_prepares_challenge_without_proxy_or_tls(self):
+        result = subprocess.run(
+            [
+                'bash', str(ROOT/'install.sh'), 'vps',
+                '--upstream', '10.77.0.2:4321',
+                '--domain', 'staging.example.test',
+                '--acme-only',
+                '--dry-run',
+            ],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('server_name staging.example.test;', result.stdout)
+        self.assertIn('/.well-known/acme-challenge/', result.stdout)
+        self.assertNotIn('proxy_pass', result.stdout)
+        self.assertNotIn('listen 443', result.stdout)
+        self.assertNotIn('/etc/letsencrypt/live/', result.stdout)
+
     def test_installers_reject_invalid_values_in_dry_run(self):
         host_result = subprocess.run(
             [
