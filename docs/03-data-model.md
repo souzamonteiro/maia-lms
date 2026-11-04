@@ -15,7 +15,7 @@ SQLite stores UUIDs as TEXT, UTC timestamps as TEXT (ISO 8601 or SQLite datetime
 | assets | id, owner_id, kind, storage_key, status, metadata_json | private key; controlled processing |
 | prices | id, course_id, currency, amount_minor, active_from, active_to | order snapshots price; historical rows retained |
 | enrollments | id, user_id, course_id, revision_id, state, enrolled_at | unique user/course; assignment immutable; revision must belong to course; entitlement not inferred from row alone |
-| entitlements | id, enrollment_id, source_type, source_id, starts_at, ends_at, revoked_at | order source must match enrollment user/course; grant window is immutable; active access derived from interval/revocation; revocation is terminal once set |
+| entitlements | id, enrollment_id, source_type, source_id, starts_at, ends_at, revoked_at | `source_id` is present only for order grants; order source must match enrollment user/course; grant window is immutable; active access derived from interval/revocation; revocation is terminal once set |
 | lesson_progress | enrollment_id, lesson_id, position_seconds, completed_at | unique enrollment/lesson; non-negative integer position; triggers preserve lesson/enrollment revision agreement and row identity, validate timestamps, prevent activity timestamp regression, and keep completion irreversible |
 | quizzes | id, revision_id, lesson_id?, pass_percent, max_attempts, time_limit_seconds? | integer pass percent 1–100; positive integer attempt limit; optional positive integer time limit; one final quiz per revision; settings freeze when attempts exist |
 | questions | id, quiz_id, prompt, choices_json, correct_choice_keys, points, sort_order | positive integer points; non-negative integer unique sort position; definition freezes when attempts exist; answer keys never returned with public payload |
@@ -121,6 +121,8 @@ Migration 130 requires entitlement creation and revocation timestamps to parse a
 Migration 131 makes entitlement revocation terminal once set. A new valid entitlement may still be granted separately; revoked access is not restored by rewriting the old record.
 
 Migration 132 makes the entitlement grant window immutable after insertion. A corrected or renewed grant is represented by a separate entitlement, preserving the original terms.
+
+Migration 133 requires order entitlements to have a source reference and free/admin entitlements to have none; order references must also match the enrollment's user and course.
 
 Migration 058 requires entitlement `starts_at` to be parseable and, when present, `ends_at` to be parseable and strictly later. Open-ended grants remain valid; malformed, zero-length, or reversed windows cannot be inserted or updated.
 

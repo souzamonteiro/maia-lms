@@ -41,6 +41,15 @@ it('keeps order-backed entitlements attached to the order owner and course', () 
       addOrderEntitlement.run('missing-order', 'enrollment-a', 'order', 'missing', 'now'),
     ).toThrow(/order entitlement reference mismatch/);
     expect(() =>
+      addOrderEntitlement.run('order-without-source', 'enrollment-a', 'order', null, 'now'),
+    ).toThrow(/entitlement source reference is invalid|order entitlement reference mismatch/);
+    expect(() =>
+      addOrderEntitlement.run('free-with-source', 'enrollment-a', 'free', 'order-a', 'now'),
+    ).toThrow(/entitlement source reference is invalid/);
+    expect(() =>
+      addOrderEntitlement.run('admin-with-source', 'enrollment-a', 'admin', 'order-a', 'now'),
+    ).toThrow(/entitlement source reference is invalid/);
+    expect(() =>
       db.prepare('UPDATE entitlements SET source_id=? WHERE id=?').run('order-b', 'entitlement-order-a'),
     ).toThrow(/entitlement provenance is immutable/);
     expect(() =>

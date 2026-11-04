@@ -8,8 +8,8 @@ it('keeps closed privacy requests terminal while allowing normal review transiti
   try {
     runMigrations(db);
     expect(db.prepare('SELECT version FROM schema_migrations ORDER BY rowid DESC LIMIT 2').all())
-      .toEqual([{ version: '132_entitlement_window_immutable' },
-        { version: '131_entitlement_revocation_terminal' }]);
+      .toEqual([{ version: '133_entitlement_source_shape' },
+        { version: '132_entitlement_window_immutable' }]);
     db.exec(`
       INSERT INTO users(id,email,email_normalized,password_hash)
       VALUES ('user','user@example.com','user@example.com','hash'),

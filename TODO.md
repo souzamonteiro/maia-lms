@@ -1141,9 +1141,12 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Migration 132 freezes entitlement start/end terms; a corrected or renewed
   grant must be represented by a separate record rather than rewriting history.
   No production update path for entitlement windows was found.
-  Local validation: 268 tests passed and 3 skipped; build and lint passed.
-  External browser/device qualification was not repeated for this data-layer
-  change; Firefox/WebKit and physical-device validation remain pending.
+  Migration 133 requires source IDs only for order grants and rejects missing
+  order references or stray source IDs on free/admin grants.
+  Local validation: 268 tests passed and 3 skipped with one Vitest worker;
+  build and lint passed. Parallel full-suite runs hit the existing 5-second
+  backup-test timeout under concurrent test load; the backup test passes alone.
+  Firefox/WebKit and physical-device qualification remain external and pending.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:
