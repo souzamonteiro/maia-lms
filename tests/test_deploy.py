@@ -48,6 +48,34 @@ class DeploymentTests(unittest.TestCase):
         self.assertIn('/etc/letsencrypt/live/staging.example.test/fullchain.pem', result.stdout)
         self.assertIn('return 301 https://staging.example.test$request_uri;', result.stdout)
 
+    def test_installers_reject_invalid_values_in_dry_run(self):
+        host_result = subprocess.run(
+            [
+                'bash', str(ROOT/'install.sh'), 'host',
+                '--host-ip', '10.77.0.2',
+                '--proxy-ip', '10.77.0.1',
+                '--port', '99999',
+                '--dry-run',
+            ],
+            capture_output=True,
+            text=True,
+        )
+        self.assertNotEqual(host_result.returncode, 0)
+        self.assertIn('Port must be 1025-65535', host_result.stderr)
+
+        vps_result = subprocess.run(
+            [
+                'bash', str(ROOT/'install.sh'), 'vps',
+                '--upstream', '10.77.0.2:4321',
+                '--domain', 'invalid;include',
+                '--dry-run',
+            ],
+            capture_output=True,
+            text=True,
+        )
+        self.assertNotEqual(vps_result.returncode, 0)
+        self.assertIn('Invalid domain', vps_result.stderr)
+
     def test_default_https_and_acme(self):
         result = self.render('--upstream', '10.77.0.2:3200')
         self.assertEqual(result.returncode, 0)

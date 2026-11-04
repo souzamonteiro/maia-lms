@@ -1307,9 +1307,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Exercise Docker and systemd installations, not just their syntax.
   Local deployment tests check the host installer's argument-validated `--dry-run`
   plan and the VPS installer's rendered site configuration without executing
-  privileged operations. They are not an upgrade or rollback rehearsal. Local
-  validation: 5 deployment tests and installer Bash syntax checks passed; staging
-  and host/VPS qualification remain pending.
+  privileged operations, and reject invalid host port/VPS domain inputs. They are
+  not an upgrade or rollback rehearsal. Local validation: 6 deployment tests and
+  installer Bash syntax checks passed; staging and host/VPS qualification remain
+  pending.
 - [ ] **SEC-01 — Authorization, abuse, and hostile content (local controls strengthened; full matrix open).**
   Tests for cross-user/author/course access, private/revoked media, Markdown,
   uploads, extraction/transcoding, payment replay, and storage limits.
