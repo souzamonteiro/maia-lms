@@ -40,6 +40,11 @@ sudo ./install.sh host --host-ip 10.77.0.2 --proxy-ip 10.77.0.1
 5. Updates `/opt/maia-lms/current`, installs and starts `maia-lms` and `maia-lms-worker`.
 6. Checks `/readyz`. Previous releases and backups are retained.
 
+The host `--dry-run` validates the supplied addresses, port, and domain, prints
+the intended upgrade steps, and exits before privileged operations. It does not
+build a release, inspect the installed configuration, apply migrations, or
+qualify service-user permissions or readiness.
+
 Data: `/var/lib/maia-lms/maia-lms.db`, sessions in `http_sessions`, storage at `/var/lib/maia-lms/storage`. The data directory uses mode 0700 and `UMask=0077`; secrets use mode 0640 and ownership root:maia-lms.
 
 Edit `/etc/maia-lms/app.env` with `sudoedit`. Configure `MAIL_TRANSPORT` with real SMTP and `MAIL_FROM` with an authorized sender; do not leave the example local SMTP setting in production. URL-encode special characters required in SMTP URLs. Then:

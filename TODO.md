@@ -1302,6 +1302,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Dependencies: BASE-02, OPS-01/02. Acceptance: upgrade a representative copy and
   test restoration before publishing; preserve `.env`, accounts, languages, and VPN.
   Exercise Docker and systemd installations, not just their syntax.
+  A local deployment test now checks the host installer's argument-validated
+  `--dry-run` plan without executing privileged operations. It is not an upgrade
+  or rollback rehearsal. Local validation: 4 deployment tests and installer
+  Bash syntax checks passed; staging and host/VPS qualification remain pending.
 - [ ] **SEC-01 — Authorization, abuse, and hostile content (local controls strengthened; full matrix open).**
   Tests for cross-user/author/course access, private/revoked media, Markdown,
   uploads, extraction/transcoding, payment replay, and storage limits.

@@ -11,6 +11,26 @@ class DeploymentTests(unittest.TestCase):
     def render(self, *args):
         return subprocess.run(['python3', str(ROOT/'scripts/render-nginx.py'), *args], capture_output=True, text=True)
 
+    def test_host_installer_dry_run_validates_and_reports_upgrade_plan(self):
+        result = subprocess.run(
+            [
+                'bash', str(ROOT/'install.sh'), 'host',
+                '--host-ip', '10.77.0.2',
+                '--proxy-ip', '10.77.0.1',
+                '--port', '4321',
+                '--domain', 'staging.example.test',
+                '--dry-run',
+            ],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('https://staging.example.test → 10.77.0.2:4321', result.stdout)
+        self.assertIn('build an isolated release, back up SQLite, apply migrations', result.stdout)
+        self.assertIn('check /readyz', result.stdout)
+        self.assertNotIn('SESSION_SECRET', result.stdout)
+        self.assertNotIn('MEDIA_SIGNING_KEY', result.stdout)
+
     def test_default_https_and_acme(self):
         result = self.render('--upstream', '10.77.0.2:3200')
         self.assertEqual(result.returncode, 0)
