@@ -27,7 +27,7 @@ SQLite stores UUIDs as TEXT, UTC timestamps as TEXT (ISO 8601 or SQLite datetime
 | refunds | id, order_id, provider_ref, amount_minor, status | refund ID/creation time and request snapshot immutable; provider reference reconciled; provider refund ID unique within provider; positive integer amount; pending+approved total capped at order snapshot |
 | certificates | id, enrollment_id, supersedes_id?, public_code, confirmed_name, payload_hash, issued_at, revoked_at, reason | supersession links a revoked prior certificate from same enrollment; public code at least 32 characters; unique code; one active per enrollment; revocation reason required; snapshot immutable; history retained |
 | promotions | id, slot, course_id, starts_at, ends_at, priority | allowed homepage slot, one hero placement, no repeated course within a slot, bounded integer priority, valid schedule window, audited |
-| home_settings | id=1, version | optimistic concurrency for editorial changes |
+| home_settings | id=1, version | singleton retained; version advances exactly one per editorial update |
 | audit_events | id, actor_id, action, subject_type, subject_id, occurred_at, metadata | append-only privileged actions; nonblank action/subject; object-shaped JSON metadata; occurrence timestamp must parse |
 | outbox | id, event_type, payload, available_at, processed_at, attempts, lease_token | immutable queued job identity/payload; nonblank event type; object JSON; parseable timestamps; retryable async work |
 
@@ -127,6 +127,8 @@ Migration 133 requires order entitlements to have a source reference and free/ad
 Migration 134 validates homepage promotion slots, integer priorities from 0 to 1000, and parseable start/end timestamps with a strictly later optional end. Existing promotion rows are not rewritten.
 
 Migration 135 prevents multiple hero placements and duplicate courses within one homepage slot. Existing rows are preserved; their coexistence does not block migration, but future writes must follow the unique-placement rule.
+
+Migration 136 protects the `home_settings` singleton and requires its integer version to advance exactly one on every update, preserving optimistic concurrency checks.
 
 Migration 058 requires entitlement `starts_at` to be parseable and, when present, `ends_at` to be parseable and strictly later. Open-ended grants remain valid; malformed, zero-length, or reversed windows cannot be inserted or updated.
 

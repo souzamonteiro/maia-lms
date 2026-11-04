@@ -1147,6 +1147,12 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   window rules at the SQLite boundary without rewriting existing rows.
   Migration 135 enforces one hero placement and prohibits repeating a course
   within a slot while preserving existing promotion rows.
+  Migration 136 preserves the `home_settings` singleton and requires version
+  increments of exactly one, protecting optimistic concurrency from direct SQL
+  updates and deletion.
+  Local validation: 270 tests passed and 3 skipped with one Vitest worker;
+  build and lint passed. Firefox/WebKit and physical-device qualification
+  remain external and pending.
   Local validation: 269 tests passed and 3 skipped with one Vitest worker;
   build and lint passed. Firefox/WebKit and physical-device qualification
   remain external and pending.

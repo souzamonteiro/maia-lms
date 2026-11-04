@@ -8,8 +8,8 @@ it('keeps closed privacy requests terminal while allowing normal review transiti
   try {
     runMigrations(db);
     expect(db.prepare('SELECT version FROM schema_migrations ORDER BY rowid DESC LIMIT 2').all())
-      .toEqual([{ version: '135_promotion_placement_unique' },
-        { version: '134_promotion_schedule_integrity' }]);
+      .toEqual([{ version: '136_home_settings_version_integrity' },
+        { version: '135_promotion_placement_unique' }]);
     db.exec(`
       INSERT INTO users(id,email,email_normalized,password_hash)
       VALUES ('user','user@example.com','user@example.com','hash'),
