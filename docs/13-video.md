@@ -19,9 +19,11 @@ sudo ./install.sh host --host-ip 10.77.0.2 --proxy-ip 10.77.0.1
 The installer checks `ffmpeg` and `ffprobe` before stopping services. Migration 005
 is additive. The worker is limited to 2 GiB of RAM, two CPUs and 128 tasks in systemd
 and Compose installations. `MEDIA_WORKER_CONCURRENCY` controls media jobs separately
-(default 1, maximum 4); `WORKER_CONCURRENCY` controls outbox jobs. The shared Compose
-image includes FFmpeg; rebuild it when upgrading. The API and worker use the same
-private `STORAGE_ROOT`.
+(default 1, range 1–4); each slot processes one media job. `WORKER_CONCURRENCY`
+controls outbox jobs (default 4, range 1–20). These are application concurrency
+limits, not qualified hardware-capacity recommendations. The shared Compose image
+includes FFmpeg; rebuild it when upgrading. The API and worker use the same private
+`STORAGE_ROOT`.
 
 No additional port or public route is needed. Uploaded chunks are at most 512 KiB,
 below the managed virtual host's 1 MiB limit. Nginx streams upload bodies and media
@@ -71,8 +73,9 @@ error notice is cleared and processing status is shown.
 - Quota of 20 GiB of reserved originals per author, including incomplete uploads.
 - H.264/AAC output in fast-start MP4, up to 1280×720, preserving aspect ratio without
   upscaling; up to 4 GiB output. A JPEG poster is generated automatically.
-- One processing job per worker, two encoding threads, a four-hour timeout, a heartbeat
-  every 15 seconds, and reclaiming jobs with no heartbeat for two minutes.
+- One processing job per media-concurrency slot, two encoding threads per job, a
+  four-hour timeout, a heartbeat every 15 seconds, and reclaiming jobs with no
+  heartbeat for two minutes.
 - Original chunks are retained for retries. Reserve space for temporary files and
   outputs too; the originals quota is not a total disk-usage limit.
 - The worker expires incomplete uploads after seven inactive days and collects

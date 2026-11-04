@@ -1295,6 +1295,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Local scheduler coverage verifies the configured media-job concurrency bound;
   this is not a hardware/network capacity result. Host/VPN/VPS measurements and
   operator-approved audience and bitrate limits remain external qualifications.
+  Video operations documentation now distinguishes media slots (default 1,
+  maximum 4; one job each) from outbox concurrency (default 4, maximum 20), and
+  labels these as application limits rather than capacity recommendations.
   Local validation: 2 media scheduler tests passed; build and lint passed.
 - [ ] **OPS-05 — Safe upgrades of the published prototype.**
   Staging environment, backup before migration, artifacts/permissions verified as
