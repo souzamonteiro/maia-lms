@@ -1136,6 +1136,11 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Migration 130 validates entitlement creation/revocation timestamps and freezes
   entitlement identity/creation time without changing access-window or revocation
   behavior.
+  Migration 131 makes revocation terminal while allowing a separate entitlement
+  to represent a legitimate later grant of access.
+  Local validation: 268 tests passed and 3 skipped; build and lint passed.
+  External qualification was not repeated for this migration; Firefox/WebKit
+  and physical-device validation remain pending.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:

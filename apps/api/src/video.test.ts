@@ -411,7 +411,9 @@ it.runIf(process.env.VIDEO_TEST_REAL === '1')(
       (await fetch(url, { headers: { Cookie: learner.cookie, Range: 'bytes=32-63' } })).status,
     ).toBe(403);
     expect((await fetch(captionUrl, { headers: { Cookie: learner.cookie } })).status).toBe(403);
-    db.prepare('UPDATE entitlements SET revoked_at=NULL').run();
+    db.prepare(`INSERT INTO entitlements(id,enrollment_id,source_type,starts_at)
+      SELECT 'replacement-video-access',id,'admin',datetime('now','-1 minute')
+      FROM enrollments WHERE user_id=? AND course_id=?`).run(learner.id, c.id);
     expect((await fetch(url, { headers: { Cookie: learner.cookie } })).status).toBe(200);
     expect(
       (
@@ -586,7 +588,9 @@ it('materials preserve revisions and authorize downloads, including preview and 
   db.prepare("UPDATE entitlements SET revoked_at=datetime('now')").run();
   expect((await download(courseFile, learner.cookie)).status).toBe(403);
   expect((await fetch(inlineUrl, { headers: { Cookie: learner.cookie } })).status).toBe(403);
-  db.prepare('UPDATE entitlements SET revoked_at=NULL').run();
+  db.prepare(`INSERT INTO entitlements(id,enrollment_id,source_type,starts_at)
+    SELECT 'replacement-materials-access',id,'admin',datetime('now','-1 minute')
+    FROM enrollments WHERE user_id=? AND course_id=?`).run(learner.id, course.id);
   expect((await download(courseFile, learner.cookie)).status).toBe(200);
   expect((await fetch(inlineUrl, { headers: { Cookie: learner.cookie } })).status).toBe(200);
   expect(
