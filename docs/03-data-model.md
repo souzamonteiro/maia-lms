@@ -134,6 +134,8 @@ Migration 137 rejects a second `home_settings` insert even with SQLite `REPLACE`
 
 Migration 138 freezes the `home_settings` primary key so its required singleton ID remains `1`.
 
+Migration 139 permits new or reassigned homepage promotions only for courses that are published, have a published revision, and are not withdrawn. Existing placements are retained if their course later leaves publication; public rendering continues to filter those courses out.
+
 Migration 058 requires entitlement `starts_at` to be parseable and, when present, `ends_at` to be parseable and strictly later. Open-ended grants remain valid; malformed, zero-length, or reversed windows cannot be inserted or updated.
 
 Migration 059 constrains upload status changes to `UPLOADING → QUEUED/CANCELLED`, `QUEUED → PROCESSING`, `PROCESSING → READY/FAILED` (including same-state lease recovery), and `FAILED → QUEUED` retry. Idempotent same-state writes are allowed; READY and CANCELLED are terminal. Fixture setup and test updates follow this worker/API lifecycle.

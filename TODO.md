@@ -1154,7 +1154,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   version through SQLite conflict handling.
   Migration 138 freezes the singleton key at `id=1` so the settings lookup
   cannot be disabled by direct SQL updates.
-  Local validation: 270 tests passed and 3 skipped with one Vitest worker;
+  Migration 139 allows new and reassigned promotions only for published,
+  non-withdrawn courses; existing placements remain when courses are archived
+  or withdrawn.
+  Local validation: 271 tests passed and 3 skipped with one Vitest worker;
   build and lint passed. Firefox/WebKit and physical-device qualification
   remain external and pending.
   Parallel full-suite runs can hit the existing 5-second backup-test timeout

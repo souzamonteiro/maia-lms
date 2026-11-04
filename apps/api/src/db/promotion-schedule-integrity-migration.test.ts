@@ -10,8 +10,16 @@ it('validates promotion slot, priority, and time window on insert and update', (
     db.exec(`
       INSERT INTO users(id,email,email_normalized,password_hash)
       VALUES('user','user@example.com','user@example.com','hash');
-      INSERT INTO courses(id,slug,author_id) VALUES('course','course','user');
-      INSERT INTO courses(id,slug,author_id) VALUES('other-course','other-course','user');
+      INSERT INTO courses(id,slug,author_id)
+      VALUES('course','course','user'),('other-course','other-course','user');
+      INSERT INTO course_revisions(id,course_id,title,summary)
+      VALUES('course-revision','course','Course','Summary'),
+            ('other-revision','other-course','Other','Summary');
+      UPDATE course_revisions SET published_at=datetime('now')
+        WHERE id IN ('course-revision','other-revision');
+      UPDATE courses SET published_revision_id='course-revision' WHERE id='course';
+      UPDATE courses SET published_revision_id='other-revision' WHERE id='other-course';
+      UPDATE courses SET status='PUBLISHED' WHERE id IN ('course','other-course');
     `);
     const insert = db.prepare(
       'INSERT INTO promotions(id,slot,course_id,starts_at,ends_at,priority) VALUES(?,?,?,?,?,?)',
