@@ -38,6 +38,13 @@ it('requires parseable entitlement start times and strictly later optional end t
       WHERE id='bounded'`).run()).toThrow(/entitlement revocation is irreversible/);
     expect(() => db.prepare(`UPDATE entitlements SET revoked_at=revoked_at
       WHERE id='bounded'`).run()).not.toThrow();
+    expect(() => db.prepare(`UPDATE entitlements
+      SET starts_at='2026-10-04T10:00:00.000Z',ends_at='2026-10-04T11:00:00.000Z'
+      WHERE id='bounded'`).run()).not.toThrow();
+    expect(() => db.prepare(`UPDATE entitlements SET starts_at='2026-10-04T10:30:00.000Z'
+      WHERE id='bounded'`).run()).toThrow(/entitlement grant window is immutable/);
+    expect(() => db.prepare(`UPDATE entitlements SET ends_at=NULL
+      WHERE id='bounded'`).run()).toThrow(/entitlement grant window is immutable/);
     expect(() => db.prepare(`INSERT INTO entitlements(
       id,enrollment_id,source_type,starts_at,created_at
     ) VALUES('bad-created','enrollment','free','2026-10-04T10:00:00.000Z','not-a-date')`).run())
@@ -62,10 +69,10 @@ it('requires parseable entitlement start times and strictly later optional end t
 
     expect(() =>
       db.prepare('UPDATE entitlements SET ends_at=? WHERE id=?').run('2026-10-04T09:00:00.000Z', 'bounded'),
-    ).toThrow(/invalid entitlement time window/);
+    ).toThrow(/entitlement grant window is immutable/);
     expect(() =>
       db.prepare('UPDATE entitlements SET starts_at=? WHERE id=?').run('not-a-date', 'open-ended'),
-    ).toThrow(/invalid entitlement time window/);
+    ).toThrow(/entitlement grant window is immutable/);
   } finally {
     db.close();
   }

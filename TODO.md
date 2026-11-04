@@ -1138,9 +1138,12 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   behavior.
   Migration 131 makes revocation terminal while allowing a separate entitlement
   to represent a legitimate later grant of access.
+  Migration 132 freezes entitlement start/end terms; a corrected or renewed
+  grant must be represented by a separate record rather than rewriting history.
+  No production update path for entitlement windows was found.
   Local validation: 268 tests passed and 3 skipped; build and lint passed.
-  External qualification was not repeated for this migration; Firefox/WebKit
-  and physical-device validation remain pending.
+  External browser/device qualification was not repeated for this data-layer
+  change; Firefox/WebKit and physical-device validation remain pending.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
   Database + manifests/versions/referenced files + configuration, retention,
   off-site copies, and rehearsed restoration. Dependency: MEDIA-04. Acceptance:
