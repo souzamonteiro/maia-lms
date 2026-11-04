@@ -1208,9 +1208,12 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   The runbook now also documents age-encrypted off-site copies, private identity
   handling, decrypt-to-new-staging verification, and explicitly notes that age
   encryption does not prove sender identity. This is operator guidance, not an
-  integrated or locally exercised age workflow. Keep open for retention policy,
-  exercising recovery/configuration on a representative target, and host/device
-  qualification.
+  integrated or locally exercised age workflow. A local read-only planner now
+  verifies bundles and proposes the newest 7 daily, 4 weekly, and 12 monthly
+  copies without moving or deleting anything. Keep open for scheduled/remote
+  retention, exercising recovery/configuration on a representative target, and
+  host/device qualification. Local validation: 274 tests passed and 3 skipped
+  with one Vitest worker; build and lint passed.
 - [ ] **OPS-03 — Observability and dashboard operations (local dashboard; telemetry and alert delivery open).**
   Queue/transcode/playback/SMTP/payment/disk metrics, logs without tokens/PII,
   alerts, inspection, and administrative retries. Dependencies: JOB-01, PAY-03.

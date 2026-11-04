@@ -1,11 +1,41 @@
 import { it, expect } from 'vitest';
 import Database from 'better-sqlite3';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { runMigrations } from './migrate.js';
+import { planBackupRetention } from '../../../../scripts/backup-retention-policy.mjs';
+
+it('plans retention by UTC day, ISO week, and month without deleting records', () => {
+  const dates = [];
+  const newest = new Date('2026-11-04T12:00:00.000Z');
+  for (let daysAgo = 0; daysAgo < 16; daysAgo++) {
+    const date = new Date(newest);
+    date.setUTCDate(date.getUTCDate() - daysAgo);
+    dates.push(date);
+  }
+  for (let monthsAgo = 1; monthsAgo < 16; monthsAgo++) {
+    dates.push(new Date(Date.UTC(2026, 10 - monthsAgo, 15, 12)));
+  }
+  const bundles = dates.map((date, index) => ({
+    name: `bundle-${String(index).padStart(2, '0')}`,
+    createdAt: date.toISOString(),
+  }));
+  const { retained, candidates } = planBackupRetention(bundles);
+  const selectedReasons = retained.flatMap(bundle => bundle.keepReasons);
+
+  expect(new Set(selectedReasons.filter(reason => reason.startsWith('daily:'))).size).toBe(7);
+  expect(new Set(selectedReasons.filter(reason => reason.startsWith('weekly:'))).size).toBe(4);
+  expect(new Set(selectedReasons.filter(reason => reason.startsWith('monthly:'))).size).toBe(12);
+  expect(retained.length + candidates.length).toBe(bundles.length);
+  expect(retained.some(bundle => bundle.name === 'bundle-00')).toBe(true);
+  expect(candidates.length).toBeGreaterThan(0);
+  expect(() => planBackupRetention([{ name: 'invalid', createdAt: 'not-a-date' }]))
+    .toThrow(/Invalid backup creation timestamp/);
+});
+
 it('backs up a live WAL database and restores it without sidecar files', () => {
   const directory = mkdtempSync(join(tmpdir(), 'maia-backup-test-'));
   const source = join(directory, 'live.db');
@@ -88,6 +118,17 @@ it('creates a verifiable database-and-media bundle that can be restored in isola
     execFileSync(process.execPath, [resolve('scripts/restore-bundle.mjs'), '--verify', bundle], {
       stdio: 'pipe',
     });
+    const backupRoot = join(directory, 'backup-root');
+    mkdirSync(backupRoot);
+    cpSync(bundle, join(backupRoot, 'bundle'), { recursive: true });
+    const retentionPlan = execFileSync(
+      process.execPath,
+      [resolve('scripts/backup-retention-plan.mjs'), backupRoot],
+      { encoding: 'utf8' },
+    );
+    expect(retentionPlan).toContain('Verified bundles: 1; retained: 1; removal candidates: 0.');
+    expect(retentionPlan).toContain('No files were moved or deleted.');
+    expect(existsSync(join(backupRoot, 'bundle', 'manifest.json'))).toBe(true);
     renameSync(storage, join(directory, 'offline-storage'));
     execFileSync(process.execPath, [resolve('scripts/restore-bundle.mjs'), bundle, recovery], {
       stdio: 'pipe',

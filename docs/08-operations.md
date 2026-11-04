@@ -138,8 +138,23 @@ successful manifest if any database-referenced storage object is missing.
 Environment files, credentials, and other secrets are intentionally excluded.
 The database snapshot and media copy are separate operations; stop API and worker
 writes before a production recovery point that must be mutually consistent. The
-bundle feature is locally tested and does not replace off-site encryption,
-retention policy, or a rehearsed restore on the target host.
+bundle feature is locally tested and does not replace off-site encryption or a
+rehearsed restore on the target host.
+
+For a read-only retention plan over a directory containing only verified bundle
+directories, run:
+
+```bash
+npm run backup:retention-plan -- /path/to/backup-root
+```
+
+The planner verifies every bundle and proposes retaining the newest bundle from
+each of the 7 most recent UTC dates, 4 ISO weeks, and 12 UTC months. A bundle
+selected by multiple tiers is retained once. `REVIEW` entries are only removal
+candidates; the command never moves or deletes data. Inspect the plan, verify
+off-site copies and recovery coverage, and obtain operator approval before any
+manual deletion. This is a local policy planner, not scheduled retention or a
+remote storage lifecycle rule.
 
 ### Encrypting an off-site copy with age
 

@@ -18,6 +18,7 @@
     "admin": "node scripts/admin.mjs",
     "backup": "node scripts/backup.mjs",
     "backup:bundle": "node scripts/backup-bundle.mjs",
+    "backup:retention-plan": "node scripts/backup-retention-plan.mjs",
     "backup:verify": "node scripts/restore-bundle.mjs --verify",
     "restore:bundle": "node scripts/restore-bundle.mjs",
     "config:check": "tsx scripts/check-production-config.ts",
