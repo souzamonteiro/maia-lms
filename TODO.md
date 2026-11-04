@@ -1502,6 +1502,12 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   workflows passed both runs. Firefox remains unqualified; no workaround was
   applied because the failures are intermittent and the underlying cause is
   not established.
+  November 4 focused admin-operations E2E passed all 3 workflows in Firefox and
+  all 3 in WebKit on isolated ports. A complete Firefox real-media run passed
+  38/39; course withdrawal timed out waiting for `/my-learning` navigation to
+  load, while that workflow passed alone (1/1) on an isolated port. This does
+  not establish a stable full-suite Firefox run or physical-device qualification;
+  no timeout workaround or host change was made.
 - [ ] **DOC-01 — Keep contracts and operations aligned with implementation.**
   Update OpenAPI, data model, installation/configuration, author/learner/admin
   manuals, limits, and recovery procedures with every delivery. Dependency:
