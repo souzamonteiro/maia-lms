@@ -1248,6 +1248,11 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   not SMTP delivery latency or an external alert channel. The alert is localized
   in en/pt-BR/es and included in the documented alert enum. Local validation:
   275 tests passed and 3 skipped with one Vitest worker; build and lint passed.
+  Failed media jobs now expose aggregate counts for an allowlist of safe error
+  codes; arbitrary or missing stored error text is collapsed into `UNKNOWN`.
+  This helps diagnose processing categories without returning filenames, upload
+  IDs or raw failure details. API privacy and i18n tests, full regression
+  (275 passed, 3 skipped), build and lint passed.
   Storage measurement failures now raise `STORAGE_UNAVAILABLE` alongside a null
   capacity instead of allowing an apparently alert-free snapshot. The panel
   explains the path/permission checks in en/pt-BR/es without exposing paths or

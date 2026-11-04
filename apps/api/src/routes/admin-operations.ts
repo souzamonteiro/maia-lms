@@ -35,6 +35,21 @@ export function adminOperationsRouter(db: Database.Database, config: Config): Ro
     const mediaCounts = db.prepare(`SELECT status,count(*) AS total
       FROM video_uploads GROUP BY status`).all() as Array<{ status: string; total: number }>;
     const media = Object.fromEntries(mediaCounts.map(row => [row.status, row.total]));
+    const mediaFailureRows = db.prepare(`SELECT
+      CASE error
+        WHEN 'FILE_INVALID' THEN error
+        WHEN 'FILE_MALWARE' THEN error
+        WHEN 'FILE_SCAN_FAILED' THEN error
+        WHEN 'VIDEO_TOOLS_MISSING' THEN error
+        WHEN 'VIDEO_PROCESSING_FAILED' THEN error
+        ELSE 'UNKNOWN'
+      END AS reason,
+      count(*) AS total
+      FROM video_uploads WHERE status='FAILED'
+      GROUP BY reason`).all() as Array<{ reason: string; total: number }>;
+    const mediaFailureReasons = Object.fromEntries(
+      mediaFailureRows.map(row => [row.reason, row.total]),
+    );
     const stuckMedia = (db.prepare(`SELECT count(*) AS total FROM video_uploads
       WHERE status='PROCESSING' AND (heartbeat IS NULL OR
         julianday(heartbeat)<julianday('now','-2 minutes'))`).get() as { total: number }).total;
@@ -126,7 +141,7 @@ export function adminOperationsRouter(db: Database.Database, config: Config): Ro
     res.set('Cache-Control', 'private, no-store').json({
       generatedAt: new Date(now).toISOString(),
       workers,
-      media: { byStatus: media, stuck: stuckMedia },
+      media: { byStatus: media, stuck: stuckMedia, failureReasons: mediaFailureReasons },
       outbox,
       emailTransport: {
         windowDays: 7,

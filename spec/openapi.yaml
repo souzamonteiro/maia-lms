@@ -2339,7 +2339,15 @@ paths:
                         startedAt: {type: string}
                         lastSeenAt: {type: string}
                         stoppedAt: {type: [string, 'null']}
-                  media: {type: object}
+                  media:
+                    type: object
+                    properties:
+                      byStatus: {type: object, additionalProperties: {type: integer, minimum: 0}}
+                      stuck: {type: integer, minimum: 0}
+                      failureReasons:
+                        type: object
+                        description: Counts of failed media grouped only by known safe error codes. Unrecognized or missing stored values are represented as UNKNOWN; raw error text and upload identities are never returned.
+                        additionalProperties: {type: integer, minimum: 0}
                   outbox:
                     type: object
                     required: [pending, exhausted, emailPending, emailExhausted, ready, oldestReadyDelaySeconds, readyDelayed]

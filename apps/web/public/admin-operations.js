@@ -3,6 +3,14 @@ const workerStatusKeys = {
   stale: 'adminOpsWorkerStale',
   stopped: 'adminOpsWorkerStopped',
 };
+const mediaFailureKeys = {
+  FILE_INVALID: 'adminOpsMediaErrorFileInvalid',
+  FILE_MALWARE: 'adminOpsMediaErrorFileMalware',
+  FILE_SCAN_FAILED: 'adminOpsMediaErrorFileScanFailed',
+  VIDEO_TOOLS_MISSING: 'adminOpsMediaErrorVideoToolsMissing',
+  VIDEO_PROCESSING_FAILED: 'adminOpsMediaErrorVideoProcessingFailed',
+  UNKNOWN: 'adminOpsMediaErrorUnknown',
+};
 const alertKeys = {
   WORKER_MISSING: 'adminOpsAlertWorkerMissing',
   WORKER_NOT_HEALTHY: 'adminOpsAlertWorkerNotHealthy',
@@ -104,6 +112,11 @@ export async function mountAdminOperations({ app, api, t, e, locale }) {
       const media = Object.entries(summary.media.byStatus).map(([status, count]) =>
         fact(t(`video${status}`), number(count)));
       media.push(fact(t('adminOpsMediaStuck'), number(summary.media.stuck)));
+      const failureReasons = Object.entries(summary.media.failureReasons);
+      if (failureReasons.length) {
+        media.push(...failureReasons.map(([reason, count]) =>
+          fact(t('adminOpsMediaFailureReason'), `${t(mediaFailureKeys[reason] || mediaFailureKeys.UNKNOWN)} · ${number(count)}`)));
+      }
       app.querySelector('#ops-media').innerHTML = media.join('');
 
       app.querySelector('#ops-outbox').innerHTML = [

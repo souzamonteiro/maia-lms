@@ -95,7 +95,9 @@ it('summarizes operational state for admins without exposing payloads or identit
     FROM users WHERE email='operations-admin@example.com'`);
   db.prepare(`INSERT INTO video_uploads(id,owner_id,course_id,filename,size,status,media_kind,error)
     VALUES('ops-video',(SELECT id FROM users WHERE email='operations-admin@example.com'),
-      'ops-course','private-name.mp4',10,'FAILED','video','VIDEO_PROCESSING_FAILED')`).run();
+      'ops-course','private-name.mp4',10,'FAILED','video','VIDEO_PROCESSING_FAILED'),
+      ('ops-video-private',(SELECT id FROM users WHERE email='operations-admin@example.com'),
+      'ops-course','other-private.mp4',10,'FAILED','video','private@example.com:secret details')`).run();
   db.prepare(`INSERT INTO outbox(id,event_type,payload,attempts,last_error)
     VALUES('ops-outbox','email.send',?,5,?)`)
     .run(JSON.stringify({ to: 'private@example.com', token: 'secret-token' }), 'private error');
@@ -111,7 +113,11 @@ it('summarizes operational state for admins without exposing payloads or identit
   const result = await request('/api/v1/admin/operations', 'GET', undefined, adminCookie);
   expect(result.status).toBe(200);
   expect(result.data).toMatchObject({
-    media: { byStatus: { FAILED: 1 }, stuck: 0 },
+    media: {
+      byStatus: { FAILED: 2 },
+      stuck: 0,
+      failureReasons: { VIDEO_PROCESSING_FAILED: 1, UNKNOWN: 1 },
+    },
     outbox: { exhausted: 1, emailExhausted: 1 },
     playback: {
       windowDays: 7,
@@ -130,6 +136,9 @@ it('summarizes operational state for admins without exposing payloads or identit
   expect(serialized).not.toContain('private@example.com');
   expect(serialized).not.toContain('secret-token');
   expect(serialized).not.toContain('private-name.mp4');
+  expect(serialized).not.toContain('other-private.mp4');
+  expect(serialized).not.toContain('private@example.com');
+  expect(serialized).not.toContain('secret details');
   expect(serialized).not.toContain('private error');
 });
 
