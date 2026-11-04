@@ -1161,8 +1161,13 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   advance exactly once on every update, preserving optimistic concurrency.
   Migration 141 enforces category slug syntax and name/description limits on
   direct inserts and edits, matching the API's category contract.
-  Validation through migration 141: 273 tests passed and 3 skipped with one
-  Vitest worker; build and lint passed. Firefox/WebKit and physical-device
+  Migration 142 treats the full JavaScript trim whitespace set as blank in
+  category names on direct SQLite inserts and edits, matching the API's
+  `.trim().min(1)` validation; focused migration tests cover all Unicode
+  whitespace code points and both write paths. The two focused category
+  integrity tests, workspace build, and lint passed after migration 142.
+  Previous full validation through migration 141: 273 tests passed and 3 skipped
+  with one Vitest worker; build and lint passed. Firefox/WebKit and physical-device
   qualification remain external and pending.
   Parallel full-suite runs can hit the existing 5-second backup-test timeout
   under concurrent test load; the backup test passes alone.

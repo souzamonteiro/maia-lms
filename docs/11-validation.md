@@ -2849,3 +2849,21 @@ Validation:
 
 Firefox remains unqualified at full-suite level. No deployment, host, or
 running-instance changes were made.
+
+## Category SQLite whitespace invariant — November 4, 2026
+
+The category-field integrity migration now treats the JavaScript `trim()`
+Unicode whitespace set as blank when validating names at the SQLite boundary.
+This aligns direct SQL writes with the existing API `.trim().min(1)` rule.
+
+Validation:
+- Focused category field/version migration tests: 2/2 passed; the tests apply
+  the complete migration chain through migration 142 and reject Unicode-only
+  names on both insert and update.
+- `npm run build`: passed across all workspaces.
+- `npm run lint`: passed.
+- `git diff --check`: passed.
+
+This is local migration/test validation only. No deployment, host, or
+running-instance changes were made; Firefox/WebKit full-suite and physical
+device qualifications are unaffected.

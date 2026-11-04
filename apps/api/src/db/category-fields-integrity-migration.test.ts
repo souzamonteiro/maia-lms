@@ -36,6 +36,18 @@ it('validates category slugs, names, and descriptions on insert and update', () 
       expect(() => insert.run(id, slug, name, description)).toThrow(/invalid category fields/);
     }
 
+    const unicodeWhitespace = [
+      '\u00a0', '\u1680', '\u2000', '\u2001', '\u2002', '\u2003', '\u2004',
+      '\u2005', '\u2006', '\u2007', '\u2008', '\u2009', '\u200a', '\u2028',
+      '\u2029', '\u202f', '\u205f', '\u3000', '\ufeff',
+    ];
+    for (const [index, whitespace] of unicodeWhitespace.entries()) {
+      expect(whitespace.trim()).toBe('');
+      expect(() =>
+        insert.run(`unicode-${index}`, `unicode-${index}`, whitespace, ''),
+      ).toThrow(/invalid category fields/);
+    }
+
     expect(() =>
       db.prepare(
         `UPDATE categories
@@ -45,6 +57,10 @@ it('validates category slugs, names, and descriptions on insert and update', () 
     ).not.toThrow();
     expect(() =>
       db.prepare('UPDATE categories SET name=?,version=version+1 WHERE id=?').run('  ', 'category'),
+    ).toThrow(/invalid category fields/);
+    expect(() =>
+      db.prepare('UPDATE categories SET name=?,version=version+1 WHERE id=?')
+        .run('\u2003', 'category'),
     ).toThrow(/invalid category fields/);
   } finally {
     db.close();
