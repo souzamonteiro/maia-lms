@@ -14,6 +14,7 @@ const mediaFailureKeys = {
 const alertKeys = {
   WORKER_MISSING: 'adminOpsAlertWorkerMissing',
   WORKER_NOT_HEALTHY: 'adminOpsAlertWorkerNotHealthy',
+  WORKER_STALE: 'adminOpsAlertWorkerStale',
   MEDIA_JOB_STUCK: 'adminOpsAlertMediaStuck',
   MEDIA_JOB_FAILED: 'adminOpsAlertMediaFailed',
   OUTBOX_EXHAUSTED: 'adminOpsAlertOutboxExhausted',

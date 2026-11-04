@@ -126,8 +126,12 @@ export function adminOperationsRouter(db: Database.Database, config: Config): Ro
     }
 
     const alerts: string[] = [];
-    if (!workers.some(worker => worker.status === 'healthy'))
-      alerts.push(workers.length ? 'WORKER_NOT_HEALTHY' : 'WORKER_MISSING');
+    if (!workers.length)
+      alerts.push('WORKER_MISSING');
+    else if (workers.some(worker => worker.status === 'stale'))
+      alerts.push('WORKER_STALE');
+    else if (!workers.some(worker => worker.status === 'healthy'))
+      alerts.push('WORKER_NOT_HEALTHY');
     if (stuckMedia) alerts.push('MEDIA_JOB_STUCK');
     if (Number(media.FAILED ?? 0)) alerts.push('MEDIA_JOB_FAILED');
     if (Number(outbox.exhausted)) alerts.push('OUTBOX_EXHAUSTED');

@@ -1253,6 +1253,12 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   This helps diagnose processing categories without returning filenames, upload
   IDs or raw failure details. API privacy and i18n tests, full regression
   (275 passed, 3 skipped), build and lint passed.
+  Stale workers now trigger a distinct localized alert when at least one
+  instance misses the existing 45-second heartbeat window, even if another
+  worker remains healthy. Historical stopped instances do not trigger it.
+  Local validation: 8 focused API tests; full regression with one Vitest worker
+  (276 passed, 3 skipped); build/lint; and all 3 focused Chromium operations
+  workflows. No external worker, host, or device qualification was performed.
   Storage measurement failures now raise `STORAGE_UNAVAILABLE` alongside a null
   capacity instead of allowing an apparently alert-free snapshot. The panel
   explains the path/permission checks in en/pt-BR/es without exposing paths or

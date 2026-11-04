@@ -84,6 +84,15 @@ it('distinguishes unavailable capacity from low space and clears the alert after
   }
 });
 
+it('distinguishes stopped worker history from stale active heartbeats', async () => {
+  const cookie = await account('stopped-worker-admin@example.com', 'admin');
+  db.exec(`INSERT INTO worker_instances(instance_id,started_at,heartbeat_at,stopped_at)
+    VALUES('stopped-worker',datetime('now','-1 hour'),datetime('now','-1 hour'),datetime('now','-1 hour'));`);
+  const result = await request('/api/v1/admin/operations', 'GET', undefined, cookie);
+  expect(result.data.alerts).toContain('WORKER_NOT_HEALTHY');
+  expect(result.data.alerts).not.toContain('WORKER_STALE');
+});
+
 it('summarizes operational state for admins without exposing payloads or identities', async () => {
   const adminCookie = await account('operations-admin@example.com', 'admin');
   const authorCookie = await account('operations-author@example.com', 'author');
@@ -126,7 +135,7 @@ it('summarizes operational state for admins without exposing payloads or identit
       byStatusClass: { '2': 8, '4': 2 },
       responseDuration: { measuredRequests: 0, averageMs: null },
     },
-    alerts: ['MEDIA_JOB_FAILED', 'OUTBOX_EXHAUSTED'],
+    alerts: ['WORKER_STALE', 'MEDIA_JOB_FAILED', 'OUTBOX_EXHAUSTED'],
   });
 
   expect(result.data.workers.map((worker: { status: string }) => worker.status).sort())
