@@ -1518,6 +1518,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   dashboard limits, SEO metadata, and validation results. `spec/openapi.yaml` now
   documents HLS playback plus the new operational and privacy endpoints; the future
   design remains separate in `planned-openapi.yaml`.
+  The operations guide now documents the worker-alert classification, 20-record
+  evaluation scope, stopped-worker behavior, and dashboard-only delivery;
+  focused worker-alert API tests passed (8).
   The implemented contract is still incomplete, and installation, recovery,
   author/learner/admin manuals and cross-document review need a full pass. Keep
   DOC-01 open.
