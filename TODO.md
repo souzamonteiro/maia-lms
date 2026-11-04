@@ -1159,9 +1159,11 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   or withdrawn.
   Migration 140 requires category versions to be positive integers and to
   advance exactly once on every update, preserving optimistic concurrency.
-  Local validation: 272 tests passed and 3 skipped with one Vitest worker;
-  build and lint passed. Firefox/WebKit and physical-device qualification
-  remain external and pending.
+  Migration 141 enforces category slug syntax and name/description limits on
+  direct inserts and edits, matching the API's category contract.
+  Validation through migration 141: 273 tests passed and 3 skipped with one
+  Vitest worker; build and lint passed. Firefox/WebKit and physical-device
+  qualification remain external and pending.
   Parallel full-suite runs can hit the existing 5-second backup-test timeout
   under concurrent test load; the backup test passes alone.
 - [ ] **OPS-02 — Integrated backup and media restoration.**

@@ -139,6 +139,8 @@ Migration 139 permits new or reassigned homepage promotions only for courses tha
 
 Migration 140 requires category versions to be positive integers on insert and to advance exactly one on every update, preserving optimistic concurrency for taxonomy edits.
 
+Migration 141 validates category fields at the SQLite boundary: slugs must be lowercase ASCII letters/digits separated by single hyphens and remain within 3–100 characters; names must be nonblank and at most 100 characters; descriptions are limited to 1000 characters.
+
 Migration 058 requires entitlement `starts_at` to be parseable and, when present, `ends_at` to be parseable and strictly later. Open-ended grants remain valid; malformed, zero-length, or reversed windows cannot be inserted or updated.
 
 Migration 059 constrains upload status changes to `UPLOADING → QUEUED/CANCELLED`, `QUEUED → PROCESSING`, `PROCESSING → READY/FAILED` (including same-state lease recovery), and `FAILED → QUEUED` retry. Idempotent same-state writes are allowed; READY and CANCELLED are terminal. Fixture setup and test updates follow this worker/API lifecycle.
