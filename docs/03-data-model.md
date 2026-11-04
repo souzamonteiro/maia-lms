@@ -9,6 +9,7 @@ SQLite stores UUIDs as TEXT, UTC timestamps as TEXT (ISO 8601 or SQLite datetime
 | sessions | id, user_id, hash, expires_at, revoked_at | legacy schema; identity immutable; revocation one-way; revoked on restore |
 | courses | id, slug, access_mode, status, locale, author_id, current_revision_id, published_revision_id | unique slug; revision pointers must reference revisions owned by this course; controlled transitions |
 | course_revisions | id, course_id, title, summary, slug, access_mode, locale, learning_outcomes, policy_json, cover_file_id, trailer_video_id, published_at | immutable once published; cover/trailer uploads belong to course and match media kind |
+| categories | id, slug, name, description, version | unique slug; version advances exactly one on every update |
 | modules | id, revision_id, sort_order, title | unique revision/order |
 | lessons | id, module_id, title, sort_order, kind, video_id, body, content_format, is_required, is_preview | unique module/order; video must belong to revision's course and have video media kind; preview explicit |
 | course_attachments | id, revision_id, lesson_id?, upload_id, title, description, sort_order | upload must be an attachment belonging to revision's course; optional lesson must belong to revision; unique position within each revision/lesson list |
@@ -135,6 +136,8 @@ Migration 137 rejects a second `home_settings` insert even with SQLite `REPLACE`
 Migration 138 freezes the `home_settings` primary key so its required singleton ID remains `1`.
 
 Migration 139 permits new or reassigned homepage promotions only for courses that are published, have a published revision, and are not withdrawn. Existing placements are retained if their course later leaves publication; public rendering continues to filter those courses out.
+
+Migration 140 requires category versions to be positive integers on insert and to advance exactly one on every update, preserving optimistic concurrency for taxonomy edits.
 
 Migration 058 requires entitlement `starts_at` to be parseable and, when present, `ends_at` to be parseable and strictly later. Open-ended grants remain valid; malformed, zero-length, or reversed windows cannot be inserted or updated.
 

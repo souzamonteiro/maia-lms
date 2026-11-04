@@ -1157,7 +1157,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Migration 139 allows new and reassigned promotions only for published,
   non-withdrawn courses; existing placements remain when courses are archived
   or withdrawn.
-  Local validation: 271 tests passed and 3 skipped with one Vitest worker;
+  Migration 140 requires category versions to be positive integers and to
+  advance exactly once on every update, preserving optimistic concurrency.
+  Local validation: 272 tests passed and 3 skipped with one Vitest worker;
   build and lint passed. Firefox/WebKit and physical-device qualification
   remain external and pending.
   Parallel full-suite runs can hit the existing 5-second backup-test timeout
