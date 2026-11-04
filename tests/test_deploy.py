@@ -31,6 +31,23 @@ class DeploymentTests(unittest.TestCase):
         self.assertNotIn('SESSION_SECRET', result.stdout)
         self.assertNotIn('MEDIA_SIGNING_KEY', result.stdout)
 
+    def test_vps_installer_dry_run_renders_site_without_privileged_execution(self):
+        result = subprocess.run(
+            [
+                'bash', str(ROOT/'install.sh'), 'vps',
+                '--upstream', '10.77.0.2:4321',
+                '--domain', 'staging.example.test',
+                '--dry-run',
+            ],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('server_name staging.example.test;', result.stdout)
+        self.assertIn('proxy_pass http://10.77.0.2:4321;', result.stdout)
+        self.assertIn('/etc/letsencrypt/live/staging.example.test/fullchain.pem', result.stdout)
+        self.assertIn('return 301 https://staging.example.test$request_uri;', result.stdout)
+
     def test_default_https_and_acme(self):
         result = self.render('--upstream', '10.77.0.2:3200')
         self.assertEqual(result.returncode, 0)
