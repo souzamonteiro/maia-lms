@@ -130,6 +130,8 @@ Migration 135 prevents multiple hero placements and duplicate courses within one
 
 Migration 136 protects the `home_settings` singleton and requires its integer version to advance exactly one on every update, preserving optimistic concurrency checks.
 
+Migration 137 rejects a second `home_settings` insert even with SQLite `REPLACE` conflict handling, preventing the singleton's version from being reset.
+
 Migration 058 requires entitlement `starts_at` to be parseable and, when present, `ends_at` to be parseable and strictly later. Open-ended grants remain valid; malformed, zero-length, or reversed windows cannot be inserted or updated.
 
 Migration 059 constrains upload status changes to `UPLOADING → QUEUED/CANCELLED`, `QUEUED → PROCESSING`, `PROCESSING → READY/FAILED` (including same-state lease recovery), and `FAILED → QUEUED` retry. Idempotent same-state writes are allowed; READY and CANCELLED are terminal. Fixture setup and test updates follow this worker/API lifecycle.

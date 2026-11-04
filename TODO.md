@@ -1150,10 +1150,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Migration 136 preserves the `home_settings` singleton and requires version
   increments of exactly one, protecting optimistic concurrency from direct SQL
   updates and deletion.
+  Migration 137 rejects a replacement insert that could reset the singleton's
+  version through SQLite conflict handling.
   Local validation: 270 tests passed and 3 skipped with one Vitest worker;
-  build and lint passed. Firefox/WebKit and physical-device qualification
-  remain external and pending.
-  Local validation: 269 tests passed and 3 skipped with one Vitest worker;
   build and lint passed. Firefox/WebKit and physical-device qualification
   remain external and pending.
   Parallel full-suite runs can hit the existing 5-second backup-test timeout
