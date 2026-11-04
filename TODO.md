@@ -1292,6 +1292,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   disk, and SQLite/FFmpeg concurrency. Dependencies: PLAY-02, OPS-01. Acceptance:
   record scenario, latency, error rate, resource use, and supported limits; if
   capacity is exceeded, enable storage/CDN through the adapter without changing access rights.
+  Local scheduler coverage verifies the configured media-job concurrency bound;
+  this is not a hardware/network capacity result. Host/VPN/VPS measurements and
+  operator-approved audience and bitrate limits remain external qualifications.
+  Local validation: 2 media scheduler tests passed; build and lint passed.
 - [ ] **OPS-05 — Safe upgrades of the published prototype.**
   Staging environment, backup before migration, artifacts/permissions verified as
   the service user, HTTPS smoke tests, rollback, and host/VPS runbook.

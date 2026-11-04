@@ -147,6 +147,9 @@ The implementation uses [FFmpeg](https://ffmpeg.org/ffmpeg.html) and
 [FFprobe](https://ffmpeg.org/ffprobe.html), invoked without a shell, with restricted
 input formats and no network protocols. The `video_uploads` queue is independent
 of the email outbox. Jobs publish outputs only while they still own the current lease.
+The local scheduler test verifies that media jobs do not exceed the configured
+concurrency. This checks application behavior only; it does not establish a safe
+concurrency, audience, bitrate, or capacity for any host or network.
 
 Back up SQLite **and** `STORAGE_ROOT`, preserving references and permissions. The
 installer's automatic database backup alone does not copy videos.

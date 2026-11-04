@@ -32,3 +32,19 @@ it('keeps media concurrency independent while the email outbox continues process
     db.close();
   }
 });
+
+it('does not exceed the configured media concurrency', async () => {
+  const jobs = new Set<Promise<boolean>>();
+  const releases: Array<(value: boolean) => void> = [];
+  const processOne = () => new Promise<boolean>(resolve => releases.push(resolve));
+
+  fillMediaCapacity(jobs, 4, processOne);
+  fillMediaCapacity(jobs, 4, processOne);
+
+  expect(jobs.size).toBe(4);
+  expect(releases).toHaveLength(4);
+
+  releases.forEach(release => release(true));
+  await Promise.all(jobs);
+  expect(jobs.size).toBe(0);
+});
