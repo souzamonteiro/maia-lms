@@ -59,6 +59,8 @@ const courseTitleSchema = z.string().min(3).max(255)
   .refine(value => !value.includes('\0'), 'NUL is not allowed');
 const courseSummarySchema = z.string().min(10).max(1000)
   .refine(value => !value.includes('\0'), 'NUL is not allowed');
+const boundedMetadataSchema = (maximum: number) =>
+  z.string().max(maximum).refine(value => !value.includes('\0'), 'NUL is not allowed');
 const courseSchema = z.object({
   categoryIds: z
     .array(z.string().uuid())
@@ -66,17 +68,17 @@ const courseSchema = z.object({
     .refine(ids => new Set(ids).size === ids.length)
     .default([]),
   trailerVideoId: z.string().uuid().nullable().default(null),
-  instructorName: z.string().max(200).default(''),
-  instructorBio: z.string().max(5000).default(''),
-  accessTerms: z.string().max(5000).default(''),
-  certificateTerms: z.string().max(5000).default(''),
+  instructorName: boundedMetadataSchema(200).default(''),
+  instructorBio: boundedMetadataSchema(5000).default(''),
+  accessTerms: boundedMetadataSchema(5000).default(''),
+  certificateTerms: boundedMetadataSchema(5000).default(''),
 
-  learningOutcomes: z.string().max(5000).default(''),
-  prerequisites: z.string().max(5000).default(''),
+  learningOutcomes: boundedMetadataSchema(5000).default(''),
+  prerequisites: boundedMetadataSchema(5000).default(''),
   level: z.enum(['beginner', 'intermediate', 'advanced']).nullable().default(null),
   durationMinutes: z.number().int().min(1).max(60000).nullable().default(null),
   coverFileId: z.string().uuid().nullable().default(null),
-  coverAlt: z.string().max(300).default(''),
+  coverAlt: boundedMetadataSchema(300).default(''),
   attachments: z.array(attachmentSchema).max(30).default([]),
   creationId: z.string().uuid().optional(),
   slug: slugSchema,

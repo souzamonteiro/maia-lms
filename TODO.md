@@ -1213,6 +1213,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   rejection for modules, lessons, and attachments at API and SQLite boundaries.
   Migration 158 enforces nonempty module/lesson/attachment titles plus
   attachment-description NUL and UTF-16 length constraints.
+  Migration 159 aligns the remaining course-revision metadata field maxima
+  with API UTF-16 counting and rejects embedded NUL on API/SQLite writes.
   Previous full validation through migration 141: 273 tests passed and 3 skipped
   with one Vitest worker; build and lint passed. Firefox/WebKit and physical-device
   qualification remain external and pending.

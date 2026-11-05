@@ -2971,6 +2971,17 @@ The focused migration test passed for inserts and updates, including a valid
 workspace build, lint, and `git diff --check` also passed. This change is local
 only; it has not been deployed or applied to a host or running instance.
 
+## Course revision metadata limits — November 5, 2026
+
+Migration 159 enforces API-matching UTF-16 maxima and embedded-NUL rejection
+for instructor name/bio, access and certificate terms, learning outcomes,
+prerequisites, and cover alternative text. The course API uses a shared bounded
+metadata schema for these fields. Existing minimum-length behavior is unchanged.
+
+Focused SQLite migration and course-metadata API tests passed. Workspace build,
+lint, and `git diff --check` passed. This change is local only; it has not been
+deployed or applied to a host or running instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with

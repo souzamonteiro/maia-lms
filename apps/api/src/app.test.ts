@@ -1236,6 +1236,19 @@ describe('course metadata validation', () => {
     }, admin.cookie)).status).toBe(422);
   });
 
+  it('rejects NUL and over-limit course metadata', async () => {
+    const admin = await account('course-metadata-bounds-admin@example.com', 'admin');
+    const course = draft('invalid-course-metadata-bounds');
+    expect((await request('/api/v1/admin/courses', 'POST', {
+      ...course,
+      instructorBio: '😀'.repeat(2501),
+    }, admin.cookie)).status).toBe(422);
+    expect((await request('/api/v1/admin/courses', 'POST', {
+      ...course,
+      coverAlt: 'Alternative\u0000text',
+    }, admin.cookie)).status).toBe(422);
+  });
+
   it('rejects NUL and over-limit titles in modules and lessons', async () => {
     const admin = await account('authoring-title-admin@example.com', 'admin');
     const course = draft('invalid-authoring-title');
