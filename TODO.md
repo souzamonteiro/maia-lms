@@ -1237,10 +1237,14 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Migration 169 requires parseable `created_at`, `updated_at`, and optional
   `verified_at` values on user inserts and timestamp updates, preserving both
   SQLite-default and ISO timestamp formats without imposing timestamp ordering.
+  Migration 170 requires `password_hash` to be nonempty NUL-free text on user
+  inserts and hash updates; it deliberately does not prescribe a hash encoding
+  or retroactively inspect existing credentials.
   Last full validation through migration 141: 273 tests passed and 3 skipped
   with one Vitest worker; build and lint passed. Focused database validation at
-  migration 169: 92 tests passed across 64 files; four account API workflows,
-  workspace build, and lint passed.
+  migration 170: 93 tests passed across 65 files; the administrator password
+  reset test, workspace build, and lint passed. Four account API workflows also
+  passed during migration 169 validation.
   Firefox/WebKit and physical-device qualification remain external and pending.
   Parallel full-suite runs can hit the existing 5-second backup-test timeout
   under concurrent test load; the backup test passes alone.

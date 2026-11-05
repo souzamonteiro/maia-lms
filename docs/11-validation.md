@@ -3148,6 +3148,21 @@ tests passed (92 tests across 64 files); workspace build and lint passed. This
 change is local only; it has not been deployed or applied to a host or running
 instance.
 
+## User password-hash integrity — November 5, 2026
+
+Migration 170 requires `users.password_hash` to be nonempty, NUL-free text on
+user inserts and password-hash updates. It does not impose a specific encoded
+hash format, preserving compatibility with existing credential encodings and
+test/legacy opaque hashes. Existing rows are not rewritten or retroactively
+validated.
+
+The focused migration test covers accepted nonempty text and rejected empty,
+NUL-containing, and BLOB values on both insert and update. The complete database
+migration suite passed (93 tests across 65 files), and the administrator
+password-reset test passed. Workspace build, lint, and `git diff --check` passed.
+This change is local only; it has not been deployed or applied to a host or
+running instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with
