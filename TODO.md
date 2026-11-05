@@ -1190,6 +1190,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   website URLs on direct inserts/updates, consistent with the API's URL policy.
   Instructor-profile migration tests (3), focused API coverage, build, and lint
   passed through migration 149, including non-HTTPS and oversize URL rejection.
+  Migration 150 validates instructor profile timestamps and prevents
+  `updated_at` regression on direct writes. Profile migration tests (4), focused
+  API test, build, and lint passed through migration 150.
   Previous full validation through migration 141: 273 tests passed and 3 skipped
   with one Vitest worker; build and lint passed. Firefox/WebKit and physical-device
   qualification remain external and pending.

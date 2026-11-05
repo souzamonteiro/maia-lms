@@ -2886,6 +2886,23 @@ Validation:
 This change is local only; it has not been deployed or applied to a host or
 running instance.
 
+## Instructor profile timestamp integrity — November 4, 2026
+
+Migration 150 validates `instructor_profiles.updated_at` on insert and update
+and prevents updates from moving the timestamp backward. Equal timestamps
+remain valid, preserving same-second updates.
+
+Validation:
+- Instructor-profile migration tests: 4/4 passed through migration 150,
+  including invalid timestamps, equal-time updates, and backward-time rejection.
+- Focused instructor-profile API test: passed.
+- `npm run build`: passed across all workspaces.
+- `npm run lint`: passed.
+- `git diff --check`: passed.
+
+This change is local only; it has not been deployed or applied to a host or
+running instance.
+
 ## Instructor website URL integrity — November 4, 2026
 
 Migration 148 enforces the API's 500 UTF-16-unit maximum and rejects embedded

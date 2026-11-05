@@ -153,3 +153,39 @@ it('limits instructor profile website URLs to 500 UTF-16 units on direct writes'
     db.close();
   }
 });
+
+it('validates instructor profile timestamps and prevents updated_at regression', () => {
+  const db = new Database(':memory:');
+  db.pragma('foreign_keys = ON');
+  try {
+    runMigrations(db);
+    const addUser = db.prepare(
+      "INSERT INTO users(id,email,email_normalized,password_hash,role) VALUES(?,?,?,?,'author')",
+    );
+    addUser.run('user', 'user@example.com', 'user@example.com', 'hash');
+    db.prepare(
+      `INSERT INTO instructor_profiles(user_id,slug,display_name,updated_at)
+       VALUES('user','ada-lovelace','Ada Lovelace','2026-11-04T12:00:00Z')`,
+    ).run();
+
+    addUser.run('invalid', 'invalid@example.com', 'invalid@example.com', 'hash');
+    expect(() =>
+      db.prepare(
+        `INSERT INTO instructor_profiles(user_id,slug,display_name,updated_at)
+         VALUES('invalid','invalid-profile','Invalid','not-a-timestamp')`,
+      ).run(),
+    ).toThrow(/invalid instructor profile timestamp/);
+
+    const update = db.prepare(
+      'UPDATE instructor_profiles SET updated_at=? WHERE user_id=?',
+    );
+    expect(() => update.run('2026-11-04T12:00:00Z', 'user')).not.toThrow();
+    expect(() => update.run('2026-11-04T12:00:01Z', 'user')).not.toThrow();
+    expect(() => update.run('2026-11-04T11:59:59Z', 'user')).toThrow(
+      /cannot move backward/,
+    );
+    expect(() => update.run('invalid', 'user')).toThrow(/cannot move backward/);
+  } finally {
+    db.close();
+  }
+});
