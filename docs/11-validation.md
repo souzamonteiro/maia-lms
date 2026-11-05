@@ -3072,6 +3072,19 @@ insert/update paths. All database migration tests passed (88 tests across 61
 files). Workspace build, lint, and `git diff --check` passed. This change is
 local only; it has not been deployed or applied to a host or running instance.
 
+## User session-version integrity — November 5, 2026
+
+Migration 167 enforces nonnegative integer session versions and allows updates
+only to preserve the value or increment it by one. This matches the API's
+session invalidation paths for password, role/status changes, and bundle
+restoration. Existing rows are neither rewritten nor retroactively validated.
+
+Focused migration tests passed for valid defaults, preserved values, single
+increments, and rejection of negative, fractional, text, regressing, and
+multi-generation updates. All database migration tests passed (89 tests across
+62 files); workspace build, lint, and `git diff --check` passed. This change is
+local only; it has not been deployed or applied to a host or running instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with

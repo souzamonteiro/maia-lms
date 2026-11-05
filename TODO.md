@@ -1229,9 +1229,11 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   for direct user inserts and updates, without narrowing supported language codes.
   Migration 166 enforces the nullable 1–60,000 integer duration bound for course
   revisions on direct inserts and updates, preserving legacy null durations.
+  Migration 167 requires user session versions to be nonnegative integers and
+  prevents direct SQL updates from moving backward or advancing multiple generations.
   Last full validation through migration 141: 273 tests passed and 3 skipped
   with one Vitest worker; build and lint passed. Focused database validation at
-  migration 166: 88 tests passed; workspace build and lint passed.
+  migration 167: 89 tests passed; workspace build and lint passed.
   Firefox/WebKit and physical-device qualification remain external and pending.
   Parallel full-suite runs can hit the existing 5-second backup-test timeout
   under concurrent test load; the backup test passes alone.
