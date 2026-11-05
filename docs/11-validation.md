@@ -2886,6 +2886,26 @@ Validation:
 This change is local only; it has not been deployed or applied to a host or
 running instance.
 
+## Instructor profile text integrity — November 4, 2026
+
+Migration 147 aligns `display_name` and `bio` SQLite validation with the API:
+JavaScript Unicode whitespace-only names are rejected, maximum lengths use
+UTF-16 units (100 for display names and 5000 for bios), and embedded NUL is
+rejected. The API schema enforces the same NUL rule; direct-SQL coverage checks
+insert and update behavior.
+
+Validation:
+- Instructor-profile migration tests: 2/2 passed through migration 147,
+  covering Unicode-only names, UTF-16 boundaries, NUL, and update rejection.
+- Focused instructor-profile API test: passed for the same invalid-input
+  categories.
+- `npm run build`: passed across all workspaces.
+- `npm run lint`: passed.
+- `git diff --check`: passed.
+
+This change is local only; it has not been deployed or applied to a host or
+running instance.
+
 ## Instructor profile slug invariant — November 4, 2026
 
 Migration 146 enforces the API's profile slug grammar for direct SQLite writes:

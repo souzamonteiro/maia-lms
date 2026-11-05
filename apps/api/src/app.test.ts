@@ -1878,6 +1878,38 @@ describe('public instructor profiles', () => {
         ).status,
       ).toBe(422);
     }
+    for (const displayName of ['\u00a0', `${'😀'.repeat(50)}😀`, 'Ada\u0000Lovelace']) {
+      expect(
+        (
+          await request(
+            '/api/v1/auth/instructor-profile',
+            'PUT',
+            { ...profile, displayName },
+            author.cookie,
+          )
+        ).status,
+      ).toBe(422);
+    }
+    expect(
+      (
+        await request(
+          '/api/v1/auth/instructor-profile',
+          'PUT',
+          { ...profile, bio: `${'😀'.repeat(2500)}😀` },
+          author.cookie,
+        )
+      ).status,
+    ).toBe(422);
+    expect(
+      (
+        await request(
+          '/api/v1/auth/instructor-profile',
+          'PUT',
+          { ...profile, bio: 'Biography\u0000suffix' },
+          author.cookie,
+        )
+      ).status,
+    ).toBe(422);
     expect(
       (
         await request(

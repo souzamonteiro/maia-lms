@@ -7,8 +7,18 @@ import { localizeCourseMetadata } from '../services/course-metadata.js';
 
 const profileSchema = z.object({
   slug: z.string().trim().min(3).max(80).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
-  displayName: z.string().trim().min(1).max(100),
-  bio: z.string().trim().max(5000).default(''),
+  displayName: z
+    .string()
+    .trim()
+    .min(1)
+    .max(100)
+    .refine(value => !value.includes('\0'), 'NUL characters are not allowed'),
+  bio: z
+    .string()
+    .trim()
+    .max(5000)
+    .refine(value => !value.includes('\0'), 'NUL characters are not allowed')
+    .default(''),
   websiteUrl: z
     .union([
       z.literal(''),

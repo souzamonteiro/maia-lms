@@ -1179,7 +1179,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   boundary with the API's lowercase alphanumeric segments separated by single
   hyphens; direct-SQL tests cover insert/update and boundary cases.
   The focused migration test, instructor-profile API test, workspace build, and
-  lint passed through migration 146.
+  lint passed through migration 146. Migration 147 aligns instructor display
+  name/bio whitespace, UTF-16 limits, and embedded-NUL constraints across
+  API/SQLite for inserts and updates. Profile migration tests (2), focused API
+  coverage, workspace build, and lint passed through migration 147.
   Previous full validation through migration 141: 273 tests passed and 3 skipped
   with one Vitest worker; build and lint passed. Firefox/WebKit and physical-device
   qualification remain external and pending.
