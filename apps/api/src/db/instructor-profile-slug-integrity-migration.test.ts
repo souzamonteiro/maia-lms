@@ -119,11 +119,24 @@ it('limits instructor profile website URLs to 500 UTF-16 units on direct writes'
       "INSERT INTO users(id,email,email_normalized,password_hash,role) VALUES('user-2','user-2@example.com','user-2@example.com','hash','author')",
     ).run();
     expect(() =>
-      insert.run('user-2', 'grace-hopper', 'Grace Hopper', `${boundaryUrl}a`),
+      insert.run('user-2', 'grace-hopper', 'Grace Hopper', 'http://example.com'),
+    ).toThrow(/must use HTTPS/);
+    expect(() =>
+      insert.run('user-2', 'grace-hopper', 'Grace Hopper', 'ftp://example.com'),
+    ).toThrow(/must use HTTPS/);
+    expect(() =>
+      insert.run('user-2', 'grace-hopper', 'Grace Hopper 2', `${boundaryUrl}a`),
     ).toThrow(/invalid instructor profile website URL/);
     expect(() =>
       insert.run('user-2', 'grace-hopper', 'Grace Hopper', 'https://example.com/\u0000suffix'),
     ).toThrow(/invalid instructor profile website URL/);
+    expect(() =>
+      insert.run('user-2', 'grace-hopper', 'Grace Hopper', 'HTTPS://example.com'),
+    ).not.toThrow();
+    expect(() =>
+      db.prepare('UPDATE instructor_profiles SET website_url=? WHERE user_id=?')
+        .run('http://example.com', 'user-2'),
+    ).toThrow(/must use HTTPS/);
     expect(() =>
       db.prepare('UPDATE instructor_profiles SET website_url=? WHERE user_id=?')
         .run(`${boundaryUrl}a`, 'user'),

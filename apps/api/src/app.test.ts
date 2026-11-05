@@ -1915,6 +1915,16 @@ describe('public instructor profiles', () => {
         await request(
           '/api/v1/auth/instructor-profile',
           'PUT',
+          { ...profile, websiteUrl: `https://example.com/${'a'.repeat(482)}` },
+          author.cookie,
+        )
+      ).status,
+    ).toBe(422);
+    expect(
+      (
+        await request(
+          '/api/v1/auth/instructor-profile',
+          'PUT',
           { ...profile, bio: 'Biography\u0000suffix' },
           author.cookie,
         )

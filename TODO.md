@@ -1186,7 +1186,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   148 enforces the nullable website URL's 500 UTF-16-unit bound and NUL
   exclusion on direct writes, matching the API's size constraint. Instructor
   profile migration tests (3), focused API coverage, build, and lint passed
-  through migration 148.
+  through migration 148. Migration 149 requires HTTPS for non-null instructor
+  website URLs on direct inserts/updates, consistent with the API's URL policy.
+  Instructor-profile migration tests (3), focused API coverage, build, and lint
+  passed through migration 149, including non-HTTPS and oversize URL rejection.
   Previous full validation through migration 141: 273 tests passed and 3 skipped
   with one Vitest worker; build and lint passed. Firefox/WebKit and physical-device
   qualification remain external and pending.

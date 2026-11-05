@@ -2886,17 +2886,20 @@ Validation:
 This change is local only; it has not been deployed or applied to a host or
 running instance.
 
-## Instructor website URL storage bounds — November 4, 2026
+## Instructor website URL integrity — November 4, 2026
 
 Migration 148 enforces the API's 500 UTF-16-unit maximum and rejects embedded
 NUL for non-null instructor website URLs on direct SQLite inserts and updates.
-Null remains valid for profiles without a website.
+Migration 149 requires the HTTPS scheme for direct writes, matching the API's
+public website URL policy. These database triggers enforce storage bounds,
+NUL exclusion, and protocol only; full URL parsing remains at the API boundary.
 
-Validation:
-- Instructor-profile migration tests: 3/3 passed through migration 148,
+Validation through migration 149:
+- Instructor-profile migration tests: 3/3 passed through migration 149,
   covering the 500-unit boundary, oversize/NUL rejection on insert and update,
-  and nullable URL clearing.
-- Focused instructor-profile API test: passed for the 500-unit size limit.
+  HTTPS-only direct writes, and nullable URL clearing.
+- Focused instructor-profile API test: passed for HTTP rejection and the
+  500-unit size limit.
 - `npm run build`: passed across all workspaces.
 - `npm run lint`: passed.
 - `git diff --check`: passed.
