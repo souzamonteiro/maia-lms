@@ -20,6 +20,24 @@ it('requires positive minor units and an API-supported currency for paid revisio
     db.prepare(`INSERT INTO course_revisions
       (id,course_id,title,summary,access_mode,price_amount_minor,price_currency)
       VALUES('paid-revision','course','Paid course','Summary','PAID',1299,'BRL')`).run();
+    for (const [id, amount] of [
+      ['minimum-price', 1],
+      ['maximum-price', 100_000_000],
+    ] as const) {
+      expect(() => db.prepare(`INSERT INTO course_revisions
+        (id,course_id,title,summary,access_mode,price_amount_minor,price_currency)
+        VALUES(?, 'course','Paid course','Summary','PAID',?,'BRL')`)
+        .run(id, amount)).not.toThrow();
+    }
+    for (const [id, amount] of [
+      ['fractional-price', 1299.5],
+      ['over-maximum-price', 100_000_001],
+    ] as const) {
+      expect(() => db.prepare(`INSERT INTO course_revisions
+        (id,course_id,title,summary,access_mode,price_amount_minor,price_currency)
+        VALUES(?, 'course','Paid course','Summary','PAID',?,'BRL')`)
+        .run(id, amount)).toThrow(/invalid course revision price amount/);
+    }
     for (const currency of ['USD', 'EUR']) {
       expect(() => db.prepare(`INSERT INTO course_revisions
         (id,course_id,title,summary,access_mode,price_amount_minor,price_currency)
@@ -39,6 +57,10 @@ it('requires positive minor units and an API-supported currency for paid revisio
       .run('GBP', 'paid-revision')).toThrow(/invalid course revision price currency/);
     expect(() => db.prepare('UPDATE course_revisions SET price_amount_minor=? WHERE id=?')
       .run(0, 'paid-revision')).toThrow(/invalid course revision price/);
+    expect(() => db.prepare('UPDATE course_revisions SET price_amount_minor=? WHERE id=?')
+      .run(100_000_001, 'paid-revision')).toThrow(/invalid course revision price amount/);
+    expect(() => db.prepare('UPDATE course_revisions SET price_amount_minor=? WHERE id=?')
+      .run(1299.5, 'paid-revision')).toThrow(/invalid course revision price amount/);
     expect(() => db.prepare('UPDATE course_revisions SET price_amount_minor=? WHERE id=?')
       .run(100, 'free-revision')).toThrow(/invalid course revision price/);
     db.prepare(`UPDATE course_revisions SET access_mode='ENROLLED_FREE',

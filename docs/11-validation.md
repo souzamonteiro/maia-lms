@@ -2922,6 +2922,18 @@ and rejected unsupported uppercase three-letter codes on insert and update.
 Workspace build, lint, and `git diff --check` passed. This change is local only;
 it has not been deployed or applied to a host or running instance.
 
+## Revision price amount API bounds — November 5, 2026
+
+Migration 155 aligns direct SQLite writes for paid course revision prices with
+the API's integer range of 1 through 100,000,000 minor units. It rejects
+fractional values and out-of-range amounts on inserts and updates, without
+rewriting historical price snapshots.
+
+The focused revision-pricing migration test passed at both valid boundaries and
+for rejected fractions and over-limit values on insert/update. Workspace build,
+lint, and `git diff --check` passed. This change is local only; it has not been
+deployed or applied to a host or running instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with
