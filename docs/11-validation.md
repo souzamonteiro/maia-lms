@@ -2996,6 +2996,17 @@ content and previews. Workspace build, lint, and `git diff --check` passed.
 This change is local only; it has not been deployed or applied to a host or
 running instance.
 
+## Course slug integrity — November 5, 2026
+
+Migration 161 applies the API's 3–100-character lowercase ASCII slug policy to
+course rows and non-null course-revision slugs on direct SQLite inserts and
+updates. Nullable historical revision slugs remain valid.
+
+Focused migration tests passed for valid boundary values and invalid length,
+case, character, and hyphen placement on both insert and update paths.
+Workspace build, lint, and `git diff --check` passed. This change is local only;
+it has not been deployed or applied to a host or running instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with

@@ -1217,9 +1217,12 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   with API UTF-16 counting and rejects embedded NUL on API/SQLite writes.
   Migration 160 enforces the 100,000-unit UTF-16 lesson-body limit and rejects
   NUL on direct SQL and API writes while preserving nullable legacy bodies.
-  Previous full validation through migration 141: 273 tests passed and 3 skipped
-  with one Vitest worker; build and lint passed. Firefox/WebKit and physical-device
-  qualification remain external and pending.
+  Migration 161 enforces API-matching course and revision slug syntax/length
+  on direct SQL inserts and updates, preserving nullable legacy revision slugs.
+  Last full validation through migration 141: 273 tests passed and 3 skipped
+  with one Vitest worker; build and lint passed. Focused database validation at
+  migration 161: 83 tests passed; workspace build and lint passed. Firefox/WebKit
+  and physical-device qualification remain external and pending.
   Parallel full-suite runs can hit the existing 5-second backup-test timeout
   under concurrent test load; the backup test passes alone.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
