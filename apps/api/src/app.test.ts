@@ -1250,6 +1250,10 @@ describe('course metadata validation', () => {
     }, admin.cookie)).status).toBe(422);
     expect((await request('/api/v1/admin/courses', 'POST', {
       ...course,
+      modules: [{ ...module, title: '' }],
+    }, admin.cookie)).status).toBe(422);
+    expect((await request('/api/v1/admin/courses', 'POST', {
+      ...course,
       modules: [{
         ...module,
         lessons: [{ ...module.lessons[0], title: 'Lesson\u0000title' }],
@@ -1260,6 +1264,43 @@ describe('course metadata validation', () => {
       modules: [{
         ...module,
         lessons: [{ ...module.lessons[0], title: '😀'.repeat(101) }],
+      }],
+    }, admin.cookie)).status).toBe(422);
+    expect((await request('/api/v1/admin/courses', 'POST', {
+      ...course,
+      modules: [{
+        ...module,
+        lessons: [{ ...module.lessons[0], title: '' }],
+      }],
+    }, admin.cookie)).status).toBe(422);
+  });
+
+  it('rejects NUL and over-limit attachment descriptions', async () => {
+    const admin = await account('attachment-description-admin@example.com', 'admin');
+    const course = draft('invalid-attachment-description');
+    const attachment = { fileId: '00000000-0000-4000-8000-000000000001', title: 'Attachment' };
+    const withAttachment = (description: string) => ({
+      ...course,
+      modules: [{
+        ...course.modules[0],
+        lessons: [{
+          ...course.modules[0].lessons[0],
+          attachments: [{ ...attachment, description }],
+        }],
+      }],
+    });
+    expect((await request('/api/v1/admin/courses', 'POST',
+      withAttachment('Valid\u0000description'), admin.cookie)).status).toBe(422);
+    expect((await request('/api/v1/admin/courses', 'POST',
+      withAttachment('😀'.repeat(1001)), admin.cookie)).status).toBe(422);
+    expect((await request('/api/v1/admin/courses', 'POST', {
+      ...course,
+      modules: [{
+        ...course.modules[0],
+        lessons: [{
+          ...course.modules[0].lessons[0],
+          attachments: [{ ...attachment, title: '', description: '' }],
+        }],
       }],
     }, admin.cookie)).status).toBe(422);
   });

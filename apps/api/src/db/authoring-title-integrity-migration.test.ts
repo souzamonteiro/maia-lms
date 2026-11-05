@@ -31,10 +31,11 @@ it('enforces authoring title UTF-16 limits on direct inserts and updates', () =>
     insertTitle.module.run('module-boundary', 'revision', 1, boundaryTitle);
     insertTitle.lesson.run('lesson-boundary', 'module', 1, boundaryTitle);
     db.prepare(`INSERT INTO course_attachments
-      (id,revision_id,upload_id,title,description,sort_order) VALUES(?,?,?,?,'',?)`)
-      .run('attachment-boundary', 'revision', 'upload', boundaryTitle, 1);
+      (id,revision_id,upload_id,title,description,sort_order) VALUES(?,?,?,?,?,?)`)
+      .run('attachment-boundary', 'revision', 'upload', boundaryTitle, '😀'.repeat(1000), 1);
 
     const invalidTitles = [
+      '',
       '😀'.repeat(101),
       'Valid\u0000title',
     ];
@@ -46,7 +47,16 @@ it('enforces authoring title UTF-16 limits on direct inserts and updates', () =>
       expect(() => db.prepare(`INSERT INTO course_attachments
         (id,revision_id,upload_id,title,description,sort_order) VALUES(?,?,?,?,'',?)`)
         .run(`attachment-invalid-${index}`, 'revision', 'upload', title, index + 1))
-        .toThrow(/invalid authoring title/);
+        .toThrow(/invalid authoring title|invalid course attachment text/);
+    }
+    for (const [index, description] of [
+      ['nul', 'Valid\u0000description'],
+      ['over-limit', '😀'.repeat(1001)],
+    ]) {
+      expect(() => db.prepare(`INSERT INTO course_attachments
+        (id,revision_id,upload_id,title,description,sort_order) VALUES(?,?,?,'Valid title',?,?)`)
+        .run(`attachment-description-invalid-${index}`, 'revision', 'upload', description, index + 2))
+        .toThrow(/invalid course attachment text/);
     }
 
     for (const [table, id] of [
@@ -59,6 +69,16 @@ it('enforces authoring title UTF-16 limits on direct inserts and updates', () =>
       expect(() => db.prepare(`UPDATE ${table} SET title=? WHERE id=?`)
         .run('Valid\u0000title', id)).toThrow(/invalid authoring title/);
     }
+    expect(() => db.prepare('UPDATE modules SET title=? WHERE id=?')
+      .run('', 'module')).toThrow(/invalid authoring title/);
+    expect(() => db.prepare('UPDATE lessons SET title=? WHERE id=?')
+      .run('', 'lesson')).toThrow(/invalid authoring title/);
+    expect(() => db.prepare('UPDATE course_attachments SET title=? WHERE id=?')
+      .run('', 'attachment')).toThrow(/invalid course attachment text/);
+    expect(() => db.prepare('UPDATE course_attachments SET description=? WHERE id=?')
+      .run('Valid\u0000description', 'attachment')).toThrow(/invalid course attachment text/);
+    expect(() => db.prepare('UPDATE course_attachments SET description=? WHERE id=?')
+      .run('😀'.repeat(1001), 'attachment')).toThrow(/invalid course attachment text/);
 
     for (const table of ['modules', 'lessons', 'course_attachments']) {
       expect(db.prepare(`SELECT count(*) AS count FROM ${table}`).get().count).toBe(2);

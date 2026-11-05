@@ -2959,6 +2959,18 @@ Focused migration and API tests, workspace build, lint, and `git diff --check`
 passed. This change is local only; it has not been deployed or applied to a
 host or running instance.
 
+## Attachment description integrity — November 5, 2026
+
+Migration 158 rejects empty module, lesson, and attachment titles on direct
+SQLite writes, matching the API's minimum length. It also enforces the API's
+2,000 UTF-16-unit attachment-description limit and rejects embedded NUL on
+direct SQL and API writes.
+
+The focused migration test passed for inserts and updates, including a valid
+2,000-unit boundary and rejected NUL/over-limit descriptions. Focused API tests,
+workspace build, lint, and `git diff --check` also passed. This change is local
+only; it has not been deployed or applied to a host or running instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with

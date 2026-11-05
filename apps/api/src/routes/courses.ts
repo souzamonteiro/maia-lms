@@ -19,7 +19,9 @@ const authoringTitleSchema = z.string().min(1).max(200)
 const attachmentSchema = z.object({
   fileId: z.string().uuid(),
   title: authoringTitleSchema,
-  description: z.string().max(2000).default(''),
+  description: z.string().max(2000)
+    .refine(value => !value.includes('\0'), 'NUL is not allowed')
+    .default(''),
 });
 const lessonSchema = z.object({
   captions: captionsSchema,
