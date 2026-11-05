@@ -2898,6 +2898,19 @@ update limits and NUL rejection. Workspace build, lint, and `git diff --check`
 also passed. This change is local only; it has not been deployed or applied to
 a host or running instance.
 
+## Translated metadata Unicode whitespace integrity — November 5, 2026
+
+Migration 153 aligns the SQLite translated-content requirement with the API's
+JavaScript `.trim()` check. A translation whose permitted text fields contain
+only JavaScript whitespace is now rejected on direct inserts and updates; valid
+content in another field remains accepted.
+
+The focused course translation migration test passed for all JavaScript trim
+whitespace code points on insert, plus update rejection and mixed-field
+acceptance. Workspace build, lint, and `git diff --check` passed. This change
+is local only; it has not been deployed or applied to a host or running
+instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with

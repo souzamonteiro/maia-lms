@@ -1198,8 +1198,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   legacy/signup compatibility and invalid inserts/updates. Focused migration
   and profile API tests passed; workspace build and lint passed through
   migration 151. Migration 152 enforces UTF-16 field limits and rejects NUL
-  in translated course metadata at the SQLite boundary; focused direct
-  insert/update migration tests pass for title/summary/long-text limits.
+  in translated course metadata at the SQLite boundary. Migration 153 aligns
+  its nonblank-content check with JavaScript Unicode trimming; focused direct
+  insert/update migration tests cover all JavaScript trim whitespace codepoints.
   Previous full validation through migration 141: 273 tests passed and 3 skipped
   with one Vitest worker; build and lint passed. Firefox/WebKit and physical-device
   qualification remain external and pending.
