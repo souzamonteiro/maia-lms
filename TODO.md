@@ -1175,7 +1175,11 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Migration 145 aligns category description length with UTF-16 code units, with
   direct-SQL tests for the 1000-unit boundary and insert/update rejection above
   it. Focused category migration tests, workspace build, and lint passed through
-  migration 145.
+  migration 145. Migration 146 aligns instructor-profile slugs at the SQLite
+  boundary with the API's lowercase alphanumeric segments separated by single
+  hyphens; direct-SQL tests cover insert/update and boundary cases.
+  The focused migration test, instructor-profile API test, workspace build, and
+  lint passed through migration 146.
   Previous full validation through migration 141: 273 tests passed and 3 skipped
   with one Vitest worker; build and lint passed. Firefox/WebKit and physical-device
   qualification remain external and pending.

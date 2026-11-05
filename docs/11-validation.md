@@ -2886,6 +2886,25 @@ Validation:
 This change is local only; it has not been deployed or applied to a host or
 running instance.
 
+## Instructor profile slug invariant — November 4, 2026
+
+Migration 146 enforces the API's profile slug grammar for direct SQLite writes:
+3–80 lowercase ASCII letters/digits, with nonempty segments separated by
+single hyphens. Inserts and updates reject repeated, leading, trailing, or
+otherwise invalid separators.
+
+Validation:
+- Focused instructor-profile migration test: passed through migration 146,
+  exercising valid inserts/updates and invalid slug boundaries.
+- Focused instructor-profile API test: passed, including repeated/trailing
+  hyphen rejection.
+- `npm run build`: passed across all workspaces.
+- `npm run lint`: passed.
+- `git diff --check`: passed.
+
+This change is local only; it has not been deployed or applied to a host or
+running instance.
+
 ## Category embedded-NUL integrity — November 4, 2026
 
 SQLite's `length()` stops counting text at an embedded NUL, while JavaScript

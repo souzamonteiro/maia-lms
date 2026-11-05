@@ -1866,6 +1866,18 @@ describe('public instructor profiles', () => {
       websiteUrl: 'https://example.com/ada',
       isPublic: false,
     };
+    for (const slug of ['ada--lovelace', 'ada-']) {
+      expect(
+        (
+          await request(
+            '/api/v1/auth/instructor-profile',
+            'PUT',
+            { ...profile, slug },
+            author.cookie,
+          )
+        ).status,
+      ).toBe(422);
+    }
     expect(
       (
         await request(
