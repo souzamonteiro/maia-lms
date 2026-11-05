@@ -1222,6 +1222,21 @@ describe('course categories', () => {
   });
 });
 
+describe('course metadata validation', () => {
+  it('rejects NUL in course titles and summaries', async () => {
+    const admin = await account('course-metadata-admin@example.com', 'admin');
+    const course = draft('nul-metadata-course');
+    expect((await request('/api/v1/admin/courses', 'POST', {
+      ...course,
+      title: 'Course\u0000title',
+    }, admin.cookie)).status).toBe(422);
+    expect((await request('/api/v1/admin/courses', 'POST', {
+      ...course,
+      summary: 'A valid\u0000 summary for this course.',
+    }, admin.cookie)).status).toBe(422);
+  });
+});
+
 describe('localized account workflows', () => {
   it.each([
     ['en', 'Verify your Maia account', 'Reset your Maia password'],

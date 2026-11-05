@@ -2934,6 +2934,20 @@ for rejected fractions and over-limit values on insert/update. Workspace build,
 lint, and `git diff --check` passed. This change is local only; it has not been
 deployed or applied to a host or running instance.
 
+## Course revision text limits — November 5, 2026
+
+Migration 156 enforces the API's 255-unit title and 1,000-unit summary maxima
+in UTF-16 at the SQLite boundary and rejects embedded NUL in either field.
+The API applies the same NUL rejection. Existing minimum-length behavior is
+unchanged, avoiding a rewrite or stricter validation of historical data.
+
+Focused SQLite migration and course-metadata API tests passed. Workspace build,
+lint, and `git diff --check` passed. The full `app.test.ts` run exposed a
+separate `ReferenceError: profile is not defined` in the instructor-profile
+home-curation test; that unrelated failure is not part of this validation.
+This change is local only; it has not been deployed or applied to a host or
+running instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with

@@ -1206,6 +1206,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   and rejection of unsupported three-letter codes on insert/update.
   Migration 155 aligns paid price amount integer and 1–100,000,000 minor-unit
   bounds with the API on direct inserts and updates.
+  Migration 156 aligns course revision title/summary UTF-16 maxima and rejects
+  embedded NUL at API and SQLite boundaries; existing minimum-length behavior
+  is preserved.
   Previous full validation through migration 141: 273 tests passed and 3 skipped
   with one Vitest worker; build and lint passed. Firefox/WebKit and physical-device
   qualification remain external and pending.

@@ -51,6 +51,10 @@ const translationSchema = z.object({
   translationContentFields.some(field => Boolean(translation[field]?.trim())),
   'Provide at least one translated metadata field',
 );
+const courseTitleSchema = z.string().min(3).max(255)
+  .refine(value => !value.includes('\0'), 'NUL is not allowed');
+const courseSummarySchema = z.string().min(10).max(1000)
+  .refine(value => !value.includes('\0'), 'NUL is not allowed');
 const courseSchema = z.object({
   categoryIds: z
     .array(z.string().uuid())
@@ -72,8 +76,8 @@ const courseSchema = z.object({
   attachments: z.array(attachmentSchema).max(30).default([]),
   creationId: z.string().uuid().optional(),
   slug: slugSchema,
-  title: z.string().min(3).max(255),
-  summary: z.string().min(10).max(1000),
+  title: courseTitleSchema,
+  summary: courseSummarySchema,
   accessMode: z.enum(['OPEN_FREE', 'ENROLLED_FREE', 'PAID']),
   priceAmountMinor: z.number().int().min(1).max(100_000_000).nullable().default(null),
   priceCurrency: z.enum(['BRL', 'USD', 'EUR']).nullable().default(null),
