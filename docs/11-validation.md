@@ -2867,3 +2867,21 @@ Validation:
 This is local migration/test validation only. No deployment, host, or
 running-instance changes were made; Firefox/WebKit full-suite and physical
 device qualifications are unaffected.
+
+## Category name UTF-16 length invariant — November 4, 2026
+
+Migration 143 aligns the SQLite category-name maximum with JavaScript/Zod
+length semantics. SQLite counts Unicode code points, while JavaScript counts
+UTF-16 code units; the trigger now counts supplementary characters as two.
+The direct-SQL test accepts exactly 100 UTF-16 units and rejects 102 on both
+insert and update.
+
+Validation:
+- Focused category field/version migration tests: 2/2 passed; the tests apply
+  the complete migration chain through migration 143.
+- `npm run build`: passed across all workspaces.
+- `npm run lint`: passed.
+- `git diff --check`: passed.
+
+This change is local only; it has not been deployed or applied to a host or
+running instance.

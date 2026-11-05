@@ -48,6 +48,13 @@ it('validates category slugs, names, and descriptions on insert and update', () 
       ).toThrow(/invalid category fields/);
     }
 
+    const supplementaryCharacters = '😀'.repeat(50);
+    expect(supplementaryCharacters.length).toBe(100);
+    insert.run('utf16-limit', 'utf16-limit', supplementaryCharacters, '');
+    expect(() =>
+      insert.run('utf16-over-limit', 'utf16-over-limit', `${supplementaryCharacters}😀`, ''),
+    ).toThrow(/invalid category fields/);
+
     expect(() =>
       db.prepare(
         `UPDATE categories
@@ -61,6 +68,10 @@ it('validates category slugs, names, and descriptions on insert and update', () 
     expect(() =>
       db.prepare('UPDATE categories SET name=?,version=version+1 WHERE id=?')
         .run('\u2003', 'category'),
+    ).toThrow(/invalid category fields/);
+    expect(() =>
+      db.prepare('UPDATE categories SET name=?,version=version+1 WHERE id=?')
+        .run(`${supplementaryCharacters}😀`, 'category'),
     ).toThrow(/invalid category fields/);
   } finally {
     db.close();

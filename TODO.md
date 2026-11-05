@@ -1164,8 +1164,11 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Migration 142 treats the full JavaScript trim whitespace set as blank in
   category names on direct SQLite inserts and edits, matching the API's
   `.trim().min(1)` validation; focused migration tests cover all Unicode
-  whitespace code points and both write paths. The two focused category
-  integrity tests, workspace build, and lint passed after migration 142.
+  whitespace code points and both write paths. Migration 143 measures category
+  name limits in UTF-16 code units like JavaScript/Zod, including supplementary
+  Unicode characters; direct-SQL tests cover the exact 100-unit boundary and
+  insert/update rejection above it. The two focused category integrity tests,
+  workspace build, and lint passed after migration 143.
   Previous full validation through migration 141: 273 tests passed and 3 skipped
   with one Vitest worker; build and lint passed. Firefox/WebKit and physical-device
   qualification remain external and pending.
