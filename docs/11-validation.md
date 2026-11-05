@@ -3021,6 +3021,18 @@ nullable legacy slugs. Database and course-publication regression tests passed
 passed. This change is local only; it has not been deployed or applied to a host
 or running instance.
 
+## Published course access-mode consistency — November 5, 2026
+
+Migration 163 prevents direct SQLite writes from separating a published
+course's access mode from its published revision. Publication can switch both
+values atomically; nullable legacy revision access modes remain compatible.
+
+Focused migration tests passed for rejected access-mode and published-pointer
+mismatches, a successful synchronized revision update, and nullable legacy
+modes. Database and course-publication regression tests passed (88 tests across
+59 files). Workspace build, lint, and `git diff --check` passed. This change is
+local only; it has not been deployed or applied to a host or running instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with
