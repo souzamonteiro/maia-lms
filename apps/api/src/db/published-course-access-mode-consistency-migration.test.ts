@@ -15,21 +15,21 @@ it('keeps a published course access mode aligned with its published revision', (
       INSERT INTO course_revisions(id,course_id,title,summary,slug,access_mode,locale)
         VALUES
           ('published-revision','course','Published title','Published summary','published-course','OPEN_FREE','en'),
-          ('next-revision','course','Next title','Next summary','next-course','ENROLLED_FREE','en'),
+          ('next-revision','course','Next title','Next summary','published-course','ENROLLED_FREE','en'),
           ('insert-revision','course','Insert title','Insert summary','insert-course','OPEN_FREE','en'),
           ('legacy-revision','course','Legacy title','Legacy summary','legacy-course',NULL,'en');
       UPDATE course_revisions
         SET published_at='2026-11-05T00:00:00.000Z'
         WHERE id IN ('published-revision','next-revision','insert-revision','legacy-revision');
       UPDATE courses
-        SET current_revision_id='published-revision',access_mode='OPEN_FREE',
+        SET current_revision_id='published-revision',access_mode='OPEN_FREE',locale='en',
           published_revision_id='published-revision',status='PUBLISHED'
         WHERE id='course';
     `);
 
     expect(() => db.prepare(`
-      INSERT INTO courses(id,slug,access_mode,author_id,published_revision_id)
-      VALUES('invalid-insert','insert-course','ENROLLED_FREE','author','insert-revision')
+      INSERT INTO courses(id,slug,access_mode,author_id,locale,published_revision_id)
+      VALUES('invalid-insert','insert-course','ENROLLED_FREE','author','en','insert-revision')
     `).run()).toThrow(/published course access mode mismatch/);
     expect(() => db.prepare('UPDATE courses SET access_mode=? WHERE id=?')
       .run('PAID', 'course')).toThrow(/published course access mode mismatch/);
@@ -37,8 +37,8 @@ it('keeps a published course access mode aligned with its published revision', (
       .run('next-revision', 'course')).toThrow(/published course access mode mismatch/);
 
     db.prepare('UPDATE courses SET current_revision_id=? WHERE id=?').run('next-revision', 'course');
-    db.prepare('UPDATE courses SET access_mode=?,slug=?,published_revision_id=? WHERE id=?')
-      .run('ENROLLED_FREE', 'next-course', 'next-revision', 'course');
+    db.prepare('UPDATE courses SET access_mode=?,published_revision_id=? WHERE id=?')
+      .run('ENROLLED_FREE', 'next-revision', 'course');
     expect(db.prepare('SELECT access_mode,published_revision_id FROM courses WHERE id=?').get('course'))
       .toEqual({ access_mode: 'ENROLLED_FREE', published_revision_id: 'next-revision' });
 

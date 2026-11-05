@@ -3033,6 +3033,19 @@ modes. Database and course-publication regression tests passed (88 tests across
 59 files). Workspace build, lint, and `git diff --check` passed. This change is
 local only; it has not been deployed or applied to a host or running instance.
 
+## Published course locale consistency — November 5, 2026
+
+Migration 164 enforces the API locale enum (`en`, `pt-BR`, `es`) for direct
+SQLite writes to courses and non-null course-revision locales. Published course
+locales must match their published revision; nullable legacy revision locales
+remain accepted.
+
+Focused migration tests passed for invalid enum values, locale/published-pointer
+mismatches, synchronized publication updates, and nullable legacy locales.
+Database and course-publication regression tests passed (89 tests across 60
+files). Workspace build, lint, and `git diff --check` passed. This change is
+local only; it has not been deployed or applied to a host or running instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with

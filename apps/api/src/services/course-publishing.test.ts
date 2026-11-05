@@ -85,7 +85,8 @@ it('queues a localized update only for verified learners with active course acce
         ('new-lesson','new-module',0,'Lesson','Updated content');
       UPDATE courses SET current_revision_id='old-revision' WHERE id='course';
       UPDATE course_revisions SET published_at='2029-01-01T00:00:00.000Z' WHERE id='old-revision';
-      UPDATE courses SET status='PUBLISHED',published_revision_id='old-revision' WHERE id='course';
+      UPDATE courses SET status='PUBLISHED',published_revision_id='old-revision',locale='en'
+        WHERE id='course';
       UPDATE courses SET current_revision_id='new-revision' WHERE id='course';
       INSERT INTO enrollments(id,user_id,course_id,revision_id) VALUES
         ('active-enrollment','learner','course','old-revision'),
