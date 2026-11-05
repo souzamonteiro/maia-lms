@@ -3132,6 +3132,22 @@ confirmation API workflow also passed. All database migration tests passed
 (91 tests across 63 files); workspace build and lint passed. This change is
 local only; it has not been deployed or applied to a host or running instance.
 
+## User timestamp integrity — November 5, 2026
+
+Migration 169 requires parseable `created_at`, `updated_at`, and optional
+`verified_at` values on user inserts and updates to those timestamp fields.
+SQLite's default datetime format and the API's ISO timestamps remain accepted;
+null verification timestamps remain valid. The migration does not impose
+timestamp ordering or rewrite existing rows.
+
+The focused migration test covers valid SQLite/ISO timestamps, null and
+populated verification dates, malformed inserts and updates, and normal
+verification changes. Four account API flows for email verification, email
+change, password change, and password reset passed. All database migration
+tests passed (92 tests across 64 files); workspace build and lint passed. This
+change is local only; it has not been deployed or applied to a host or running
+instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with
