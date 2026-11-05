@@ -3179,6 +3179,22 @@ across 65 files); workspace build, lint, and `git diff --check` passed. This
 change is local only; it has not been deployed or applied to a host or running
 instance.
 
+## Course revision publication timestamp integrity — November 5, 2026
+
+Migration 172 requires `course_revisions.published_at` to be parseable text
+without embedded NUL when a draft is transitioned to published. Draft `NULL`
+timestamps remain valid. The existing published-revision lifecycle already
+prohibits inserting an already-published revision and makes a published revision
+immutable, so the new guard validates the actual publication transition only.
+Existing rows are not retroactively validated or rewritten.
+
+The focused migration test covers valid SQLite and ISO publication timestamps,
+rejected malformed, NUL-containing, and BLOB values, and an unmodified draft
+with a `NULL` timestamp. All database migration tests passed (94 tests across
+66 files); the three course-publication service tests, workspace build, lint,
+and `git diff --check` passed. This change is local only; it has not been
+deployed or applied to a host or running instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with

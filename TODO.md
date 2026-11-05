@@ -1243,11 +1243,14 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Migration 171 rejects empty/non-text addresses and normalized addresses on
   user inserts/updates and pending email-change inserts, closing the empty
   normalized-address gap without changing existing rows.
+  Migration 172 requires `course_revisions.published_at` to be a parseable,
+  NUL-free text timestamp when set; draft `NULL` remains valid, and published
+  revisions remain immutable after the transition.
   Last full validation through migration 141: 273 tests passed and 3 skipped
   with one Vitest worker; build and lint passed. Focused database validation at
-  migration 171: 93 tests passed across 65 files; email-change confirmation,
-  workspace build, and lint passed. The administrator password-reset test also
-  passed during migration 170 validation.
+  migration 172: 94 tests passed across 66 files; three course-publication
+  tests, workspace build, and lint passed. The email-change confirmation and
+  administrator password-reset tests also passed during migrations 171 and 170.
   Firefox/WebKit and physical-device qualification remain external and pending.
   Parallel full-suite runs can hit the existing 5-second backup-test timeout
   under concurrent test load; the backup test passes alone.
