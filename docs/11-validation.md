@@ -2763,6 +2763,22 @@ Validation:
 
 No deployment, host or running-instance changes were performed.
 
+## Backup destination symlink-alias protection — November 5, 2026
+
+Bundle creation now resolves the destination parent and source database to
+canonical paths before checking that the new bundle is outside the database and
+media-storage paths. This rejects a destination whose parent is a symlink alias
+into the media root, preventing the backup from copying its own growing output.
+A regression test verifies rejection occurs before a destination is created.
+
+Validation:
+- `npm test -- --reporter=dot apps/api/src/db/backup.test.ts`: 19/19 passed.
+- `npm run lint`: passed.
+- `git diff --check`: passed.
+
+This is a local backup-tool change only; no backup was made from production,
+and no deployment, host, or running-instance changes were performed.
+
 ## Keyboard focus indicator contrast — November 1, 2026
 
 The shared `:focus-visible` outline was darkened from `#c18317` to `#b5750c`

@@ -14,22 +14,25 @@ if (!destination)
 
 const sourceDatabase = path.resolve(process.env.DATABASE_URL ?? './data/maia-lms.db');
 const sourceStorage = path.resolve(process.env.STORAGE_ROOT ?? './data/storage');
-const target = path.resolve(destination);
+const requestedTarget = path.resolve(destination);
+const targetParent = path.dirname(requestedTarget);
+if (!fs.statSync(targetParent).isDirectory())
+  throw new Error('Backup destination parent directory must exist');
+const target = path.join(fs.realpathSync(targetParent), path.basename(requestedTarget));
 
 function isWithin(parent, child) {
   const relative = path.relative(parent, child);
   return relative === '' || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative));
 }
 
+const resolvedDatabase = fs.realpathSync(sourceDatabase);
 if (
   isWithin(sourceStorage, target) ||
   isWithin(target, sourceStorage) ||
-  isWithin(target, sourceDatabase)
+  isWithin(target, resolvedDatabase)
 )
   throw new Error('Backup destination must be separate from the database and storage root');
 if (fs.existsSync(target)) throw new Error('Backup destination already exists');
-if (!fs.statSync(path.dirname(target)).isDirectory())
-  throw new Error('Backup destination parent directory must exist');
 
 const storageInfo = fs.lstatSync(sourceStorage);
 if (!storageInfo.isDirectory() || storageInfo.isSymbolicLink())

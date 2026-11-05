@@ -372,3 +372,30 @@ it('refuses to mark a bundle complete when a referenced media object is missing'
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+it('rejects a backup destination aliased into the media storage root', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'maia-backup-bundle-alias-test-'));
+  const source = join(directory, 'live.db');
+  const storage = join(directory, 'storage');
+  const alias = join(directory, 'storage-alias');
+  mkdirSync(storage);
+  symlinkSync(storage, alias, 'dir');
+  const db = new Database(source);
+  runMigrations(db);
+  try {
+    db.prepare(
+      "INSERT INTO users (id,email,email_normalized,password_hash) VALUES ('test','test@example.com','test@example.com','hash')",
+    ).run();
+    expect(() =>
+      execFileSync(
+        process.execPath,
+        [resolve('scripts/backup-bundle.mjs'), join(alias, 'bundle')],
+        { env: { ...process.env, DATABASE_URL: source, STORAGE_ROOT: storage }, stdio: 'pipe' },
+      ),
+    ).toThrow(/Backup destination must be separate/);
+    expect(existsSync(join(storage, 'bundle'))).toBe(false);
+  } finally {
+    db.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});

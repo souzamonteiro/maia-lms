@@ -1248,6 +1248,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   SHA-256 hashes to a manifest. `.env` and secrets are excluded.
   `backup:verify` checks stored/transferred bundles; `restore:bundle` restores
   into a new directory and verifies the result without changing live configuration.
+  Bundle creation canonicalizes its destination parent and database path before
+  checking separation, rejecting symlink aliases into the media root.
   Validation rejects corrupted/missing/extra files, unsafe/duplicate paths,
   symlinks, sidecars and missing database references. New snapshots use DELETE
   journal mode independently of the live database's WAL mode. Tests restore
