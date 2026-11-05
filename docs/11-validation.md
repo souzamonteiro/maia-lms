@@ -2948,6 +2948,17 @@ home-curation test; that unrelated failure is not part of this validation.
 This change is local only; it has not been deployed or applied to a host or
 running instance.
 
+## Authoring title limits — November 5, 2026
+
+Migration 157 aligns module, lesson, and course-attachment title validation
+with the API's 1–200 UTF-16-unit limit and rejects embedded NUL. SQLite direct
+insert/update triggers cover all three tables, and the course authoring API
+uses the same shared title schema.
+
+Focused migration and API tests, workspace build, lint, and `git diff --check`
+passed. This change is local only; it has not been deployed or applied to a
+host or running instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with

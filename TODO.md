@@ -1209,6 +1209,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Migration 156 aligns course revision title/summary UTF-16 maxima and rejects
   embedded NUL at API and SQLite boundaries; existing minimum-length behavior
   is preserved.
+  Migration 157 enforces 200-unit UTF-16 authoring-title bounds and NUL
+  rejection for modules, lessons, and attachments at API and SQLite boundaries.
   Previous full validation through migration 141: 273 tests passed and 3 skipped
   with one Vitest worker; build and lint passed. Firefox/WebKit and physical-device
   qualification remain external and pending.

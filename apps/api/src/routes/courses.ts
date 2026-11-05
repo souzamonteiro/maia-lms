@@ -14,14 +14,16 @@ import { AppError } from '../middleware/error-handler.js';
 import { captureCompletionRequirements, isEnrollmentComplete, markEnrollmentComplete } from '../services/completion.js';
 import { localizeCourseMetadata } from '../services/course-metadata.js';
 
+const authoringTitleSchema = z.string().min(1).max(200)
+  .refine(value => !value.includes('\0'), 'NUL is not allowed');
 const attachmentSchema = z.object({
   fileId: z.string().uuid(),
-  title: z.string().min(1).max(200),
+  title: authoringTitleSchema,
   description: z.string().max(2000).default(''),
 });
 const lessonSchema = z.object({
   captions: captionsSchema,
-  title: z.string().min(1).max(200),
+  title: authoringTitleSchema,
   attachments: z.array(attachmentSchema).max(30).default([]),
   body: z.string().max(100000),
   videoId: z.string().uuid().nullable().optional(),
@@ -86,7 +88,7 @@ const courseSchema = z.object({
   modules: z
     .array(
       z.object({
-        title: z.string().min(1).max(200),
+        title: authoringTitleSchema,
         lessons: z.array(lessonSchema).min(1).max(100),
       }),
     )
@@ -514,7 +516,7 @@ export function coursesRouter(db: Database.Database, publicBaseUrl: string): Rou
               z.object({
                 unit: z.literal('module'),
                 module: index,
-                title: z.string().min(1).max(200),
+                title: authoringTitleSchema,
               }),
               z.object({
                 unit: z.literal('lesson'),

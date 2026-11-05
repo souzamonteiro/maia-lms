@@ -1235,6 +1235,34 @@ describe('course metadata validation', () => {
       summary: 'A valid\u0000 summary for this course.',
     }, admin.cookie)).status).toBe(422);
   });
+
+  it('rejects NUL and over-limit titles in modules and lessons', async () => {
+    const admin = await account('authoring-title-admin@example.com', 'admin');
+    const course = draft('invalid-authoring-title');
+    const module = course.modules[0];
+    expect((await request('/api/v1/admin/courses', 'POST', {
+      ...course,
+      modules: [{ ...module, title: 'Module\u0000title' }],
+    }, admin.cookie)).status).toBe(422);
+    expect((await request('/api/v1/admin/courses', 'POST', {
+      ...course,
+      modules: [{ ...module, title: '😀'.repeat(101) }],
+    }, admin.cookie)).status).toBe(422);
+    expect((await request('/api/v1/admin/courses', 'POST', {
+      ...course,
+      modules: [{
+        ...module,
+        lessons: [{ ...module.lessons[0], title: 'Lesson\u0000title' }],
+      }],
+    }, admin.cookie)).status).toBe(422);
+    expect((await request('/api/v1/admin/courses', 'POST', {
+      ...course,
+      modules: [{
+        ...module,
+        lessons: [{ ...module.lessons[0], title: '😀'.repeat(101) }],
+      }],
+    }, admin.cookie)).status).toBe(422);
+  });
 });
 
 describe('localized account workflows', () => {
