@@ -1249,6 +1249,44 @@ describe('course metadata validation', () => {
     }, admin.cookie)).status).toBe(422);
   });
 
+  it('rejects NUL in lesson content and content previews', async () => {
+    const admin = await account('lesson-body-admin@example.com', 'admin');
+    const course = draft('invalid-lesson-body');
+    const module = course.modules[0];
+    expect((await request('/api/v1/admin/courses', 'POST', {
+      ...course,
+      modules: [{
+        ...module,
+        lessons: [{ ...module.lessons[0], body: 'Lesson\u0000content' }],
+      }],
+    }, admin.cookie)).status).toBe(422);
+    expect((await request('/api/v1/admin/content/preview', 'POST', {
+      body: 'Preview\u0000content',
+      contentFormat: 'plain',
+    }, admin.cookie)).status).toBe(422);
+  });
+
+  it('counts lesson body limits in UTF-16 units', async () => {
+    const admin = await account('lesson-body-boundary-admin@example.com', 'admin');
+    const course = draft('lesson-body-boundary');
+    const body = '😀'.repeat(50000);
+    expect((await request('/api/v1/admin/courses', 'POST', {
+      ...course,
+      modules: [{
+        ...course.modules[0],
+        lessons: [{ ...course.modules[0].lessons[0], body }],
+      }],
+    }, admin.cookie)).status).toBe(201);
+    expect((await request('/api/v1/admin/courses', 'POST', {
+      ...course,
+      slug: 'lesson-body-over-limit',
+      modules: [{
+        ...course.modules[0],
+        lessons: [{ ...course.modules[0].lessons[0], body: body + 'a' }],
+      }],
+    }, admin.cookie)).status).toBe(422);
+  });
+
   it('rejects NUL and over-limit titles in modules and lessons', async () => {
     const admin = await account('authoring-title-admin@example.com', 'admin');
     const course = draft('invalid-authoring-title');

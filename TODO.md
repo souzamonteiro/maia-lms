@@ -1215,6 +1215,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   attachment-description NUL and UTF-16 length constraints.
   Migration 159 aligns the remaining course-revision metadata field maxima
   with API UTF-16 counting and rejects embedded NUL on API/SQLite writes.
+  Migration 160 enforces the 100,000-unit UTF-16 lesson-body limit and rejects
+  NUL on direct SQL and API writes while preserving nullable legacy bodies.
   Previous full validation through migration 141: 273 tests passed and 3 skipped
   with one Vitest worker; build and lint passed. Firefox/WebKit and physical-device
   qualification remain external and pending.

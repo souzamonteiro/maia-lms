@@ -16,6 +16,8 @@ import { localizeCourseMetadata } from '../services/course-metadata.js';
 
 const authoringTitleSchema = z.string().min(1).max(200)
   .refine(value => !value.includes('\0'), 'NUL is not allowed');
+const lessonBodySchema = z.string().max(100000)
+  .refine(value => !value.includes('\0'), 'NUL is not allowed');
 const attachmentSchema = z.object({
   fileId: z.string().uuid(),
   title: authoringTitleSchema,
@@ -27,7 +29,7 @@ const lessonSchema = z.object({
   captions: captionsSchema,
   title: authoringTitleSchema,
   attachments: z.array(attachmentSchema).max(30).default([]),
-  body: z.string().max(100000),
+  body: lessonBodySchema,
   videoId: z.string().uuid().nullable().optional(),
   contentFormat: z.enum(['plain', 'markdown']).default('plain'),
   required: z.boolean().default(true),
@@ -481,7 +483,7 @@ export function coursesRouter(db: Database.Database, publicBaseUrl: string): Rou
   });
   router.post('/admin/content/preview', requireRole('admin', 'author'), (req, res) => {
     const data = z
-      .object({ body: z.string().max(100000), contentFormat: z.enum(['plain', 'markdown']) })
+      .object({ body: lessonBodySchema, contentFormat: z.enum(['plain', 'markdown']) })
       .parse(req.body);
     res.json({
       html: renderContent(data.body, data.contentFormat),

@@ -2982,6 +2982,20 @@ Focused SQLite migration and course-metadata API tests passed. Workspace build,
 lint, and `git diff --check` passed. This change is local only; it has not been
 deployed or applied to a host or running instance.
 
+## Lesson body limits — November 5, 2026
+
+Migration 160 aligns direct SQLite lesson-body writes with the API's 100,000
+UTF-16-unit limit and rejects embedded NUL. The check preserves existing
+nullable body records and applies to both insert and update paths. The API uses
+the same schema for authored lesson content and content previews.
+
+Focused SQLite migration tests passed for the exact UTF-16 boundary, oversized
+ASCII and supplementary text, NUL rejection, and nullable legacy bodies.
+Focused API tests passed for the boundary, over-limit, and NUL cases in authored
+content and previews. Workspace build, lint, and `git diff --check` passed.
+This change is local only; it has not been deployed or applied to a host or
+running instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with
