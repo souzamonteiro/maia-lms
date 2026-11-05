@@ -100,3 +100,43 @@ it('matches instructor profile text limits for Unicode, NUL, inserts, and update
     db.close();
   }
 });
+
+it('limits instructor profile website URLs to 500 UTF-16 units on direct writes', () => {
+  const db = new Database(':memory:');
+  db.pragma('foreign_keys = ON');
+  try {
+    runMigrations(db);
+    db.prepare(
+      "INSERT INTO users(id,email,email_normalized,password_hash,role) VALUES('user','user@example.com','user@example.com','hash','author')",
+    ).run();
+    const insert = db.prepare(
+      'INSERT INTO instructor_profiles(user_id,slug,display_name,website_url) VALUES(?,?,?,?)',
+    );
+    const boundaryUrl = `https://example.com/${'a'.repeat(480)}`;
+    expect(boundaryUrl.length).toBe(500);
+    insert.run('user', 'ada-lovelace', 'Ada Lovelace', boundaryUrl);
+    db.prepare(
+      "INSERT INTO users(id,email,email_normalized,password_hash,role) VALUES('user-2','user-2@example.com','user-2@example.com','hash','author')",
+    ).run();
+    expect(() =>
+      insert.run('user-2', 'grace-hopper', 'Grace Hopper', `${boundaryUrl}a`),
+    ).toThrow(/invalid instructor profile website URL/);
+    expect(() =>
+      insert.run('user-2', 'grace-hopper', 'Grace Hopper', 'https://example.com/\u0000suffix'),
+    ).toThrow(/invalid instructor profile website URL/);
+    expect(() =>
+      db.prepare('UPDATE instructor_profiles SET website_url=? WHERE user_id=?')
+        .run(`${boundaryUrl}a`, 'user'),
+    ).toThrow(/invalid instructor profile website URL/);
+    expect(() =>
+      db.prepare('UPDATE instructor_profiles SET website_url=? WHERE user_id=?')
+        .run('https://example.com/\u0000suffix', 'user'),
+    ).toThrow(/invalid instructor profile website URL/);
+    expect(() =>
+      db.prepare('UPDATE instructor_profiles SET website_url=NULL WHERE user_id=?')
+        .run('user'),
+    ).not.toThrow();
+  } finally {
+    db.close();
+  }
+});

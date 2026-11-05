@@ -594,6 +594,16 @@ describe('authoring and homepage', () => {
         )
       ).status,
     ).toBe(422);
+    expect(
+      (
+        await request(
+          '/api/v1/auth/instructor-profile',
+          'PUT',
+          { ...profile, websiteUrl: `https://example.com/${'a'.repeat(482)}` },
+          author.cookie,
+        )
+      ).status,
+    ).toBe(422);
     expect((await request('/api/v1/admin/home', 'GET', undefined, admin.cookie)).data.version).toBe(
       1,
     );

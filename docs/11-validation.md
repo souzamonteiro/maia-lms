@@ -2886,6 +2886,24 @@ Validation:
 This change is local only; it has not been deployed or applied to a host or
 running instance.
 
+## Instructor website URL storage bounds — November 4, 2026
+
+Migration 148 enforces the API's 500 UTF-16-unit maximum and rejects embedded
+NUL for non-null instructor website URLs on direct SQLite inserts and updates.
+Null remains valid for profiles without a website.
+
+Validation:
+- Instructor-profile migration tests: 3/3 passed through migration 148,
+  covering the 500-unit boundary, oversize/NUL rejection on insert and update,
+  and nullable URL clearing.
+- Focused instructor-profile API test: passed for the 500-unit size limit.
+- `npm run build`: passed across all workspaces.
+- `npm run lint`: passed.
+- `git diff --check`: passed.
+
+This change is local only; it has not been deployed or applied to a host or
+running instance.
+
 ## Instructor profile text integrity — November 4, 2026
 
 Migration 147 aligns `display_name` and `bio` SQLite validation with the API:
