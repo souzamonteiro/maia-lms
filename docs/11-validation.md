@@ -3060,6 +3060,18 @@ All database migration tests passed (87 tests across 60 files). Workspace build,
 lint, and `git diff --check` passed. This change is local only; it has not been
 deployed or applied to a host or running instance.
 
+## Course revision duration integrity — November 5, 2026
+
+Migration 166 enforces the course API's optional integer duration range of
+1–60,000 minutes on direct SQLite inserts and updates. Null remains valid for
+unspecified and legacy durations.
+
+Focused migration tests passed for minimum and maximum bounds, nullable values,
+and rejection of zero, negative, over-limit, fractional, and text inputs on
+insert/update paths. All database migration tests passed (88 tests across 61
+files). Workspace build, lint, and `git diff --check` passed. This change is
+local only; it has not been deployed or applied to a host or running instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with

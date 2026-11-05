@@ -1227,9 +1227,11 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   published course locales aligned with their revision, preserving null legacy locales.
   Migration 165 enforces the API's language and language-region locale format
   for direct user inserts and updates, without narrowing supported language codes.
+  Migration 166 enforces the nullable 1–60,000 integer duration bound for course
+  revisions on direct inserts and updates, preserving legacy null durations.
   Last full validation through migration 141: 273 tests passed and 3 skipped
   with one Vitest worker; build and lint passed. Focused database validation at
-  migration 165: 87 tests passed; workspace build and lint passed.
+  migration 166: 88 tests passed; workspace build and lint passed.
   Firefox/WebKit and physical-device qualification remain external and pending.
   Parallel full-suite runs can hit the existing 5-second backup-test timeout
   under concurrent test load; the backup test passes alone.
