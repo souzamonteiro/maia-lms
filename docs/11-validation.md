@@ -2885,3 +2885,22 @@ Validation:
 
 This change is local only; it has not been deployed or applied to a host or
 running instance.
+
+## Category embedded-NUL integrity — November 4, 2026
+
+SQLite's `length()` stops counting text at an embedded NUL, while JavaScript
+counts the full string. Migration 144 rejects embedded NUL in category names
+and descriptions at the SQLite boundary; the category API rejects them before
+writing as well.
+
+Validation:
+- Focused category SQLite migration test: passed through migration 144,
+  rejecting embedded NUL in name/description on insert and update.
+- Focused category API test: passed; create rejects NUL in name/description
+  and update rejects NUL in the name.
+- `npm run build`: passed across all workspaces.
+- `npm run lint`: passed.
+- `git diff --check`: passed.
+
+This change is local only; it has not been deployed or applied to a host or
+running instance.

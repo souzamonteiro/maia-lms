@@ -1054,6 +1054,26 @@ describe('course categories', () => {
       (await request('/api/v1/admin/categories', 'POST', { ...payload, name: '   ' }, admin.cookie))
         .status,
     ).toBe(422);
+    expect(
+      (
+        await request(
+          '/api/v1/admin/categories',
+          'POST',
+          { ...payload, name: 'Programming\u0000suffix' },
+          admin.cookie,
+        )
+      ).status,
+    ).toBe(422);
+    expect(
+      (
+        await request(
+          '/api/v1/admin/categories',
+          'POST',
+          { ...payload, description: 'Build software\u0000suffix' },
+          admin.cookie,
+        )
+      ).status,
+    ).toBe(422);
     const created = await request('/api/v1/admin/categories', 'POST', payload, admin.cookie);
     expect(created.status).toBe(201);
     const path = `/api/v1/admin/categories/${created.data.id}`;
@@ -1070,6 +1090,16 @@ describe('course categories', () => {
         )
       ).data.version,
     ).toBe(2);
+    expect(
+      (
+        await request(
+          path,
+          'PUT',
+          { ...payload, name: 'Code\u0000suffix', expectedVersion: 2 },
+          admin.cookie,
+        )
+      ).status,
+    ).toBe(422);
     expect(
       (await request(path, 'PUT', { ...payload, expectedVersion: 1 }, admin.cookie)).data.code,
     ).toBe('CATEGORY_CONFLICT');

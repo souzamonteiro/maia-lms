@@ -8,8 +8,18 @@ import { AppError } from '../middleware/error-handler.js';
 
 const fields = z.object({
   slug: slugSchema,
-  name: z.string().trim().min(1).max(100),
-  description: z.string().trim().max(1000).default(''),
+  name: z
+    .string()
+    .trim()
+    .min(1)
+    .max(100)
+    .refine(value => !value.includes('\0'), 'NUL characters are not allowed'),
+  description: z
+    .string()
+    .trim()
+    .max(1000)
+    .refine(value => !value.includes('\0'), 'NUL characters are not allowed')
+    .default(''),
 });
 const version = z.object({ expectedVersion: z.number().int().positive() });
 

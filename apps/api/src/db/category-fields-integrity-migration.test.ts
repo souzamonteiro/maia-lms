@@ -31,6 +31,8 @@ it('validates category slugs, names, and descriptions on insert and update', () 
       ['whitespace-name', 'whitespace-name', '\t\n', ''],
       ['long-name', 'long-name', 'N'.repeat(101), ''],
       ['long-description', 'long-description', 'Category', 'D'.repeat(1001)],
+      ['nul-name', 'nul-name', 'Category\u0000suffix', ''],
+      ['nul-description', 'nul-description', 'Category', 'Description\u0000suffix'],
     ] as const;
     for (const [id, slug, name, description] of invalidRows) {
       expect(() => insert.run(id, slug, name, description)).toThrow(/invalid category fields/);
@@ -72,6 +74,10 @@ it('validates category slugs, names, and descriptions on insert and update', () 
     expect(() =>
       db.prepare('UPDATE categories SET name=?,version=version+1 WHERE id=?')
         .run(`${supplementaryCharacters}😀`, 'category'),
+    ).toThrow(/invalid category fields/);
+    expect(() =>
+      db.prepare('UPDATE categories SET description=?,version=version+1 WHERE id=?')
+        .run('Description\u0000suffix', 'category'),
     ).toThrow(/invalid category fields/);
   } finally {
     db.close();

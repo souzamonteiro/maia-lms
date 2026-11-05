@@ -1168,7 +1168,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   name limits in UTF-16 code units like JavaScript/Zod, including supplementary
   Unicode characters; direct-SQL tests cover the exact 100-unit boundary and
   insert/update rejection above it. The two focused category integrity tests,
-  workspace build, and lint passed after migration 143.
+  workspace build, and lint passed after migration 143. Migration 144 rejects
+  embedded NUL in category names/descriptions at both API and SQLite boundaries;
+  focused API and direct-SQL tests cover insert and update paths. The category
+  migration/API tests, workspace build, and lint passed after migration 144.
   Previous full validation through migration 141: 273 tests passed and 3 skipped
   with one Vitest worker; build and lint passed. Firefox/WebKit and physical-device
   qualification remain external and pending.
