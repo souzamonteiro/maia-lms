@@ -52,6 +52,27 @@ it('enforces course revision translation metadata invariants for direct SQL writ
       .toThrow(/invalid course revision translation metadata/);
     expect(db.prepare('SELECT locale FROM course_revisions WHERE id=?').get('valid').locale)
       .toBe('pt-BR');
+
+    insertRevision('utf16-title-limit', 'pt-BR', JSON.stringify([
+      { locale: 'es', title: '😀'.repeat(127) + 'a' },
+    ]));
+    const invalidUtf16 = [
+      JSON.stringify([{ locale: 'es', title: '😀'.repeat(128) + 'a' }]),
+      JSON.stringify([{ locale: 'es', summary: '😀'.repeat(501) }]),
+      JSON.stringify([{ locale: 'es', learningOutcomes: '😀'.repeat(2501) }]),
+      JSON.stringify([{ locale: 'es', title: 'Valid title\u0000suffix' }]),
+    ];
+    for (const [index, translations] of invalidUtf16.entries()) {
+      expect(() => insertRevision(`invalid-utf16-${index}`, 'pt-BR', translations))
+        .toThrow(/invalid course revision translation metadata/);
+    }
+
+    expect(() => db.prepare('UPDATE course_revisions SET translations_json=? WHERE id=?')
+      .run(JSON.stringify([{ locale: 'es', title: '😀'.repeat(128) + 'a' }]), 'valid'))
+      .toThrow(/invalid course revision translation metadata/);
+    expect(() => db.prepare('UPDATE course_revisions SET translations_json=? WHERE id=?')
+      .run(JSON.stringify([{ locale: 'es', summary: 'Valid summary\u0000suffix' }]), 'valid'))
+      .toThrow(/invalid course revision translation metadata/);
   } finally {
     db.close();
   }

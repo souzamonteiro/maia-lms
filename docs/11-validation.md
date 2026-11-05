@@ -2886,6 +2886,18 @@ Validation:
 This change is local only; it has not been deployed or applied to a host or
 running instance.
 
+## Translated metadata UTF-16 integrity — November 5, 2026
+
+Migration 152 supplements the course-translation shape triggers with JavaScript
+UTF-16 length enforcement for translated title, summary, and long-text fields,
+and rejects embedded NUL in translated text. It applies on direct inserts and
+updates without changing the existing locale/shape policy.
+
+The focused course translation migration test passed, covering insert and
+update limits and NUL rejection. Workspace build, lint, and `git diff --check`
+also passed. This change is local only; it has not been deployed or applied to
+a host or running instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with
