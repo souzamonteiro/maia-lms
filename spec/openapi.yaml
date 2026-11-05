@@ -2420,11 +2420,12 @@ paths:
                     type: array
                     description: >-
                       Current dashboard-only conditions; this endpoint does not deliver alerts externally.
-                      WORKER_MISSING means no worker records are returned. WORKER_STALE means at least one
-                      non-stopped worker heartbeat is older than 45 seconds, even if another worker is
-                      healthy. WORKER_NOT_HEALTHY means records exist but none is healthy or stale (for
-                      example, all are stopped). Worker evaluation is limited to the 20 most recent
-                      heartbeat records. MEDIA_JOB_STUCK means a PROCESSING upload has no heartbeat or its
+                      WORKER_MISSING means no worker records exist. WORKER_STALE means at least one active
+                      worker heartbeat is older than 45 seconds, even if another worker is healthy or the
+                      stale worker is outside the displayed list. WORKER_NOT_HEALTHY means records exist
+                      but none is active (for example, all are stopped). The endpoint displays at most the
+                      20 most recent heartbeat records, but worker alerts evaluate all records.
+                      MEDIA_JOB_STUCK means a PROCESSING upload has no heartbeat or its
                       heartbeat is older than two minutes. MEDIA_JOB_FAILED means at least one upload is
                       FAILED. OUTBOX_EXHAUSTED means at least one unprocessed message has exhausted its
                       five attempts. OUTBOX_READY_DELAYED means an eligible, unprocessed message with fewer

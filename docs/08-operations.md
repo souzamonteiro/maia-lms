@@ -449,15 +449,16 @@ download completion; it is not time to first byte or playback startup/buffering.
 Aborted responses are excluded. Playback start/buffering and watch-time telemetry
 remain unavailable, and dashboard alerts are not delivered to an external channel.
 
-Worker alerts evaluate the 20 most-recent heartbeat records returned by the
-operations endpoint. `WORKER_MISSING` means no records were returned.
-`WORKER_STALE` means at least one non-stopped worker is beyond the 45-second
-heartbeat window, even if another worker is healthy. `WORKER_NOT_HEALTHY` means
-records exist, none are healthy, and none is classified as stale (for example,
-all returned workers have stopped). Stopped historical records do not trigger
-`WORKER_STALE`. Check the worker service and its logs when an alert appears;
-`/readyz` alone does not confirm worker health. These alerts are visible only in
-the admin dashboard and are not sent to an external notification channel.
+The operations endpoint displays at most the 20 most-recent heartbeat records;
+worker alerts are calculated separately across all worker records. `WORKER_MISSING`
+means no worker records exist. `WORKER_STALE` means at least one active worker is
+beyond the 45-second heartbeat window, even if another worker is healthy and even
+if the stale worker is outside the displayed list. `WORKER_NOT_HEALTHY` means
+records exist but none is active (for example, all have stopped). Stopped
+historical records do not trigger `WORKER_STALE`. Check the worker service and
+its logs when an alert appears; `/readyz` alone does not confirm worker health.
+These alerts are visible only in the admin dashboard and are not sent to an
+external notification channel.
 
 ## Repairing permissions from earlier installations
 

@@ -1608,9 +1608,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   dashboard limits, SEO metadata, and validation results. `spec/openapi.yaml` now
   documents HLS playback plus the new operational and privacy endpoints; the future
   design remains separate in `planned-openapi.yaml`.
-  The operations guide now documents the worker-alert classification, 20-record
-  evaluation scope, stopped-worker behavior, and dashboard-only delivery;
-  focused worker-alert API tests passed (8).
+  The operations guide and OpenAPI contract document worker-alert classification,
+  the 20-record display limit versus all-record alert evaluation, stopped-worker
+  behavior, and dashboard-only delivery. The worker-alert API regression now
+  covers a stale worker outside the displayed 20.
   The OpenAPI alert-array description now records worker classification,
   queue/media/email/payment/storage thresholds, and the absence of external
   alert delivery.

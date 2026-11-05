@@ -2791,6 +2791,11 @@ healthy workers and one stale active worker. Build, lint, and `git diff --check`
 passed. This is local dashboard/API validation only; no external worker,
 deployment, host, or running-instance changes were performed.
 
+The operations runbook and OpenAPI alert description were corrected to
+distinguish the 20-row display limit from alert evaluation across all worker
+records. The documentation and contract update is local; it does not change
+alert delivery or qualify external workers.
+
 ## Keyboard focus indicator contrast — November 1, 2026
 
 The shared `:focus-visible` outline was darkened from `#c18317` to `#b5750c`
