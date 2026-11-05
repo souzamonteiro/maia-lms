@@ -93,6 +93,21 @@ it('distinguishes stopped worker history from stale active heartbeats', async ()
   expect(result.data.alerts).not.toContain('WORKER_STALE');
 });
 
+it('alerts on stale active workers omitted from the recent worker list', async () => {
+  const cookie = await account('many-workers-admin@example.com', 'admin');
+  const insertWorker = db.prepare(`INSERT INTO worker_instances(instance_id,started_at,heartbeat_at)
+    VALUES(?,datetime('now'),datetime('now'))`);
+  for (let index = 0; index < 21; index++)
+    insertWorker.run(`healthy-worker-${index}`);
+  db.prepare(`INSERT INTO worker_instances(instance_id,started_at,heartbeat_at)
+    VALUES('old-active-worker',datetime('now','-2 minutes'),datetime('now','-2 minutes'))`).run();
+
+  const result = await request('/api/v1/admin/operations', 'GET', undefined, cookie);
+  expect(result.data.workers).toHaveLength(20);
+  expect(result.data.workers.every((worker: { status: string }) => worker.status === 'healthy')).toBe(true);
+  expect(result.data.alerts).toContain('WORKER_STALE');
+});
+
 it('summarizes operational state for admins without exposing payloads or identities', async () => {
   const adminCookie = await account('operations-admin@example.com', 'admin');
   const authorCookie = await account('operations-author@example.com', 'author');

@@ -18,6 +18,11 @@ export function adminOperationsRouter(db: Database.Database, config: Config): Ro
 
   router.get('/admin/operations', requireRole('admin'), (_req, res) => {
     const now = Date.now();
+    const workerHealth = db.prepare(`SELECT count(*) AS total,
+      COALESCE(sum(CASE WHEN stopped_at IS NULL THEN 1 ELSE 0 END),0) AS active,
+      COALESCE(sum(CASE WHEN stopped_at IS NULL AND
+        julianday(heartbeat_at)<julianday('now','-45 seconds') THEN 1 ELSE 0 END),0) AS staleActive
+      FROM worker_instances`).get() as { total: number; active: number; staleActive: number };
     const workerRows = db.prepare(`SELECT started_at,heartbeat_at,stopped_at,
       CASE WHEN julianday(heartbeat_at)<julianday('now','-45 seconds') THEN 1 ELSE 0 END AS stale
       FROM worker_instances ORDER BY heartbeat_at DESC LIMIT 20`).all() as WorkerRow[];
@@ -126,11 +131,11 @@ export function adminOperationsRouter(db: Database.Database, config: Config): Ro
     }
 
     const alerts: string[] = [];
-    if (!workers.length)
+    if (!workerHealth.total)
       alerts.push('WORKER_MISSING');
-    else if (workers.some(worker => worker.status === 'stale'))
+    else if (workerHealth.staleActive)
       alerts.push('WORKER_STALE');
-    else if (!workers.some(worker => worker.status === 'healthy'))
+    else if (!workerHealth.active)
       alerts.push('WORKER_NOT_HEALTHY');
     if (stuckMedia) alerts.push('MEDIA_JOB_STUCK');
     if (Number(media.FAILED ?? 0)) alerts.push('MEDIA_JOB_FAILED');

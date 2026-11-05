@@ -2779,6 +2779,18 @@ Validation:
 This is a local backup-tool change only; no backup was made from production,
 and no deployment, host, or running-instance changes were performed.
 
+## Worker stale alert beyond dashboard list limit — November 5, 2026
+
+The operations dashboard displays at most 20 worker instances. Its stale-worker
+alert now aggregates every active instance independently of that presentation
+limit, so a stale worker cannot be hidden behind 20 more recent healthy entries.
+Stopped historical instances remain excluded from the stale count.
+
+The focused operations API tests passed, including a regression with 21 recent
+healthy workers and one stale active worker. Build, lint, and `git diff --check`
+passed. This is local dashboard/API validation only; no external worker,
+deployment, host, or running-instance changes were performed.
+
 ## Keyboard focus indicator contrast — November 1, 2026
 
 The shared `:focus-visible` outline was darkened from `#c18317` to `#b5750c`

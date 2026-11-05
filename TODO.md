@@ -1328,8 +1328,11 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   (275 passed, 3 skipped), build and lint passed.
   Stale workers now trigger a distinct localized alert when at least one
   instance misses the existing 45-second heartbeat window, even if another
-  worker remains healthy. Historical stopped instances do not trigger it.
-  Local validation: 8 focused API tests; full regression with one Vitest worker
+  worker remains healthy. The alert aggregates all active instances, not just
+  the 20 most recent workers displayed. Historical stopped instances do not
+  trigger it. This follow-up passed all 9 focused admin-operations API tests,
+  workspace build, and lint.
+  Earlier local validation: 8 focused API tests; full regression with one Vitest worker
   (276 passed, 3 skipped); build/lint; and all 3 focused Chromium operations
   workflows. No external worker, host, or device qualification was performed.
   Storage measurement failures now raise `STORAGE_UNAVAILABLE` alongside a null
