@@ -3007,6 +3007,20 @@ case, character, and hyphen placement on both insert and update paths.
 Workspace build, lint, and `git diff --check` passed. This change is local only;
 it has not been deployed or applied to a host or running instance.
 
+## Published course slug consistency — November 5, 2026
+
+Migration 162 prevents direct SQLite writes from separating a published
+course's public slug from its published revision slug. Normal publication can
+change both values in its existing transaction. Draft slugs remain independent,
+and nullable legacy revision slugs are preserved.
+
+Focused migration tests passed for rejected course-slug, published-pointer, and
+revision-slug mismatches, plus successful synchronized publication updates and
+nullable legacy slugs. Database and course-publication regression tests passed
+(87 tests across 58 files). Workspace build, lint, and `git diff --check`
+passed. This change is local only; it has not been deployed or applied to a host
+or running instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with

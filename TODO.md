@@ -1219,10 +1219,12 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   NUL on direct SQL and API writes while preserving nullable legacy bodies.
   Migration 161 enforces API-matching course and revision slug syntax/length
   on direct SQL inserts and updates, preserving nullable legacy revision slugs.
+  Migration 162 keeps each published course slug aligned with its published
+  revision at the SQLite boundary while leaving unpublished drafts independent.
   Last full validation through migration 141: 273 tests passed and 3 skipped
-  with one Vitest worker; build and lint passed. Focused database validation at
-  migration 161: 83 tests passed; workspace build and lint passed. Firefox/WebKit
-  and physical-device qualification remain external and pending.
+  with one Vitest worker; build and lint passed. Focused database and publication
+  validation at migration 162: 87 tests passed; workspace build and lint passed.
+  Firefox/WebKit and physical-device qualification remain external and pending.
   Parallel full-suite runs can hit the existing 5-second backup-test timeout
   under concurrent test load; the backup test passes alone.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
