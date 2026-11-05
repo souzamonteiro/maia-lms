@@ -3046,6 +3046,20 @@ Database and course-publication regression tests passed (89 tests across 60
 files). Workspace build, lint, and `git diff --check` passed. This change is
 local only; it has not been deployed or applied to a host or running instance.
 
+## User locale format integrity — November 5, 2026
+
+Migration 165 enforces the registration schema's lowercase two-letter language
+or language-region format on direct user-locale inserts and updates. It retains
+the API's broader supported-language format rather than limiting account
+locales to the currently translated interface languages. Existing rows are not
+rewritten.
+
+Focused migration tests passed for accepted language and language-region
+locales, malformed casing/length/whitespace/NUL values, and update behavior.
+All database migration tests passed (87 tests across 60 files). Workspace build,
+lint, and `git diff --check` passed. This change is local only; it has not been
+deployed or applied to a host or running instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with

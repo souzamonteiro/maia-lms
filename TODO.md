@@ -1225,9 +1225,11 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   revision at the SQLite boundary while preserving null legacy revision modes.
   Migration 164 validates course/revision locales against the API enum and keeps
   published course locales aligned with their revision, preserving null legacy locales.
+  Migration 165 enforces the API's language and language-region locale format
+  for direct user inserts and updates, without narrowing supported language codes.
   Last full validation through migration 141: 273 tests passed and 3 skipped
-  with one Vitest worker; build and lint passed. Focused database and publication
-  validation at migration 164: 89 tests passed; workspace build and lint passed.
+  with one Vitest worker; build and lint passed. Focused database validation at
+  migration 165: 87 tests passed; workspace build and lint passed.
   Firefox/WebKit and physical-device qualification remain external and pending.
   Parallel full-suite runs can hit the existing 5-second backup-test timeout
   under concurrent test load; the backup test passes alone.
