@@ -1192,7 +1192,12 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   passed through migration 149, including non-HTTPS and oversize URL rejection.
   Migration 150 validates instructor profile timestamps and prevents
   `updated_at` regression on direct writes. Profile migration tests (4), focused
-  API test, build, and lint passed through migration 150.
+  API test, build, and lint passed through migration 150. Migration 151 aligns
+  account display-name validation with API Unicode trimming, UTF-16 length, and
+  NUL rules while retaining the empty signup default; direct-SQL/API tests cover
+  legacy/signup compatibility and invalid inserts/updates. Focused migration
+  and profile API tests passed; workspace build and lint passed through
+  migration 151.
   Previous full validation through migration 141: 273 tests passed and 3 skipped
   with one Vitest worker; build and lint passed. Firefox/WebKit and physical-device
   qualification remain external and pending.

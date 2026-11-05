@@ -2886,6 +2886,26 @@ Validation:
 This change is local only; it has not been deployed or applied to a host or
 running instance.
 
+## Account display-name integrity — November 4, 2026
+
+Migration 151 protects `users.display_name` at the SQLite boundary with
+JavaScript-compatible Unicode whitespace trimming, a 100 UTF-16-unit maximum,
+and embedded-NUL rejection. Existing signup behavior is preserved: inserts
+with the default empty name remain valid, while explicit updates must provide
+a nonblank name just as the API requires.
+
+Validation:
+- Focused SQLite migration test: passed through migration 151, including the
+  empty insert default, exact 100-unit boundary, and invalid update rejection.
+- Account profile API tests: passed, covering Unicode whitespace, NUL, and
+  over-limit names.
+- `npm run build`: passed across all workspaces.
+- `npm run lint`: passed.
+- `git diff --check`: passed.
+
+This change is local only; it has not been deployed or applied to a host or
+running instance.
+
 ## Instructor profile timestamp integrity — November 4, 2026
 
 Migration 150 validates `instructor_profiles.updated_at` on insert and update

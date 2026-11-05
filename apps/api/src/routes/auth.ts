@@ -413,7 +413,16 @@ export function authRouter(db: Database.Database, baseUrl: string, encryptionSec
   router.put(
     '/profile',
     requireAuth,
-    validateBody(z.object({ displayName: z.string().trim().min(1).max(100) })),
+    validateBody(
+      z.object({
+        displayName: z
+          .string()
+          .trim()
+          .min(1)
+          .max(100)
+          .refine(value => !value.includes('\0'), 'NUL characters are not allowed'),
+      }),
+    ),
     (req: Request, res: Response, next: NextFunction) => {
       try {
         const { displayName } = req.body as { displayName: string };

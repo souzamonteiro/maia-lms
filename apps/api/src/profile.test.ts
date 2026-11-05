@@ -78,7 +78,15 @@ it('persists a validated display name only for the authenticated account', async
     '',
   );
 
-  for (const displayName of ['', '   ', 'x'.repeat(101)]) {
+  for (const displayName of [
+    '',
+    '   ',
+    '\u00a0',
+    '\u2003',
+    'x'.repeat(101),
+    `${'😀'.repeat(50)}😀`,
+    'Ada\u0000Lovelace',
+  ]) {
     expect(
       (
         await request('/api/v1/auth/profile', 'PUT', { displayName }, firstCookie)
