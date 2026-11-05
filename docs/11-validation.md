@@ -2904,3 +2904,20 @@ Validation:
 
 This change is local only; it has not been deployed or applied to a host or
 running instance.
+
+## Category description UTF-16 length invariant — November 4, 2026
+
+Migration 145 aligns the SQLite description limit with JavaScript/Zod
+`.max(1000)` semantics. Supplementary Unicode characters count as two UTF-16
+units; the direct-SQL test accepts exactly 1000 units and rejects 1002 on
+insert and update.
+
+Validation:
+- Focused category field/version migration tests: 2/2 passed; the tests apply
+  the complete migration chain through migration 145.
+- `npm run build`: passed across all workspaces.
+- `npm run lint`: passed.
+- `git diff --check`: passed.
+
+This change is local only; it has not been deployed or applied to a host or
+running instance.

@@ -1172,6 +1172,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   embedded NUL in category names/descriptions at both API and SQLite boundaries;
   focused API and direct-SQL tests cover insert and update paths. The category
   migration/API tests, workspace build, and lint passed after migration 144.
+  Migration 145 aligns category description length with UTF-16 code units, with
+  direct-SQL tests for the 1000-unit boundary and insert/update rejection above
+  it. Focused category migration tests, workspace build, and lint passed through
+  migration 145.
   Previous full validation through migration 141: 273 tests passed and 3 skipped
   with one Vitest worker; build and lint passed. Firefox/WebKit and physical-device
   qualification remain external and pending.
