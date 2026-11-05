@@ -3118,6 +3118,20 @@ multi-generation updates. All database migration tests passed (89 tests across
 62 files); workspace build, lint, and `git diff --check` passed. This change is
 local only; it has not been deployed or applied to a host or running instance.
 
+## User email normalization integrity — November 5, 2026
+
+Migration 168 requires `email_normalized` to equal the lowercase, trimmed
+address on user inserts and address updates, and on pending email-change
+requests. Embedded NUL is rejected. Mixed-case display addresses remain valid
+and are preserved; the normalized value continues to serve login and uniqueness
+lookups. Existing rows are not rewritten or retroactively validated.
+
+The migration test covers valid mixed-case addresses, rejected mismatches and
+NULs for both tables, and a valid user email update. The account email-change
+confirmation API workflow also passed. All database migration tests passed
+(91 tests across 63 files); workspace build and lint passed. This change is
+local only; it has not been deployed or applied to a host or running instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with

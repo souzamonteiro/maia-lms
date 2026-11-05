@@ -1231,9 +1231,12 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   revisions on direct inserts and updates, preserving legacy null durations.
   Migration 167 requires user session versions to be nonnegative integers and
   prevents direct SQL updates from moving backward or advancing multiple generations.
+  Migration 168 requires `email_normalized` to match the lowercased email for
+  user and pending email-change inserts, and for user address updates; embedded
+  NUL is rejected while mixed-case display addresses remain supported.
   Last full validation through migration 141: 273 tests passed and 3 skipped
   with one Vitest worker; build and lint passed. Focused database validation at
-  migration 167: 89 tests passed; workspace build and lint passed.
+  migration 168: 91 tests passed across 63 files; workspace build and lint passed.
   Firefox/WebKit and physical-device qualification remain external and pending.
   Parallel full-suite runs can hit the existing 5-second backup-test timeout
   under concurrent test load; the backup test passes alone.

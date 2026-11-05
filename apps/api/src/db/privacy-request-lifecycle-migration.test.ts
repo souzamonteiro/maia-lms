@@ -9,8 +9,8 @@ it('keeps closed privacy requests terminal while allowing normal review transiti
     runMigrations(db);
     expect(db.prepare('SELECT version FROM schema_migrations ORDER BY rowid DESC LIMIT 2').all())
       .toEqual([
+        { version: '168_email_normalization_integrity' },
         { version: '167_user_session_version_integrity' },
-        { version: '166_course_revision_duration_integrity' },
       ]);
     db.exec(`
       INSERT INTO users(id,email,email_normalized,password_hash)
