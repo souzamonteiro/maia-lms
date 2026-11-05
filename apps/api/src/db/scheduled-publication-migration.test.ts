@@ -25,6 +25,19 @@ it('binds scheduled publication to a valid review revision and actor', () => {
 
     expect(() => db.prepare('UPDATE courses SET scheduled_publication_at=? WHERE id=?')
       .run('not-a-date', 'course')).toThrow(/invalid scheduled publication/);
+    for (const scheduledAt of [
+      '2030-01-01T12:00:00.000Z\u0000invalid',
+      Buffer.from('2030-01-01T12:00:00.000Z'),
+    ]) {
+      expect(() => db.prepare('UPDATE courses SET scheduled_publication_at=? WHERE id=?')
+        .run(scheduledAt, 'course')).toThrow(/invalid scheduled publication timestamp/);
+    }
+    expect(() => db.prepare(`INSERT INTO courses(
+      id,slug,author_id,status,current_revision_id,scheduled_publication_at,
+      scheduled_revision_id,scheduled_by
+    ) VALUES('invalid-scheduled','invalid-scheduled','admin','REVIEW','revision',?,?, 'admin')`)
+      .run('2030-01-01T12:00:00.000Z\u0000invalid', 'revision'))
+      .toThrow(/invalid scheduled publication timestamp/);
     expect(() => db.prepare('UPDATE courses SET current_revision_id=? WHERE id=?')
       .run('other-revision', 'course')).toThrow(/invalid scheduled publication/);
     expect(() => db.prepare("UPDATE courses SET status='DRAFT' WHERE id=?")

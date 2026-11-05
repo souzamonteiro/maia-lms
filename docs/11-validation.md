@@ -3195,6 +3195,21 @@ with a `NULL` timestamp. All database migration tests passed (94 tests across
 and `git diff --check` passed. This change is local only; it has not been
 deployed or applied to a host or running instance.
 
+## Scheduled publication timestamp integrity — November 5, 2026
+
+Migration 173 requires `courses.scheduled_publication_at` to be parseable,
+NUL-free text on course inserts and scheduled-publication updates whenever it
+is set. Unscheduled courses may still keep the field `NULL`; the pre-existing
+triggers continue to enforce REVIEW status and matching revision/actor fields.
+Existing rows are not rewritten or retroactively validated.
+
+The focused migration test covers valid scheduled timestamps, malformed,
+NUL-containing and BLOB updates, an invalid scheduled insert, and schedule
+cancellation. All database migration tests passed (94 tests across 66 files),
+as did the focused course-publishing tests, workspace build, lint, and
+`git diff --check`. This change is local only; it has not been deployed or
+applied to a host or running instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with

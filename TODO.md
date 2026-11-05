@@ -1246,11 +1246,15 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Migration 172 requires `course_revisions.published_at` to be a parseable,
   NUL-free text timestamp when set; draft `NULL` remains valid, and published
   revisions remain immutable after the transition.
+  Migration 173 requires scheduled publication timestamps to be parseable,
+  NUL-free text on course inserts and schedule updates, while retaining the
+  existing review/revision/actor consistency rules.
   Last full validation through migration 141: 273 tests passed and 3 skipped
   with one Vitest worker; build and lint passed. Focused database validation at
-  migration 172: 94 tests passed across 66 files; three course-publication
-  tests, workspace build, and lint passed. The email-change confirmation and
-  administrator password-reset tests also passed during migrations 171 and 170.
+  migration 173: 94 tests passed across 66 files; scheduled-publication and
+  course-publication tests, workspace build, and lint passed. Email-change
+  confirmation and administrator password-reset tests also passed during
+  migrations 171 and 170.
   Firefox/WebKit and physical-device qualification remain external and pending.
   Parallel full-suite runs can hit the existing 5-second backup-test timeout
   under concurrent test load; the backup test passes alone.
