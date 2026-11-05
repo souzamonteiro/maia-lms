@@ -2911,6 +2911,17 @@ acceptance. Workspace build, lint, and `git diff --check` passed. This change
 is local only; it has not been deployed or applied to a host or running
 instance.
 
+## Revision price currency API enum — November 5, 2026
+
+Migration 154 closes a direct-SQL validation gap: paid course revisions now
+accept only `BRL`, `USD`, and `EUR`, matching the API schema. It adds insert and
+update triggers and does not rewrite any existing price snapshots.
+
+The focused revision-pricing migration test passed for all supported currencies
+and rejected unsupported uppercase three-letter codes on insert and update.
+Workspace build, lint, and `git diff --check` passed. This change is local only;
+it has not been deployed or applied to a host or running instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with

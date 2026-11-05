@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import { expect, it } from 'vitest';
 import { runMigrations } from './migrate.js';
 
-it('requires positive minor units and an uppercase ISO currency for paid revisions', () => {
+it('requires positive minor units and an API-supported currency for paid revisions', () => {
   const db = new Database(':memory:');
   try {
     runMigrations(db);
@@ -20,8 +20,23 @@ it('requires positive minor units and an uppercase ISO currency for paid revisio
     db.prepare(`INSERT INTO course_revisions
       (id,course_id,title,summary,access_mode,price_amount_minor,price_currency)
       VALUES('paid-revision','course','Paid course','Summary','PAID',1299,'BRL')`).run();
+    for (const currency of ['USD', 'EUR']) {
+      expect(() => db.prepare(`INSERT INTO course_revisions
+        (id,course_id,title,summary,access_mode,price_amount_minor,price_currency)
+        VALUES(?, 'course','Paid course','Summary','PAID',1299,?)`)
+        .run(`paid-${currency.toLowerCase()}`, currency)).not.toThrow();
+    }
+    for (const currency of ['GBP', 'ABC']) {
+      expect(() => db.prepare(`INSERT INTO course_revisions
+        (id,course_id,title,summary,access_mode,price_amount_minor,price_currency)
+        VALUES(?, 'course','Paid course','Summary','PAID',1299,?)`)
+        .run(`paid-invalid-${currency.toLowerCase()}`, currency))
+        .toThrow(/invalid course revision price currency/);
+    }
     expect(() => db.prepare('UPDATE course_revisions SET price_currency=? WHERE id=?')
       .run('brl', 'paid-revision')).toThrow(/invalid course revision price/);
+    expect(() => db.prepare('UPDATE course_revisions SET price_currency=? WHERE id=?')
+      .run('GBP', 'paid-revision')).toThrow(/invalid course revision price currency/);
     expect(() => db.prepare('UPDATE course_revisions SET price_amount_minor=? WHERE id=?')
       .run(0, 'paid-revision')).toThrow(/invalid course revision price/);
     expect(() => db.prepare('UPDATE course_revisions SET price_amount_minor=? WHERE id=?')

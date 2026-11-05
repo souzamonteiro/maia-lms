@@ -1201,6 +1201,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   in translated course metadata at the SQLite boundary. Migration 153 aligns
   its nonblank-content check with JavaScript Unicode trimming; focused direct
   insert/update migration tests cover all JavaScript trim whitespace codepoints.
+  Migration 154 restricts paid-revision currency codes at the SQLite boundary
+  to the API's BRL/USD/EUR enum; focused pricing tests cover all accepted values
+  and rejection of unsupported three-letter codes on insert/update.
   Previous full validation through migration 141: 273 tests passed and 3 skipped
   with one Vitest worker; build and lint passed. Firefox/WebKit and physical-device
   qualification remain external and pending.
