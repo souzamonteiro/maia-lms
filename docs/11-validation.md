@@ -3163,6 +3163,22 @@ password-reset test passed. Workspace build, lint, and `git diff --check` passed
 This change is local only; it has not been deployed or applied to a host or
 running instance.
 
+## User email address integrity — November 5, 2026
+
+Migration 171 rejects empty or non-text email addresses and normalized addresses
+on user inserts and address updates. It also rejects empty or non-text addresses
+on pending email-change inserts. This closes the direct-SQL case where both
+address fields could be empty while satisfying the normalization invariant.
+Existing rows are not rewritten or retroactively checked.
+
+The focused migration test covers valid mixed-case addresses, empty and
+space-only addresses, a BLOB input, mismatched normalization, embedded NUL,
+address updates, and pending email-change inserts. The account email-change
+confirmation API workflow passed. All database migration tests passed (93 tests
+across 65 files); workspace build, lint, and `git diff --check` passed. This
+change is local only; it has not been deployed or applied to a host or running
+instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with

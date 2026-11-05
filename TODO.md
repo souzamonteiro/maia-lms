@@ -1240,11 +1240,14 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Migration 170 requires `password_hash` to be nonempty NUL-free text on user
   inserts and hash updates; it deliberately does not prescribe a hash encoding
   or retroactively inspect existing credentials.
+  Migration 171 rejects empty/non-text addresses and normalized addresses on
+  user inserts/updates and pending email-change inserts, closing the empty
+  normalized-address gap without changing existing rows.
   Last full validation through migration 141: 273 tests passed and 3 skipped
   with one Vitest worker; build and lint passed. Focused database validation at
-  migration 170: 93 tests passed across 65 files; the administrator password
-  reset test, workspace build, and lint passed. Four account API workflows also
-  passed during migration 169 validation.
+  migration 171: 93 tests passed across 65 files; email-change confirmation,
+  workspace build, and lint passed. The administrator password-reset test also
+  passed during migration 170 validation.
   Firefox/WebKit and physical-device qualification remain external and pending.
   Parallel full-suite runs can hit the existing 5-second backup-test timeout
   under concurrent test load; the backup test passes alone.

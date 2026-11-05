@@ -16,8 +16,21 @@ it('keeps normalized user and pending email-change addresses aligned', () => {
     expect(() => db.prepare(`INSERT INTO users(id,email,email_normalized,password_hash)
       VALUES('nul-user','person@example.com'||char(0),'person@example.com','hash')`).run())
       .toThrow(/user email normalization is invalid/);
+    for (const [id, email, normalized] of [
+      ['empty-user', '', ''],
+      ['blank-user', '   ', ''],
+    ]) {
+      expect(() => db.prepare(`INSERT INTO users(id,email,email_normalized,password_hash)
+        VALUES(?,?,?,'hash')`).run(id, email, normalized))
+        .toThrow(/user email address is empty or invalid/);
+    }
+    expect(() => db.prepare(`INSERT INTO users(id,email,email_normalized,password_hash)
+      VALUES('blob-user',?,'email@example.com','hash')`).run(Buffer.from('email@example.com')))
+      .toThrow(/user email address is empty or invalid/);
     expect(() => db.prepare(`UPDATE users SET email_normalized='other@example.com'
       WHERE id='owner'`).run()).toThrow(/user email normalization is invalid/);
+    expect(() => db.prepare(`UPDATE users SET email='',email_normalized=''
+      WHERE id='owner'`).run()).toThrow(/user email address is empty or invalid/);
 
     const insertEmailChange = db.prepare(`INSERT INTO account_email_changes(
       id,user_id,email,email_normalized,token_hash,expires_at
@@ -44,6 +57,9 @@ it('keeps normalized user and pending email-change addresses aligned', () => {
         'c'.repeat(64),
       ),
     ).toThrow(/account email change normalization is invalid/);
+    expect(() =>
+      insertEmailChange.run('empty-change', '', '', 'd'.repeat(64)),
+    ).toThrow(/account email change address is empty or invalid/);
 
     db.prepare(`UPDATE users SET email=?,email_normalized=? WHERE id='owner'`)
       .run('Next.Address@example.com', 'next.address@example.com');
