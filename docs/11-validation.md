@@ -3225,6 +3225,22 @@ migration tests passed (94 tests across 66 files); workspace build, lint, and
 `git diff --check` passed. This change is local only; it has not been deployed
 or applied to a host or running instance.
 
+## Worker heartbeat timestamp integrity — November 5, 2026
+
+Migration 175 requires worker `started_at`, `heartbeat_at`, and optional
+`stopped_at` values to be parseable, NUL-free text on insert and update. It
+retains the existing timestamp ordering, monotonic heartbeat, immutable process
+identity/start time, and terminal stopped-worker rules. Existing worker history
+is not rewritten or retroactively validated.
+
+The worker-heartbeat test covers malformed, NUL-containing, and BLOB values for
+all timestamps on insert and mutable timestamps on active-worker update, as well
+as normal registration/refresh/shutdown and rejected post-shutdown changes.
+All database migration tests and the focused worker-heartbeat test passed
+(95 tests across 67 files); workspace build, lint, and `git diff --check`
+passed. This change is local only; it has not been deployed or applied to a host
+or running instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with

@@ -1130,7 +1130,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   inserts and updates, retaining the existing irreversible history rule.
   Migration 128 validates worker heartbeat timestamp order, makes active
   heartbeats monotonic, freezes process identity/start time, and preserves
-  stopped instances as terminal history.
+  stopped instances as terminal history. Migration 175 also requires worker
+  heartbeat timestamps to be parseable NUL-free text on insert and mutable
+  timestamp updates.
   Migration 129 rejects blank worker instance IDs; registration is insert-only
   so a reused process ID cannot overwrite active or stopped history.
   Migration 130 validates entitlement creation/revocation timestamps and freezes
@@ -1252,12 +1254,15 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Migration 174 requires orphan-retention and collection timestamps to be
   parseable NUL-free text on insert/update, preserving the existing READY-state
   and 90-day retention boundary.
+  Migration 175 requires worker start, heartbeat, and stop timestamps to be
+  parseable NUL-free text on insert, and mutable timestamps on update, while
+  preserving heartbeat monotonicity and stopped-worker terminality.
   Last full validation through migration 141: 273 tests passed and 3 skipped
   with one Vitest worker; build and lint passed. Focused database validation at
-  migration 174: 94 tests passed across 66 files; media-retention and cleanup
-  tests, workspace build, and lint passed. Scheduled-publication, course-
+  migration 175: 95 tests passed across 67 files, including worker-heartbeat tests;
+  workspace build, and lint passed. Media-retention cleanup, scheduled/course
   publication, email-change confirmation, and administrator password-reset
-  tests also passed during migrations 173–170.
+  tests also passed during migrations 174–170.
   Firefox/WebKit and physical-device qualification remain external and pending.
   Parallel full-suite runs can hit the existing 5-second backup-test timeout
   under concurrent test load; the backup test passes alone.

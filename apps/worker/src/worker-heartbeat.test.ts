@@ -51,6 +51,34 @@ it('records worker lifecycle and prevents heartbeats after shutdown', () => {
       new Date(start.getTime() + 10_000).toISOString(),
       start.toISOString(),
     )).toThrow(/worker heartbeat timestamps are invalid/);
+    for (const [id, startedAt, heartbeatAt, stoppedAt] of [
+      ['worker-nul-start', `${start.toISOString()}\u0000invalid`, start.toISOString(), null],
+      ['worker-blob-start', Buffer.from(start.toISOString()), start.toISOString(), null],
+      ['worker-nul-heartbeat', start.toISOString(), `${start.toISOString()}\u0000invalid`, null],
+      ['worker-blob-heartbeat', start.toISOString(), Buffer.from(start.toISOString()), null],
+      ['worker-nul-stopped', start.toISOString(), start.toISOString(), `${start.toISOString()}\u0000invalid`],
+      ['worker-blob-stopped', start.toISOString(), start.toISOString(), Buffer.from(start.toISOString())],
+    ] as const) {
+      expect(() => db.prepare(`INSERT INTO worker_instances(
+        instance_id,started_at,heartbeat_at,stopped_at
+      ) VALUES(?,?,?,?)`).run(id, startedAt, heartbeatAt, stoppedAt))
+        .toThrow(/worker heartbeat timestamps are invalid/);
+    }
+
+    registerWorkerHeartbeat(db, 'worker-b', start);
+    for (const value of [
+      `${new Date(start.getTime() + 10_000).toISOString()}\u0000invalid`,
+      Buffer.from(new Date(start.getTime() + 10_000).toISOString()),
+    ]) {
+      expect(() => db.prepare(`UPDATE worker_instances SET heartbeat_at=?
+        WHERE instance_id='worker-b'`).run(value))
+        .toThrow(/worker heartbeat lifecycle is invalid/);
+      expect(() => db.prepare(`UPDATE worker_instances SET heartbeat_at=?,stopped_at=?
+        WHERE instance_id='worker-b'`).run(
+        new Date(start.getTime() + 10_000).toISOString(),
+        value,
+      )).toThrow(/worker heartbeat lifecycle is invalid/);
+    }
   } finally {
     db.close();
   }
