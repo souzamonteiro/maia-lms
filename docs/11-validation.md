@@ -3210,6 +3210,21 @@ as did the focused course-publishing tests, workspace build, lint, and
 `git diff --check`. This change is local only; it has not been deployed or
 applied to a host or running instance.
 
+## Media-retention timestamp integrity — November 5, 2026
+
+Migration 174 strengthens the orphan-retention and collection timestamp guards
+to require parseable, NUL-free text on media inserts and updates whenever those
+fields are set. It preserves the existing READY-state requirement and minimum
+90-day collection boundary. Existing rows are not rewritten or retroactively
+validated.
+
+The focused migration test covers valid retention transitions, malformed,
+NUL-containing, and BLOB timestamps on insert/update, cancellation, and
+rejection of non-READY media. Orphan-cleanup worker tests passed. All database
+migration tests passed (94 tests across 66 files); workspace build, lint, and
+`git diff --check` passed. This change is local only; it has not been deployed
+or applied to a host or running instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with

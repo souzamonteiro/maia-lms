@@ -1,0 +1,51 @@
+DROP TRIGGER video_orphan_retention_insert_integrity;
+CREATE TRIGGER video_orphan_retention_insert_integrity
+BEFORE INSERT ON video_uploads
+WHEN (
+  NEW.orphaned_since IS NOT NULL
+  AND (
+    NEW.status != 'READY'
+    OR typeof(NEW.orphaned_since) != 'text'
+    OR instr(NEW.orphaned_since, char(0)) > 0
+    OR julianday(NEW.orphaned_since) IS NULL
+  )
+) OR (
+  NEW.collection_started_at IS NOT NULL
+  AND (
+    NEW.status != 'READY'
+    OR NEW.orphaned_since IS NULL
+    OR typeof(NEW.collection_started_at) != 'text'
+    OR instr(NEW.collection_started_at, char(0)) > 0
+    OR julianday(NEW.collection_started_at) IS NULL
+    OR julianday(NEW.collection_started_at) < julianday(NEW.orphaned_since, '+90 days')
+  )
+)
+BEGIN
+  SELECT RAISE(ABORT, 'media retention state is invalid');
+END;
+
+DROP TRIGGER video_orphan_retention_update_integrity;
+CREATE TRIGGER video_orphan_retention_update_integrity
+BEFORE UPDATE OF status, orphaned_since, collection_started_at ON video_uploads
+WHEN (
+  NEW.orphaned_since IS NOT NULL
+  AND (
+    NEW.status != 'READY'
+    OR typeof(NEW.orphaned_since) != 'text'
+    OR instr(NEW.orphaned_since, char(0)) > 0
+    OR julianday(NEW.orphaned_since) IS NULL
+  )
+) OR (
+  NEW.collection_started_at IS NOT NULL
+  AND (
+    NEW.status != 'READY'
+    OR NEW.orphaned_since IS NULL
+    OR typeof(NEW.collection_started_at) != 'text'
+    OR instr(NEW.collection_started_at, char(0)) > 0
+    OR julianday(NEW.collection_started_at) IS NULL
+    OR julianday(NEW.collection_started_at) < julianday(NEW.orphaned_since, '+90 days')
+  )
+)
+BEGIN
+  SELECT RAISE(ABORT, 'media retention state is invalid');
+END;

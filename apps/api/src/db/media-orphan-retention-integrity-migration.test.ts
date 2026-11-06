@@ -9,8 +9,8 @@ it('keeps orphan-retention timestamps valid and restricted to ready media', () =
     runMigrations(db);
     expect(db.prepare('SELECT version FROM schema_migrations ORDER BY rowid DESC LIMIT 2').all())
       .toEqual([
+        { version: '174_media_retention_timestamp_type_integrity' },
         { version: '173_scheduled_publication_timestamp_integrity' },
-        { version: '172_course_revision_published_timestamp_integrity' },
       ]);
     db.exec(`
       INSERT INTO users(id,email,email_normalized,password_hash)
@@ -23,6 +23,15 @@ it('keeps orphan-retention timestamps valid and restricted to ready media', () =
     expect(() => db.prepare(
       "INSERT INTO video_uploads(id,owner_id,course_id,filename,size,orphaned_since) VALUES('invalid-insert','owner','course','invalid.mp4',10,'2026-01-01')",
     ).run()).toThrow(/media retention state is invalid/);
+    for (const [id, orphanedSince] of [
+      ['nul-insert', '2026-01-01T00:00:00Z\u0000invalid'],
+      ['blob-insert', Buffer.from('2026-01-01T00:00:00Z')],
+    ] as const) {
+      expect(() => db.prepare(`INSERT INTO video_uploads(
+        id,owner_id,course_id,filename,size,status,orphaned_since
+      ) VALUES(?,'owner','course','invalid.mp4',10,'READY',?)`).run(id, orphanedSince))
+        .toThrow(/media retention state is invalid/);
+    }
     expect(() => db.prepare(
       "UPDATE video_uploads SET orphaned_since='not-a-date' WHERE id='upload'",
     ).run()).toThrow(/media retention state is invalid/);
@@ -37,8 +46,22 @@ it('keeps orphan-retention timestamps valid and restricted to ready media', () =
       UPDATE video_uploads SET orphaned_since='2026-01-01T00:00:00Z' WHERE id='upload';
     `);
     expect(() => db.prepare(
+      "UPDATE video_uploads SET orphaned_since='2026-01-01T00:00:00Z'||char(0)||'invalid' WHERE id='upload'",
+    ).run()).toThrow(/media retention state is invalid/);
+    expect(() => db.prepare(
+      "UPDATE video_uploads SET orphaned_since=? WHERE id='upload'",
+    ).run(Buffer.from('2026-01-01T00:00:00Z')))
+      .toThrow(/media retention state is invalid/);
+    expect(() => db.prepare(
       "UPDATE video_uploads SET collection_started_at='not-a-date' WHERE id='upload'",
     ).run()).toThrow(/media retention state is invalid/);
+    expect(() => db.prepare(
+      "UPDATE video_uploads SET collection_started_at='2026-04-02T00:00:00Z'||char(0)||'invalid' WHERE id='upload'",
+    ).run()).toThrow(/media retention state is invalid/);
+    expect(() => db.prepare(
+      "UPDATE video_uploads SET collection_started_at=? WHERE id='upload'",
+    ).run(Buffer.from('2026-04-02T00:00:00Z')))
+      .toThrow(/media retention state is invalid/);
     expect(() => db.prepare(
       "UPDATE video_uploads SET collection_started_at='2026-03-31T00:00:00Z' WHERE id='upload'",
     ).run()).toThrow(/media retention state is invalid/);
