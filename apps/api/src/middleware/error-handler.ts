@@ -1,6 +1,7 @@
 // Centralized error handling middleware for Maia LMS API
 import { ZodError } from 'zod';
 import type { Request, Response, NextFunction } from 'express';
+import { safeErrorLabel } from '../safe-logging.js';
 
 /**
  * Application-level error with an HTTP status code.
@@ -51,13 +52,11 @@ export function errorHandler(err: Error, req: Request, res: Response, _next: Nex
     return;
   }
 
-  // Log unexpected errors with request context for debugging
-  console.error('Unexpected error:', {
-    message: err.message,
-    stack: err.stack,
-    url: req.url,
+  const route = typeof req.route?.path === 'string' ? req.route.path : 'unmatched';
+  console.error('Unexpected API error', {
     method: req.method,
-    correlationId: req.headers['x-correlation-id'],
+    route,
+    error: safeErrorLabel(err),
   });
 
   res.status(500).json({ error: 'Internal server error', code: 'API_INTERNAL_ERROR' });

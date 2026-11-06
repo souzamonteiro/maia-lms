@@ -449,6 +449,14 @@ download completion; it is not time to first byte or playback startup/buffering.
 Aborted responses are excluded. Playback start/buffering and watch-time telemetry
 remain unavailable, and dashboard alerts are not delivered to an external channel.
 
+Unexpected API and worker failures log fixed event labels and a restricted
+technical error label. The API may include the HTTP method and registered route
+template, but not request URLs, query strings, correlation IDs, raw messages or
+stacks. Only a fixed set of error names and operating-system/SQLite codes is
+included; other error data is omitted. This limits sensitive values emitted by
+the application, but does not control retention, access or redaction performed
+by the host's journal or external log collectors.
+
 The operations endpoint displays at most the 20 most-recent heartbeat records;
 worker alerts are calculated separately across all worker records. `WORKER_MISSING`
 means no worker records exist. `WORKER_STALE` means at least one active worker is

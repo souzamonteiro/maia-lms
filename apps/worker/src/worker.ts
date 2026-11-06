@@ -18,6 +18,7 @@ import { loadConfig } from '@maia/api/config';
 import { createPaymentProvider } from '@maia/api/payment-provider';
 import { reconcilePendingPayments } from '@maia/api/payment-reconciliation';
 import { fillMediaCapacity as fillMediaPoolCapacity } from './media-scheduler.js';
+import { safeErrorLabel } from '@maia/api/safe-logging';
 
 if (process.env.NODE_ENV !== 'production' && fs.existsSync('.env')) process.loadEnvFile('.env');
 const config = loadConfig();
@@ -61,7 +62,7 @@ function fillMediaCapacity() {
     fillMediaPoolCapacity(mediaJobs, mediaConcurrency, () =>
       processVideo(db, process.env.STORAGE_ROOT ?? './data/storage')
       .catch(error => {
-        console.error('Video worker failed', error instanceof Error ? error.message : 'Unknown error');
+        console.error('Video worker failed', safeErrorLabel(error));
         return false;
       }),
     );
@@ -75,18 +76,12 @@ while (running) {
     try {
       await cleanupUploads(db, process.env.STORAGE_ROOT ?? './data/storage');
     } catch (error) {
-      console.error(
-        'Upload cleanup failed',
-        error instanceof Error ? error.message : 'Unknown error',
-      );
+      console.error('Upload cleanup failed', safeErrorLabel(error));
     }
     try {
       await cleanupOrphanedMedia(db, process.env.STORAGE_ROOT ?? './data/storage');
     } catch (error) {
-      console.error(
-        'Orphaned media cleanup failed',
-        error instanceof Error ? error.message : 'Unknown error',
-      );
+      console.error('Orphaned media cleanup failed', safeErrorLabel(error));
     }
   }
   fillMediaCapacity();
@@ -101,7 +96,7 @@ while (running) {
       .then(result => {
         if (result.failed) console.error('Payment reconciliation needs review', result.failed);
       })
-      .catch(error => console.error('Payment reconciliation failed', error instanceof Error ? error.message : 'Unknown error'))
+      .catch(error => console.error('Payment reconciliation failed', safeErrorLabel(error)))
       .finally(() => {
         paymentJob = undefined;
       });
@@ -124,7 +119,7 @@ while (running) {
         ),
     });
   } catch (error) {
-    console.error('Worker poll failed', error instanceof Error ? error.message : 'Unknown error');
+    console.error('Worker poll failed', safeErrorLabel(error));
   }
   await new Promise(resolve => setTimeout(resolve, 2000));
 }

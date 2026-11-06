@@ -3,6 +3,7 @@ import { loadConfig } from './config.js';
 import { initDb } from './db/index.js';
 import { runMigrations } from './db/migrate.js';
 import { createApp } from './app.js';
+import { safeErrorLabel } from './safe-logging.js';
 
 async function main(): Promise<void> {
   const config = loadConfig();
@@ -36,6 +37,6 @@ async function main(): Promise<void> {
 }
 
 main().catch(err => {
-  console.error('Fatal startup error:', err);
+  console.error('Fatal API startup error', safeErrorLabel(err));
   process.exit(1);
 });

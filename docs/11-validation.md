@@ -2794,6 +2794,24 @@ Validation:
 
 No deployment, host or running-instance changes were performed.
 
+## Sensitive-data-safe operational error logs — November 6, 2026
+
+Unexpected API failures now log only the HTTP method, registered route template,
+and an allowlisted error type/code. Request URLs, query values, correlation IDs,
+messages and stacks are omitted. Worker failure logs use the same restricted
+error label instead of raw exception messages; API startup failures are also
+sanitized. Tests inject secret-bearing messages, stacks, query strings and
+correlation IDs and verify none are emitted. This covers application logs only,
+not host journal policy, external log collectors, retention or alert delivery.
+
+Validation:
+- Focused safe-logging, outbox-worker and admin-operations tests: 15/15 passed.
+- `npm run build`: passed across all workspaces.
+- `npm run lint`: passed.
+- `git diff --check`: passed.
+
+No deployment, host or running-instance changes were performed.
+
 ## Backup destination symlink-alias protection — November 5, 2026
 
 Bundle creation now resolves the destination parent and source database to

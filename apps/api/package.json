@@ -19,6 +19,10 @@
     "./scheduled-publication": {
       "types": "./dist/services/course-publishing.d.ts",
       "default": "./dist/services/course-publishing.js"
+    },
+    "./safe-logging": {
+      "types": "./dist/safe-logging.d.ts",
+      "default": "./dist/safe-logging.js"
     }
   },
   "scripts": {
