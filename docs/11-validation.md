@@ -3255,6 +3255,24 @@ passed (95 tests across 67 files), as did the video-job test, workspace build,
 lint, and `git diff --check`. This change is local only; it has not been
 deployed or applied to a host or running instance.
 
+## Video upload timestamp integrity — November 5, 2026
+
+Migration 177 validates media-upload creation, activity, and worker-heartbeat
+timestamps on direct SQLite writes. Values must be parseable, NUL-free text;
+heartbeat remains optional, and the existing insert trigger continues to
+initialize upload activity. The focused migration test checks invalid inserts
+and updates while preserving valid ISO timestamps and a nullable heartbeat.
+
+Validation:
+- Database test suite: 96 tests passed across 68 files.
+- Media API/worker regression tests: 13 passed, 1 optional test skipped.
+- `npm run build`: passed across all workspaces.
+- `npm run lint`: passed.
+- `git diff --check`: passed.
+
+This change is local only; it has not been deployed or applied to a host or
+running instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with
