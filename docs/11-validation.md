@@ -3308,6 +3308,23 @@ Validation:
 This change is local only; it has not been deployed or applied to a host or
 running instance.
 
+## Video chunk immutability — November 5, 2026
+
+Migration 180 prevents updates to a registered chunk's upload, offset, size,
+storage key, or SHA-256 digest. The API and worker only create, read, and delete
+chunks; cancellation and retention cleanup continue to delete them. The focused
+migration test checks each immutable field and verifies deletion remains allowed.
+
+Validation:
+- Database test suite: 99 tests passed across 71 files.
+- Video/media API and worker tests: 14 passed, 1 optional test skipped.
+- `npm run build`: passed across all workspaces.
+- `npm run lint`: passed.
+- `git diff --check`: passed.
+
+This change is local only; it has not been deployed or applied to a host or
+running instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with

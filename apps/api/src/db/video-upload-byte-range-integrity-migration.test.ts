@@ -8,8 +8,8 @@ it('keeps upload and chunk byte ranges integral and within declared sizes', () =
     runMigrations(db);
     expect(db.prepare('SELECT version FROM schema_migrations ORDER BY rowid DESC LIMIT 2').all())
       .toEqual([
+        { version: '180_video_chunk_immutability' },
         { version: '179_video_chunk_digest_integrity' },
-        { version: '178_video_upload_byte_range_integrity' },
       ]);
     db.prepare(`INSERT INTO users(id,email,email_normalized,password_hash)
       VALUES('owner','owner@example.com','owner@example.com','hash')`).run();
@@ -84,12 +84,6 @@ it('keeps upload and chunk byte ranges integral and within declared sizes', () =
         .toThrow(/video chunk byte range is invalid/);
     }
 
-    const updateChunk = db.prepare('UPDATE video_chunks SET offset=?,size=? WHERE storage_key=?');
-    expect(() => updateChunk.run(9, 2, 'chunk-1'))
-      .toThrow(/video chunk byte range is invalid/);
-    expect(() => updateChunk.run(0, 1.25, 'chunk-1'))
-      .toThrow(/video chunk byte range is invalid/);
-    updateChunk.run(0, 4, 'chunk-1');
   } finally {
     db.close();
   }

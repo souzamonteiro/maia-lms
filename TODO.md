@@ -1267,10 +1267,13 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   ranges that fit inside each upload's declared byte size.
   Migration 179 requires every chunk digest to be a 64-character lowercase
   hexadecimal SHA-256 value on direct inserts and updates.
+  Migration 180 makes chunk ownership, range, storage key, and digest immutable
+  after insertion while preserving cleanup deletion.
   Last full validation through migration 141: 273 tests passed and 3 skipped
   with one Vitest worker; build and lint passed. Focused database validation at
-  migration 179: 98 tests passed across 70 files; media workflow tests passed
+  migration 180: 99 tests passed across 71 files; media workflow tests passed
   (14 passed, 1 optional skipped), and workspace build and lint passed.
+  Migration 179 validation: 98 tests passed across 70 files.
   Migration 178 validation: 97 tests passed across 69 files.
   Migration 177 validation: 96 tests passed across 68 files; migration 176
   validation: 95 tests passed across 67 files. Worker-heartbeat,
