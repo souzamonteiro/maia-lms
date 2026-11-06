@@ -1524,6 +1524,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   password-mismatch alerts in en, pt-BR, and es across the three browser engines.
   The privacy-review workflow now verifies keyboard search and review submission,
   including focus restoration after saving, in all three browser engines.
+  Certificate-history failures now announce through a live region, expose a
+  focused alert and keyboard retry, and restore focus to the history summary
+  after a successful retry; the local Chromium E2E covers fail-then-recover.
   The shared keyboard-focus ring now has at least 3:1 contrast against the paper
   and white surfaces, with a regression test for both combinations. The form
   error-message border also meets 3:1 against its background, covered by the same

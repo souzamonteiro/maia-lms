@@ -5,6 +5,7 @@ test('administrator revokes and reissues a certificate with private reasons and 
   let state: 'valid' | 'revoked' = 'valid';
   let successorId: string | null = null;
   let reason = '';
+  let historyRequests = 0;
 
   await page.route('**/api/v1/admin/certificates**', async route => {
     const request = route.request();
@@ -55,6 +56,15 @@ test('administrator revokes and reissues a certificate with private reasons and 
       return;
     }
     if (url.pathname.endsWith('/history') && method === 'GET') {
+      historyRequests += 1;
+      if (historyRequests === 1) {
+        await route.fulfill({
+          status: 503,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: 'History temporarily unavailable' }),
+        });
+        return;
+      }
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -110,7 +120,19 @@ test('administrator revokes and reissues a certificate with private reasons and 
   page.once('dialog', dialog => dialog.accept('Replacement approved by support.'));
   await item.getByRole('button', { name: 'Reissue certificate', exact: true }).click();
   await expect(page.locator('#message')).toContainText('Replacement certificate issued');
-  await item.getByText('History and lineage', { exact: true }).click();
+  const historySummary = item.getByText('History and lineage', { exact: true });
+  await historySummary.click();
+  const history = item.locator('.certificate-history');
+  await expect(history).toHaveAttribute('aria-live', 'polite');
+  await expect(history).toHaveAttribute('aria-busy', 'false');
+  const historyError = history.getByRole('alert');
+  await expect(historyError).toHaveText('History temporarily unavailable');
+  await expect(historyError).toBeFocused();
+  const historyRetry = history.getByRole('button', { name: 'Retry', exact: true });
+  await historyRetry.focus();
+  await page.keyboard.press('Enter');
+  await expect(history).toContainText('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+  await expect(historySummary).toBeFocused();
   await expect(item).toContainText('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
   await expect(item).toContainText('Replacement approved by support.');
   await expect(

@@ -3599,3 +3599,21 @@ Validation:
 - `git diff --check`: passed.
 
 No deployment, host or running-instance changes were performed.
+
+## Certificate history retry and focus recovery — November 6, 2026
+
+The administrator certificate-history disclosure now exposes its content as a
+polite live region with an explicit busy state while loading. A failed request
+renders a focused alert and a keyboard-operable retry control; successful retry
+restores focus to the disclosure summary. The focused browser test exercises a
+simulated first-request failure followed by a successful retry, including
+announcement semantics and focus recovery.
+
+Validation:
+- `E2E_PORT=4423 npm run test:e2e -- tests/e2e/admin-certificates.spec.ts`: 1/1 passed.
+- `npm run lint`: passed.
+- `npm run build`: passed across all workspaces.
+- `git diff --check`: passed.
+
+This is local browser automation only; no deployment, host, or running-instance
+changes were performed.

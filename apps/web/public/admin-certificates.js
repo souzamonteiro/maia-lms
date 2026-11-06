@@ -25,7 +25,7 @@ export async function mountAdminCertificates({ app, api, t, e, notify, locale })
       for (const certificate of result.items) {
         const item = document.createElement('article');
         item.className = 'card admin-certificate';
-        item.innerHTML = `<h2>${e(certificate.course_title || t('certificateCourseTitle'))}</h2><p>${e(certificate.email)} · ${e(certificate.confirmed_name)}</p><p>${t('adminCertificateCode')}: <code>${e(certificate.public_code)}</code></p><p>${t('certificateStatusLabel')}: ${e(t(certificate.revoked_at ? 'certificateStatusRevoked' : 'certificateStatusValid'))} · ${t('certificatePdfLabel')}: ${e(t(`certificatePdf${certificate.pdf_status}`))}</p><p>${t('certificateIssuedAt')}: ${e(dateLabel(certificate.issued_at))}</p>${certificate.reason ? `<p>${t('adminCertificatePrivateReason')}: ${e(certificate.reason)}</p>` : ''}${certificate.supersedes_id ? `<p>${t('adminCertificateSupersedes')}: <code>${e(certificate.supersedes_id)}</code></p>` : ''}${certificate.successor_id ? `<p>${t('adminCertificateSuccessor')}: <code>${e(certificate.successor_id)}</code></p>` : ''}<div class="actions">${!certificate.revoked_at ? `<button type="button" class="secondary" data-revoke>${t('adminCertificateRevoke')}</button>` : ''}${certificate.revoked_at && !certificate.successor_id ? `<button type="button" class="secondary" data-reissue>${t('adminCertificateReissue')}</button>` : ''}<a href="/certificates/verify/${encodeURIComponent(certificate.public_code)}">${t('certificateViewVerification')}</a><details><summary>${t('adminCertificateHistory')}</summary><div class="certificate-history">${t('adminCertificatesLoading')}</div></details></div>`;
+        item.innerHTML = `<h2>${e(certificate.course_title || t('certificateCourseTitle'))}</h2><p>${e(certificate.email)} · ${e(certificate.confirmed_name)}</p><p>${t('adminCertificateCode')}: <code>${e(certificate.public_code)}</code></p><p>${t('certificateStatusLabel')}: ${e(t(certificate.revoked_at ? 'certificateStatusRevoked' : 'certificateStatusValid'))} · ${t('certificatePdfLabel')}: ${e(t(`certificatePdf${certificate.pdf_status}`))}</p><p>${t('certificateIssuedAt')}: ${e(dateLabel(certificate.issued_at))}</p>${certificate.reason ? `<p>${t('adminCertificatePrivateReason')}: ${e(certificate.reason)}</p>` : ''}${certificate.supersedes_id ? `<p>${t('adminCertificateSupersedes')}: <code>${e(certificate.supersedes_id)}</code></p>` : ''}${certificate.successor_id ? `<p>${t('adminCertificateSuccessor')}: <code>${e(certificate.successor_id)}</code></p>` : ''}<div class="actions">${!certificate.revoked_at ? `<button type="button" class="secondary" data-revoke>${t('adminCertificateRevoke')}</button>` : ''}${certificate.revoked_at && !certificate.successor_id ? `<button type="button" class="secondary" data-reissue>${t('adminCertificateReissue')}</button>` : ''}<a href="/certificates/verify/${encodeURIComponent(certificate.public_code)}">${t('certificateViewVerification')}</a><details><summary>${t('adminCertificateHistory')}</summary><div class="certificate-history" aria-live="polite" aria-busy="false">${t('adminCertificatesLoading')}</div></details></div>`;
 
         item.querySelector('[data-revoke]')?.addEventListener('click', async event => {
           const reason = prompt(t('adminCertificateRevokePrompt'));
@@ -66,15 +66,29 @@ export async function mountAdminCertificates({ app, api, t, e, notify, locale })
         history.addEventListener('toggle', async () => {
           if (!history.open || history.dataset.loaded) return;
           const content = history.querySelector('.certificate-history');
-          try {
-            const result = await api(`/admin/certificates/${certificate.id}/history`);
-            content.innerHTML = result.items.length || result.events.length
-              ? `${result.items.length ? `<ol>${result.items.map(entry => `<li id="certificate-history-${e(entry.id)}"><strong>${e(entry.confirmed_name)}</strong> · <a href="/certificates/verify/${encodeURIComponent(entry.public_code)}"><code>${e(entry.public_code)}</code></a> · ${e(dateLabel(entry.issued_at))} · ${e(t(entry.revoked_at ? 'certificateStatusRevoked' : 'certificateStatusValid'))}${entry.reason ? `<p>${t('adminCertificatePrivateReason')}: ${e(entry.reason)}</p>` : ''}${entry.supersedes_id ? `<p>${t('adminCertificateSupersedes')}: <a href="#certificate-history-${e(entry.supersedes_id)}"><code>${e(entry.supersedes_id)}</code></a></p>` : ''}${entry.successor_id ? `<p>${t('adminCertificateSuccessor')}: <a href="#certificate-history-${e(entry.successor_id)}"><code>${e(entry.successor_id)}</code></a></p>` : ''}</li>`).join('')}</ol>` : ''}${result.events.length ? `<h3>${t('adminCertificateEvents')}</h3><ol>${result.events.map(entry => { let metadata = {}; try { metadata = JSON.parse(entry.metadata); } catch {} const label = entry.action === 'certificate.revoke' ? 'adminCertificateRevoke' : entry.action === 'certificate.reissue' ? 'adminCertificateReissue' : 'adminCertificateLineageEvent'; return `<li><strong>${t(label)}</strong> · ${e(dateLabel(entry.occurred_at))}${entry.actor_id ? ` · ${t('adminCertificateActor')}: ${e(entry.actor_id)}` : ''}${metadata.reason ? `<p>${t('adminCertificatePrivateReason')}: ${e(metadata.reason)}</p>` : ''}</li>`; }).join('')}</ol>` : ''}`
-              : `<p>${t('adminCertificateNoHistory')}</p>`;
-            history.dataset.loaded = 'true';
-          } catch (error) {
-            content.textContent = error.message || t('genericError');
-          }
+          const loadHistory = async () => {
+            content.setAttribute('aria-busy', 'true');
+            content.textContent = t('adminCertificatesLoading');
+            try {
+              const result = await api(`/admin/certificates/${certificate.id}/history`);
+              content.innerHTML = result.items.length || result.events.length
+                ? `${result.items.length ? `<ol>${result.items.map(entry => `<li id="certificate-history-${e(entry.id)}"><strong>${e(entry.confirmed_name)}</strong> · <a href="/certificates/verify/${encodeURIComponent(entry.public_code)}"><code>${e(entry.public_code)}</code></a> · ${e(dateLabel(entry.issued_at))} · ${e(t(entry.revoked_at ? 'certificateStatusRevoked' : 'certificateStatusValid'))}${entry.reason ? `<p>${t('adminCertificatePrivateReason')}: ${e(entry.reason)}</p>` : ''}${entry.supersedes_id ? `<p>${t('adminCertificateSupersedes')}: <a href="#certificate-history-${e(entry.supersedes_id)}"><code>${e(entry.supersedes_id)}</code></a></p>` : ''}${entry.successor_id ? `<p>${t('adminCertificateSuccessor')}: <a href="#certificate-history-${e(entry.successor_id)}"><code>${e(entry.successor_id)}</code></a></p>` : ''}</li>`).join('')}</ol>` : ''}${result.events.length ? `<h3>${t('adminCertificateEvents')}</h3><ol>${result.events.map(entry => { let metadata = {}; try { metadata = JSON.parse(entry.metadata); } catch {} const label = entry.action === 'certificate.revoke' ? 'adminCertificateRevoke' : entry.action === 'certificate.reissue' ? 'adminCertificateReissue' : 'adminCertificateLineageEvent'; return `<li><strong>${t(label)}</strong> · ${e(dateLabel(entry.occurred_at))}${entry.actor_id ? ` · ${t('adminCertificateActor')}: ${e(entry.actor_id)}` : ''}${metadata.reason ? `<p>${t('adminCertificatePrivateReason')}: ${e(metadata.reason)}</p>` : ''}</li>`; }).join('')}</ol>` : ''}`
+                : `<p>${t('adminCertificateNoHistory')}</p>`;
+              history.dataset.loaded = 'true';
+            } catch (error) {
+              const message = e(error.message || t('genericError'));
+              content.innerHTML = `<p role="alert" tabindex="-1">${message}</p><button type="button" class="secondary" data-retry-certificate-history>${t('retry')}</button>`;
+              const alert = content.querySelector('[role="alert"]');
+              alert.focus();
+              content.querySelector('[data-retry-certificate-history]').addEventListener('click', async () => {
+                await loadHistory();
+                if (history.dataset.loaded) history.querySelector('summary').focus();
+              });
+            } finally {
+              content.setAttribute('aria-busy', 'false');
+            }
+          };
+          await loadHistory();
         });
         list.append(item);
       }
