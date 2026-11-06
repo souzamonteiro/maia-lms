@@ -1541,6 +1541,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   feedback, and code blocks. The operations-dashboard mobile-viewport workflow
   now checks for horizontal overflow at 320 CSS pixels and confirms translated
   headings/refresh controls in English, Brazilian Portuguese, and Spanish.
+  The local real-video workflow also checks the lesson at 320 CSS pixels,
+  verifies captions track kind/label/language metadata and cues, and confirms the
+  transcript remains visible without horizontal overflow.
   These are targeted local workflows, not full browser-suite qualification.
   Keep open for the broader contrast, zoom/mobile, captions, and full
   author/learner workflow audit.

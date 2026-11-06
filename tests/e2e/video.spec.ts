@@ -212,7 +212,7 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     expect(await enrollment.json()).toHaveProperty('id');
     await expect(page.getByText('You are enrolled in this course.')).toBeVisible();
     await page.getByRole('link', { name: 'Real video lesson', exact: true }).click();
-    await page.setViewportSize({ width: 360, height: 780 });
+    await page.setViewportSize({ width: 320, height: 780 });
     const video = page.locator('video');
     await expect(video).toBeVisible();
     await expect(page.locator('#playback-speed')).toBeVisible();
@@ -225,7 +225,10 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     });
     await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.currentTime))
       .toBeGreaterThan(0);
-    await expect(page.locator('track[srclang="en"]')).toHaveCount(1);
+    const captionTrack = page.locator('track[srclang="en"]');
+    await expect(captionTrack).toHaveCount(1);
+    await expect(captionTrack).toHaveAttribute('kind', 'captions');
+    await expect(captionTrack).toHaveAttribute('label', 'English');
     await video.evaluate((v: HTMLVideoElement) => {
       v.textTracks[0].mode = 'showing';
     });
@@ -236,6 +239,7 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     await expect(
       page.locator('.plain-content').filter({ hasText: 'Hello captions' }),
     ).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     let resolveFirstSave: (() => void) | undefined;
     let notifyFirstSave: (() => void) | undefined;
     let progressRequestCount = 0;
