@@ -1543,7 +1543,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   headings/refresh controls in English, Brazilian Portuguese, and Spanish.
   The local real-video workflow also checks the lesson at 320 CSS pixels,
   verifies captions track kind/label/language metadata and cues, and confirms the
-  transcript remains visible without horizontal overflow.
+  transcript remains visible without horizontal overflow. The transcript
+  disclosure is opened with Enter, closed with Space, and reopened with Enter,
+  checking keyboard focus and the disclosure state.
   These are targeted local workflows, not full browser-suite qualification.
   Keep open for the broader contrast, zoom/mobile, captions, and full
   author/learner workflow audit.

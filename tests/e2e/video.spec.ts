@@ -235,10 +235,19 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     await expect
       .poll(() => video.evaluate((v: HTMLVideoElement) => v.textTracks[0].cues?.length))
       .toBe(1);
-    await page.getByText('Transcript — English', { exact: true }).click();
+    const transcript = page.locator('.lesson details').filter({ hasText: 'Transcript — English' });
+    const transcriptSummary = transcript.locator('summary');
+    await transcriptSummary.focus();
+    await expect(transcriptSummary).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(transcript).toHaveAttribute('open', '');
     await expect(
       page.locator('.plain-content').filter({ hasText: 'Hello captions' }),
     ).toBeVisible();
+    await page.keyboard.press('Space');
+    await expect(transcript).not.toHaveAttribute('open', '');
+    await page.keyboard.press('Enter');
+    await expect(transcript).toHaveAttribute('open', '');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     let resolveFirstSave: (() => void) | undefined;
     let notifyFirstSave: (() => void) | undefined;

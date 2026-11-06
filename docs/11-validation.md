@@ -3574,12 +3574,14 @@ running instance.
 The local real-video E2E now uses a 320 CSS-pixel viewport for its learner
 lesson flow, including video playback, caption metadata/cue availability, and
 the transcript. It checks the captions track's language, label, and `kind`, and
-confirms the transcript remains visible without horizontal overflow. This is a
-desktop browser viewport emulation, not physical-device or zoom qualification.
+confirms the transcript remains visible without horizontal overflow. The
+transcript disclosure is also opened with Enter, closed with Space, and reopened
+with Enter after checking keyboard focus and disclosure state. This is a desktop
+browser viewport emulation, not physical-device or zoom qualification.
 
 Validation:
 - `VIDEO_TEST_REAL=1 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome E2E_PORT=4411 npm run test:e2e -- tests/e2e/video.spec.ts --browser=chromium --grep "author uploads a real video"`: 1/1 passed.
-- `npm run lint`: passed on rerun after the E2E report directory was created; an initial concurrent lint invocation exited because that directory did not yet exist.
+- `npm run lint`: passed on rerun after the E2E report directory was created; the initial concurrent invocation exited because that directory did not yet exist.
 - `git diff --check`: passed.
 
 No deployment, host or running-instance changes were performed.
