@@ -182,8 +182,8 @@ export function videosRouter(
               createHash('sha256').update(req.body).digest('hex'),
             );
             db.prepare(
-              "UPDATE video_uploads SET offset=offset+?,last_activity_at=datetime('now') WHERE id=?",
-            ).run(req.body.length, v.id);
+              "UPDATE video_uploads SET last_activity_at=datetime('now') WHERE id=?",
+            ).run(v.id);
           }).immediate();
         } catch (error) {
           await store.delete(key);

@@ -3325,6 +3325,25 @@ Validation:
 This change is local only; it has not been deployed or applied to a host or
 running instance.
 
+## Upload chunk cursor integrity — November 6, 2026
+
+Migration 181 requires each new chunk to start at the stored upload cursor and
+advances the cursor in the same SQLite transaction. Direct cursor updates must
+match the last stored chunk boundary. Chunk deletion is allowed only after an
+upload is READY or CANCELLED, preserving API cancellation and retention cleanup.
+The API now relies on the database trigger for cursor advancement and still
+updates the activity timestamp in its upload transaction.
+
+Validation:
+- Database test suite: 100 tests passed across 72 files.
+- Video/media API and worker tests: 14 passed, 1 optional test skipped.
+- `npm run build`: passed across all workspaces.
+- `npm run lint`: passed.
+- `git diff --check`: passed.
+
+This change is local only; it has not been deployed or applied to a host or
+running instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with

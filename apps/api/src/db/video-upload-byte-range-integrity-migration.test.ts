@@ -8,8 +8,8 @@ it('keeps upload and chunk byte ranges integral and within declared sizes', () =
     runMigrations(db);
     expect(db.prepare('SELECT version FROM schema_migrations ORDER BY rowid DESC LIMIT 2').all())
       .toEqual([
+        { version: '181_video_upload_chunk_cursor_integrity' },
         { version: '180_video_chunk_immutability' },
-        { version: '179_video_chunk_digest_integrity' },
       ]);
     db.prepare(`INSERT INTO users(id,email,email_normalized,password_hash)
       VALUES('owner','owner@example.com','owner@example.com','hash')`).run();
@@ -48,20 +48,18 @@ it('keeps upload and chunk byte ranges integral and within declared sizes', () =
       ['ten', 0],
     ] as const) {
       expect(() => updateUpload.run(size, offset, 'regular'))
-        .toThrow(/video upload byte range is invalid/);
+        .toThrow(/video upload (byte range is invalid|cursor does not match chunks)/);
     }
-    updateUpload.run(10, 10, 'regular');
-
     db.prepare(`INSERT INTO video_chunks(upload_id,offset,size,storage_key,sha256)
       VALUES('regular',0,4,'chunk-1',?)`).run('a'.repeat(64));
     db.prepare(`INSERT INTO video_chunks(upload_id,offset,size,storage_key,sha256)
       VALUES('regular',4,6,'chunk-2',?)`).run('a'.repeat(64));
-    db.prepare(`INSERT INTO video_chunks(upload_id,offset,size,storage_key,sha256)
-      VALUES('regular',6,4,'chunk-at-end',?)`).run('a'.repeat(64));
     expect(db.prepare('SELECT count(*) AS total FROM video_chunks WHERE upload_id=?')
-      .get('regular')).toEqual({ total: 3 });
+      .get('regular')).toEqual({ total: 2 });
+    expect(db.prepare('SELECT offset FROM video_uploads WHERE id=?').get('regular'))
+      .toEqual({ offset: 10 });
     expect(() => updateUpload.run(9, 9, 'regular'))
-      .toThrow(/video upload byte range is invalid/);
+      .toThrow(/video upload (byte range is invalid|cursor does not match chunks)/);
 
     const insertChunk = db.prepare(`INSERT INTO video_chunks(
       upload_id,offset,size,storage_key,sha256

@@ -8,8 +8,8 @@ it('keeps video chunk identity immutable while allowing cleanup deletion', () =>
     runMigrations(db);
     expect(db.prepare('SELECT version FROM schema_migrations ORDER BY rowid DESC LIMIT 2').all())
       .toEqual([
+        { version: '181_video_upload_chunk_cursor_integrity' },
         { version: '180_video_chunk_immutability' },
-        { version: '179_video_chunk_digest_integrity' },
       ]);
     db.prepare(`INSERT INTO users(id,email,email_normalized,password_hash)
       VALUES('owner','owner@example.com','owner@example.com','hash')`).run();
@@ -40,6 +40,9 @@ it('keeps video chunk identity immutable while allowing cleanup deletion', () =>
       storage_key: 'chunk',
       sha256: 'a'.repeat(64),
     });
+    expect(() => db.prepare('DELETE FROM video_chunks WHERE storage_key=?').run('chunk'))
+      .toThrow(/video chunks cannot be deleted from active uploads/);
+    db.prepare("UPDATE video_uploads SET status='CANCELLED' WHERE id='upload'").run();
     expect(() => db.prepare('DELETE FROM video_chunks WHERE storage_key=?').run('chunk'))
       .not.toThrow();
     expect(db.prepare('SELECT count(*) AS total FROM video_chunks').get()).toEqual({ total: 0 });

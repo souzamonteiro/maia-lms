@@ -8,8 +8,8 @@ it('requires lowercase SHA-256 digests for video chunks on insert', () => {
     runMigrations(db);
     expect(db.prepare('SELECT version FROM schema_migrations ORDER BY rowid DESC LIMIT 2').all())
       .toEqual([
+        { version: '181_video_upload_chunk_cursor_integrity' },
         { version: '180_video_chunk_immutability' },
-        { version: '179_video_chunk_digest_integrity' },
       ]);
     db.prepare(`INSERT INTO users(id,email,email_normalized,password_hash)
       VALUES('owner','owner@example.com','owner@example.com','hash')`).run();
@@ -20,8 +20,8 @@ it('requires lowercase SHA-256 digests for video chunks on insert', () => {
     const validDigest = 'a'.repeat(64);
     const insertChunk = db.prepare(`INSERT INTO video_chunks(
       upload_id,offset,size,storage_key,sha256
-    ) VALUES('upload',0,1,?,?)`);
-    insertChunk.run('valid-digest', validDigest);
+    ) VALUES('upload',?,1,?,?)`);
+    insertChunk.run(0, 'valid-digest', validDigest);
 
     const invalidDigests: Array<string | Buffer> = [
       '',
@@ -33,7 +33,9 @@ it('requires lowercase SHA-256 digests for video chunks on insert', () => {
       Buffer.from(validDigest),
     ];
     for (const [index, digest] of invalidDigests.entries()) {
-      expect(() => insertChunk.run(`invalid-digest-${index}`, digest))
+      const { offset } = db.prepare('SELECT offset FROM video_uploads WHERE id=?')
+        .get('upload') as { offset: number };
+      expect(() => insertChunk.run(offset, `invalid-digest-${index}`, digest))
         .toThrow(/video chunk digest is invalid/);
     }
 

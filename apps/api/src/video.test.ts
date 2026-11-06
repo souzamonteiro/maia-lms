@@ -472,7 +472,13 @@ it('materials preserve revisions and authorize downloads, including preview and 
   const inlineImageBytes = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
   fs.mkdirSync(path.join(directory, 'materials'), { recursive: true });
   fs.writeFileSync(path.join(directory, 'materials', 'diagram.png'), inlineImageBytes);
-  db.prepare('UPDATE video_uploads SET offset=size WHERE id=?').run(inlineImage.id);
+  db.prepare(`INSERT INTO video_chunks(upload_id,offset,size,storage_key,sha256)
+    VALUES(?,0,?,?,?)`).run(
+    inlineImage.id,
+    inlineImageBytes.length,
+    `uploads/${inlineImage.id}/chunk`,
+    'a'.repeat(64),
+  );
   db.prepare("UPDATE video_uploads SET status='QUEUED' WHERE id=?").run(inlineImage.id);
   db.prepare("UPDATE video_uploads SET status='PROCESSING' WHERE id=?").run(inlineImage.id);
   db.prepare("UPDATE video_uploads SET status='READY',output_key=?,processing_progress=100 WHERE id=?")
