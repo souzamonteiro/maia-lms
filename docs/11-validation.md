@@ -3586,6 +3586,8 @@ than a polite status message. The E2E dispatches the player error event after
 each locale rerender and verifies the translated message and focus in English,
 Brazilian Portuguese, and Spanish. This checks local UI error handling; it does
 not qualify actual network or device failure behavior.
+The author's draft-preview player now presents its failure in the same alert
+pattern, and the real-video preview flow verifies the alert receives focus.
 
 Validation:
 - `VIDEO_TEST_REAL=1 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome E2E_PORT=4420 npm run test:e2e -- tests/e2e/video.spec.ts --browser=chromium --grep "author uploads a real video"`: 1/1 passed.

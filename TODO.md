@@ -1551,6 +1551,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Video playback errors now use a focused assertive alert instead of a polite
   status message; the local real-video workflow checks the translated alert and
   focus in English, Brazilian Portuguese, and Spanish.
+  The author draft-preview player also exposes playback errors as focusable
+  alerts, covered by the local real-video preview workflow.
   These are targeted local workflows, not full browser-suite qualification.
   Keep open for the broader contrast, zoom/mobile, captions, and full
   author/learner workflow audit.

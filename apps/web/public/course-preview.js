@@ -30,8 +30,11 @@ export async function showCoursePreview({ api, t, e, locale = 'en', id, revision
           'error',
           () => {
             const error = document.createElement('p');
+            error.setAttribute('role', 'alert');
+            error.tabIndex = -1;
             error.textContent = t('videoPlaybackError');
             video.after(error);
+            error.focus();
           },
           { once: true },
         ),

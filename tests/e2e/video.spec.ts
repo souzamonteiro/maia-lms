@@ -100,6 +100,10 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     const previewVideo = draftPreview.locator('video');
     await expect(previewVideo).toBeVisible();
     await previewVideo.scrollIntoViewIfNeeded();
+    await previewVideo.dispatchEvent('error');
+    const previewError = draftPreview.getByRole('alert');
+    await expect(previewError).toHaveText('Video unavailable. Check your connection and access, then reload.');
+    await expect(previewError).toBeFocused();
     await previewVideo.evaluate((video: HTMLVideoElement) => { video.muted = true; return video.play(); });
     await expect.poll(
       () => previewVideo.evaluate((video: HTMLVideoElement) => video.currentTime),
