@@ -1533,6 +1533,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   keyboard-retry, and focus-restoration behavior, also covered by a local
   fail-then-recover E2E. That workflow also holds the retry response and
   verifies the history stays busy until results arrive.
+  The administrator order list now announces updates, focuses load errors, and
+  supports keyboard retry; a focused Chromium workflow verifies the pending
+  busy state and successful empty result.
   The media library list is a polite live region; failed loads focus the alert,
   and keyboard retry stays busy until results return. Focused Chromium coverage
   verifies the error, retry, and empty result state.

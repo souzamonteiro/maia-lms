@@ -95,3 +95,58 @@ test('administrator issues partial and full refunds while access follows the ref
   expect((await learnerPage.request.get(lessonApiPath)).status()).toBe(403);
   await learnerContext.close();
 });
+
+test('order list announces load failures and recovers with keyboard retry', async ({ page }) => {
+  let requestCount = 0;
+  let releaseRetry: (() => void) | undefined;
+  let notifyRetryStarted: (() => void) | undefined;
+  const retryStarted = new Promise<void>(resolve => {
+    notifyRetryStarted = resolve;
+  });
+
+  await page.route('**/api/v1/admin/orders*', async route => {
+    requestCount += 1;
+    if (requestCount === 1) {
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Orders temporarily unavailable' }),
+      });
+      return;
+    }
+
+    notifyRetryStarted?.();
+    await new Promise<void>(resolve => {
+      releaseRetry = resolve;
+    });
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ total: 0, limit: 50, offset: 0, items: [] }),
+    });
+  });
+
+  await page.goto('/auth/login');
+  await page.getByLabel('Email', { exact: true }).fill('admin@example.com');
+  await page.getByLabel('Password', { exact: true }).fill('Admin-test-password-123');
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.getByRole('link', { name: 'Administer', exact: true }).click();
+  await page.goto('/admin/orders');
+
+  const list = page.locator('#order-list');
+  await expect(page.getByRole('heading', { name: 'Manage orders', exact: true })).toBeVisible();
+  await expect(list).toHaveAttribute('aria-live', 'polite');
+  const error = list.getByRole('alert');
+  await expect(error).toHaveText('Orders temporarily unavailable');
+  await expect(error).toBeFocused();
+  await list.getByRole('button', { name: 'Retry', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await retryStarted;
+  await expect(list).toHaveAttribute('aria-busy', 'true');
+  releaseRetry?.();
+
+  await expect(list).toContainText('No orders match these filters.');
+  await expect(list).toHaveAttribute('aria-busy', 'false');
+  await expect(list.getByRole('alert')).toHaveCount(0);
+  await expect(page.locator('#order-summary')).toContainText('0 orders');
+});

@@ -25,7 +25,7 @@ const receiptStatusKeys = {
 };
 
 export async function mountAdminOrders({ app, api, t, e, notify, locale }) {
-  app.innerHTML = `<a href="/admin">${t('administer')}</a><h1>${t('adminOrdersTitle')}</h1><form id="order-search" class="user-filters"><label>${t('adminOrdersSearch')}<input name="q" type="search" maxlength="100"></label><label>${t('adminOrdersStatus')}<select name="state"><option value="">${t('adminOrdersAllStates')}</option>${Object.entries(orderStatusKeys).map(([state, key]) => `<option value="${state}">${t(key)}</option>`).join('')}</select></label><button type="submit">${t('adminUsersSearchAction')}</button></form><p id="order-summary" role="status" aria-live="polite"></p><div id="order-list" aria-busy="true"></div>`;
+  app.innerHTML = `<a href="/admin">${t('administer')}</a><h1>${t('adminOrdersTitle')}</h1><form id="order-search" class="user-filters"><label>${t('adminOrdersSearch')}<input name="q" type="search" maxlength="100"></label><label>${t('adminOrdersStatus')}<select name="state"><option value="">${t('adminOrdersAllStates')}</option>${Object.entries(orderStatusKeys).map(([state, key]) => `<option value="${state}">${t(key)}</option>`).join('')}</select></label><button type="submit">${t('adminUsersSearchAction')}</button></form><p id="order-summary" role="status" aria-live="polite"></p><div id="order-list" aria-live="polite" aria-busy="true"></div>`;
   const search = app.querySelector('#order-search');
   const summary = app.querySelector('#order-summary');
   const list = app.querySelector('#order-list');
@@ -152,7 +152,8 @@ export async function mountAdminOrders({ app, api, t, e, notify, locale }) {
       }
     } catch (error) {
       summary.textContent = '';
-      list.innerHTML = `<p role="alert">${e(error.message || t('genericError'))}</p><button type="button" id="retry-orders">${t('retry')}</button>`;
+      list.innerHTML = `<p role="alert" tabindex="-1">${e(error.message || t('genericError'))}</p><button type="button" id="retry-orders">${t('retry')}</button>`;
+      list.querySelector('[role="alert"]').focus();
       list.querySelector('#retry-orders').addEventListener('click', () => load().catch(notify));
     } finally {
       list.setAttribute('aria-busy', 'false');
