@@ -1538,7 +1538,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   button text now have explicit regression checks against their rendered
   backgrounds, each at or above 4.5:1 in this local palette review. Coverage
   also includes helper text in the module editor, form errors, draft-save
-  feedback, and code blocks.
+  feedback, and code blocks. The operations-dashboard mobile-viewport workflow
+  now checks for horizontal overflow at 320 CSS pixels and confirms translated
+  headings/refresh controls in English, Brazilian Portuguese, and Spanish.
   These are targeted local workflows, not full browser-suite qualification.
   Keep open for the broader contrast, zoom/mobile, captions, and full
   author/learner workflow audit.

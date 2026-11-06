@@ -3034,6 +3034,22 @@ home-curation test; that unrelated failure is not part of this validation.
 This change is local only; it has not been deployed or applied to a host or
 running instance.
 
+## Operations dashboard narrow-viewport localization — November 6, 2026
+
+The mobile viewport E2E now checks the public catalog and administrator
+operations dashboard at 320 CSS pixels and verifies that the page has no
+horizontal overflow. On the dashboard it also switches among English, Brazilian
+Portuguese, and Spanish, checking the localized title and refresh control while
+retaining the viewport-width assertion. This is a browser-emulated viewport
+check, not a browser-zoom audit or physical-device qualification.
+
+Validation:
+- `E2E_PORT=4410 npm run test:e2e -- tests/e2e/mobile-viewport.spec.ts`: 1/1 passed.
+- `npm run lint`: passed.
+- `git diff --check`: passed.
+
+No deployment, host or running-instance changes were performed.
+
 ## Authoring title limits — November 5, 2026
 
 Migration 157 aligns module, lesson, and course-attachment title validation
