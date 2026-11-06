@@ -362,10 +362,13 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
       await expect
         .poll(() => resumedVideo.evaluate((v: HTMLVideoElement) => v.currentTime))
         .toBeGreaterThan(0.9);
-      for (const [locale, speedLabel, message] of [
-        ['pt-BR', 'Velocidade de reprodução', 'Vídeo indisponível. Confira a conexão e o acesso e recarregue.'],
-        ['es', 'Velocidad de reproducción', 'Vídeo no disponible. Comprueba conexión y acceso y recarga.'],
-        ['en', 'Playback speed', 'Video unavailable. Check your connection and access, then reload.'],
+      for (const [locale, speedLabel, loadingMessage, errorMessage] of [
+        ['pt-BR', 'Velocidade de reprodução', 'Carregando vídeo…',
+          'Vídeo indisponível. Confira a conexão e o acesso e recarregue.'],
+        ['es', 'Velocidad de reproducción', 'Cargando vídeo…',
+          'Vídeo no disponible. Comprueba conexión y acceso y recarga.'],
+        ['en', 'Playback speed', 'Loading video…',
+          'Video unavailable. Check your connection and access, then reload.'],
       ]) {
         await freshPage.locator('#lesson-video').evaluate(video =>
           video.setAttribute('data-e2e-before-locale-change', 'true'),
@@ -375,9 +378,16 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
         await expect(freshPage.locator('#lesson-video[data-e2e-before-locale-change]')).toHaveCount(0);
         await expect(freshPage.getByLabel(speedLabel)).toBeVisible();
         const localizedVideo = freshPage.locator('#lesson-video');
+        const playbackStatus = freshPage.locator('.lesson-video-player .video-status');
+        await expect(playbackStatus).toHaveAttribute('role', 'status');
+        await expect(playbackStatus).toHaveAttribute('aria-live', 'polite');
+        await localizedVideo.dispatchEvent('waiting');
+        await expect(playbackStatus).toHaveText(loadingMessage);
+        await localizedVideo.dispatchEvent('canplay');
+        await expect(playbackStatus).toBeEmpty();
         await localizedVideo.dispatchEvent('error');
         const playbackError = freshPage.getByRole('alert');
-        await expect(playbackError).toHaveText(message);
+        await expect(playbackError).toHaveText(errorMessage);
         await expect(playbackError).toBeFocused();
       }
     } finally {
