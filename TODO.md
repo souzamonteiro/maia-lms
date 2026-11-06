@@ -1272,10 +1272,18 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Migration 181 makes each chunk begin at the upload cursor and advances that
   cursor atomically; direct cursor changes must match stored chunks, and chunk
   deletion is limited to READY/CANCELLED uploads.
+  Migration 182 rejects transitions or inserts into QUEUED, PROCESSING, READY,
+  or FAILED unless the upload cursor equals its declared size; partial uploads
+  may remain UPLOADING or be cancelled.
   Last full validation through migration 141: 273 tests passed and 3 skipped
   with one Vitest worker; build and lint passed. Focused database validation at
-  migration 181: 100 tests passed across 72 files; media workflow tests passed
-  (14 passed, 1 optional skipped), and workspace build and lint passed.
+  migration 182: 101 database tests passed across 73 files; focused video/media
+  API and worker tests passed (30 passed, 1 optional skipped), and workspace
+  build and lint passed. The attempted full suite reported 300 passed, 3 skipped,
+  and 12 failures in unrelated profile/locale fixtures; it is not recorded as a
+  full-suite pass.
+  Migration 181 validation: 100 tests passed across 72 files; media workflow
+  tests passed (14 passed, 1 optional skipped), and workspace build and lint passed.
   Migration 180 validation: 99 tests passed across 71 files.
   Migration 179 validation: 98 tests passed across 70 files.
   Migration 178 validation: 97 tests passed across 69 files.
@@ -1285,6 +1293,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   confirmation, and administrator password-reset tests also passed during
   migrations 175–170.
   Firefox/WebKit and physical-device qualification remain external and pending.
+  Migration 182 and its verification are local only; no deployment or host
+  changes were made.
   Parallel full-suite runs can hit the existing 5-second backup-test timeout
   under concurrent test load; the backup test passes alone.
 - [ ] **OPS-02 — Integrated backup and media restoration.**

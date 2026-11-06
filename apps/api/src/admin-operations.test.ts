@@ -117,11 +117,11 @@ it('summarizes operational state for admins without exposing payloads or identit
 
   db.exec(`INSERT INTO courses(id,slug,author_id) SELECT 'ops-course','ops-course',id
     FROM users WHERE email='operations-admin@example.com'`);
-  db.prepare(`INSERT INTO video_uploads(id,owner_id,course_id,filename,size,status,media_kind,error)
+  db.prepare(`INSERT INTO video_uploads(id,owner_id,course_id,filename,size,offset,status,media_kind,error)
     VALUES('ops-video',(SELECT id FROM users WHERE email='operations-admin@example.com'),
-      'ops-course','private-name.mp4',10,'FAILED','video','VIDEO_PROCESSING_FAILED'),
+      'ops-course','private-name.mp4',10,10,'FAILED','video','VIDEO_PROCESSING_FAILED'),
       ('ops-video-private',(SELECT id FROM users WHERE email='operations-admin@example.com'),
-      'ops-course','other-private.mp4',10,'FAILED','video','private@example.com:secret details')`).run();
+      'ops-course','other-private.mp4',10,10,'FAILED','video','private@example.com:secret details')`).run();
   db.prepare(`INSERT INTO outbox(id,event_type,payload,attempts,last_error)
     VALUES('ops-outbox','email.send',?,5,?)`)
     .run(JSON.stringify({ to: 'private@example.com', token: 'secret-token' }), 'private error');

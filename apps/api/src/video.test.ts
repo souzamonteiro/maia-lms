@@ -175,6 +175,8 @@ it('retries failed media jobs and resets persisted processing progress', async (
     size: 3,
   }, author.cookie);
   const id = upload.data.id as string;
+  db.prepare(`INSERT INTO video_chunks(upload_id,offset,size,storage_key,sha256)
+    VALUES(?,0,?,?,?)`).run(id, 3, `uploads/${id}/chunk`, 'a'.repeat(64));
   db.prepare("UPDATE video_uploads SET status='QUEUED' WHERE id=?").run(id);
   db.prepare("UPDATE video_uploads SET status='PROCESSING' WHERE id=?").run(id);
   db.prepare("UPDATE video_uploads SET status='FAILED',processing_progress=45,error='VIDEO_PROCESSING_FAILED' WHERE id=?")
@@ -646,6 +648,8 @@ it('keeps covers revision-bound, requires ready images and alt text, and protect
   const learner = await account('cover-student@example.com');
   const course = (await request('/api/v1/admin/courses','POST',draft('covers'),admin.cookie)).data;
   const upload = (await request('/api/v1/admin/files','POST',{courseId:course.id,filename:'cover.png',size:8},admin.cookie)).data;
+  db.prepare(`INSERT INTO video_chunks(upload_id,offset,size,storage_key,sha256)
+    VALUES(?,0,?,?,?)`).run(upload.id, 8, `uploads/${upload.id}/chunk`, 'a'.repeat(64));
   fs.mkdirSync(path.join(directory,'covers'));
   fs.writeFileSync(path.join(directory,'covers','test'),Buffer.from([137,80,78,71,13,10,26,10]));
   db.prepare("UPDATE video_uploads SET status='QUEUED' WHERE id=?").run(upload.id);
@@ -687,6 +691,8 @@ it('publishes only the revision trailer with Range support without exposing priv
   const other = await account('trailer-other@example.com','author');
   const course = (await request('/api/v1/admin/courses','POST',draft('trailers'),admin.cookie)).data;
   const upload = (await request('/api/v1/admin/videos','POST',{courseId:course.id,filename:'trailer.mp4',size:10},admin.cookie)).data;
+  db.prepare(`INSERT INTO video_chunks(upload_id,offset,size,storage_key,sha256)
+    VALUES(?,0,?,?,?)`).run(upload.id, 10, `uploads/${upload.id}/chunk`, 'a'.repeat(64));
   let saved = (await request(`/api/v1/admin/courses/${course.id}`,'PUT',{...draft('trailers'),trailerVideoId:upload.id,expectedRevisionId:course.current_revision_id},admin.cookie)).data;
   expect((await request(`/api/v1/admin/courses/${course.id}/publish`,'POST',{},admin.cookie)).data.code).toBe('TRAILER_INVALID');
   fs.mkdirSync(path.join(directory,'trailers'));

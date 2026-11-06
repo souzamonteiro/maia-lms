@@ -28,13 +28,14 @@ it('publishes attachments only after a clean scanner exit and keeps rejected out
       fs.writeFileSync(path.join(bin, 'clamscan'), `#!/bin/sh\nexit ${code}\n`, { mode: 0o700 });
       const id = `upload${code}`;
       db.prepare(
-        "INSERT INTO video_uploads(id,owner_id,course_id,filename,size,status,media_kind) VALUES(?,'u','c','example.txt',4,'QUEUED','attachment')",
+        "INSERT INTO video_uploads(id,owner_id,course_id,filename,size,status,media_kind) VALUES(?,'u','c','example.txt',4,'UPLOADING','attachment')",
       ).run(id);
       const key = `uploads/${id}/chunk`;
       await store.putPrivate(key, Buffer.from('text'), '');
       db.prepare(
         'INSERT INTO video_chunks(upload_id,offset,size,storage_key,sha256) VALUES(?,0,4,?,?)',
       ).run(id, key, 'a'.repeat(64));
+      db.prepare("UPDATE video_uploads SET status='QUEUED' WHERE id=?").run(id);
       await processVideo(db, path.join(root, 'storage'));
       const row = db
         .prepare('SELECT status,error,output_key FROM video_uploads WHERE id=?')

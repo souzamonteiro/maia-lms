@@ -15,8 +15,8 @@ it('rejects rewriting a ready media artifact referenced by a published revision'
       VALUES('revision','course','Published course','Summary');
       INSERT INTO modules(id,revision_id,sort_order,title)
       VALUES('module','revision',0,'Module');
-      INSERT INTO video_uploads(id,owner_id,course_id,filename,size)
-      VALUES('video','author','course','video.mp4',10);
+      INSERT INTO video_uploads(id,owner_id,course_id,filename,size,offset)
+      VALUES('video','author','course','video.mp4',10,10);
       INSERT INTO lessons(id,module_id,sort_order,title,body,video_id)
       VALUES('lesson','module',0,'Lesson','Body','video');
       UPDATE video_uploads SET status='QUEUED' WHERE id='video';

@@ -33,15 +33,27 @@ function setup() {
       VALUES('module','history',0,'Module');
   `);
   const store = new LocalStorageProvider(root, 'unused', 'http://localhost');
-  const addMedia = (id: string, mediaKind: 'video' | 'attachment' = 'video') => {
+  const addMedia = (
+    id: string,
+    mediaKind: 'video' | 'attachment' = 'video',
+    withChunk = false,
+  ) => {
     const output = `videos/${id}/output.mp4`;
     const poster = `videos/${id}/poster.jpg`;
     const hls = `videos/${id}/lease-hls/master.m3u8`;
     db.prepare(
       `INSERT INTO video_uploads(
-        id,owner_id,course_id,filename,size,status,media_kind,output_key,poster_key,hls_key
-      ) VALUES(?,?,?,'media',4,'READY',?,?,?,?)`,
-    ).run(id, 'owner', 'course', mediaKind, output, poster, hls);
+        id,owner_id,course_id,filename,size,offset,status,media_kind,output_key,poster_key,hls_key
+      ) VALUES(?,?,?,'media',4,?,'UPLOADING',?,?,?,?)`,
+    ).run(id, 'owner', 'course', withChunk ? 0 : 4, mediaKind, output, poster, hls);
+    if (withChunk) {
+      db.prepare(
+        'INSERT INTO video_chunks(upload_id,offset,size,storage_key,sha256) VALUES(?,0,4,?,?)',
+      ).run(id, `uploads/${id}/chunk`, 'a'.repeat(64));
+    }
+    db.prepare("UPDATE video_uploads SET status='QUEUED' WHERE id=?").run(id);
+    db.prepare("UPDATE video_uploads SET status='PROCESSING' WHERE id=?").run(id);
+    db.prepare("UPDATE video_uploads SET status='READY' WHERE id=?").run(id);
     return { output, poster, hls };
   };
   return { db, root, store, addMedia };
@@ -49,7 +61,7 @@ function setup() {
 
 it('collects only media unreferenced for 90 days and rechecks every revision pointer', async () => {
   const { db, root, store, addMedia } = setup();
-  const old = addMedia('old');
+  const old = addMedia('old', 'video', true);
   addMedia('recent');
   addMedia('lesson');
   addMedia('cover', 'attachment');
@@ -70,10 +82,6 @@ it('collects only media unreferenced for 90 days and rechecks every revision poi
     'uploads/old/chunk',
   ];
   for (const key of oldFiles) await store.putPrivate(key, Buffer.from('data'), '');
-  db.prepare(
-    'INSERT INTO video_chunks(upload_id,offset,size,storage_key,sha256) VALUES(?,0,4,?,?)',
-  ).run('old', 'uploads/old/chunk', 'a'.repeat(64));
-
   expect(await cleanupOrphanedMedia(db, root)).toBe(1);
   expect(db.prepare("SELECT id FROM video_uploads WHERE id='old'").get()).toBeUndefined();
   for (const key of oldFiles) await expect(store.readAuthorized(key)).rejects.toThrow();

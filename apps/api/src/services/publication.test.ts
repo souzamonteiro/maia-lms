@@ -11,8 +11,8 @@ it('rejects unready media, cross-course references and invalid ordering', () => 
       INSERT INTO courses(id,slug,author_id) VALUES('c','first','u'),('other','other','u');
       INSERT INTO course_revisions(id,course_id,title,summary) VALUES('r','c','Course','Summary');
       INSERT INTO modules(id,revision_id,sort_order,title) VALUES('m','r',2,'Module');
-      INSERT INTO video_uploads(id,owner_id,course_id,filename,size,status,media_kind)
-          VALUES('v','u','c','video.mp4',10,'UPLOADING','video'),('a','u','c','guide.pdf',10,'UPLOADING','attachment');
+      INSERT INTO video_uploads(id,owner_id,course_id,filename,size,offset,status,media_kind)
+          VALUES('v','u','c','video.mp4',10,10,'UPLOADING','video'),('a','u','c','guide.pdf',10,10,'UPLOADING','attachment');
       INSERT INTO lessons(id,module_id,sort_order,title,body,video_id) VALUES('l','m',1,'Lesson','','v');
       INSERT INTO course_attachments(id,revision_id,upload_id,title,description,sort_order) VALUES('attachment','r','a','Guide','Description',0);`);
     expect(publicationIssues(db, 'c', 'r').map(i => i.code)).toEqual([

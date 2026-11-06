@@ -27,8 +27,8 @@ it('expires only abandoned unreferenced uploads and retries failed file deletion
       ['cancelled', 'CANCELLED', 'video'],
     ]) {
       db.prepare(
-        'INSERT INTO video_uploads(id,owner_id,course_id,filename,size,status,media_kind) VALUES(?,?,?,?,?,?,?)',
-      ).run(id, 'u', 'c', 'file', 4, status, kind);
+        "INSERT INTO video_uploads(id,owner_id,course_id,filename,size,status,media_kind) VALUES(?,?,?,?,?,'UPLOADING',?)",
+      ).run(id, 'u', 'c', 'file', 4, kind);
       if (id !== 'recent')
         db.prepare(
           "UPDATE video_uploads SET last_activity_at=datetime('now','-8 days') WHERE id=?",
@@ -38,6 +38,15 @@ it('expires only abandoned unreferenced uploads and retries failed file deletion
       db.prepare(
         'INSERT INTO video_chunks(upload_id,offset,size,storage_key,sha256) VALUES(?,0,4,?,?)',
       ).run(id, key, 'a'.repeat(64));
+      if (status === 'READY' || status === 'PROCESSING') {
+        db.prepare("UPDATE video_uploads SET status='QUEUED' WHERE id=?").run(id);
+        if (status === 'PROCESSING' || status === 'READY')
+          db.prepare("UPDATE video_uploads SET status='PROCESSING' WHERE id=?").run(id);
+        if (status === 'READY')
+          db.prepare("UPDATE video_uploads SET status='READY' WHERE id=?").run(id);
+      } else if (status === 'CANCELLED') {
+        db.prepare("UPDATE video_uploads SET status='CANCELLED' WHERE id=?").run(id);
+      }
     }
     db.exec(`INSERT INTO lessons(id,module_id,sort_order,title,body,video_id) VALUES('l','m',0,'Lesson','','referenced');
       INSERT INTO course_attachments(id,revision_id,upload_id,title,description,sort_order) VALUES('a','r','material','Material','',0);`);

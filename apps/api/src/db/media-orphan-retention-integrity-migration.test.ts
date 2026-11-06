@@ -9,15 +9,15 @@ it('keeps orphan-retention timestamps valid and restricted to ready media', () =
     runMigrations(db);
     expect(db.prepare('SELECT version FROM schema_migrations ORDER BY rowid DESC LIMIT 2').all())
       .toEqual([
+        { version: '182_video_upload_completion_integrity' },
         { version: '181_video_upload_chunk_cursor_integrity' },
-        { version: '180_video_chunk_immutability' },
       ]);
     db.exec(`
       INSERT INTO users(id,email,email_normalized,password_hash)
       VALUES('owner','owner@example.com','owner@example.com','hash');
       INSERT INTO courses(id,slug,author_id) VALUES('course','course','owner');
-      INSERT INTO video_uploads(id,owner_id,course_id,filename,size)
-      VALUES('upload','owner','course','video.mp4',10);
+      INSERT INTO video_uploads(id,owner_id,course_id,filename,size,offset)
+      VALUES('upload','owner','course','video.mp4',10,10);
     `);
 
     expect(() => db.prepare(
@@ -28,8 +28,8 @@ it('keeps orphan-retention timestamps valid and restricted to ready media', () =
       ['blob-insert', Buffer.from('2026-01-01T00:00:00Z')],
     ] as const) {
       expect(() => db.prepare(`INSERT INTO video_uploads(
-        id,owner_id,course_id,filename,size,status,orphaned_since
-      ) VALUES(?,'owner','course','invalid.mp4',10,'READY',?)`).run(id, orphanedSince))
+        id,owner_id,course_id,filename,size,offset,status,orphaned_since
+      ) VALUES(?,'owner','course','invalid.mp4',10,10,'READY',?)`).run(id, orphanedSince))
         .toThrow(/media retention state is invalid/);
     }
     expect(() => db.prepare(

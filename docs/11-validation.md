@@ -3344,6 +3344,29 @@ Validation:
 This change is local only; it has not been deployed or applied to a host or
 running instance.
 
+## Upload completion integrity — November 6, 2026
+
+Migration 182 rejects direct inserts and transitions into `QUEUED`, `PROCESSING`,
+`READY`, or `FAILED` unless the stored upload cursor equals the declared size.
+Partial uploads may remain `UPLOADING` or be cancelled. The check complements
+the existing API completion check and does not change the cursor/chunk invariant
+from migration 181. Upload lifecycle and media fixtures now represent completed
+uploads before entering processing states.
+
+Validation:
+- SQLite migration tests: 101 passed across 73 files.
+- Focused video/media API and worker tests: 30 passed, 1 optional test skipped.
+- `npm run build`: passed across all workspaces.
+- `npm run lint`: passed.
+- `git diff --check`: passed.
+- Full suite with one worker and a 10-second test timeout: 300 passed, 3 skipped,
+  12 failed in unrelated profile/locale fixtures (`profile` undefined and
+  invalid/published locale data). The full suite is not green.
+
+This change and its validation are local only; no deployment, host change, or
+production migration was performed. Firefox/WebKit and physical-device
+qualification remain external and pending.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with
