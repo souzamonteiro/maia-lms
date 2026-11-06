@@ -1,7 +1,7 @@
 const mediaStates = ['UPLOADING', 'QUEUED', 'PROCESSING', 'READY', 'FAILED', 'CANCELLED'];
 
 export async function mountAdminMedia({ app, api, t, e, notify, locale }) {
-  app.innerHTML = `<a href="/admin">${t('administer')}</a><h1>${t('adminMediaTitle')}</h1><form id="media-filters" class="user-filters"><label>${t('adminMediaSearch')}<input name="q" type="search" maxlength="100"></label><label>${t('adminMediaCourse')}<select name="courseId"><option value="">${t('adminMediaAllCourses')}</option></select></label><label>${t('adminMediaKind')}<select name="kind"><option value="">${t('adminMediaAllKinds')}</option><option value="video">${t('adminMediaKindVideo')}</option><option value="attachment">${t('adminMediaKindAttachment')}</option></select></label><label>${t('adminMediaStatus')}<select name="status"><option value="">${t('adminMediaAllStatuses')}</option>${mediaStates.map(state => `<option value="${state}">${t(`video${state}`)}</option>`).join('')}</select></label><button type="submit">${t('adminUsersSearchAction')}</button></form><p id="media-summary" role="status" aria-live="polite"></p><div id="media-list" aria-busy="true"></div><nav id="media-pagination" aria-label="${t('adminMediaPagination')}"></nav>`;
+  app.innerHTML = `<a href="/admin">${t('administer')}</a><h1>${t('adminMediaTitle')}</h1><form id="media-filters" class="user-filters"><label>${t('adminMediaSearch')}<input name="q" type="search" maxlength="100"></label><label>${t('adminMediaCourse')}<select name="courseId"><option value="">${t('adminMediaAllCourses')}</option></select></label><label>${t('adminMediaKind')}<select name="kind"><option value="">${t('adminMediaAllKinds')}</option><option value="video">${t('adminMediaKindVideo')}</option><option value="attachment">${t('adminMediaKindAttachment')}</option></select></label><label>${t('adminMediaStatus')}<select name="status"><option value="">${t('adminMediaAllStatuses')}</option>${mediaStates.map(state => `<option value="${state}">${t(`video${state}`)}</option>`).join('')}</select></label><button type="submit">${t('adminUsersSearchAction')}</button></form><p id="media-summary" role="status" aria-live="polite"></p><div id="media-list" aria-live="polite" aria-busy="true"></div><nav id="media-pagination" aria-label="${t('adminMediaPagination')}"></nav>`;
   const form = app.querySelector('#media-filters');
   const summary = app.querySelector('#media-summary');
   const list = app.querySelector('#media-list');
@@ -68,7 +68,8 @@ export async function mountAdminMedia({ app, api, t, e, notify, locale }) {
       }
     } catch (error) {
       summary.textContent = '';
-      list.innerHTML = `<p role="alert">${e(error.message || t('genericError'))}</p><button type="button" id="retry-media">${t('retry')}</button>`;
+      list.innerHTML = `<p role="alert" tabindex="-1">${e(error.message || t('genericError'))}</p><button type="button" id="retry-media">${t('retry')}</button>`;
+      list.querySelector('[role="alert"]').focus();
       list.querySelector('#retry-media').addEventListener('click', () => load().catch(notify));
     } finally {
       list.setAttribute('aria-busy', 'false');

@@ -3618,6 +3618,22 @@ Validation:
 This is local browser automation only; no deployment, host, or running-instance
 changes were performed.
 
+## Media library retry and loading accessibility — November 6, 2026
+
+The admin media list is now a polite live region. Failed loads focus an alert
+with a keyboard-operable retry, and the E2E holds the retry response to verify
+`aria-busy` remains true until the successful empty result arrives. It then
+checks the empty state, cleared alert and busy state, and updated count.
+
+Validation:
+- `E2E_PORT=4427 npm run test:e2e -- tests/e2e/admin-media.spec.ts`: 1/1 passed.
+- `npm run lint`: passed.
+- `npm run build`: passed across all workspaces.
+- `git diff --check`: passed.
+
+This is local browser automation only; no deployment, host, or running-instance
+changes were performed.
+
 ## Enrollment history retry and focus recovery — November 6, 2026
 
 The administrator enrollment-history disclosure now exposes its content as a

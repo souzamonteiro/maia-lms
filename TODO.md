@@ -1531,6 +1531,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   keyboard-retry, and focus-restoration behavior, also covered by a local
   fail-then-recover E2E. That workflow also holds the retry response and
   verifies the history stays busy until results arrive.
+  The media library list is a polite live region; failed loads focus the alert,
+  and keyboard retry stays busy until results return. Focused Chromium coverage
+  verifies the error, retry, and empty result state.
   The shared keyboard-focus ring now has at least 3:1 contrast against the paper
   and white surfaces, with a regression test for both combinations. The form
   error-message border also meets 3:1 against its background, covered by the same
