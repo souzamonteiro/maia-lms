@@ -52,7 +52,23 @@ test('administrator grants and revokes course access with a reasoned history', a
   await page.getByRole('button', { name: 'Search', exact: true }).last().click();
   const enrollment = page.locator('.admin-enrollment').filter({ hasText: email });
   await expect(enrollment).toContainText('Active');
-  await enrollment.getByText('History', { exact: true }).click();
+  await page.route('**/api/v1/admin/enrollments/*/history', route => route.fulfill({
+    status: 503,
+    contentType: 'application/json',
+    body: JSON.stringify({ error: 'History temporarily unavailable' }),
+  }), { times: 1 });
+  const historySummary = enrollment.getByText('History', { exact: true });
+  await historySummary.click();
+  const history = enrollment.locator('.enrollment-history');
+  await expect(history).toHaveAttribute('aria-live', 'polite');
+  await expect(history).toHaveAttribute('aria-busy', 'false');
+  const historyError = history.getByRole('alert');
+  await expect(historyError).toHaveText('History temporarily unavailable');
+  await expect(historyError).toBeFocused();
+  await history.getByRole('button', { name: 'Retry', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await expect(history).toContainText('Support approved this access grant.');
+  await expect(historySummary).toBeFocused();
   await expect(enrollment).toContainText('Support approved this access grant.');
 
   page.once('dialog', dialog => dialog.accept('Learner requested access removal.'));

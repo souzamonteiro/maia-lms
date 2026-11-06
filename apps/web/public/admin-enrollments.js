@@ -25,7 +25,7 @@ export async function mountAdminEnrollments({ app, api, t, e, notify, locale }) 
       for (const enrollment of result.items) {
         const item = document.createElement('article');
         item.className = 'card admin-enrollment';
-        item.innerHTML = `<h3><a href="/courses/${e(enrollment.course_slug)}">${e(enrollment.course_title)}</a></h3><p>${e(enrollment.email)} · ${e(enrollment.course_slug)}</p><p>${t('adminEnrollmentProgress', { completed: enrollment.completed_lessons, required: enrollment.required_lessons })}</p><p>${t('adminUsersStatus')}: ${e(enrollment.state === 'active' ? t('adminEnrollmentActive') : t('adminEnrollmentRevoked'))} · ${t('adminEnrollmentAccess')}: ${enrollment.has_entitlement ? t('adminEnrollmentYes') : t('adminEnrollmentNo')}</p><p>${t('adminEnrollmentSince')}: ${e(dateLabel(enrollment.enrolled_at))}</p><div class="actions">${enrollment.state === 'active' ? `<button type="button" class="secondary" data-revoke>${t('adminEnrollmentRevokeAction')}</button>` : ''}<details><summary>${t('adminEnrollmentHistory')}</summary><div class="enrollment-history">${t('adminEnrollmentsLoading')}</div></details></div>`;
+        item.innerHTML = `<h3><a href="/courses/${e(enrollment.course_slug)}">${e(enrollment.course_title)}</a></h3><p>${e(enrollment.email)} · ${e(enrollment.course_slug)}</p><p>${t('adminEnrollmentProgress', { completed: enrollment.completed_lessons, required: enrollment.required_lessons })}</p><p>${t('adminUsersStatus')}: ${e(enrollment.state === 'active' ? t('adminEnrollmentActive') : t('adminEnrollmentRevoked'))} · ${t('adminEnrollmentAccess')}: ${enrollment.has_entitlement ? t('adminEnrollmentYes') : t('adminEnrollmentNo')}</p><p>${t('adminEnrollmentSince')}: ${e(dateLabel(enrollment.enrolled_at))}</p><div class="actions">${enrollment.state === 'active' ? `<button type="button" class="secondary" data-revoke>${t('adminEnrollmentRevokeAction')}</button>` : ''}<details><summary>${t('adminEnrollmentHistory')}</summary><div class="enrollment-history" aria-live="polite" aria-busy="false">${t('adminEnrollmentsLoading')}</div></details></div>`;
         item.querySelector('[data-revoke]')?.addEventListener('click', async event => {
           const reason = prompt(t('adminEnrollmentRevokePrompt'));
           if (reason === null) return;
@@ -47,19 +47,31 @@ export async function mountAdminEnrollments({ app, api, t, e, notify, locale }) 
         history.addEventListener('toggle', async () => {
           if (!history.open || history.dataset.loaded) return;
           const content = history.querySelector('.enrollment-history');
-          try {
-            const result = await api(`/admin/enrollments/${enrollment.id}/history`);
-            content.innerHTML = result.items.length
-              ? `<ol>${result.items.map(entry => {
-                  let metadata = {};
-                  try { metadata = JSON.parse(entry.metadata); } catch {}
-                  return `<li><strong>${e(t(entry.action === 'enrollment.grant' ? 'adminEnrollmentGrantedEvent' : 'adminEnrollmentRevokedEvent'))}</strong> · ${e(dateLabel(entry.occurred_at))}<p>${e(metadata.reason || '')}</p></li>`;
-                }).join('')}</ol>`
-              : `<p>${t('adminEnrollmentNoHistory')}</p>`;
-            history.dataset.loaded = 'true';
-          } catch (error) {
-            content.textContent = error.message || t('genericError');
-          }
+          const loadHistory = async () => {
+            content.setAttribute('aria-busy', 'true');
+            content.textContent = t('adminEnrollmentsLoading');
+            try {
+              const result = await api(`/admin/enrollments/${enrollment.id}/history`);
+              content.innerHTML = result.items.length
+                ? `<ol>${result.items.map(entry => {
+                    let metadata = {};
+                    try { metadata = JSON.parse(entry.metadata); } catch {}
+                    return `<li><strong>${e(t(entry.action === 'enrollment.grant' ? 'adminEnrollmentGrantedEvent' : 'adminEnrollmentRevokedEvent'))}</strong> · ${e(dateLabel(entry.occurred_at))}<p>${e(metadata.reason || '')}</p></li>`;
+                  }).join('')}</ol>`
+                : `<p>${t('adminEnrollmentNoHistory')}</p>`;
+              history.dataset.loaded = 'true';
+            } catch (error) {
+              content.innerHTML = `<p role="alert" tabindex="-1">${e(error.message || t('genericError'))}</p><button type="button" class="secondary" data-retry-enrollment-history>${t('retry')}</button>`;
+              content.querySelector('[role="alert"]').focus();
+              content.querySelector('[data-retry-enrollment-history]').addEventListener('click', async () => {
+                await loadHistory();
+                if (history.dataset.loaded) history.querySelector('summary').focus();
+              });
+            } finally {
+              content.setAttribute('aria-busy', 'false');
+            }
+          };
+          await loadHistory();
         });
         list.append(item);
       }

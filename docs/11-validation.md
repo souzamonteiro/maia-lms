@@ -3617,3 +3617,21 @@ Validation:
 
 This is local browser automation only; no deployment, host, or running-instance
 changes were performed.
+
+## Enrollment history retry and focus recovery — November 6, 2026
+
+The administrator enrollment-history disclosure now exposes its content as a
+polite live region and marks loading with an explicit busy state. A failed
+request renders a focused alert and a keyboard-operable retry control; successful
+retry restores focus to the history summary. The focused browser test simulates
+a temporary first-request failure followed by a successful retry and verifies
+the alert, live-region semantics, keyboard activation, and focus recovery.
+
+Validation:
+- `E2E_PORT=4424 npm run test:e2e -- tests/e2e/admin-enrollments.spec.ts`: 1/1 passed.
+- `npm run lint`: passed.
+- `npm run build`: passed across all workspaces.
+- `git diff --check`: passed.
+
+This is local browser automation only; no deployment, host, or running-instance
+changes were performed.

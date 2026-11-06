@@ -1527,6 +1527,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Certificate-history failures now announce through a live region, expose a
   focused alert and keyboard retry, and restore focus to the history summary
   after a successful retry; the local Chromium E2E covers fail-then-recover.
+  Enrollment-history failures now use the same live-region, focused-alert,
+  keyboard-retry, and focus-restoration behavior, also covered by a local
+  fail-then-recover E2E.
   The shared keyboard-focus ring now has at least 3:1 contrast against the paper
   and white surfaces, with a regression test for both combinations. The form
   error-message border also meets 3:1 against its background, covered by the same
