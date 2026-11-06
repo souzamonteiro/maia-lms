@@ -65,9 +65,25 @@ test('administrator grants and revokes course access with a reasoned history', a
   const historyError = history.getByRole('alert');
   await expect(historyError).toHaveText('History temporarily unavailable');
   await expect(historyError).toBeFocused();
+  let releaseHistoryRetry: (() => void) | undefined;
+  let notifyHistoryRetry: (() => void) | undefined;
+  const historyRetryStarted = new Promise<void>(resolve => {
+    notifyHistoryRetry = resolve;
+  });
+  await page.route('**/api/v1/admin/enrollments/*/history', async route => {
+    notifyHistoryRetry?.();
+    await new Promise<void>(resolve => {
+      releaseHistoryRetry = resolve;
+    });
+    await route.continue();
+  }, { times: 1 });
   await history.getByRole('button', { name: 'Retry', exact: true }).focus();
   await page.keyboard.press('Enter');
+  await historyRetryStarted;
+  await expect(history).toHaveAttribute('aria-busy', 'true');
+  releaseHistoryRetry?.();
   await expect(history).toContainText('Support approved this access grant.');
+  await expect(history).toHaveAttribute('aria-busy', 'false');
   await expect(historySummary).toBeFocused();
   await expect(enrollment).toContainText('Support approved this access grant.');
 

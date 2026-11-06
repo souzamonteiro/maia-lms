@@ -3625,11 +3625,13 @@ polite live region and marks loading with an explicit busy state. A failed
 request renders a focused alert and a keyboard-operable retry control; successful
 retry restores focus to the history summary. The focused browser test simulates
 a temporary first-request failure followed by a successful retry and verifies
-the alert, live-region semantics, keyboard activation, and focus recovery.
+the alert, live-region semantics, keyboard activation, and focus recovery. It
+also holds the retry response to check that the history remains busy until the
+results are available.
 
 Validation:
-- `E2E_PORT=4424 npm run test:e2e -- tests/e2e/admin-enrollments.spec.ts`: 1/1 passed.
-- `npm run lint`: passed.
+- `E2E_PORT=4425 npm run test:e2e -- tests/e2e/admin-enrollments.spec.ts`: 1/1 passed.
+- `npm run lint`: passed on rerun after the E2E result directory existed; the initial concurrent invocation exited before test startup because the directory was absent.
 - `npm run build`: passed across all workspaces.
 - `git diff --check`: passed.
 
