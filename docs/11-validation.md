@@ -3618,6 +3618,22 @@ Validation:
 This is local browser automation only; no deployment, host, or running-instance
 changes were performed.
 
+## Administrator user-list retry and announcements — November 6, 2026
+
+The administrator user list now announces updates through a polite live region
+and moves focus to a load-failure alert. A focused Chromium E2E simulates a
+temporary API failure, verifies the focused alert and keyboard-operable retry,
+holds the retry response to assert `aria-busy="true"`, then verifies the empty
+state, cleared alert, and zero-user count after recovery.
+
+Validation:
+- `E2E_PORT=4428 npm run test:e2e -- tests/e2e/admin-users.spec.ts --grep "user list announces"`: 1/1 passed.
+- `npm run lint`: passed.
+
+This qualifies only the focused local Chromium workflow, not Firefox/WebKit,
+physical devices, the host, or a deployed instance. No deployment, host, or
+running-instance changes were performed.
+
 ## Media library retry and loading accessibility — November 6, 2026
 
 The admin media list is now a polite live region. Failed loads focus an alert

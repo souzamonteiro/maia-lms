@@ -2,7 +2,7 @@ import { formatDate } from './i18n.js';
 
 export async function mountAdminUsers({ app, api, t, e, notify, locale }) {
   const state = { q: '', role: '', status: '', limit: 25, offset: 0 };
-  app.innerHTML = `<a href="/admin">${t('administer')}</a><h1>${t('adminUsersTitle')}</h1><form id="user-filters" class="user-filters"><label>${t('adminUsersSearch')}<input name="q" type="search" maxlength="100" autocomplete="off"></label><label>${t('adminUsersRole')}<select name="role"><option value="">${t('adminUsersAllRoles')}</option><option value="learner">${t('roleLearner')}</option><option value="author">${t('roleAuthor')}</option><option value="admin">${t('roleAdmin')}</option><option value="worker">${t('roleWorker')}</option></select></label><label>${t('adminUsersStatus')}<select name="status"><option value="">${t('adminUsersAllStatuses')}</option><option value="active">${t('accountActive')}</option><option value="suspended">${t('accountSuspended')}</option></select></label><button type="submit">${t('adminUsersSearchAction')}</button></form><p id="users-summary" role="status" aria-live="polite"></p><div id="users-list" aria-busy="true"></div><nav id="users-pages" aria-label="${t('adminUsersPagination')}"></nav>`;
+  app.innerHTML = `<a href="/admin">${t('administer')}</a><h1>${t('adminUsersTitle')}</h1><form id="user-filters" class="user-filters"><label>${t('adminUsersSearch')}<input name="q" type="search" maxlength="100" autocomplete="off"></label><label>${t('adminUsersRole')}<select name="role"><option value="">${t('adminUsersAllRoles')}</option><option value="learner">${t('roleLearner')}</option><option value="author">${t('roleAuthor')}</option><option value="admin">${t('roleAdmin')}</option><option value="worker">${t('roleWorker')}</option></select></label><label>${t('adminUsersStatus')}<select name="status"><option value="">${t('adminUsersAllStatuses')}</option><option value="active">${t('accountActive')}</option><option value="suspended">${t('accountSuspended')}</option></select></label><button type="submit">${t('adminUsersSearchAction')}</button></form><p id="users-summary" role="status" aria-live="polite"></p><div id="users-list" aria-live="polite" aria-busy="true"></div><nav id="users-pages" aria-label="${t('adminUsersPagination')}"></nav>`;
 
   const filterForm = app.querySelector('#user-filters');
   const list = app.querySelector('#users-list');
@@ -86,7 +86,8 @@ export async function mountAdminUsers({ app, api, t, e, notify, locale }) {
       });
     } catch (error) {
       summary.textContent = '';
-      list.innerHTML = `<p role="alert">${e(error.message || t('genericError'))}</p><button type="button" id="retry-users">${t('retry')}</button>`;
+      list.innerHTML = `<p role="alert" tabindex="-1">${e(error.message || t('genericError'))}</p><button type="button" id="retry-users">${t('retry')}</button>`;
+      list.querySelector('[role="alert"]').focus();
       list.querySelector('#retry-users').addEventListener('click', () => load().catch(notify));
     } finally {
       list.setAttribute('aria-busy', 'false');

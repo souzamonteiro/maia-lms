@@ -667,7 +667,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   name. The host bootstrap/reset command creates verified administrators without
   default passwords; explicit resets rotate credentials, promote the selected
   account to admin, invalidate sessions, and write audit events. ADMIN-01 is
-  implemented locally; production runbook execution remains an operator task.
+  implemented locally; the user list announces updates through a polite live
+  region and focuses load failures so keyboard users can retry; production
+  runbook execution remains an operator task.
 - [x] **AUTH-01 — Complete account workflows (local implementation).**
   Profile, password changes, verification resend/feedback, localized recovery,
   account states, and explicit unverified-email policy; administrator MFA with
