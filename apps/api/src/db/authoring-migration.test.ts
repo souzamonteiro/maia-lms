@@ -1,6 +1,6 @@
 import { it,expect } from 'vitest';
 import Database from 'better-sqlite3';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { runMigrations } from './migrate.js';
@@ -81,7 +81,17 @@ it('restores and upgrades a prototype database without losing identity, learning
     restored = new Database(restoredPath);
     restored.pragma('foreign_keys = ON');
     runMigrations(restored);
+    const migrationsAfterUpgrade = restored
+      .prepare('SELECT version FROM schema_migrations ORDER BY version')
+      .all();
+    const expectedMigrations = readdirSync('migrations')
+      .filter(file => file.endsWith('.sql'))
+      .map(file => file.replace(/\.sql$/, ''))
+      .sort();
+    expect(migrationsAfterUpgrade.map(row => row.version)).toEqual(expectedMigrations);
     runMigrations(restored);
+    expect(restored.prepare('SELECT version FROM schema_migrations ORDER BY version').all())
+      .toEqual(migrationsAfterUpgrade);
 
     expect(restored.prepare('SELECT id,email,password_hash,role,locale,verified_at FROM users ORDER BY id').all()).toEqual([
       { id: 'author', email: 'author@example.com', password_hash: 'author-hash', role: 'author', locale: 'en', verified_at: '2026-09-01T00:00:00Z' },

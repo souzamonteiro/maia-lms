@@ -1446,8 +1446,12 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   plan and the VPS installer's rendered site configuration without executing
   privileged operations, including the ACME-only challenge configuration, and
   reject invalid host port/VPS domain inputs. They are not an upgrade or rollback
-  rehearsal. Local validation: 7 deployment tests and installer Bash syntax checks
-  passed; staging and host/VPS qualification remain pending.
+  rehearsal. The synthetic prototype restoration test now verifies every SQL
+  migration in the local checkout was applied and that a second migration run
+  leaves the recorded schema unchanged; it still does not rehearse a host
+  upgrade or rollback. Local validation: 4 prototype migration tests passed;
+  7 deployment tests and installer Bash syntax checks passed in prior
+  validation. Staging and host/VPS qualification remain pending.
 - [ ] **SEC-01 — Authorization, abuse, and hostile content (local controls strengthened; full matrix open).**
   Tests for cross-user/author/course access, private/revoked media, Markdown,
   uploads, extraction/transcoding, payment replay, and storage limits.

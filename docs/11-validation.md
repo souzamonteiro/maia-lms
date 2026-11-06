@@ -2780,6 +2780,20 @@ Validation:
 
 No deployment, host or running-instance changes were performed.
 
+## Prototype migration completeness check — November 6, 2026
+
+The synthetic prototype restoration test now compares the applied migration
+records with every SQL migration in the checkout, then runs the migration
+runner again and verifies the recorded schema does not change. It starts from
+the prototype-era schema and uses fictional accounts/content in a temporary
+database. This is local migration coverage, not an upgrade/rollback rehearsal
+on systemd, Docker, staging, or a target host.
+
+Validation:
+- `npm test -- --run apps/api/src/db/authoring-migration.test.ts`: 4/4 passed.
+
+No deployment, host or running-instance changes were performed.
+
 ## Backup destination symlink-alias protection — November 5, 2026
 
 Bundle creation now resolves the destination parent and source database to
