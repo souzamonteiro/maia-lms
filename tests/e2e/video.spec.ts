@@ -215,7 +215,20 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     await page.setViewportSize({ width: 320, height: 780 });
     const video = page.locator('video');
     await expect(video).toBeVisible();
-    await expect(page.locator('#playback-speed')).toBeVisible();
+    const playbackSpeed = page.locator('#playback-speed');
+    await expect(playbackSpeed).toBeVisible();
+    await playbackSpeed.focus();
+    await expect(playbackSpeed).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await expect(playbackSpeed).toHaveValue('1.5');
+    await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.playbackRate))
+      .toBe(1.5);
+    await playbackSpeed.selectOption('1');
+    await expect(playbackSpeed).toHaveValue('1');
+    await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.playbackRate))
+      .toBe(1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.currentSrc))
       .toContain('/api/v1/lessons/');

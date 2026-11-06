@@ -1545,7 +1545,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   verifies captions track kind/label/language metadata and cues, and confirms the
   transcript remains visible without horizontal overflow. The transcript
   disclosure is opened with Enter, closed with Space, and reopened with Enter,
-  checking keyboard focus and the disclosure state.
+  checking keyboard focus and the disclosure state. Playback speed is also
+  selected with arrow keys plus Enter, and the test checks that the video's
+  playback rate changes and can be restored.
   These are targeted local workflows, not full browser-suite qualification.
   Keep open for the broader contrast, zoom/mobile, captions, and full
   author/learner workflow audit.
