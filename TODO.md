@@ -1529,6 +1529,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Certificate-history failures now announce through a live region, expose a
   focused alert and keyboard retry, and restore focus to the history summary
   after a successful retry; the local Chromium E2E covers fail-then-recover.
+  The administrator certificate list now also announces updates, focuses load
+  errors, and supports keyboard retry; a focused Chromium workflow verifies the
+  pending busy state and successful empty result.
   Enrollment-history failures now use the same live-region, focused-alert,
   keyboard-retry, and focus-restoration behavior, also covered by a local
   fail-then-recover E2E. That workflow also holds the retry response and

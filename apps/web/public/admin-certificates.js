@@ -1,7 +1,7 @@
 import { formatDate } from './i18n.js';
 
 export async function mountAdminCertificates({ app, api, t, e, notify, locale }) {
-  app.innerHTML = `<a href="/admin">${t('administer')}</a><h1>${t('adminCertificatesTitle')}</h1><section><form id="certificate-search" class="user-filters"><label>${t('adminCertificatesSearch')}<input name="q" type="search" maxlength="100"></label><label>${t('adminUsersStatus')}<select name="status"><option value="">${t('adminCertificatesAllStates')}</option><option value="valid">${t('certificateStatusValid')}</option><option value="revoked">${t('certificateStatusRevoked')}</option></select></label><button type="submit">${t('adminUsersSearchAction')}</button></form><p id="certificate-summary" role="status" aria-live="polite"></p><div id="certificate-list" aria-busy="true"></div></section>`;
+  app.innerHTML = `<a href="/admin">${t('administer')}</a><h1>${t('adminCertificatesTitle')}</h1><section><form id="certificate-search" class="user-filters"><label>${t('adminCertificatesSearch')}<input name="q" type="search" maxlength="100"></label><label>${t('adminUsersStatus')}<select name="status"><option value="">${t('adminCertificatesAllStates')}</option><option value="valid">${t('certificateStatusValid')}</option><option value="revoked">${t('certificateStatusRevoked')}</option></select></label><button type="submit">${t('adminUsersSearchAction')}</button></form><p id="certificate-summary" role="status" aria-live="polite"></p><div id="certificate-list" aria-live="polite" aria-busy="true"></div></section>`;
 
   const search = app.querySelector('#certificate-search');
   const list = app.querySelector('#certificate-list');
@@ -94,7 +94,8 @@ export async function mountAdminCertificates({ app, api, t, e, notify, locale })
       }
     } catch (error) {
       summary.textContent = '';
-      list.innerHTML = `<p role="alert">${e(error.message || t('genericError'))}</p><button type="button" id="retry-certificates">${t('retry')}</button>`;
+      list.innerHTML = `<p role="alert" tabindex="-1">${e(error.message || t('genericError'))}</p><button type="button" id="retry-certificates">${t('retry')}</button>`;
+      list.querySelector('[role="alert"]').focus();
       list.querySelector('#retry-certificates').addEventListener('click', () => load().catch(notify));
     } finally {
       list.setAttribute('aria-busy', 'false');
