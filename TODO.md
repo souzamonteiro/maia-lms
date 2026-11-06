@@ -1257,12 +1257,15 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Migration 175 requires worker start, heartbeat, and stop timestamps to be
   parseable NUL-free text on insert, and mutable timestamps on update, while
   preserving heartbeat monotonicity and stopped-worker terminality.
+  Migration 176 enforces the media worker's video-duration contract at the
+  SQLite boundary: optional numeric durations must be greater than zero and at
+  most four hours.
   Last full validation through migration 141: 273 tests passed and 3 skipped
   with one Vitest worker; build and lint passed. Focused database validation at
-  migration 175: 95 tests passed across 67 files, including worker-heartbeat tests;
-  workspace build, and lint passed. Media-retention cleanup, scheduled/course
-  publication, email-change confirmation, and administrator password-reset
-  tests also passed during migrations 174–170.
+  migration 176: 95 tests passed across 67 files; the video-job test, workspace
+  build, and lint passed. Worker-heartbeat, media-retention cleanup, scheduled/
+  course publication, email-change confirmation, and administrator
+  password-reset tests also passed during migrations 175–170.
   Firefox/WebKit and physical-device qualification remain external and pending.
   Parallel full-suite runs can hit the existing 5-second backup-test timeout
   under concurrent test load; the backup test passes alone.

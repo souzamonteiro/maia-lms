@@ -3241,6 +3241,20 @@ All database migration tests and the focused worker-heartbeat test passed
 passed. This change is local only; it has not been deployed or applied to a host
 or running instance.
 
+## Video duration integrity — November 5, 2026
+
+Migration 176 enforces the media worker's probed-duration contract on direct
+SQLite inserts and updates: a provided duration must be numeric, greater than
+zero, and no more than 14,400 seconds (four hours). `NULL` remains valid for
+unfinished processing and historical rows with no measured duration.
+
+The focused migration test covers `NULL`, the smallest positive numeric
+boundary, the four-hour maximum, and rejection of zero, negative, over-limit,
+text, BLOB, and infinite values on insert/update. All database migration tests
+passed (95 tests across 67 files), as did the video-job test, workspace build,
+lint, and `git diff --check`. This change is local only; it has not been
+deployed or applied to a host or running instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with
