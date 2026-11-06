@@ -100,4 +100,16 @@ describe('administrator bootstrap CLI', () => {
     });
     reopened.close();
   });
+
+  it('does not print unexpected database error details', () => {
+    const { db, databasePath } = setupDatabase();
+    db.exec(`CREATE TRIGGER reject_admin_bootstrap BEFORE INSERT ON users
+      BEGIN SELECT RAISE(ABORT, 'private@example.com token=secret'); END;`);
+    db.close();
+
+    const result = runAdmin(databasePath, 'new-admin@example.com', 'New-admin-password-123');
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Administrator command failed');
+    expect(result.stderr).not.toMatch(/private@example\.com|token=secret/);
+  });
 });

@@ -2800,12 +2800,15 @@ Unexpected API failures now log only the HTTP method, registered route template,
 and an allowlisted error type/code. Request URLs, query values, correlation IDs,
 messages and stacks are omitted. Worker failure logs use the same restricted
 error label instead of raw exception messages; API startup failures are also
-sanitized. Tests inject secret-bearing messages, stacks, query strings and
-correlation IDs and verify none are emitted. This covers application logs only,
+sanitized. The admin CLI preserves its expected duplicate-account instructions
+but replaces unexpected database error output with a fixed message. Tests inject
+secret-bearing messages, stacks, query strings, correlation IDs and SQLite
+trigger errors and verify none are emitted. This covers application logs only,
 not host journal policy, external log collectors, retention or alert delivery.
 
 Validation:
-- Focused safe-logging, outbox-worker and admin-operations tests: 15/15 passed.
+- Focused safe-logging, outbox-worker, admin CLI and admin-operations tests:
+  18 passed.
 - `npm run build`: passed across all workspaces.
 - `npm run lint`: passed.
 - `git diff --check`: passed.

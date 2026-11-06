@@ -2,6 +2,9 @@ import Database from 'better-sqlite3';
 import argon2 from 'argon2';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
+
+class AdminCommandError extends Error {}
+
 if (process.env.NODE_ENV !== 'production' && fs.existsSync('.env')) process.loadEnvFile('.env');
 const args = process.argv.slice(2).filter(arg => arg !== '--reset');
 const reset = process.argv.includes('--reset');
@@ -29,7 +32,7 @@ try {
   const hash = await argon2.hash(password, { type: argon2.argon2id });
   if (existing) {
     if (!reset)
-      throw new Error(
+      throw new AdminCommandError(
         'Account already exists; refusing to overwrite credentials or promote it implicitly. Pass --reset to change its password.',
       );
     db.transaction(() => {
@@ -54,7 +57,11 @@ try {
     console.log('Administrator created.');
   }
 } catch (error) {
-  console.error(error instanceof Error ? error.message : 'Administrator command failed.');
+  console.error(
+    error instanceof AdminCommandError
+      ? error.message
+      : 'Administrator command failed; inspect the database configuration and retry.',
+  );
   process.exitCode = 1;
 } finally {
   db.close();

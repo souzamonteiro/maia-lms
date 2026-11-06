@@ -1427,9 +1427,11 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Unexpected API and worker failures now log only fixed event labels, route
   templates/methods and allowlisted technical error names/codes; raw messages,
   stacks, query values, correlation IDs and filesystem/provider details are
-  excluded. Local tests verify secret-bearing errors are not emitted. This
-  improves application log hygiene but does not constitute centralized log
-  retention, redaction by third-party collectors, or external alert delivery.
+  excluded. The admin CLI preserves its explicit duplicate-account guidance but
+  replaces unexpected database error details with a fixed message. Local tests
+  verify secret-bearing errors are not emitted. This improves application log
+  hygiene but does not constitute centralized log retention, redaction by
+  third-party collectors, or external alert delivery.
 - [ ] **OPS-04 — Real capacity on Maia Edge.**
   Define audience/bitrate/upload limits and test host, VPN, and VPS bandwidth,
   disk, and SQLite/FFmpeg concurrency. Dependencies: PLAY-02, OPS-01. Acceptance:

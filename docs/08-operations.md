@@ -453,9 +453,11 @@ Unexpected API and worker failures log fixed event labels and a restricted
 technical error label. The API may include the HTTP method and registered route
 template, but not request URLs, query strings, correlation IDs, raw messages or
 stacks. Only a fixed set of error names and operating-system/SQLite codes is
-included; other error data is omitted. This limits sensitive values emitted by
-the application, but does not control retention, access or redaction performed
-by the host's journal or external log collectors.
+included; other error data is omitted. The admin CLI keeps its explicit
+duplicate-account refusal guidance but uses a fixed message for unexpected
+database errors. This limits sensitive values emitted by the application, but
+does not control retention, access or redaction performed by the host's journal
+or external log collectors.
 
 The operations endpoint displays at most the 20 most-recent heartbeat records;
 worker alerts are calculated separately across all worker records. `WORKER_MISSING`
