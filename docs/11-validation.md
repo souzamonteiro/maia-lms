@@ -2803,12 +2803,13 @@ error label instead of raw exception messages; API startup failures are also
 sanitized. The admin CLI preserves its expected duplicate-account instructions
 but replaces unexpected database error output with a fixed message. Tests inject
 secret-bearing messages, stacks, query strings, correlation IDs and SQLite
-trigger errors and verify none are emitted. This covers application logs only,
-not host journal policy, external log collectors, retention or alert delivery.
+trigger errors and also simulate a missing database path; they verify that such
+details are not emitted. This covers application logs only, not host journal
+policy, external log collectors, retention or alert delivery.
 
 Validation:
 - Focused safe-logging, outbox-worker, admin CLI and admin-operations tests:
-  18 passed.
+  19 passed.
 - `npm run build`: passed across all workspaces.
 - `npm run lint`: passed.
 - `git diff --check`: passed.

@@ -112,4 +112,15 @@ describe('administrator bootstrap CLI', () => {
     expect(result.stderr).toContain('Administrator command failed');
     expect(result.stderr).not.toMatch(/private@example\.com|token=secret/);
   });
+
+  it('sanitizes database open failures without printing the database path', () => {
+    directory = fs.mkdtempSync(path.join(os.tmpdir(), 'maia-admin-cli-open-'));
+    const databasePath = path.join(directory, 'private@example.com-missing.db');
+    const result = runAdmin(databasePath, 'new-admin@example.com', 'New-admin-password-123');
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Administrator command failed');
+    expect(result.stderr).not.toContain(databasePath);
+    expect(result.stderr).not.toContain('private@example.com');
+  });
 });

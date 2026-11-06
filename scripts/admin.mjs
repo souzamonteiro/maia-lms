@@ -24,10 +24,11 @@ if (password.length < 12 || password.length > 128) {
   console.error('The password must be between 12 and 128 characters.');
   process.exit(1);
 }
-const db = new Database(process.env.DATABASE_URL ?? './data/maia-lms.db', { fileMustExist: true });
-db.pragma('foreign_keys = ON');
-db.pragma('busy_timeout = 5000');
+let db;
 try {
+  db = new Database(process.env.DATABASE_URL ?? './data/maia-lms.db', { fileMustExist: true });
+  db.pragma('foreign_keys = ON');
+  db.pragma('busy_timeout = 5000');
   const existing = db.prepare('SELECT id FROM users WHERE email_normalized = ?').get(email);
   const hash = await argon2.hash(password, { type: argon2.argon2id });
   if (existing) {
@@ -64,5 +65,5 @@ try {
   );
   process.exitCode = 1;
 } finally {
-  db.close();
+  db?.close();
 }
