@@ -1263,11 +1263,14 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Migration 177 requires parseable, NUL-free `created_at`, `last_activity_at`,
   and optional `heartbeat` timestamps for media uploads, preserving the
   auto-initialized upload-activity timestamp and nullable idle heartbeat.
+  Migration 178 requires integral upload sizes/offsets and positive chunk
+  ranges that fit inside each upload's declared byte size.
   Last full validation through migration 141: 273 tests passed and 3 skipped
   with one Vitest worker; build and lint passed. Focused database validation at
-  migration 177: 96 tests passed across 68 files; media workflow tests passed
+  migration 178: 97 tests passed across 69 files; media workflow tests passed
   (13 passed, 1 optional skipped), and workspace build and lint passed.
-  Migration 176 validation: 95 tests passed across 67 files. Worker-heartbeat,
+  Migration 177 validation: 96 tests passed across 68 files; migration 176
+  validation: 95 tests passed across 67 files. Worker-heartbeat,
   media-retention cleanup, scheduled/course publication, email-change
   confirmation, and administrator password-reset tests also passed during
   migrations 175–170.

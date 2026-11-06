@@ -3273,6 +3273,23 @@ Validation:
 This change is local only; it has not been deployed or applied to a host or
 running instance.
 
+## Video upload byte-range integrity — November 5, 2026
+
+Migration 178 enforces integer upload sizes and current offsets, and requires
+each chunk's positive integer byte range to fit within its parent upload. The
+focused migration test covers valid boundaries, fractional/text/BLOB values,
+negative and over-limit sizes, and invalid chunk ranges on inserts and updates.
+
+Validation:
+- Database test suite: 97 tests passed across 69 files.
+- Media API/worker regression tests: 13 passed, 1 optional test skipped.
+- `npm run build`: passed across all workspaces.
+- `npm run lint`: passed.
+- `git diff --check`: passed.
+
+This change is local only; it has not been deployed or applied to a host or
+running instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with
