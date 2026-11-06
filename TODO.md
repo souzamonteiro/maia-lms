@@ -1548,6 +1548,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   checking keyboard focus and the disclosure state. Playback speed is also
   selected with arrow keys plus Enter, and the test checks that the video's
   playback rate changes and can be restored.
+  Video playback errors now use a focused assertive alert instead of a polite
+  status message; the local real-video workflow checks the translated alert and
+  focus in English, Brazilian Portuguese, and Spanish.
   These are targeted local workflows, not full browser-suite qualification.
   Keep open for the broader contrast, zoom/mobile, captions, and full
   author/learner workflow audit.

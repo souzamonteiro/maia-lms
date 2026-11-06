@@ -215,8 +215,17 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     await page.setViewportSize({ width: 320, height: 780 });
     const video = page.locator('video');
     await expect(video).toBeVisible();
+    await expect(page.locator('#playback-speed')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.currentSrc))
+      .toContain('/api/v1/lessons/');
+    await video.evaluate((element: HTMLVideoElement) => {
+      element.muted = true;
+      return element.play();
+    });
+    await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.currentTime))
+      .toBeGreaterThan(0);
     const playbackSpeed = page.locator('#playback-speed');
-    await expect(playbackSpeed).toBeVisible();
     await playbackSpeed.focus();
     await expect(playbackSpeed).toBeFocused();
     await page.keyboard.press('ArrowDown');
@@ -229,15 +238,6 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     await expect(playbackSpeed).toHaveValue('1');
     await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.playbackRate))
       .toBe(1);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-    await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.currentSrc))
-      .toContain('/api/v1/lessons/');
-    await video.evaluate((element: HTMLVideoElement) => {
-      element.muted = true;
-      return element.play();
-    });
-    await expect.poll(() => video.evaluate((element: HTMLVideoElement) => element.currentTime))
-      .toBeGreaterThan(0);
     const captionTrack = page.locator('track[srclang="en"]');
     await expect(captionTrack).toHaveCount(1);
     await expect(captionTrack).toHaveAttribute('kind', 'captions');
@@ -358,6 +358,24 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
       await expect
         .poll(() => resumedVideo.evaluate((v: HTMLVideoElement) => v.currentTime))
         .toBeGreaterThan(0.9);
+      for (const [locale, speedLabel, message] of [
+        ['pt-BR', 'Velocidade de reprodução', 'Vídeo indisponível. Confira a conexão e o acesso e recarregue.'],
+        ['es', 'Velocidad de reproducción', 'Vídeo no disponible. Comprueba conexión y acceso y recarga.'],
+        ['en', 'Playback speed', 'Video unavailable. Check your connection and access, then reload.'],
+      ]) {
+        await freshPage.locator('#lesson-video').evaluate(video =>
+          video.setAttribute('data-e2e-before-locale-change', 'true'),
+        );
+        await freshPage.locator('#languageSelect').selectOption(locale);
+        await expect(freshPage.locator('html')).toHaveAttribute('lang', locale);
+        await expect(freshPage.locator('#lesson-video[data-e2e-before-locale-change]')).toHaveCount(0);
+        await expect(freshPage.getByLabel(speedLabel)).toBeVisible();
+        const localizedVideo = freshPage.locator('#lesson-video');
+        await localizedVideo.dispatchEvent('error');
+        const playbackError = freshPage.getByRole('alert');
+        await expect(playbackError).toHaveText(message);
+        await expect(playbackError).toBeFocused();
+      }
     } finally {
       await freshContext.close();
     }

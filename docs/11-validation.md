@@ -3581,9 +3581,16 @@ select is changed with arrow keys and Enter, and the resulting video playback
 rate is verified before it is restored. This is a desktop browser viewport
 emulation, not physical-device or zoom qualification.
 
+The lesson's playback failure message now uses a focusable assertive alert rather
+than a polite status message. The E2E dispatches the player error event after
+each locale rerender and verifies the translated message and focus in English,
+Brazilian Portuguese, and Spanish. This checks local UI error handling; it does
+not qualify actual network or device failure behavior.
+
 Validation:
-- `VIDEO_TEST_REAL=1 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome E2E_PORT=4415 npm run test:e2e -- tests/e2e/video.spec.ts --browser=chromium --grep "author uploads a real video"`: 1/1 passed.
+- `VIDEO_TEST_REAL=1 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/google-chrome E2E_PORT=4420 npm run test:e2e -- tests/e2e/video.spec.ts --browser=chromium --grep "author uploads a real video"`: 1/1 passed.
 - `npm run lint`: passed.
+- `npm run build`: passed across all workspaces.
 - `git diff --check`: passed.
 
 No deployment, host or running-instance changes were performed.
