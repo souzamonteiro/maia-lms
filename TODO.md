@@ -1293,8 +1293,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   confirmation, and administrator password-reset tests also passed during
   migrations 175–170.
   Firefox/WebKit and physical-device qualification remain external and pending.
-  Migration 182 and its verification are local only; no deployment or host
-  changes were made.
+  Migration 182 and its verification were committed and pushed; no deployment
+  or host changes were made.
   Parallel full-suite runs can hit the existing 5-second backup-test timeout
   under concurrent test load; the backup test passes alone.
 - [ ] **OPS-02 — Integrated backup and media restoration.**
@@ -1326,8 +1326,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   hash; both source and recovery remain independently verifiable. Focused tests
   cover rollback, preserved credentials/preferences/MFA enrollment and rejection
   of old cookies/links before fresh recovery/login in the real-media HTTP rehearsal.
-  Rehearsed again locally on October 31, 2026: all 18 focused recovery/bundle tests
-  passed with fictional data, temporary storage and loopback HTTP.
+  Rehearsed again locally on November 6, 2026: all 20 focused recovery/bundle
+  tests passed with fictional data, temporary storage and loopback HTTP.
   Failed backup or restore attempts now remove only their own incomplete destination,
   preserve both source/bundle data and allow a corrected retry to reuse the path.
   The restored manifest also reports the number of unprocessed email messages to
@@ -1345,8 +1345,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   verifies bundles and proposes the newest 7 daily, 4 weekly, and 12 monthly
   copies without moving or deleting anything. Keep open for scheduled/remote
   retention, exercising recovery/configuration on a representative target, and
-  host/device qualification. Local validation: 274 tests passed and 3 skipped
-  with one Vitest worker; build and lint passed.
+  host/device qualification. The November 6 recovery rehearsal ran all 20
+  focused tests in isolation; migration 182 full-suite failures are recorded
+  separately and do not alter this recovery result.
 - [ ] **OPS-03 — Observability and dashboard operations (local dashboard; telemetry and alert delivery open).**
   Queue/transcode/playback/SMTP/payment/disk metrics, logs without tokens/PII,
   alerts, inspection, and administrative retries. Dependencies: JOB-01, PAY-03.

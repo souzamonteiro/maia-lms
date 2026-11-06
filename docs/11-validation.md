@@ -2763,6 +2763,23 @@ Validation:
 
 No deployment, host or running-instance changes were performed.
 
+## Isolated backup and restoration rehearsal — November 6, 2026
+
+Repeated the local real-media recovery rehearsal with the current migration
+set and backup-bundle tests. They use fictional accounts, temporary directories
+and loopback HTTP servers; the rehearsal removes the source database/media from
+service before starting the recovered copy. Coverage includes old published-
+revision playback, MP4 Range/HLS, captions/poster, progress, certificate
+verification/PDF identity, authorization, and invalidation of recovered sessions
+and one-time links. All 20 selected tests passed. This does not rehearse
+destination configuration, off-site recovery, encryption/retention, or a target
+host.
+
+Validation:
+- `VIDEO_TEST_REAL=1 npm test -- --run apps/api/src/backup-recovery.test.ts apps/api/src/db/backup.test.ts --maxWorkers=1 --testTimeout=10000` (20/20).
+
+No deployment, host or running-instance changes were performed.
+
 ## Backup destination symlink-alias protection — November 5, 2026
 
 Bundle creation now resolves the destination parent and source database to
@@ -3363,8 +3380,8 @@ Validation:
   12 failed in unrelated profile/locale fixtures (`profile` undefined and
   invalid/published locale data). The full suite is not green.
 
-This change and its validation are local only; no deployment, host change, or
-production migration was performed. Firefox/WebKit and physical-device
+This change and its validation were committed and pushed, but not deployed or
+applied to a production database or host. Firefox/WebKit and physical-device
 qualification remain external and pending.
 
 ## Account display-name integrity — November 4, 2026
