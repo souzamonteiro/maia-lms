@@ -8,8 +8,8 @@ it('keeps upload and chunk byte ranges integral and within declared sizes', () =
     runMigrations(db);
     expect(db.prepare('SELECT version FROM schema_migrations ORDER BY rowid DESC LIMIT 2').all())
       .toEqual([
+        { version: '179_video_chunk_digest_integrity' },
         { version: '178_video_upload_byte_range_integrity' },
-        { version: '177_video_upload_timestamp_integrity' },
       ]);
     db.prepare(`INSERT INTO users(id,email,email_normalized,password_hash)
       VALUES('owner','owner@example.com','owner@example.com','hash')`).run();
@@ -53,11 +53,11 @@ it('keeps upload and chunk byte ranges integral and within declared sizes', () =
     updateUpload.run(10, 10, 'regular');
 
     db.prepare(`INSERT INTO video_chunks(upload_id,offset,size,storage_key,sha256)
-      VALUES('regular',0,4,'chunk-1','hash')`).run();
+      VALUES('regular',0,4,'chunk-1',?)`).run('a'.repeat(64));
     db.prepare(`INSERT INTO video_chunks(upload_id,offset,size,storage_key,sha256)
-      VALUES('regular',4,6,'chunk-2','hash')`).run();
+      VALUES('regular',4,6,'chunk-2',?)`).run('a'.repeat(64));
     db.prepare(`INSERT INTO video_chunks(upload_id,offset,size,storage_key,sha256)
-      VALUES('regular',6,4,'chunk-at-end','hash')`).run();
+      VALUES('regular',6,4,'chunk-at-end',?)`).run('a'.repeat(64));
     expect(db.prepare('SELECT count(*) AS total FROM video_chunks WHERE upload_id=?')
       .get('regular')).toEqual({ total: 3 });
     expect(() => updateUpload.run(9, 9, 'regular'))
@@ -65,7 +65,7 @@ it('keeps upload and chunk byte ranges integral and within declared sizes', () =
 
     const insertChunk = db.prepare(`INSERT INTO video_chunks(
       upload_id,offset,size,storage_key,sha256
-    ) VALUES('regular',?,?,?, 'hash')`);
+    ) VALUES('regular',?,?,?, ?)`);
     const invalidChunkRanges: Array<[number | string | Buffer, number | string | Buffer]> = [
       [-1, 1],
       [0, 0],
@@ -80,7 +80,7 @@ it('keeps upload and chunk byte ranges integral and within declared sizes', () =
       [9, 2],
     ];
     for (const [index, [offset, size]] of invalidChunkRanges.entries()) {
-      expect(() => insertChunk.run(offset, size, `invalid-chunk-${index}`))
+      expect(() => insertChunk.run(offset, size, `invalid-chunk-${index}`, 'a'.repeat(64)))
         .toThrow(/video chunk byte range is invalid/);
     }
 

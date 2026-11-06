@@ -34,7 +34,7 @@ it('publishes attachments only after a clean scanner exit and keeps rejected out
       await store.putPrivate(key, Buffer.from('text'), '');
       db.prepare(
         'INSERT INTO video_chunks(upload_id,offset,size,storage_key,sha256) VALUES(?,0,4,?,?)',
-      ).run(id, key, 'hash');
+      ).run(id, key, 'a'.repeat(64));
       await processVideo(db, path.join(root, 'storage'));
       const row = db
         .prepare('SELECT status,error,output_key FROM video_uploads WHERE id=?')

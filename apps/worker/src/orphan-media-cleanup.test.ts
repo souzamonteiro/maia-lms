@@ -72,7 +72,7 @@ it('collects only media unreferenced for 90 days and rechecks every revision poi
   for (const key of oldFiles) await store.putPrivate(key, Buffer.from('data'), '');
   db.prepare(
     'INSERT INTO video_chunks(upload_id,offset,size,storage_key,sha256) VALUES(?,0,4,?,?)',
-  ).run('old', 'uploads/old/chunk', 'hash');
+  ).run('old', 'uploads/old/chunk', 'a'.repeat(64));
 
   expect(await cleanupOrphanedMedia(db, root)).toBe(1);
   expect(db.prepare("SELECT id FROM video_uploads WHERE id='old'").get()).toBeUndefined();

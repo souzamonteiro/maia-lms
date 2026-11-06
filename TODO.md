@@ -1265,10 +1265,13 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   auto-initialized upload-activity timestamp and nullable idle heartbeat.
   Migration 178 requires integral upload sizes/offsets and positive chunk
   ranges that fit inside each upload's declared byte size.
+  Migration 179 requires every chunk digest to be a 64-character lowercase
+  hexadecimal SHA-256 value on direct inserts and updates.
   Last full validation through migration 141: 273 tests passed and 3 skipped
   with one Vitest worker; build and lint passed. Focused database validation at
-  migration 178: 97 tests passed across 69 files; media workflow tests passed
-  (13 passed, 1 optional skipped), and workspace build and lint passed.
+  migration 179: 98 tests passed across 70 files; media workflow tests passed
+  (14 passed, 1 optional skipped), and workspace build and lint passed.
+  Migration 178 validation: 97 tests passed across 69 files.
   Migration 177 validation: 96 tests passed across 68 files; migration 176
   validation: 95 tests passed across 67 files. Worker-heartbeat,
   media-retention cleanup, scheduled/course publication, email-change

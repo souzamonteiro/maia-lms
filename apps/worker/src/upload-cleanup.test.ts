@@ -37,7 +37,7 @@ it('expires only abandoned unreferenced uploads and retries failed file deletion
       await store.putPrivate(key, Buffer.from('test'), '');
       db.prepare(
         'INSERT INTO video_chunks(upload_id,offset,size,storage_key,sha256) VALUES(?,0,4,?,?)',
-      ).run(id, key, 'hash');
+      ).run(id, key, 'a'.repeat(64));
     }
     db.exec(`INSERT INTO lessons(id,module_id,sort_order,title,body,video_id) VALUES('l','m',0,'Lesson','','referenced');
       INSERT INTO course_attachments(id,revision_id,upload_id,title,description,sort_order) VALUES('a','r','material','Material','',0);`);
@@ -89,7 +89,7 @@ it('retains chunks for active cancellation leases and reclaims a stale cancelled
       await store.putPrivate(key, Buffer.from('test'), '');
       db.prepare(
         'INSERT INTO video_chunks(upload_id,offset,size,storage_key,sha256) VALUES(?,0,4,?,?)',
-      ).run(id, key, 'hash');
+      ).run(id, key, 'a'.repeat(64));
     }
 
     expect(await cleanupUploads(db, root)).toBe(1);

@@ -3290,6 +3290,24 @@ Validation:
 This change is local only; it has not been deployed or applied to a host or
 running instance.
 
+## Video chunk digest integrity — November 5, 2026
+
+Migration 179 requires video chunk digests to be 64-character lowercase
+hexadecimal SHA-256 values on inserts and updates, matching the API's
+`createHash('sha256').digest('hex')` output. The focused migration test covers
+valid digests and rejects wrong lengths, non-hex characters, uppercase,
+embedded NUL, and BLOB values.
+
+Validation:
+- Database test suite: 98 tests passed across 70 files.
+- Video/media API and worker tests: 14 passed, 1 optional test skipped.
+- `npm run build`: passed across all workspaces.
+- `npm run lint`: passed.
+- `git diff --check`: passed.
+
+This change is local only; it has not been deployed or applied to a host or
+running instance.
+
 ## Account display-name integrity — November 4, 2026
 
 Migration 151 protects `users.display_name` at the SQLite boundary with
