@@ -53,7 +53,8 @@ export async function mountAdminPrivacy({ app, api, t, e, notify, locale, me }) 
             history.dataset.loaded = 'true';
             if (focusAfterRetry) history.querySelector('summary').focus();
           } catch (error) {
-            content.innerHTML = `<p role="alert">${e(error.message || t('genericError'))}</p><button type="button">${t('retry')}</button>`;
+            content.innerHTML = `<p role="alert" tabindex="-1">${e(error.message || t('genericError'))}</p><button type="button">${t('retry')}</button>`;
+            content.querySelector('[role="alert"]').focus();
             content.querySelector('button').addEventListener('click', () => {
               void loadHistory(true);
             });

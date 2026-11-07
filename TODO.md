@@ -1538,7 +1538,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   verifies the history stays busy until results arrive.
   Privacy-request search results now announce list updates and focus the load
   error before keyboard retry; the local Chromium workflow checks Tab navigation
-  from the alert to retry and focus recovery after successful results.
+  from the alert to retry and focus recovery after successful results. Privacy
+  history failures now focus their alert; keyboard retry stays busy while loading
+  and restores focus to the history disclosure after recovery.
   The administrator enrollment list now also announces updates, focuses load
   errors, and supports keyboard retry; a focused Chromium workflow verifies the
   pending busy state and successful empty result.

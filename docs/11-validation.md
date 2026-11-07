@@ -3636,6 +3636,22 @@ This qualifies only local browser automation, not the complete accessibility
 audit, Firefox/WebKit suite, physical devices, host, or deployed instance. No
 deployment, host, or running-instance changes were performed.
 
+## Privacy-history retry focus and busy state — November 7, 2026
+
+Failed privacy-request history loads now move focus to the alert. The existing
+Chromium workflow holds the keyboard-triggered retry response to check the busy
+state, then verifies loading clears, focus returns to the disclosure summary,
+and private notes remain visible only in the administrator's history.
+
+Validation:
+- `E2E_PORT=4434 npm run test:e2e -- tests/e2e/admin-privacy.spec.ts`: 1/1 passed.
+- `npm run lint`: passed.
+- `npm run build`: passed across all workspaces.
+- `git diff --check`: passed.
+
+This is local browser automation only; no deployment, host, or running-instance
+changes were performed.
+
 ## Administrator enrollment-list retry and announcements — November 6, 2026
 
 The administrator enrollment list now announces updates through a polite live

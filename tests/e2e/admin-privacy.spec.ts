@@ -65,12 +65,31 @@ test('administrator reviews a privacy request and the requester sees its actual 
     status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'History temporarily unavailable' }),
   }), { times: 1 });
   await card.getByText('Private review history', { exact: true }).click();
-  await expect(card.locator('.privacy-history').getByRole('alert')).toContainText('History temporarily unavailable');
-  await expect(card.locator('.privacy-history')).toHaveAttribute('aria-busy', 'false');
-  const historyRetry = card.locator('.privacy-history').getByRole('button');
+  const history = card.locator('.privacy-history');
+  const historyError = history.getByRole('alert');
+  await expect(historyError).toContainText('History temporarily unavailable');
+  await expect(historyError).toBeFocused();
+  await expect(history).toHaveAttribute('aria-busy', 'false');
+  let releaseHistoryRetry: (() => void) | undefined;
+  let notifyHistoryRetry: (() => void) | undefined;
+  const historyRetryStarted = new Promise<void>(resolve => {
+    notifyHistoryRetry = resolve;
+  });
+  await page.route(`**/admin/privacy/requests/${id}/history`, async route => {
+    notifyHistoryRetry?.();
+    await new Promise<void>(resolve => {
+      releaseHistoryRetry = resolve;
+    });
+    await route.continue();
+  }, { times: 1 });
+  const historyRetry = history.getByRole('button', { name: 'Retry', exact: true });
   await historyRetry.focus();
   await page.keyboard.press('Enter');
-  await expect(card.locator('.privacy-history')).toContainText('<script>private</script>');
+  await historyRetryStarted;
+  await expect(history).toHaveAttribute('aria-busy', 'true');
+  releaseHistoryRetry?.();
+  await expect(history).toContainText('<script>private</script>');
+  await expect(history).toHaveAttribute('aria-busy', 'false');
   await expect(card.locator('summary')).toBeFocused();
   await expect(card.locator('.privacy-history script')).toHaveCount(0);
 
