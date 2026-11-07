@@ -94,3 +94,64 @@ test('administrator grants and revokes course access with a reasoned history', a
   await expect(enrollment).toContainText('Learner requested access removal.');
   await expect(enrollment).toContainText('Support approved this access grant.');
 });
+
+test('enrollment list announces load failures and recovers with keyboard retry', async ({ page }) => {
+  let requestCount = 0;
+  let releaseRetry: (() => void) | undefined;
+  let notifyRetryStarted: (() => void) | undefined;
+  const retryStarted = new Promise<void>(resolve => {
+    notifyRetryStarted = resolve;
+  });
+
+  await page.route('**/api/v1/admin/enrollments**', async route => {
+    const url = new URL(route.request().url());
+    if (url.pathname !== '/api/v1/admin/enrollments' || route.request().method() !== 'GET') {
+      await route.continue();
+      return;
+    }
+
+    requestCount += 1;
+    if (requestCount === 1) {
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Enrollments temporarily unavailable' }),
+      });
+      return;
+    }
+
+    notifyRetryStarted?.();
+    await new Promise<void>(resolve => {
+      releaseRetry = resolve;
+    });
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ total: 0, limit: 50, offset: 0, items: [] }),
+    });
+  });
+
+  await page.goto('/auth/login');
+  await page.getByLabel('Email', { exact: true }).fill('admin@example.com');
+  await page.getByLabel('Password', { exact: true }).fill('Admin-test-password-123');
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.getByRole('link', { name: 'Administer', exact: true }).click();
+  await page.goto('/admin/enrollments');
+
+  const list = page.locator('#enrollment-list');
+  await expect(page.getByRole('heading', { name: 'Manage enrollments', exact: true })).toBeVisible();
+  await expect(list).toHaveAttribute('aria-live', 'polite');
+  const error = list.getByRole('alert');
+  await expect(error).toHaveText('Enrollments temporarily unavailable');
+  await expect(error).toBeFocused();
+  await list.getByRole('button', { name: 'Retry', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await retryStarted;
+  await expect(list).toHaveAttribute('aria-busy', 'true');
+  releaseRetry?.();
+
+  await expect(list).toContainText('No enrollments match this search.');
+  await expect(list).toHaveAttribute('aria-busy', 'false');
+  await expect(list.getByRole('alert')).toHaveCount(0);
+  await expect(page.locator('#enrollment-summary')).toContainText('0 enrollments');
+});

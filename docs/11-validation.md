@@ -3618,6 +3618,25 @@ Validation:
 This is local browser automation only; no deployment, host, or running-instance
 changes were performed.
 
+## Administrator enrollment-list retry and announcements — November 6, 2026
+
+The administrator enrollment list now announces updates through a polite live
+region and moves focus to a load-failure alert. A focused Chromium E2E simulates
+a temporary API failure, verifies the focused alert and keyboard-operable retry,
+holds the retry response to assert `aria-busy="true"`, then verifies the empty
+state, cleared alert, and zero-enrollment count after recovery.
+
+Validation:
+- `E2E_PORT=4432 npm run test:e2e -- tests/e2e/admin-enrollments.spec.ts --grep "enrollment list announces"`: 1/1 passed.
+- `E2E_PORT=4432 npm run test:e2e -- tests/e2e/admin-enrollments.spec.ts`: 2/2 passed, including the existing grant/revoke/history workflow.
+- `npm run lint`: passed.
+- `npm run build`: passed across all workspaces.
+- `git diff --check`: passed.
+
+This qualifies only the focused local Chromium workflow, not Firefox/WebKit,
+physical devices, the host, or a deployed instance. No deployment, host, or
+running-instance changes were performed.
+
 ## Administrator certificate-list retry and announcements — November 6, 2026
 
 The administrator certificate list now announces updates through a polite live

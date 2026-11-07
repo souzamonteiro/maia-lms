@@ -1,7 +1,7 @@
 import { formatDate } from './i18n.js';
 
 export async function mountAdminEnrollments({ app, api, t, e, notify, locale }) {
-  app.innerHTML = `<a href="/admin">${t('administer')}</a><h1>${t('adminEnrollmentsTitle')}</h1><section><h2>${t('adminEnrollmentGrantTitle')}</h2><form id="enrollment-grant"><label>${t('adminEnrollmentEmail')}<input name="email" type="email" maxlength="254" required></label><label>${t('adminEnrollmentCourse')}<input name="courseSlug" maxlength="100" required></label><label>${t('adminEnrollmentReason')}<textarea name="reason" minlength="5" maxlength="1000" required></textarea></label><button type="submit">${t('adminEnrollmentGrantAction')}</button></form></section><section><h2>${t('adminEnrollmentListTitle')}</h2><form id="enrollment-search" class="user-filters"><label>${t('adminEnrollmentSearch')}<input name="q" type="search" maxlength="100"></label><label>${t('adminUsersStatus')}<select name="state"><option value="">${t('adminEnrollmentAllStates')}</option><option value="active">${t('adminEnrollmentActive')}</option><option value="revoked">${t('adminEnrollmentRevoked')}</option></select></label><button type="submit">${t('adminUsersSearchAction')}</button></form><p id="enrollment-summary" role="status" aria-live="polite"></p><div id="enrollment-list" aria-busy="true"></div></section>`;
+  app.innerHTML = `<a href="/admin">${t('administer')}</a><h1>${t('adminEnrollmentsTitle')}</h1><section><h2>${t('adminEnrollmentGrantTitle')}</h2><form id="enrollment-grant"><label>${t('adminEnrollmentEmail')}<input name="email" type="email" maxlength="254" required></label><label>${t('adminEnrollmentCourse')}<input name="courseSlug" maxlength="100" required></label><label>${t('adminEnrollmentReason')}<textarea name="reason" minlength="5" maxlength="1000" required></textarea></label><button type="submit">${t('adminEnrollmentGrantAction')}</button></form></section><section><h2>${t('adminEnrollmentListTitle')}</h2><form id="enrollment-search" class="user-filters"><label>${t('adminEnrollmentSearch')}<input name="q" type="search" maxlength="100"></label><label>${t('adminUsersStatus')}<select name="state"><option value="">${t('adminEnrollmentAllStates')}</option><option value="active">${t('adminEnrollmentActive')}</option><option value="revoked">${t('adminEnrollmentRevoked')}</option></select></label><button type="submit">${t('adminUsersSearchAction')}</button></form><p id="enrollment-summary" role="status" aria-live="polite"></p><div id="enrollment-list" aria-live="polite" aria-busy="true"></div></section>`;
 
   const search = app.querySelector('#enrollment-search');
   const list = app.querySelector('#enrollment-list');
@@ -77,7 +77,8 @@ export async function mountAdminEnrollments({ app, api, t, e, notify, locale }) 
       }
     } catch (error) {
       summary.textContent = '';
-      list.innerHTML = `<p role="alert">${e(error.message || t('genericError'))}</p><button type="button" id="retry-enrollments">${t('retry')}</button>`;
+      list.innerHTML = `<p role="alert" tabindex="-1">${e(error.message || t('genericError'))}</p><button type="button" id="retry-enrollments">${t('retry')}</button>`;
+      list.querySelector('[role="alert"]').focus();
       list.querySelector('#retry-enrollments').addEventListener('click', () => load().catch(notify));
     } finally {
       list.setAttribute('aria-busy', 'false');
