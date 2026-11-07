@@ -3,7 +3,7 @@ let state;
 export async function mountAdminPrivacy({ app, api, t, e, notify, locale, me }) {
   if (state?.userId !== me.id)
     state = { userId: me.id, offset: 0, filters: { q: '', status: '' }, notes: new Map() };
-  app.innerHTML = `<a href="/admin">${t('administer')}</a><h1>${t('adminPrivacyTitle')}</h1><p>${t('adminPrivacyExplanation')}</p><form id="privacy-search" class="user-filters"><label>${t('adminPrivacySearch')}<input name="q" type="search" maxlength="100"></label><label>${t('adminUsersStatus')}<select name="status"><option value="">${t('adminPrivacyAll')}</option>${['OPEN', 'IN_REVIEW', 'CLOSED'].map(status => `<option value="${status}">${t(`privacyStatus${status}`)}</option>`).join('')}</select></label><button type="submit">${t('adminUsersSearchAction')}</button></form><p id="privacy-summary" role="status"></p><div id="privacy-list" aria-busy="true"></div><div class="actions"><button type="button" id="privacy-prev">${t('adminPrivacyPrevious')}</button><button type="button" id="privacy-next">${t('adminPrivacyNext')}</button></div>`;
+  app.innerHTML = `<a href="/admin">${t('administer')}</a><h1>${t('adminPrivacyTitle')}</h1><p>${t('adminPrivacyExplanation')}</p><form id="privacy-search" class="user-filters"><label>${t('adminPrivacySearch')}<input name="q" type="search" maxlength="100"></label><label>${t('adminUsersStatus')}<select name="status"><option value="">${t('adminPrivacyAll')}</option>${['OPEN', 'IN_REVIEW', 'CLOSED'].map(status => `<option value="${status}">${t(`privacyStatus${status}`)}</option>`).join('')}</select></label><button type="submit">${t('adminUsersSearchAction')}</button></form><p id="privacy-summary" role="status" aria-live="polite"></p><div id="privacy-list" aria-live="polite" aria-busy="true"></div><div class="actions"><button type="button" id="privacy-prev">${t('adminPrivacyPrevious')}</button><button type="button" id="privacy-next">${t('adminPrivacyNext')}</button></div>`;
   const search = app.querySelector('#privacy-search');
   const list = app.querySelector('#privacy-list');
   const previous = app.querySelector('#privacy-prev');
@@ -101,10 +101,10 @@ export async function mountAdminPrivacy({ app, api, t, e, notify, locale, me }) 
     } catch (error) {
       if (current !== generation) return;
       app.querySelector('#privacy-summary').textContent = '';
-      list.innerHTML = `<p role="alert">${e(error.message || t('genericError'))}</p><button type="button">${t('retry')}</button>`;
+      list.innerHTML = `<p role="alert" tabindex="-1">${e(error.message || t('genericError'))}</p><button type="button">${t('retry')}</button>`;
       const retry = list.querySelector('button');
       retry.addEventListener('click', () => { void load({ focusResults: true }); });
-      if (focusResults) retry.focus();
+      list.querySelector('[role="alert"]').focus();
     } finally {
       if (current === generation) list.setAttribute('aria-busy', 'false');
     }

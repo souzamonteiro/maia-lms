@@ -34,11 +34,16 @@ test('administrator reviews a privacy request and the requester sees its actual 
   await page.route(/\/api\/v1\/admin\/privacy\/requests\?/, route => route.fulfill({
     status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'Requests temporarily unavailable' }),
   }), { times: 1 });
+  await expect(page.locator('#privacy-list')).toHaveAttribute('aria-live', 'polite');
   await search.focus();
   await expect(search).toBeFocused();
   await page.keyboard.press('Enter');
-  await expect(page.locator('#privacy-list').getByRole('alert')).toContainText('Requests temporarily unavailable');
-  await expect(page.locator('#privacy-list').getByRole('button')).toBeFocused();
+  const list = page.locator('#privacy-list');
+  const listError = list.getByRole('alert');
+  await expect(listError).toContainText('Requests temporarily unavailable');
+  await expect(listError).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(list.getByRole('button', { name: 'Retry', exact: true })).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.locator('#privacy-summary')).toBeFocused();
   await expect(card.locator('textarea')).toHaveValue('Review pending retention policy. <script>private</script>');

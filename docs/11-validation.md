@@ -3618,6 +3618,24 @@ Validation:
 This is local browser automation only; no deployment, host, or running-instance
 changes were performed.
 
+## Privacy-request list announcements and retry focus — November 6, 2026
+
+The administrator privacy-request list now announces updates through a polite
+live region, while its count is also a polite status. On list-load failure,
+focus moves to the alert; keyboard Tab reaches retry, and a successful search
+retry restores focus to the result summary. The existing privacy workflow checks
+these behaviors while retaining the unsaved review note.
+
+Validation:
+- `E2E_PORT=4433 npm run test:e2e -- tests/e2e/admin-privacy.spec.ts`: 1/1 passed.
+- `npm run lint`: passed.
+- `npm run build`: passed across all workspaces.
+- `git diff --check`: passed.
+
+This qualifies only local browser automation, not the complete accessibility
+audit, Firefox/WebKit suite, physical devices, host, or deployed instance. No
+deployment, host, or running-instance changes were performed.
+
 ## Administrator enrollment-list retry and announcements — November 6, 2026
 
 The administrator enrollment list now announces updates through a polite live

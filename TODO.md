@@ -1536,6 +1536,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   keyboard-retry, and focus-restoration behavior, also covered by a local
   fail-then-recover E2E. That workflow also holds the retry response and
   verifies the history stays busy until results arrive.
+  Privacy-request search results now announce list updates and focus the load
+  error before keyboard retry; the local Chromium workflow checks Tab navigation
+  from the alert to retry and focus recovery after successful results.
   The administrator enrollment list now also announces updates, focuses load
   errors, and supports keyboard retry; a focused Chromium workflow verifies the
   pending busy state and successful empty result.
