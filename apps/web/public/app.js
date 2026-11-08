@@ -27,22 +27,27 @@ let me;
 let locale = detectLocale();
 let pendingMfaChallenge = null;
 let activePlayerCleanups = [];
+let activePlayerGeneration = 0;
 
 function clearActivePlayers() {
+  activePlayerGeneration++;
   for (const cleanup of activePlayerCleanups) cleanup();
   activePlayerCleanups = [];
 }
 
 async function mountHlsPlayers(root = app) {
   clearActivePlayers();
+  const generation = activePlayerGeneration;
   const videos = [...root.querySelectorAll('video[data-hls-url][data-mp4-url]')];
-  activePlayerCleanups = await Promise.all(videos.map(video => attachHlsPlayer(video, {
+  const cleanups = await Promise.all(videos.map(video => attachHlsPlayer(video, {
     hlsUrl: video.dataset.hlsUrl,
     mp4Url: video.dataset.mp4Url,
     quality: video.parentElement.querySelector('.video-quality'),
     status: video.parentElement.querySelector('.video-status'),
     t,
   })));
+  if (generation === activePlayerGeneration) activePlayerCleanups = cleanups;
+  else cleanups.forEach(cleanup => cleanup());
 }
 if (location.pathname === '/auth/verify-email') {
   const emailLocale = new URLSearchParams(location.search).get('lang');
@@ -356,7 +361,6 @@ async function detail(slug) {
   clearActivePlayers();
   const c = await api(`/courses/${encodeURIComponent(slug)}?displayLocale=${encodeURIComponent(locale)}`);
   app.innerHTML = `<a href="/courses">${t('backToCourses')}</a><h1>${e(c.title)}</h1>${coverImage(c)}<p>${e(c.summary)}</p>${coursePresentation(c, { t, e, locale })}${c.enrollment ? `<p class="badge">${t('enrolledBadge')}</p>` : me ? `<button id="enroll">${t('enrollFree')}</button>` : `<p><a href="/auth/login">${t('signIn')}</a>${t('toEnrollSuffix')}</p>`}${attachmentCards(c.attachments)}${c.modules.map(m => `<section><h2>${e(m.title)}</h2><ol>${m.lessons.map(l => `<li><a href="/lessons/${e(l.id)}">${e(l.title)}</a>${l.is_preview ? t('previewOpen') : ''}</li>`).join('')}</ol></section>`).join('')}`;
-  await mountHlsPlayers(app);
   if (c.access_mode === 'PAID' && !c.enrollment) {
     const purchase = app.querySelector('#enroll');
     if (purchase) purchase.textContent = t('buyCourse');
@@ -380,6 +384,7 @@ async function detail(slug) {
     await api(`/courses/${c.id}/enroll`, 'POST');
     await detail(slug);
   });
+  await mountHlsPlayers(app);
 }
 async function myOrders() {
   if (!me) {

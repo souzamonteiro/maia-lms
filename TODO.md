@@ -1747,6 +1747,16 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   timeout passed focused (1/1), while the real-video workflow remained unstable
   in both the full and focused reruns. Firefox full-suite qualification remains
   open; no application behavior, timeout, host, or deployed environment changed.
+  Follow-up moved course enrollment-handler registration ahead of asynchronous
+  HLS-player setup and guards against applying stale player cleanups after
+  navigation. Build and lint passed. Focused local video checks passed in
+  Chromium (2/2), Firefox (1/1 twice, including one traced run), and WebKit
+  (2/2); Firefox's complete suite remains unqualified. A three-repeat Firefox
+  attempt was inconclusive: it ran concurrently with WebKit under load, then
+  reused the already-published course slug on the same E2E server. The first
+  repeat timed out during viewport resizing and the later repeats hit the
+  duplicate-slug state. No timeout workaround was made; a clean, sequential
+  repeat/full Firefox run remains necessary.
 - [ ] **DOC-01 — Keep contracts and operations aligned with implementation.**
   Update OpenAPI, data model, installation/configuration, author/learner/admin
   manuals, limits, and recovery procedures with every delivery. Dependency:

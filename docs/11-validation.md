@@ -3636,6 +3636,32 @@ Validation:
 This is local browser automation only; no deployment, host, or running-instance
 changes were performed.
 
+## HLS initialization and Firefox video follow-up — November 8, 2026
+
+The course page now registers the enrollment action before awaiting asynchronous
+HLS-player initialization, so the visible enrollment button is actionable while
+player setup is pending. Player cleanup results are also generation-checked:
+if navigation supersedes a pending setup, its eventual cleanup runs rather than
+replacing the current page's cleanup state.
+
+Validation:
+- `npm run build`: passed across all workspaces.
+- `npm run lint`: passed.
+- Focused real-video workflow in Chromium: 2/2 passed.
+- Focused real-video workflow in Firefox with trace enabled: 1/1 passed.
+- Focused real-video workflow in Firefox, rerun sequentially: 1/1 passed.
+- `tests/e2e/video.spec.ts` in WebKit: 2/2 passed.
+- `git diff --check`: passed before this documentation update.
+
+A Firefox `--repeat-each=3` attempt is not treated as qualification: the first
+run timed out at viewport resizing while the Firefox and WebKit browser suites
+were competing for local resources; the next two reused the test's published
+course slug on the same E2E server and failed on the resulting duplicate state.
+The source of the viewport timeout is unconfirmed. No timeout was increased.
+Firefox full-suite qualification, physical-device testing, and deployed-host
+qualification remain open. No deployment, host, or running-instance changes
+were performed.
+
 ## Administrative list retry cross-browser checks — November 7, 2026
 
 The focused keyboard failure/retry workflows for the user, order, certificate,
