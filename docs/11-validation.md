@@ -3661,8 +3661,8 @@ The workflow now generates a unique course slug and learner email per attempt,
 eliminating both sources of repeat contamination. A subsequent sequential
 Firefox `--repeat-each=3` run passed twice and timed out once while waiting for
 the enrollment request; its snapshot showed the course and enrollment button,
-but no request was captured. The cause remains unconfirmed and no timeout was
-increased.
+but no completed enrollment response was captured in the trace. The cause
+remains unconfirmed and no timeout was increased.
 
 Validation:
 - `VIDEO_TEST_REAL=1 E2E_PORT=4471 npm run test:e2e -- --browser=firefox tests/e2e/video.spec.ts --grep "author uploads a real video" --repeat-each=3`: 2/3 passed; one enrollment-response timeout.
@@ -3674,6 +3674,29 @@ Unique fixtures make repeated runs independent but do not resolve or qualify the
 Firefox intermittency. Firefox full-suite qualification, physical-device
 testing, and deployed-host qualification remain open. No deployment, host, or
 running-instance changes were performed.
+
+## Firefox enrollment trace and HLS CSP experiment — November 8, 2026
+
+A further isolated Firefox `--repeat-each=3 --trace=on` run passed 2/3. In the
+failed attempt the recorded Playwright click action completed, but the trace
+contained no completed enrollment response; the page snapshot still showed the
+course and enrollment button. The browser console also reported that the current
+Content Security Policy blocks the blob worker created by HLS.js.
+
+A local experiment adding `worker-src 'self' blob:` allowed worker creation but
+caused all three repeated real-video runs to fail at trailer playback: HLS
+fallback detached the media source while `play()` was in progress. The policy
+change and its temporary header test were reverted. With the original policy
+restored, the workspace build passed and the focused Firefox real-video workflow
+passed (1/1). A full `apps/api/src/app.test.ts` run during the experiment had
+61 passing and two unrelated failures (`profile is not defined` and
+`published course locale mismatch`); the temporary CSP-specific test itself
+passed.
+
+No timeout or CSP relaxation remains from this experiment. The enrollment
+intermittency is unresolved; Firefox full-suite, physical-device, and
+deployed-host qualification remain open. No deployment, host, or running-instance
+changes were performed.
 
 ## Administrative list retry cross-browser checks — November 7, 2026
 

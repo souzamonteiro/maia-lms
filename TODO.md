@@ -1761,7 +1761,14 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   the third timed out waiting for the enrollment request; focused real-video
   reruns then passed once each in Firefox, Chromium, and WebKit. This removes
   fixture collisions but does not resolve or qualify the intermittent Firefox
-  enrollment wait; no timeout workaround was made.
+  enrollment wait; no timeout workaround was made. A subsequent traced,
+  sequential Firefox repeat again passed 2/3. The trace confirms the click action
+  completed, while no matching enrollment response was recorded; it also reports
+  the HLS.js blob worker blocked by the current CSP. A trial allowing blob workers
+  caused all three video runs to fail during trailer playback and was reverted.
+  The restored baseline build passed, and the focused Firefox video workflow
+  passed 1/1; the enrollment race remains unconfirmed and Firefox remains
+  unqualified.
 - [ ] **DOC-01 — Keep contracts and operations aligned with implementation.**
   Update OpenAPI, data model, installation/configuration, author/learner/admin
   manuals, limits, and recovery procedures with every delivery. Dependency:
