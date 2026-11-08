@@ -965,9 +965,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   - [x] Restrict upload status changes to the processing lifecycle, recovery,
     retry, or cancellation paths; READY/CANCELLED remain terminal (migration 059,
     with publication/media fixtures following the real transitions).
-  - [x] Require new video uploads to start at cursor zero so only contiguous
-    persisted chunks can establish completion (migration 183; direct-SQL inserts
-    and valid chunk-backed lifecycle fixtures are covered).
+  - [x] Require new video uploads to start at cursor zero, and require complete
+    persisted chunk coverage when queueing or entering processing, including
+    legacy rows (migrations 183–184; direct-SQL and chunk-backed lifecycle cases
+    are covered).
   - [x] Enforce translated metadata structure, supported unique locales distinct
     from the source locale, allowed fields, and field limits for direct SQL writes
     (migration 089; focused insert/update integrity tests).

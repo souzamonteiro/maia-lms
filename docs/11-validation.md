@@ -3636,22 +3636,27 @@ Validation:
 This is local browser automation only; no deployment, host, or running-instance
 changes were performed.
 
-## SQLite video-upload initial cursor integrity
+## SQLite video-upload chunk integrity
 
 Migration 183 rejects direct SQL inserts that pre-seed a video upload's byte
 cursor. New uploads must start at zero; migration 181's contiguous chunk checks
-then provide the only path to a completed cursor, which migration 182 requires
-before processing states. Existing API creation and resumable upload behavior
-already follow this sequence. Test fixtures that represented completed media
-now insert persisted chunks before moving through the lifecycle.
+then provide the only path to a completed cursor. Migration 184 additionally
+requires exact full-size chunk coverage when an upload is queued or enters
+processing. This also rejects legacy rows with a forged complete cursor but no
+chunks before they can be requeued or claimed by a worker. Existing API creation
+and resumable upload behavior already follow this sequence. Test fixtures that
+represent completed media insert persisted chunks before moving through the
+lifecycle; a legacy-row fixture explicitly verifies that both transitions fail
+without chunks.
 
 Validation:
 - Focused upload, media, lifecycle, and related migration tests: 25/25 passed.
 - `npm run build`: passed across all workspaces.
 - `npm run lint`: passed.
-- `npm test -- --maxWorkers=2`: 304 passed, 12 failed, 3 skipped. The failures are
-  in existing API/payment fixtures, including `profile is not defined` and
-  `published course locale mismatch`; none are in the focused upload tests.
+- `npm test -- --maxWorkers=2`: 304 passed, 12 failed, 3 skipped. The same
+  failures remain in five API/payment test files (`profile is not defined`,
+  `published course locale mismatch`, and invalid user locale); all other tests,
+  including the upload/media coverage, passed.
 - `git diff --check`: passed.
 
 This is a local schema and test change only. Firefox/WebKit, physical devices,
