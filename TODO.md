@@ -1541,7 +1541,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   from the alert to retry and focus recovery after successful results. Privacy
   history failures focus the alert even when a retry also fails; keyboard retry
   stays busy while loading and restores focus to the history disclosure after
-  recovery.
+  recovery. The focused privacy-review workflow, including repeated history
+  failures and keyboard retry, passes locally in Chromium, Firefox, and WebKit.
   The administrator enrollment list now also announces updates, focuses load
   errors, and supports keyboard retry; a focused Chromium workflow verifies the
   pending busy state and successful empty result.

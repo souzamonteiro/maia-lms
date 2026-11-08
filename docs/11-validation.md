@@ -3647,12 +3647,14 @@ history.
 
 Validation:
 - `E2E_PORT=4435 npm run test:e2e -- tests/e2e/admin-privacy.spec.ts`: 1/1 passed.
+- `E2E_PORT=4436 npm run test:e2e -- tests/e2e/admin-privacy.spec.ts --browser=firefox`: 1/1 passed.
+- `E2E_PORT=4437 npm run test:e2e -- tests/e2e/admin-privacy.spec.ts --browser=webkit`: 1/1 passed.
 - `npm run lint`: passed.
 - `npm run build`: passed across all workspaces.
 - `git diff --check`: passed.
 
-This is local browser automation only; no deployment, host, or running-instance
-changes were performed.
+These are focused local browser workflows, not full-suite or physical-device
+qualification. No deployment, host, or running-instance changes were performed.
 
 ## Administrator enrollment-list retry and announcements — November 6, 2026
 
