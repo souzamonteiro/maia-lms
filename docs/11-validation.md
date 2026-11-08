@@ -2936,6 +2936,24 @@ Validation:
 Firefox remains unqualified at full-suite level. No deployment, host, or
 running-instance changes were made.
 
+## Firefox full-suite rerun — November 7, 2026
+
+The complete local Firefox E2E run with real-media coverage passed 38/44. Six
+failures appeared in authoring, paid checkout, quiz attempt/build, and video
+upload/material workflows. They involved a timeout at initial login navigation,
+three waits for the administrator link, and two quiz checks where that link was
+missing after navigation to `/my-learning`. All six failed cases passed when
+rerun together in an isolated focused invocation. This supports suite-level
+intermittency, but does not identify its cause. No per-test timeout or
+navigation workaround was made.
+
+Validation:
+- `VIDEO_TEST_REAL=1 E2E_PORT=4443 npm run test:e2e -- --browser=firefox`: 38/44.
+- Focused Firefox rerun of the six failed workflows on isolated port 4444: 6/6 passed.
+
+Firefox remains unqualified at full-suite level. These are local browser results
+only; no deployment, host, or running-instance changes were made.
+
 ## Category SQLite whitespace invariant — November 4, 2026
 
 The category-field integrity migration now treats the JavaScript `trim()`

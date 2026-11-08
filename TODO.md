@@ -1724,6 +1724,11 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   enrollments, media, and operations. This is a broader local admin regression,
   not a full-suite or physical-device qualification; full Firefox suite
   intermittency and external qualification remain open.
+  November 7 full real-media Firefox rerun: 38/44 passed. Six failures were
+  navigation/authentication waits in authoring, checkout, quiz and video
+  workflows; all six passed in a focused isolated rerun. This reproduces the
+  suite-only intermittency but does not establish its cause. No timeout or
+  navigation workaround was applied; full Firefox qualification remains open.
 - [ ] **DOC-01 — Keep contracts and operations aligned with implementation.**
   Update OpenAPI, data model, installation/configuration, author/learner/admin
   manuals, limits, and recovery procedures with every delivery. Dependency:
