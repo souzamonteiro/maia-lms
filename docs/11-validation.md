@@ -3636,15 +3636,17 @@ This qualifies only local browser automation, not the complete accessibility
 audit, Firefox/WebKit suite, physical devices, host, or deployed instance. No
 deployment, host, or running-instance changes were performed.
 
-## Privacy-history retry focus and busy state — November 7, 2026
+## Privacy-history repeated-failure focus and retry recovery — November 7, 2026
 
-Failed privacy-request history loads now move focus to the alert. The existing
-Chromium workflow holds the keyboard-triggered retry response to check the busy
-state, then verifies loading clears, focus returns to the disclosure summary,
-and private notes remain visible only in the administrator's history.
+Failed privacy-request history loads now move focus to the alert, including
+when the first retry also fails. The Chromium workflow verifies the alert
+retains focus after that repeated failure, then holds the next keyboard retry
+to check the busy state. Successful recovery clears loading, restores focus to
+the disclosure summary, and keeps private notes limited to the administrator's
+history.
 
 Validation:
-- `E2E_PORT=4434 npm run test:e2e -- tests/e2e/admin-privacy.spec.ts`: 1/1 passed.
+- `E2E_PORT=4435 npm run test:e2e -- tests/e2e/admin-privacy.spec.ts`: 1/1 passed.
 - `npm run lint`: passed.
 - `npm run build`: passed across all workspaces.
 - `git diff --check`: passed.

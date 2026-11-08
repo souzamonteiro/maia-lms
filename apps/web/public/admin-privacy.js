@@ -58,7 +58,6 @@ export async function mountAdminPrivacy({ app, api, t, e, notify, locale, me }) 
             content.querySelector('button').addEventListener('click', () => {
               void loadHistory(true);
             });
-            if (focusAfterRetry) content.querySelector('button').focus();
           } finally {
             historyLoading = false;
             content.setAttribute('aria-busy', 'false');

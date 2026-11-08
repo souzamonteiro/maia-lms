@@ -8,6 +8,12 @@ test('administrator reviews a privacy request and the requester sees its actual 
   const submitted = await request.post('/api/v1/auth/privacy/requests', { data: { requestType: 'deletion' } });
   expect(submitted.status()).toBe(201);
   const id = (await submitted.json()).id;
+  let historyRequests = 0;
+  let releaseHistoryRetry: (() => void) | undefined;
+  let notifyHistoryRetry: (() => void) | undefined;
+  const historyRetryStarted = new Promise<void>(resolve => {
+    notifyHistoryRetry = resolve;
+  });
 
   await page.goto('/auth/login');
   await page.getByLabel('Email', { exact: true }).fill('admin@example.com');
@@ -61,29 +67,35 @@ test('administrator reviews a privacy request and the requester sees its actual 
   await page.keyboard.press('Enter');
   await expect(card).toContainText('In review');
   await expect(card.getByRole('heading', { level: 2 })).toBeFocused();
-  await page.route(`**/admin/privacy/requests/${id}/history`, route => route.fulfill({
-    status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'History temporarily unavailable' }),
-  }), { times: 1 });
+  await page.route(`**/admin/privacy/requests/${id}/history`, async route => {
+    historyRequests += 1;
+    if (historyRequests <= 2) {
+      await route.fulfill({
+        status: 503, contentType: 'application/json',
+        body: JSON.stringify({ error: 'History temporarily unavailable' }),
+      });
+      return;
+    }
+
+    notifyHistoryRetry?.();
+    await new Promise<void>(resolve => {
+      releaseHistoryRetry = resolve;
+    });
+    await route.continue();
+  });
   await card.getByText('Private review history', { exact: true }).click();
   const history = card.locator('.privacy-history');
   const historyError = history.getByRole('alert');
   await expect(historyError).toContainText('History temporarily unavailable');
   await expect(historyError).toBeFocused();
   await expect(history).toHaveAttribute('aria-busy', 'false');
-  let releaseHistoryRetry: (() => void) | undefined;
-  let notifyHistoryRetry: (() => void) | undefined;
-  const historyRetryStarted = new Promise<void>(resolve => {
-    notifyHistoryRetry = resolve;
-  });
-  await page.route(`**/admin/privacy/requests/${id}/history`, async route => {
-    notifyHistoryRetry?.();
-    await new Promise<void>(resolve => {
-      releaseHistoryRetry = resolve;
-    });
-    await route.continue();
-  }, { times: 1 });
   const historyRetry = history.getByRole('button', { name: 'Retry', exact: true });
   await historyRetry.focus();
+  await page.keyboard.press('Enter');
+  await expect(historyError).toHaveText('History temporarily unavailable');
+  await expect(historyError).toBeFocused();
+  await expect(history).toHaveAttribute('aria-busy', 'false');
+  await history.getByRole('button', { name: 'Retry', exact: true }).focus();
   await page.keyboard.press('Enter');
   await historyRetryStarted;
   await expect(history).toHaveAttribute('aria-busy', 'true');
