@@ -557,6 +557,13 @@ describe('authoring and homepage', () => {
     const first = await publish(admin.cookie, 'first-home');
     const second = await publish(admin.cookie, 'second-home');
     const third = await publish(admin.cookie, 'third-home');
+    const profile = {
+      slug: 'home-author',
+      displayName: 'Home Author',
+      bio: '',
+      websiteUrl: 'https://example.com/home-author',
+      isPublic: false,
+    };
     const date = offset => new Date(Date.now() + offset).toISOString();
     const placement = (
       courseId: string,
@@ -985,9 +992,15 @@ describe('paginated course catalog', () => {
     );
     for (let i = 0; i < 106; i++) {
       const id = `catalog-${String(i).padStart(3, '0')}`;
-      db.prepare("INSERT INTO courses(id,slug,author_id,status) VALUES(?,?,'catalog-user','DRAFT')").run(
+      const locale = i % 2 ? 'es' : 'en';
+      const accessMode = i % 2 ? 'ENROLLED_FREE' : 'OPEN_FREE';
+      db.prepare(
+        "INSERT INTO courses(id,slug,author_id,status,locale,access_mode) VALUES(?,?,'catalog-user','DRAFT',?,?)",
+      ).run(
         id,
         id,
+        locale,
+        accessMode,
       );
       db.prepare(
         'INSERT INTO course_revisions(id,course_id,title,summary,locale,level,access_mode) VALUES(?,?,?,?,?,?,?)',
@@ -996,9 +1009,9 @@ describe('paginated course catalog', () => {
         id,
         `Catalog ${String(i).padStart(3, '0')}${i === 0 ? ' 100%' : ''}`,
         'Catalog test summary',
-        i % 2 ? 'es' : 'en',
+        locale,
         i % 2 ? 'advanced' : 'beginner',
-        i % 2 ? 'ENROLLED_FREE' : 'OPEN_FREE',
+        accessMode,
       );
       if (i !== 105)
         db.prepare("UPDATE course_revisions SET published_at=datetime('now') WHERE id=?").run(id + '-r');

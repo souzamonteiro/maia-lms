@@ -13,6 +13,7 @@ it('reconciles aged pending orders and recovers paid orders missing access exact
         VALUES('buyer','buyer@example.com','buyer@example.com','hash','en');
       INSERT INTO courses(id,slug,author_id,status,access_mode)
         VALUES('course','course','buyer','DRAFT','PAID');
+      UPDATE courses SET locale='en' WHERE id='course';
       INSERT INTO course_revisions(id,course_id,title,summary,slug,access_mode,locale,access_terms,price_amount_minor,price_currency)
         VALUES('revision','course','Paid course','Summary','course','PAID','en','One year',2599,'BRL');
       UPDATE courses SET current_revision_id='revision' WHERE id='course';

@@ -12,6 +12,7 @@ it('matches the immutable provider order snapshot and grants an entitlement exac
         VALUES('buyer','buyer@example.com','buyer@example.com','hash');
       INSERT INTO courses(id,slug,author_id,status,access_mode)
         VALUES('course','course','buyer','DRAFT','PAID');
+      UPDATE courses SET locale='en' WHERE id='course';
       INSERT INTO course_revisions(id,course_id,title,summary,slug,access_mode,locale,access_terms,price_amount_minor,price_currency)
         VALUES('revision','course','Paid course','Summary','course','PAID','en','One-year access',2599,'BRL');
       UPDATE courses SET current_revision_id='revision' WHERE id='course';
@@ -62,6 +63,7 @@ it('does not grant access when provider amount, currency or external reference d
     db.exec(`
       INSERT INTO users(id,email,email_normalized,password_hash) VALUES('buyer','b@e.test','b@e.test','hash');
       INSERT INTO courses(id,slug,author_id,status,access_mode) VALUES('course','course','buyer','DRAFT','PAID');
+      UPDATE courses SET locale='en' WHERE id='course';
       INSERT INTO course_revisions(id,course_id,title,summary,slug,access_mode,locale,access_terms,price_amount_minor,price_currency)
         VALUES('revision','course','Paid course','Summary','course','PAID','en','One-year access',2599,'BRL');
       UPDATE courses SET current_revision_id='revision' WHERE id='course';
@@ -94,6 +96,7 @@ it('does not grant access when authoritative provider seller differs from config
     db.exec(`
       INSERT INTO users(id,email,email_normalized,password_hash) VALUES('buyer','b@e.test','b@e.test','hash');
       INSERT INTO courses(id,slug,author_id,status,access_mode) VALUES('course','course','buyer','DRAFT','PAID');
+      UPDATE courses SET locale='en' WHERE id='course';
       INSERT INTO course_revisions(id,course_id,title,summary,slug,access_mode,locale,access_terms,price_amount_minor,price_currency)
         VALUES('revision','course','Paid course','Summary','course','PAID','en','One-year access',2599,'BRL');
       UPDATE courses SET current_revision_id='revision' WHERE id='course';
@@ -126,6 +129,7 @@ it('revokes order access on an authoritative chargeback and ignores stale approv
     db.exec(`
       INSERT INTO users(id,email,email_normalized,password_hash) VALUES('buyer','buyer@example.com','buyer@example.com','hash');
       INSERT INTO courses(id,slug,author_id,status,access_mode) VALUES('course','course','buyer','DRAFT','PAID');
+      UPDATE courses SET locale='en' WHERE id='course';
       INSERT INTO course_revisions(id,course_id,title,summary,slug,access_mode,locale,access_terms,price_amount_minor,price_currency)
         VALUES('revision','course','Paid course','Summary','course','PAID','en','One-year access',2599,'BRL');
       UPDATE courses SET current_revision_id='revision' WHERE id='course';
@@ -177,6 +181,7 @@ it('reconciles provider refund records while preserving partial access and revok
     db.exec(`
       INSERT INTO users(id,email,email_normalized,password_hash) VALUES('buyer','buyer@example.com','buyer@example.com','hash');
       INSERT INTO courses(id,slug,author_id,status,access_mode) VALUES('course','course','buyer','DRAFT','PAID');
+      UPDATE courses SET locale='en' WHERE id='course';
       INSERT INTO course_revisions(id,course_id,title,summary,slug,access_mode,locale,access_terms,price_amount_minor,price_currency)
         VALUES('revision','course','Paid course','Summary','course','PAID','en','One-year access',2599,'BRL');
       UPDATE courses SET current_revision_id='revision' WHERE id='course';
