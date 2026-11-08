@@ -25,4 +25,7 @@ test('catalog and operations dashboard fit a narrow mobile viewport', async ({ p
     await expect(page.getByRole('button', { name: refresh, exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   }
+
+  await page.locator('#languageSelect').selectOption('en');
+  await expect(page.getByRole('heading', { name: 'Operations', exact: true })).toBeVisible();
 });

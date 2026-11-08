@@ -1739,6 +1739,14 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   administrator link and passed together when isolated (5/5). This explains the
   earlier WebKit cascade but not the remaining suite-only failures; no application
   behavior or timeout was changed. Full Firefox/WebKit qualification remains open.
+  Trace follow-up on November 8 identified the remaining Chromium/WebKit failures:
+  the mobile viewport E2E left the shared seeded admin account's saved locale as
+  Spanish, while later tests searched for English link names. The viewport test
+  now restores and verifies English. Full real-media WebKit and Chromium suites
+  then passed 44/44 each. Firefox passed 42/44; its publication-checklist login
+  timeout passed focused (1/1), while the real-video workflow remained unstable
+  in both the full and focused reruns. Firefox full-suite qualification remains
+  open; no application behavior, timeout, host, or deployed environment changed.
 - [ ] **DOC-01 — Keep contracts and operations aligned with implementation.**
   Update OpenAPI, data model, installation/configuration, author/learner/admin
   manuals, limits, and recovery procedures with every delivery. Dependency:

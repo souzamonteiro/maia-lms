@@ -3754,6 +3754,35 @@ qualification. These are local automated results only; physical-device, deployed
 host, and external qualification remain pending. No application behavior,
 deployment, host, or running instance was changed.
 
+## Shared account locale in browser suites — November 8, 2026
+
+Playwright traces from the remaining WebKit failures showed successful admin
+authentication and `/auth/me` returning `locale: "es"`. The preceding mobile
+viewport workflow changed the shared seeded admin account's saved locale through
+English, Portuguese, and Spanish, but did not restore it. Later workflows expected
+English accessible names, so they could not find the correctly localized
+administrator link. The mobile workflow now selects English at the end and waits
+for the English Operations heading, which also verifies the locale update completed.
+
+Validation:
+- `VIDEO_TEST_REAL=1 E2E_PORT=4454 npm run test:e2e -- --browser=webkit`: 44/44.
+- `VIDEO_TEST_REAL=1 E2E_PORT=4455 npm run test:e2e -- --browser=chromium`: 44/44.
+- `VIDEO_TEST_REAL=1 E2E_PORT=4456 npm run test:e2e -- --browser=firefox`: 42/44.
+  The authoring publication-checklist workflow timed out waiting for the login
+  page load but passed in a focused rerun (1/1). The real-video workflow timed
+  out waiting for enrollment in the full run; in a focused two-test rerun the
+  authoring workflow passed, but real video timed out later at viewport resizing.
+  Do not count the focused result as a Firefox full-suite pass.
+- The focused WebKit trace run also reproduced the former locale-dependent
+  failures; its network trace confirmed login HTTP 200 and the Spanish admin
+  locale.
+- `npm run lint` and `git diff --check`: passed.
+
+The locale-related Chromium/WebKit failures are resolved locally. Firefox remains
+unqualified at full-suite level because its media/navigation instability has not
+been corrected. These results do not qualify physical devices or the deployed
+host. No production or host changes were made.
+
 ## Administrator certificate-list retry and announcements — November 6, 2026
 
 The administrator certificate list now announces updates through a polite live
