@@ -20,8 +20,19 @@ it('generates a private PDF with readable certificate fields and an embedded ver
       INSERT INTO courses(id,slug,author_id) VALUES('pdf-course','pdf-course','pdf-user');
       INSERT INTO course_revisions(id,course_id,title,summary,duration_minutes,instructor_name)
       VALUES('pdf-revision','pdf-course','The Analytical Engine','Course summary',90,'Maia Academy');
-      INSERT INTO enrollments(id,user_id,course_id,revision_id,completed_at)
-      VALUES('pdf-enrollment','pdf-user','pdf-course','pdf-revision','2026-10-03T10:00:00.000Z');
+      INSERT INTO modules(id,revision_id,sort_order,title)
+      VALUES('pdf-module','pdf-revision',0,'Module');
+      INSERT INTO lessons(id,module_id,sort_order,title,is_required)
+      VALUES('pdf-lesson','pdf-module',0,'Lesson',1);
+      INSERT INTO enrollments(
+        id,user_id,course_id,revision_id,required_lesson_ids_snapshot,quiz_ids_snapshot
+      ) VALUES('pdf-enrollment','pdf-user','pdf-course','pdf-revision','["pdf-lesson"]','[]');
+      INSERT INTO entitlements(id,enrollment_id,source_type,starts_at)
+      VALUES('pdf-entitlement','pdf-enrollment','admin',datetime('now','-1 day'));
+      INSERT INTO lesson_progress(enrollment_id,lesson_id,completed_at)
+      VALUES('pdf-enrollment','pdf-lesson','2026-10-03T10:00:00.000Z');
+      UPDATE enrollments SET completed_at='2026-10-03T10:00:00.000Z'
+      WHERE id='pdf-enrollment';
     `);
     const publicCode = 'A'.repeat(43);
     const snapshot = {

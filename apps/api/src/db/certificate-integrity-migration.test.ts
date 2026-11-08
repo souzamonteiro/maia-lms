@@ -12,12 +12,25 @@ it('allows one active certificate per enrollment and supports revoke-then-reissu
       VALUES ('user','user@example.com','user@example.com','hash');
       INSERT INTO courses(id,slug,author_id)
       VALUES ('course-a','course-a','user'),('course-b','course-b','user');
-            INSERT INTO course_revisions(id,course_id,title,summary,duration_minutes,instructor_name)
-            VALUES ('revision-a','course-a','Test course','Summary A',60,'Test issuer'),
-              ('revision-b','course-b','Test course','Summary B',60,'Test issuer');
-            INSERT INTO enrollments(id,user_id,course_id,revision_id,completed_at)
-            VALUES ('enrollment-a','user','course-a','revision-a','2026-10-10T10:00:00.000Z'),
-              ('enrollment-b','user','course-b','revision-b','2026-10-10T10:00:00.000Z');
+      INSERT INTO course_revisions(id,course_id,title,summary,duration_minutes,instructor_name)
+      VALUES ('revision-a','course-a','Test course','Summary A',60,'Test issuer'),
+        ('revision-b','course-b','Test course','Summary B',60,'Test issuer');
+      INSERT INTO modules(id,revision_id,sort_order,title)
+      VALUES ('module-a','revision-a',0,'Module A'),('module-b','revision-b',0,'Module B');
+      INSERT INTO lessons(id,module_id,sort_order,title,is_required)
+      VALUES ('lesson-a','module-a',0,'Lesson A',1),('lesson-b','module-b',0,'Lesson B',1);
+      INSERT INTO enrollments(
+        id,user_id,course_id,revision_id,required_lesson_ids_snapshot,quiz_ids_snapshot
+      ) VALUES ('enrollment-a','user','course-a','revision-a','["lesson-a"]','[]'),
+        ('enrollment-b','user','course-b','revision-b','["lesson-b"]','[]');
+      INSERT INTO entitlements(id,enrollment_id,source_type,starts_at)
+      VALUES ('entitlement-a','enrollment-a','admin',datetime('now','-1 day')),
+        ('entitlement-b','enrollment-b','admin',datetime('now','-1 day'));
+      INSERT INTO lesson_progress(enrollment_id,lesson_id,completed_at)
+      VALUES ('enrollment-a','lesson-a','2026-10-10T10:00:00.000Z'),
+        ('enrollment-b','lesson-b','2026-10-10T10:00:00.000Z');
+      UPDATE enrollments SET completed_at='2026-10-10T10:00:00.000Z'
+      WHERE id IN ('enrollment-a','enrollment-b');
     `);
 
     const addCertificate = (

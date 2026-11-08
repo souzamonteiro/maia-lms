@@ -20,9 +20,14 @@ it('verifies and deduplicates authoritative order webhooks before granting acces
     UPDATE users SET role='admin' WHERE id='buyer';
     INSERT INTO courses(id,slug,author_id,status,access_mode)
       VALUES('course','paid-course','buyer','DRAFT','PAID');
+    UPDATE courses SET locale='en' WHERE id='course';
     INSERT INTO course_revisions(id,course_id,title,summary,slug,access_mode,locale,
       price_amount_minor,price_currency,access_terms,duration_minutes,instructor_name)
       VALUES('revision','course','Paid course','Summary','paid-course','PAID','en',2599,'BRL','One year',60,'Admin');
+    INSERT INTO modules(id,revision_id,sort_order,title)
+      VALUES('module','revision',0,'Module');
+    INSERT INTO lessons(id,module_id,sort_order,title,is_required)
+      VALUES('lesson','module',0,'Lesson',1);
     UPDATE courses SET current_revision_id='revision' WHERE id='course';
     UPDATE course_revisions SET published_at=datetime('now') WHERE id='revision';
     UPDATE courses SET status='PUBLISHED',published_revision_id='revision' WHERE id='course';
@@ -155,6 +160,9 @@ it('verifies and deduplicates authoritative order webhooks before granting acces
     expect(db.prepare("SELECT count(*) AS total FROM entitlements WHERE source_type='order'").get())
       .toEqual({ total: 1 });
 
+    db.prepare(`INSERT INTO lesson_progress(enrollment_id,lesson_id,completed_at)
+      SELECT id,'lesson','2026-01-01 00:00:00' FROM enrollments
+      WHERE user_id='buyer' AND course_id='course'`).run();
     db.prepare("UPDATE enrollments SET completed_at='2026-01-01 00:00:00' WHERE user_id=? AND course_id=?")
       .run('buyer', 'course');
     db.exec(`INSERT INTO certificates(id,enrollment_id,public_code,confirmed_name,payload_hash,issued_at,

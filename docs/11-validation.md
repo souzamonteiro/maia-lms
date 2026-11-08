@@ -3663,6 +3663,28 @@ This is a local schema and test change only. Firefox/WebKit, physical devices,
 the host, and a deployed instance are not qualified; no deployment, host, or
 running-instance changes were performed.
 
+## Enrollment completion requirements integrity
+
+Migration 185 makes new enrollments start incomplete and rejects setting
+`completed_at` until the enrollment is active, not withdrawn, has a currently
+valid entitlement, has at least one captured required lesson and has completed
+all captured required lessons and passed all captured quizzes. This mirrors the
+completion service's rules at the SQLite boundary. Existing completion history
+is preserved; the new checks apply to future inserts and completion transitions.
+
+Validation:
+- All database integrity tests: 101/101 passed.
+- Focused completion, certificate eligibility, certificate lifecycle, payment,
+  webhook, and PDF generation tests: 8/8 passed.
+- `npm run build`, `npm run lint`, and `git diff --check`: passed.
+- Latest full suite: 308 passed, 8 failed, 3 skipped. Remaining failures are in
+  `app.test.ts`, `payment-reconciliation.test.ts`, and
+  `payment-settlement.test.ts`; they include `profile is not defined` and locale
+  inconsistencies. No new failures appeared.
+
+This is a local schema change and test-fixture update only. No deployment, host,
+or running-instance changes were performed.
+
 ## HLS initialization and Firefox video follow-up — November 8, 2026
 
 The course page now registers the enrollment action before awaiting asynchronous
