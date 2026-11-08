@@ -1719,6 +1719,11 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   A further full Firefox rerun passed 38/39; the timeout moved to the initial
   login in admin date localization, which passed alone (1/1). No workaround was
   added. Firefox full-suite qualification remains open.
+  November 7 focused administrative E2E batch: 13/13 workflows passed in each
+  of Chromium, Firefox, and WebKit across privacy, users, orders, certificates,
+  enrollments, media, and operations. This is a broader local admin regression,
+  not a full-suite or physical-device qualification; full Firefox suite
+  intermittency and external qualification remain open.
 - [ ] **DOC-01 — Keep contracts and operations aligned with implementation.**
   Update OpenAPI, data model, installation/configuration, author/learner/admin
   manuals, limits, and recovery procedures with every delivery. Dependency:

@@ -3634,6 +3634,23 @@ This is focused local browser automation, not full-suite, physical-device,
 host, or deployed-instance qualification. No deployment, host, or
 running-instance changes were performed.
 
+## Administrative E2E regression batch — November 7, 2026
+
+The complete focused administrative E2E set passed in all three local browser
+engines: privacy requests, user/author management, orders/refunds, certificate
+revocation/reissue, enrollment grants/revocation, media library, and operations.
+The batch includes 13 workflows per engine and rechecks the established admin
+journeys alongside the newer accessibility retry coverage.
+
+Validation:
+- `E2E_PORT=4442 npm run test:e2e -- tests/e2e/admin-privacy.spec.ts tests/e2e/admin-users.spec.ts tests/e2e/admin-orders.spec.ts tests/e2e/admin-certificates.spec.ts tests/e2e/admin-enrollments.spec.ts tests/e2e/admin-media.spec.ts tests/e2e/admin-operations.spec.ts --browser=chromium`: 13/13 passed.
+- `E2E_PORT=4440 npm run test:e2e -- tests/e2e/admin-privacy.spec.ts tests/e2e/admin-users.spec.ts tests/e2e/admin-orders.spec.ts tests/e2e/admin-certificates.spec.ts tests/e2e/admin-enrollments.spec.ts tests/e2e/admin-media.spec.ts tests/e2e/admin-operations.spec.ts --browser=firefox`: 13/13 passed.
+- `E2E_PORT=4441 npm run test:e2e -- tests/e2e/admin-privacy.spec.ts tests/e2e/admin-users.spec.ts tests/e2e/admin-orders.spec.ts tests/e2e/admin-certificates.spec.ts tests/e2e/admin-enrollments.spec.ts tests/e2e/admin-media.spec.ts tests/e2e/admin-operations.spec.ts --browser=webkit`: 13/13 passed.
+
+This is a focused local administrative regression, not full-suite,
+physical-device, host, or deployed-instance qualification. No deployment, host,
+or running-instance changes were performed.
+
 ## Privacy-request list announcements and retry focus — November 6, 2026
 
 The administrator privacy-request list now announces updates through a polite
