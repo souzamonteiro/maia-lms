@@ -3657,10 +3657,23 @@ A Firefox `--repeat-each=3` attempt is not treated as qualification: the first
 run timed out at viewport resizing while the Firefox and WebKit browser suites
 were competing for local resources; the next two reused the test's published
 course slug on the same E2E server and failed on the resulting duplicate state.
-The source of the viewport timeout is unconfirmed. No timeout was increased.
-Firefox full-suite qualification, physical-device testing, and deployed-host
-qualification remain open. No deployment, host, or running-instance changes
-were performed.
+The workflow now generates a unique course slug and learner email per attempt,
+eliminating both sources of repeat contamination. A subsequent sequential
+Firefox `--repeat-each=3` run passed twice and timed out once while waiting for
+the enrollment request; its snapshot showed the course and enrollment button,
+but no request was captured. The cause remains unconfirmed and no timeout was
+increased.
+
+Validation:
+- `VIDEO_TEST_REAL=1 E2E_PORT=4471 npm run test:e2e -- --browser=firefox tests/e2e/video.spec.ts --grep "author uploads a real video" --repeat-each=3`: 2/3 passed; one enrollment-response timeout.
+- Isolated real-video workflow in Firefox on port 4472: 1/1 passed.
+- Isolated real-video workflow in Chromium on port 4473: 1/1 passed.
+- Isolated real-video workflow in WebKit on port 4474: 1/1 passed.
+
+Unique fixtures make repeated runs independent but do not resolve or qualify the
+Firefox intermittency. Firefox full-suite qualification, physical-device
+testing, and deployed-host qualification remain open. No deployment, host, or
+running-instance changes were performed.
 
 ## Administrative list retry cross-browser checks — November 7, 2026
 

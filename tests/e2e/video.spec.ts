@@ -1,11 +1,15 @@
 import { test, expect } from './fixtures';
 import { execFileSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 test('author uploads a real video, publishes, and browser plays it', async ({ page, browser: browserInstance }) => {
   test.skip(process.env.VIDEO_TEST_REAL !== '1', 'Requires FFmpeg and FFprobe on PATH');
   test.setTimeout(60_000);
+  const courseSlug = `browser-video-course-${randomUUID()}`;
+  const courseTitle = `Browser video course ${courseSlug.slice(-8)}`;
+  const learnerEmail = `video-learner-${randomUUID()}@example.com`;
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'maia-browser-video-'));
   try {
     const file = path.join(directory, 'lesson.mp4');
@@ -30,8 +34,8 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     await page.getByLabel('Password', { exact: true }).fill('Admin-test-password-123');
     await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await page.getByRole('link', { name: 'Administer', exact: true }).click();
-    await page.locator('[name=title]').fill('Browser video course');
-    await page.locator('[name=slug]').fill('browser-video-course');
+    await page.locator('[name=title]').fill(courseTitle);
+    await page.locator('[name=slug]').fill(courseSlug);
     await page.locator('[name=summary]').fill('A real video course for browser verification.');
     await page.locator('[name=accessMode]').selectOption('ENROLLED_FREE');
     await page.locator('.module-title').fill('Video module');
@@ -40,7 +44,7 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     await page.getByRole('button', { name: 'Save draft', exact: true }).click();
     const card = page
       .locator('#admin-list .card')
-      .filter({ has: page.getByRole('heading', { name: 'Browser video course', exact: true }) });
+      .filter({ has: page.getByRole('heading', { name: courseTitle, exact: true }) });
     await card.getByRole('button', { name: 'Edit', exact: true }).click();
     await page.locator('.video-editor .video-file').setInputFiles(file);
     await page.route('**/api/v1/admin/videos/*/chunks', route =>
@@ -127,7 +131,7 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
         );
       });
     const courses = await (await page.request.get('/api/v1/admin/courses')).json();
-    const course = courses.find((item: { slug: string }) => item.slug === 'browser-video-course');
+    const course = courses.find((item: { slug: string }) => item.slug === courseSlug);
     const courseDetails = await (
       await page.request.get(`/api/v1/admin/courses/${course.id}`)
     ).json();
@@ -194,17 +198,17 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     await page.getByRole('button', { name: 'Sign out', exact: true }).click();
     await expect(page).toHaveURL('/');
     await page.goto('/auth/register');
-    await page.getByLabel('Email', { exact: true }).fill('video-learner@example.com');
+    await page.getByLabel('Email', { exact: true }).fill(learnerEmail);
     await page.getByLabel('Password', { exact: true }).fill('Video-learner-password-123');
     await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('Account created');
     await page.goto('/auth/login');
-    await page.getByLabel('Email', { exact: true }).fill('video-learner@example.com');
+    await page.getByLabel('Email', { exact: true }).fill(learnerEmail);
     await page.getByLabel('Password', { exact: true }).fill('Video-learner-password-123');
     await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'My learning' })).toBeVisible();
     await page.route('**/api/v1/lessons/*/hls/**', route => route.abort());
-    await page.goto('/courses/browser-video-course');
+    await page.goto(`/courses/${courseSlug}`);
     const enrollmentResponse = page.waitForResponse(response =>
       response.url().includes('/api/v1/courses/') &&
       response.url().endsWith('/enroll') &&
@@ -318,7 +322,7 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     try {
       const mobilePage = await mobileContext.newPage();
       await mobilePage.goto('/auth/login');
-      await mobilePage.getByLabel('Email', { exact: true }).fill('video-learner@example.com');
+      await mobilePage.getByLabel('Email', { exact: true }).fill(learnerEmail);
       await mobilePage.getByLabel('Password', { exact: true }).fill('Video-learner-password-123');
       await mobilePage.getByRole('button', { name: 'Continue', exact: true }).click();
       await expect(mobilePage.getByRole('heading', { name: 'My learning' })).toBeVisible();
@@ -352,7 +356,7 @@ test('author uploads a real video, publishes, and browser plays it', async ({ pa
     try {
       const freshPage = await freshContext.newPage();
       await freshPage.goto('/auth/login');
-      await freshPage.getByLabel('Email', { exact: true }).fill('video-learner@example.com');
+      await freshPage.getByLabel('Email', { exact: true }).fill(learnerEmail);
       await freshPage.getByLabel('Password', { exact: true }).fill('Video-learner-password-123');
       await freshPage.getByRole('button', { name: 'Continue', exact: true }).click();
       await expect(freshPage.getByRole('heading', { name: 'My learning' })).toBeVisible();

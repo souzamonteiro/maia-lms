@@ -1756,7 +1756,12 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   reused the already-published course slug on the same E2E server. The first
   repeat timed out during viewport resizing and the later repeats hit the
   duplicate-slug state. No timeout workaround was made; a clean, sequential
-  repeat/full Firefox run remains necessary.
+  follow-up made the video workflow's course slug and learner email unique per
+  attempt. In a sequential three-repeat Firefox run, two workflows passed and
+  the third timed out waiting for the enrollment request; focused real-video
+  reruns then passed once each in Firefox, Chromium, and WebKit. This removes
+  fixture collisions but does not resolve or qualify the intermittent Firefox
+  enrollment wait; no timeout workaround was made.
 - [ ] **DOC-01 — Keep contracts and operations aligned with implementation.**
   Update OpenAPI, data model, installation/configuration, author/learner/admin
   manuals, limits, and recovery procedures with every delivery. Dependency:
