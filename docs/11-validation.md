@@ -3726,6 +3726,34 @@ This qualifies only the focused local Chromium workflow, not Firefox/WebKit,
 physical devices, the host, or a deployed instance. No deployment, host, or
 running-instance changes were performed.
 
+## E2E suite navigation follow-up — November 8, 2026
+
+The previous full WebKit run passed 15/44. Its MFA workflow attempted a new
+login before the asynchronous sign-out redirect completed; the interrupted
+workflow left MFA enabled in the shared test database and caused later admin
+logins in that run to fail. The MFA test now waits for the redirect to `/`
+before starting the next login. Its focused workflow passed in Chromium,
+Firefox, and WebKit (1/1 each).
+
+Validation:
+- Full WebKit real-media E2E after the test synchronization change: 39/44 on
+  isolated port 4449.
+- The five remaining checkout, quiz-attempt, quiz-builder, and video workflows
+  failed while looking for the administrator link in the complete run; they
+  passed together in an isolated WebKit invocation (5/5, port 4450).
+- Full real-media Chromium rerun recorded earlier: 39/44; its five checkout,
+  quiz-attempt, quiz-builder, and video failures also passed together in isolation
+  (5/5).
+- Full real-media Firefox rerun recorded earlier: 38/44; its six failed workflows
+  passed together in isolation (6/6).
+- `git diff --check`: passed.
+
+The WebKit MFA cascade is explained by the test's logout/login race. The remaining
+full-suite failures are still unexplained and do not establish full-suite
+qualification. These are local automated results only; physical-device, deployed
+host, and external qualification remain pending. No application behavior,
+deployment, host, or running instance was changed.
+
 ## Administrator certificate-list retry and announcements — November 6, 2026
 
 The administrator certificate list now announces updates through a polite live

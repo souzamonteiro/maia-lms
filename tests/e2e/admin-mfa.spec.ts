@@ -60,6 +60,7 @@ test('administrator enables MFA, uses recovery and TOTP factors, then disables i
   await expect(security).toContainText('10 recovery codes remain');
 
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  await page.waitForURL('**/', { waitUntil: 'load' });
   await signIn(page);
   await expect(page.getByRole('heading', { name: 'Verify your sign-in' })).toBeVisible();
   await page.getByLabel('Authenticator or recovery code').fill(recoveryCodes[0]);
@@ -68,6 +69,7 @@ test('administrator enables MFA, uses recovery and TOTP factors, then disables i
   await expect(page.locator('.admin-mfa-settings')).toContainText('9 recovery codes remain');
 
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  await page.waitForURL('**/', { waitUntil: 'load' });
   await signIn(page);
   await expect(page.getByRole('heading', { name: 'Verify your sign-in' })).toBeVisible();
   await page.getByLabel('Authenticator or recovery code').fill(totp(secret));

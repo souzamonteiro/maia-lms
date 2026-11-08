@@ -1729,6 +1729,16 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   workflows; all six passed in a focused isolated rerun. This reproduces the
   suite-only intermittency but does not establish its cause. No timeout or
   navigation workaround was applied; full Firefox qualification remains open.
+  November 7 full real-media Chromium rerun: 39/44 passed. The five checkout,
+  quiz-attempt, quiz-builder, and video workflows that failed at the administrator
+  link passed together in an isolated rerun (5/5).
+  November 8 WebKit diagnosis: the MFA test started its next login while the
+  asynchronous sign-out redirect was still in progress. Waiting for the redirect
+  fixed that test in Chromium, Firefox, and WebKit (1/1 each). The full WebKit
+  rerun then passed 39/44; the same five checkout/quiz/video workflows missed the
+  administrator link and passed together when isolated (5/5). This explains the
+  earlier WebKit cascade but not the remaining suite-only failures; no application
+  behavior or timeout was changed. Full Firefox/WebKit qualification remains open.
 - [ ] **DOC-01 — Keep contracts and operations aligned with implementation.**
   Update OpenAPI, data model, installation/configuration, author/learner/admin
   manuals, limits, and recovery procedures with every delivery. Dependency:
