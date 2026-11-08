@@ -3636,6 +3636,28 @@ Validation:
 This is local browser automation only; no deployment, host, or running-instance
 changes were performed.
 
+## SQLite video-upload initial cursor integrity
+
+Migration 183 rejects direct SQL inserts that pre-seed a video upload's byte
+cursor. New uploads must start at zero; migration 181's contiguous chunk checks
+then provide the only path to a completed cursor, which migration 182 requires
+before processing states. Existing API creation and resumable upload behavior
+already follow this sequence. Test fixtures that represented completed media
+now insert persisted chunks before moving through the lifecycle.
+
+Validation:
+- Focused upload, media, lifecycle, and related migration tests: 25/25 passed.
+- `npm run build`: passed across all workspaces.
+- `npm run lint`: passed.
+- `npm test -- --maxWorkers=2`: 304 passed, 12 failed, 3 skipped. The failures are
+  in existing API/payment fixtures, including `profile is not defined` and
+  `published course locale mismatch`; none are in the focused upload tests.
+- `git diff --check`: passed.
+
+This is a local schema and test change only. Firefox/WebKit, physical devices,
+the host, and a deployed instance are not qualified; no deployment, host, or
+running-instance changes were performed.
+
 ## HLS initialization and Firefox video follow-up — November 8, 2026
 
 The course page now registers the enrollment action before awaiting asynchronous

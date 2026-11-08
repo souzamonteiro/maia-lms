@@ -8,8 +8,8 @@ it('requires lowercase SHA-256 digests for video chunks on insert', () => {
     runMigrations(db);
     expect(db.prepare('SELECT version FROM schema_migrations ORDER BY rowid DESC LIMIT 2').all())
       .toEqual([
+        { version: '183_video_upload_initial_cursor_integrity' },
         { version: '182_video_upload_completion_integrity' },
-        { version: '181_video_upload_chunk_cursor_integrity' },
       ]);
     db.prepare(`INSERT INTO users(id,email,email_normalized,password_hash)
       VALUES('owner','owner@example.com','owner@example.com','hash')`).run();

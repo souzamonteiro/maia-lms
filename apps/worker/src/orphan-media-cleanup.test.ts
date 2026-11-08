@@ -36,7 +36,6 @@ function setup() {
   const addMedia = (
     id: string,
     mediaKind: 'video' | 'attachment' = 'video',
-    withChunk = false,
   ) => {
     const output = `videos/${id}/output.mp4`;
     const poster = `videos/${id}/poster.jpg`;
@@ -45,12 +44,9 @@ function setup() {
       `INSERT INTO video_uploads(
         id,owner_id,course_id,filename,size,offset,status,media_kind,output_key,poster_key,hls_key
       ) VALUES(?,?,?,'media',4,?,'UPLOADING',?,?,?,?)`,
-    ).run(id, 'owner', 'course', withChunk ? 0 : 4, mediaKind, output, poster, hls);
-    if (withChunk) {
-      db.prepare(
-        'INSERT INTO video_chunks(upload_id,offset,size,storage_key,sha256) VALUES(?,0,4,?,?)',
-      ).run(id, `uploads/${id}/chunk`, 'a'.repeat(64));
-    }
+    ).run(id, 'owner', 'course', 0, mediaKind, output, poster, hls);
+    db.prepare('INSERT INTO video_chunks(upload_id,offset,size,storage_key,sha256) VALUES(?,0,4,?,?)')
+      .run(id, `uploads/${id}/chunk`, 'a'.repeat(64));
     db.prepare("UPDATE video_uploads SET status='QUEUED' WHERE id=?").run(id);
     db.prepare("UPDATE video_uploads SET status='PROCESSING' WHERE id=?").run(id);
     db.prepare("UPDATE video_uploads SET status='READY' WHERE id=?").run(id);
@@ -61,7 +57,7 @@ function setup() {
 
 it('collects only media unreferenced for 90 days and rechecks every revision pointer', async () => {
   const { db, root, store, addMedia } = setup();
-  const old = addMedia('old', 'video', true);
+  const old = addMedia('old');
   addMedia('recent');
   addMedia('lesson');
   addMedia('cover', 'attachment');

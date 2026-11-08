@@ -8,8 +8,8 @@ it('keeps upload and chunk byte ranges integral and within declared sizes', () =
     runMigrations(db);
     expect(db.prepare('SELECT version FROM schema_migrations ORDER BY rowid DESC LIMIT 2').all())
       .toEqual([
+        { version: '183_video_upload_initial_cursor_integrity' },
         { version: '182_video_upload_completion_integrity' },
-        { version: '181_video_upload_chunk_cursor_integrity' },
       ]);
     db.prepare(`INSERT INTO users(id,email,email_normalized,password_hash)
       VALUES('owner','owner@example.com','owner@example.com','hash')`).run();
@@ -19,8 +19,9 @@ it('keeps upload and chunk byte ranges integral and within declared sizes', () =
       id,owner_id,course_id,filename,size,offset
     ) VALUES(?,'owner','course','video.mp4',?,?)`);
     insertUpload.run('regular', 10, 0);
-    insertUpload.run('at-end', 10, 10);
-    insertUpload.run('maximum-size', 2147483648, 2147483648);
+    expect(() => insertUpload.run('at-end', 10, 10))
+      .toThrow(/video upload cursor must start at zero/);
+    insertUpload.run('maximum-size', 2147483648, 0);
 
     const invalidUploadInserts: Array<[number | string | Buffer, number | string | Buffer]> = [
       [0, 0],
@@ -37,7 +38,7 @@ it('keeps upload and chunk byte ranges integral and within declared sizes', () =
     ];
     for (const [index, [size, offset]] of invalidUploadInserts.entries()) {
       expect(() => insertUpload.run(`bad-upload-${index}`, size, offset))
-        .toThrow(/video upload byte range is invalid/);
+        .toThrow(/video upload (byte range is invalid|cursor must start at zero)/);
     }
 
     const updateUpload = db.prepare('UPDATE video_uploads SET size=?,offset=? WHERE id=?');

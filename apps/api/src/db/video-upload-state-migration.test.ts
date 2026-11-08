@@ -12,12 +12,19 @@ it('allows valid video upload lifecycle transitions and rejects state skips or t
       VALUES('owner','owner@example.com','owner@example.com','hash');
       INSERT INTO courses(id,slug,author_id) VALUES('course','course','owner');
       INSERT INTO video_uploads(id,owner_id,course_id,filename,size,offset)
-      VALUES('upload-a','owner','course','a.mp4',10,10),
-            ('upload-b','owner','course','b.mp4',10,10),
-            ('upload-c','owner','course','c.mp4',10,10),
-            ('upload-d','owner','course','d.mp4',10,10),
-            ('upload-e','owner','course','e.mp4',10,10),
-            ('upload-f','owner','course','f.mp4',10,10);
+      VALUES('upload-a','owner','course','a.mp4',10,0),
+            ('upload-b','owner','course','b.mp4',10,0),
+            ('upload-c','owner','course','c.mp4',10,0),
+            ('upload-d','owner','course','d.mp4',10,0),
+            ('upload-e','owner','course','e.mp4',10,0),
+            ('upload-f','owner','course','f.mp4',10,0);
+      INSERT INTO video_chunks(upload_id,offset,size,storage_key,sha256)
+      VALUES('upload-a',0,10,'chunk-a',lower(hex(randomblob(32)))),
+            ('upload-b',0,10,'chunk-b',lower(hex(randomblob(32)))),
+            ('upload-c',0,10,'chunk-c',lower(hex(randomblob(32)))),
+            ('upload-d',0,10,'chunk-d',lower(hex(randomblob(32)))),
+            ('upload-e',0,10,'chunk-e',lower(hex(randomblob(32)))),
+            ('upload-f',0,10,'chunk-f',lower(hex(randomblob(32))));
     `);
 
     const transition = db.prepare('UPDATE video_uploads SET status=? WHERE id=?');

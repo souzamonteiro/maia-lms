@@ -8,8 +8,8 @@ it('allows processing states only after an upload reaches its declared size', ()
     runMigrations(db);
     expect(db.prepare('SELECT version FROM schema_migrations ORDER BY rowid DESC LIMIT 2').all())
       .toEqual([
+        { version: '183_video_upload_initial_cursor_integrity' },
         { version: '182_video_upload_completion_integrity' },
-        { version: '181_video_upload_chunk_cursor_integrity' },
       ]);
     db.prepare(`INSERT INTO users(id,email,email_normalized,password_hash)
       VALUES('owner','owner@example.com','owner@example.com','hash')`).run();
@@ -29,8 +29,10 @@ it('allows processing states only after an upload reaches its declared size', ()
     expect(() => db.prepare("UPDATE video_uploads SET status='CANCELLED' WHERE id=?")
       .run('incomplete')).not.toThrow();
 
-    db.prepare(`INSERT INTO video_uploads(id,owner_id,course_id,filename,size,offset)
-      VALUES('complete','owner','course','complete.mp4',10,10)`).run();
+    db.prepare(`INSERT INTO video_uploads(id,owner_id,course_id,filename,size)
+      VALUES('complete','owner','course','complete.mp4',10)`).run();
+    db.prepare(`INSERT INTO video_chunks(upload_id,offset,size,storage_key,sha256)
+      VALUES('complete',0,10,'complete-chunk',?)`).run('a'.repeat(64));
     expect(() => db.prepare("UPDATE video_uploads SET status='QUEUED' WHERE id=?")
       .run('complete')).not.toThrow();
     expect(() => db.prepare('UPDATE video_uploads SET offset=9 WHERE id=?')
