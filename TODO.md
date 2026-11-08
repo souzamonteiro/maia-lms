@@ -1551,7 +1551,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   busy state and successful empty result.
   The media library list is a polite live region; failed loads focus the alert,
   and keyboard retry stays busy until results return. Focused Chromium coverage
-  verifies the error, retry, and empty result state.
+  verifies the error, retry, and empty result state. Focused failure/retry
+  workflows for user, order, certificate, enrollment, and media lists also pass
+  in Firefox and WebKit; full browser-suite and physical-device qualification
+  remain open.
   The shared keyboard-focus ring now has at least 3:1 contrast against the paper
   and white surfaces, with a regression test for both combinations. The form
   error-message border also meets 3:1 against its background, covered by the same

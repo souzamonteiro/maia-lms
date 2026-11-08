@@ -3618,6 +3618,22 @@ Validation:
 This is local browser automation only; no deployment, host, or running-instance
 changes were performed.
 
+## Administrative list retry cross-browser checks — November 7, 2026
+
+The focused keyboard failure/retry workflows for the user, order, certificate,
+enrollment, and media lists passed in both Firefox and WebKit. Each test injects
+a temporary list-request failure, verifies its alert and keyboard retry, holds
+the retry response while checking `aria-busy`, then confirms recovery to the
+empty state. This supplements their focused local Chromium coverage.
+
+Validation:
+- `E2E_PORT=4438 npm run test:e2e -- tests/e2e/admin-users.spec.ts tests/e2e/admin-orders.spec.ts tests/e2e/admin-certificates.spec.ts tests/e2e/admin-enrollments.spec.ts tests/e2e/admin-media.spec.ts --browser=firefox --grep "announces load failures"`: 5/5 passed.
+- `E2E_PORT=4439 npm run test:e2e -- tests/e2e/admin-users.spec.ts tests/e2e/admin-orders.spec.ts tests/e2e/admin-certificates.spec.ts tests/e2e/admin-enrollments.spec.ts tests/e2e/admin-media.spec.ts --browser=webkit --grep "announces load failures"`: 5/5 passed.
+
+This is focused local browser automation, not full-suite, physical-device,
+host, or deployed-instance qualification. No deployment, host, or
+running-instance changes were performed.
+
 ## Privacy-request list announcements and retry focus — November 6, 2026
 
 The administrator privacy-request list now announces updates through a polite
