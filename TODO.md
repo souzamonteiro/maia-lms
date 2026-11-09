@@ -981,6 +981,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   - [x] Require completion snapshots to contain nonblank, unique text IDs before
     marking an enrollment complete (migration 186; duplicate lessons/quizzes are
     rejected at the SQLite boundary).
+  - [x] Require lesson and quiz completion snapshots to exactly match the
+    enrollment's revision requirements before completion (migration 187; omitted
+    mandatory lessons/quizzes and substituted optional lessons are rejected).
   Partial: migrations 017–018 prevent progress, enrollment-revision, and
   lesson-module changes from crossing the enrollment's assigned revision, and
   constrain progress positions to non-negative integers. Migration 019 ensures

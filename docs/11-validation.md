@@ -3674,10 +3674,14 @@ is preserved; the new checks apply to future inserts and completion transitions.
 Migration 186 additionally rejects completion when either captured requirements
 snapshot contains blank, non-text, or duplicate IDs, keeping the SQLite check
 consistent with the service's count-based completion evaluation.
+Migration 187 also requires both snapshots to exactly match the mandatory lessons
+and quizzes in the enrollment's immutable revision, preventing a forged snapshot
+from omitting requirements or substituting an optional lesson.
 
 Validation:
 - All database integrity tests: 101/101 passed, including duplicate lesson and
-  quiz snapshot rejection.
+  quiz snapshot rejection, omitted required lesson/quiz rejection, and optional
+  lesson substitution rejection.
 - Focused completion, certificate eligibility, certificate lifecycle, payment,
   webhook, and PDF generation tests: 8/8 passed. The previously failing API app
   and payment reconciliation/settlement tests also pass (69/69).
