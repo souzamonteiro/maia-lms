@@ -38,6 +38,8 @@ it('deduplicates provider payment/refund references and validates refund amounts
     expect(() =>
       db.prepare('UPDATE provider_payments SET provider_payment_id=? WHERE id=?').run('payment-1', 'payment-b'),
     ).toThrow(/provider payment identity is immutable/);
+    expect(() => db.prepare('DELETE FROM provider_payments WHERE id=?').run('payment-a'))
+      .toThrow(/provider payment history is retained/);
 
     expect(() =>
       db.prepare('INSERT INTO refunds(id,order_id,provider_ref,amount_minor,status) VALUES(?,?,?,?,?)')
@@ -82,6 +84,8 @@ it('deduplicates provider payment/refund references and validates refund amounts
     expect(() =>
       db.prepare('UPDATE refunds SET amount_minor=? WHERE id=?').run(901, 'refund-at-limit'),
     ).toThrow(/refund order and amount are immutable/);
+    expect(() => db.prepare('DELETE FROM refunds WHERE id=?').run('refund-at-limit'))
+      .toThrow(/refund history is retained/);
   } finally {
     db.close();
   }
