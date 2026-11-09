@@ -3692,6 +3692,8 @@ revoked access records; revocation and replacement grants remain the supported
 history-preserving lifecycle.
 Migration 192 prevents deleting provider payment and refund rows, preserving
 provider-reference deduplication and the refund-total accounting basis.
+Migration 193 prevents deleting orders even when no entitlement or provider
+payment/refund references exist, preserving idempotency and checkout history.
 
 Earlier focused validation:
 - Database integrity and publication tests: 104/104 passed, including duplicate lesson and
@@ -3706,7 +3708,7 @@ Earlier focused validation:
   Corrected stale test fixtures to define the instructor profile input and align
   published course locale/access mode with each revision.
 
-Validation for migrations 189–192:
+Validation for migrations 189–193:
 - Focused enrollment completion integrity test: 1/1 passed. It verifies deletion
   of completed progress is rejected and deletion of incomplete progress remains
   allowed.
@@ -3717,17 +3719,22 @@ Validation for migrations 189–192:
 - Focused provider-payment/refund integrity test verifies payment/refund row
   deletion is rejected after enforcing provider-reference uniqueness and refund
   limits.
+- Focused order-entitlement integrity test verifies deletion is rejected both for
+  referenced orders and for an order without dependent financial/access records.
 - Full suite, run serially after two tests exceeded the timeout in the parallel
   run before migration 190: 316 passed, 0 failed, 3 skipped across 113 test files.
 - After migrations 190–192, the full serial suite again passed: 316 passed,
+  0 failed, 3 skipped across 113 test files.
+- After migrations 190–193, the full serial suite again passed: 316 passed,
   0 failed, 3 skipped across 113 test files.
 - `npm run build`, `npm run lint`, and `git diff --check`: passed.
 
 This is a local schema and test change only. No deployment, host, or
 running-instance changes were performed. Firefox/WebKit and physical-device
-qualification remain external and pending. Migrations 190–192 preserve enrollment,
-entitlement, and payment history until a retention workflow is defined; they do
-not resolve the open privacy/legal policy or implement account deletion/anonymization.
+qualification remain external and pending. Migrations 190–193 preserve enrollment,
+entitlement, order, and payment history until a retention workflow is defined;
+they do not resolve the open privacy/legal policy or implement account
+deletion/anonymization.
 
 ## HLS initialization and Firefox video follow-up — November 8, 2026
 

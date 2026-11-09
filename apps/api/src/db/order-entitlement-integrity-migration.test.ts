@@ -62,9 +62,10 @@ it('keeps order-backed entitlements attached to the order owner and course', () 
     expect(() => db.prepare('UPDATE orders SET id=? WHERE id=?').run('order-renamed', 'order-a')).toThrow(
       /order entitlement reference mismatch/,
     );
-    expect(() => db.prepare('DELETE FROM orders WHERE id=?').run('order-a')).toThrow(
-      /order entitlement reference mismatch/,
-    );
+    expect(() => db.prepare('DELETE FROM orders WHERE id=?').run('order-a'))
+      .toThrow(/order history is retained/);
+    expect(() => db.prepare('DELETE FROM orders WHERE id=?').run('order-other-user'))
+      .toThrow(/order history is retained/);
     expect(() =>
       db.prepare('UPDATE orders SET price_snapshot=? WHERE id=?').run(2000, 'order-b'),
     ).toThrow(/order snapshot is immutable/);
