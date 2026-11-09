@@ -29,6 +29,10 @@ it('enforces lesson progress revision and position invariants', () => {
       ) VALUES ('enrollment-a','user','course-a','revision-a','["lesson-a","lesson-a2"]','[]'),
              ('enrollment-a2','user-b','course-a','revision-a','["lesson-a","lesson-a2"]','[]'),
              ('enrollment-b','user','course-b','revision-b','["lesson-b"]','[]');
+      INSERT INTO entitlements(id,enrollment_id,source_type,starts_at)
+      VALUES ('entitlement-a','enrollment-a','admin',datetime('now')),
+             ('entitlement-a2','enrollment-a2','admin',datetime('now')),
+             ('entitlement-b','enrollment-b','admin',datetime('now'));
     `);
 
     expect(() =>
@@ -133,6 +137,11 @@ it('enforces lesson progress revision and position invariants', () => {
       .toThrow(/lesson progress requires active enrollment/);
     expect(() => db.prepare(`INSERT INTO lesson_progress(enrollment_id,lesson_id)
       VALUES('enrollment-a','lesson-a2')`).run())
+      .toThrow(/lesson progress requires active enrollment/);
+    db.prepare("UPDATE enrollments SET state='active' WHERE id='enrollment-a'").run();
+    db.prepare("UPDATE entitlements SET revoked_at=datetime('now') WHERE id='entitlement-a'").run();
+    expect(() => db.prepare(`UPDATE lesson_progress SET position_seconds=9,
+      updated_at=datetime('now') WHERE enrollment_id='enrollment-a' AND lesson_id='lesson-a'`).run())
       .toThrow(/lesson progress requires active enrollment/);
     expect(() =>
       db.prepare('UPDATE lessons SET module_id=? WHERE id=?').run('module-b', 'lesson-a'),
