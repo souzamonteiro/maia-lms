@@ -71,6 +71,10 @@ it('validates enrollment completion snapshots and timestamps at the SQLite bound
 
     db.prepare(`INSERT INTO entitlements(id,enrollment_id,source_type,starts_at)
       VALUES('entitlement','enrollment','admin',datetime('now','-1 day'))`).run();
+    db.prepare(`INSERT INTO lesson_progress(enrollment_id,lesson_id)
+      VALUES('enrollment','optional-lesson')`).run();
+    expect(() => db.prepare(`DELETE FROM lesson_progress
+      WHERE enrollment_id='enrollment' AND lesson_id='optional-lesson'`).run()).not.toThrow();
     db.prepare(`INSERT INTO lesson_progress(enrollment_id,lesson_id,completed_at)
       VALUES('enrollment','lesson',datetime('now'))`).run();
     db.prepare(`INSERT INTO attempts(
@@ -79,6 +83,9 @@ it('validates enrollment completion snapshots and timestamps at the SQLite bound
       .run();
     db.prepare(`UPDATE enrollments SET completed_at='2026-11-02T18:00:00.000Z'
       WHERE id='enrollment'`).run();
+    expect(() => db.prepare(`DELETE FROM lesson_progress
+      WHERE enrollment_id='enrollment' AND lesson_id='lesson'`).run())
+      .toThrow(/completed lesson progress is immutable/);
 
     db.prepare(`INSERT INTO entitlements(id,enrollment_id,source_type,starts_at)
       VALUES('quiz-entitlement','quiz-enrollment','admin',datetime('now','-1 day'))`).run();

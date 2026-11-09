@@ -987,6 +987,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   - [x] Enforce exact, valid revision requirement snapshots when inserting an
     enrollment (migration 188; direct SQL cannot omit, duplicate, or substitute
     captured lesson/quiz requirements).
+  - [x] Prevent deletion of completed lesson progress records so recorded lesson
+    completion evidence remains immutable (migration 189; direct SQL deletion is
+    rejected while incomplete progress remains removable).
   Partial: migrations 017–018 prevent progress, enrollment-revision, and
   lesson-module changes from crossing the enrollment's assigned revision, and
   constrain progress positions to non-negative integers. Migration 019 ensures

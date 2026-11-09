@@ -3680,8 +3680,11 @@ from omitting requirements or substituting an optional lesson.
 Migration 188 applies the same checks to new enrollment inserts, including
 non-text/blank and duplicate IDs, so callers cannot bypass the completion guard
 by supplying a forged snapshot when creating the row.
+Migration 189 prevents deletion of a lesson-progress row after it records
+completion, matching the existing immutable-update rule for progress and the
+retained history rule for submitted assessment attempts.
 
-Validation:
+Earlier focused validation:
 - Database integrity and publication tests: 104/104 passed, including duplicate lesson and
   quiz snapshot rejection, omitted required lesson/quiz rejection, and optional
   lesson substitution rejection on both insert and completion.
@@ -3694,8 +3697,17 @@ Validation:
   Corrected stale test fixtures to define the instructor profile input and align
   published course locale/access mode with each revision.
 
-This is a local schema change and test-fixture update only. No deployment, host,
-or running-instance changes were performed.
+Validation for migration 189:
+- Focused enrollment completion integrity test: 1/1 passed. It verifies deletion
+  of completed progress is rejected and deletion of incomplete progress remains
+  allowed.
+- Full suite, run serially after two tests exceeded the timeout in the parallel
+  run: 316 passed, 0 failed, 3 skipped across 113 test files.
+- `npm run build`, `npm run lint`, and `git diff --check`: passed.
+
+This is a local schema and test change only. No deployment, host, or
+running-instance changes were performed. Firefox/WebKit and physical-device
+qualification remain external and pending.
 
 ## HLS initialization and Firefox video follow-up — November 8, 2026
 
