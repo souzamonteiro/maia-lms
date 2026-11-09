@@ -34,8 +34,11 @@ it('keeps assessment attempts and answers within their enrollment, revision and 
                     id,user_id,course_id,revision_id,required_lesson_ids_snapshot,quiz_ids_snapshot
                   ) VALUES ('enrollment-a','user','course-a','revision-a','[]','["quiz-a"]'),
                     ('enrollment-b','user','course-b','revision-b','["lesson-b"]','["quiz-b","quiz-b-transfer"]');
-      INSERT INTO attempts(id,enrollment_id,quiz_id,revision_id,seed)
-      VALUES ('attempt-a','enrollment-a','quiz-a','revision-a','seed');
+                  INSERT INTO entitlements(id,enrollment_id,source_type,starts_at)
+                  VALUES ('entitlement-a','enrollment-a','admin',datetime('now','-1 day')),
+                         ('entitlement-b','enrollment-b','admin',datetime('now','-1 day'));
+                  INSERT INTO attempts(id,enrollment_id,quiz_id,revision_id,seed)
+                  VALUES ('attempt-a','enrollment-a','quiz-a','revision-a','seed');
     `);
 
     expect(() =>
@@ -182,6 +185,26 @@ it('keeps assessment attempts and answers within their enrollment, revision and 
     expect(
       db.prepare('SELECT attempt_id,question_id,selected_keys FROM attempt_answers').all(),
     ).toEqual([{ attempt_id: 'attempt-a', question_id: 'question-a', selected_keys: '["A"]' }]);
+
+    db.prepare('INSERT INTO attempts(id,enrollment_id,quiz_id,revision_id,seed) VALUES(?,?,?,?,?)')
+      .run('attempt-open-a','enrollment-a','quiz-a','revision-a','open-seed');
+    db.prepare('INSERT INTO attempt_answers(attempt_id,question_id,selected_keys) VALUES(?,?,?)')
+      .run('attempt-open-a','question-a','[]');
+    db.prepare("UPDATE entitlements SET revoked_at=datetime('now') WHERE id='entitlement-a'").run();
+    expect(() => addAttempt.run('attempt-after-revocation','enrollment-a','quiz-a','revision-a','seed-revoked'))
+      .toThrow(/assessment attempt requires active enrollment/);
+    expect(() => db.prepare('UPDATE attempt_answers SET selected_keys=? WHERE attempt_id=?')
+      .run('["A"]','attempt-open-a'))
+      .toThrow(/assessment attempt requires active enrollment/);
+    expect(() => db.prepare('DELETE FROM attempt_answers WHERE attempt_id=?').run('attempt-open-a'))
+      .toThrow(/assessment attempt requires active enrollment/);
+    db.prepare("UPDATE entitlements SET revoked_at=datetime('now') WHERE id='entitlement-b'").run();
+    expect(() => db.prepare('INSERT INTO attempt_answers(attempt_id,question_id,selected_keys) VALUES(?,?,?)')
+      .run('attempt-b-1','question-b','[]'))
+      .toThrow(/assessment attempt requires active enrollment/);
+    expect(() => db.prepare("UPDATE attempts SET submitted_at=datetime('now'),score=0,pass=0 WHERE id='attempt-open-a'")
+      .run())
+      .toThrow(/assessment attempt requires active enrollment/);
   } finally {
     db.close();
   }

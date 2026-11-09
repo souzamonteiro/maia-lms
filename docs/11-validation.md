@@ -3700,6 +3700,9 @@ Migration 195 rejects lesson-progress writes when an enrollment is revoked,
 lacks a currently valid entitlement (including revoked, not-yet-started, or
 expired grants), or its course is withdrawn, matching the learner-facing
 progress route's policy.
+Migration 196 applies the same access conditions to assessment attempt creation,
+answer changes/deletion, and submission, preventing direct SQL from starting,
+changing, removing, or completing quiz work after entitlement loss.
 
 Earlier focused validation:
 - Database integrity and publication tests: 104/104 passed, including duplicate lesson and
@@ -3714,7 +3717,7 @@ Earlier focused validation:
   Corrected stale test fixtures to define the instructor profile input and align
   published course locale/access mode with each revision.
 
-Validation for migrations 189–195:
+Validation for migrations 189–196:
 - Focused enrollment completion integrity test: 1/1 passed. It verifies deletion
   of completed progress is rejected and deletion of incomplete progress remains
   allowed.
@@ -3733,6 +3736,8 @@ Validation for migrations 189–195:
   enrollment revocation and entitlement revocation while normal
   active-enrollment progress remains valid. Progress integrity plus HTTP workflow
   tests passed 64/64.
+- Focused assessment-attempt integrity test verifies starting attempts, changing
+  answers, and submitting are blocked after entitlement revocation.
 - Full suite, run serially after two tests exceeded the timeout in the parallel
   run before migration 190: 316 passed, 0 failed, 3 skipped across 113 test files.
 - After migrations 190–192, the full serial suite again passed: 316 passed,
@@ -3744,8 +3749,10 @@ Validation for migrations 189–195:
 - After migrations 190–195, the full serial suite passed: 316 passed,
   0 failed, 3 skipped across 113 test files; rerun after tightening entitlement
   checks also passed with the same counts.
-- `npm run build`, `npm run lint`, and `git diff --check`: passed after the final
-  migration 195 access checks.
+- After migration 196, the focused assessment/enrollment/HTTP tests passed 65/65;
+  the full serial suite passed 316 tests, 0 failed, 3 skipped across 113 files.
+- `npm run build`, `npm run lint`, and `git diff --check`: passed after migration
+  196.
 
 This is a local schema and test change only. No deployment, host, or
 running-instance changes were performed. Firefox/WebKit and physical-device
