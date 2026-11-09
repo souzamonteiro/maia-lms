@@ -93,6 +93,23 @@ it('keeps assessment attempts and answers within their enrollment, revision and 
       db.prepare('UPDATE questions SET correct_choice_keys=? WHERE id=?').run('["B"]', 'question-b'),
     ).not.toThrow();
 
+    for (let sortOrder = 0; sortOrder < 100; sortOrder++) {
+      addQuestion.run(
+        `question-capacity-${sortOrder}`,
+        'quiz-b-transfer',
+        'Capacity question',
+        '[]',
+        '[]',
+        sortOrder,
+      );
+    }
+    expect(() =>
+      addQuestion.run('question-over-capacity', 'quiz-b-transfer', 'Extra question', '[]', '[]', 100),
+    ).toThrow(/assessment question limit reached/);
+    expect(() =>
+      db.prepare('UPDATE questions SET quiz_id=? WHERE id=?').run('quiz-b-transfer', 'question-b'),
+    ).toThrow(/assessment question limit reached/);
+
     expect(() =>
       db
         .prepare('INSERT INTO attempts(id,enrollment_id,quiz_id,revision_id,seed) VALUES(?,?,?,?,?)')

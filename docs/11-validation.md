@@ -3724,6 +3724,8 @@ of unique, correctly shaped choices; correct keys must be unique strings present
 in the choice list. Empty arrays remain permitted for legacy/incomplete draft
 fixtures; API validation and publication readiness continue to enforce the
 minimum required question content.
+Migration 203 enforces the API's 100-question maximum for direct SQLite inserts
+and reassignments, while allowing a quiz to reach exactly 100 questions.
 
 Earlier focused validation:
 - Database integrity and publication tests: 104/104 passed, including duplicate lesson and
@@ -3738,7 +3740,7 @@ Earlier focused validation:
   Corrected stale test fixtures to define the instructor profile input and align
   published course locale/access mode with each revision.
 
-Validation for migrations 189–202:
+Validation for migrations 189–203:
 - Focused enrollment completion integrity test: 1/1 passed. It verifies deletion
   of completed progress is rejected and deletion of incomplete progress remains
   allowed.
@@ -3772,11 +3774,13 @@ Validation for migrations 189–202:
 - Question-definition tests reject malformed/non-array choice and answer-key JSON,
   invalid choice objects, duplicate choice/correct keys, and correct keys absent
   from the available choices on both insert and update.
+- Question-count tests allow exactly 100 questions and reject the 101st insert or
+  reassignment of another question into a full quiz.
 - The assessment integrity fixture submits a correct answer worth 101 points,
   exercising totals above the legacy ceiling.
-- Full suite after migration 202: 316 passed, 0 failed, 3 skipped across 113
+- Full suite after migration 203: 316 passed, 0 failed, 3 skipped across 113
   test files (111 test files passed; 2 skipped).
-- `npm run build`, `npm run lint`, and `git diff --check` passed after migration 202.
+- `npm run build`, `npm run lint`, and `git diff --check` passed after migration 203.
 - After migrations 190–192, the full serial suite again passed: 316 passed,
   0 failed, 3 skipped across 113 test files.
 - After migrations 190–193, the full serial suite again passed: 316 passed,

@@ -1022,6 +1022,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
     matching the API and question-point configuration (migration 201).
   - [x] Validate question choice and correct-key JSON structure, key uniqueness,
     and correct-key membership on SQLite insert/update (migration 202).
+  - [x] Enforce the API's 100-question quiz limit on SQLite insert and quiz reassignment
+    (migration 203).
   Partial: migrations 017–018 prevent progress, enrollment-revision, and
   lesson-module changes from crossing the enrollment's assigned revision, and
   constrain progress positions to non-negative integers. Migration 019 ensures
