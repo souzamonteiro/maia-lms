@@ -22,6 +22,8 @@ it('validates enrollment completion snapshots and timestamps at the SQLite bound
       UPDATE lessons SET is_required=0 WHERE id='optional-lesson';
       INSERT INTO quizzes(id,revision_id,lesson_id)
       VALUES ('quiz','revision',NULL);
+      INSERT INTO questions(id,quiz_id,prompt,choices_json,correct_choice_keys,points)
+      VALUES ('quiz-question','quiz','Question','[{"key":"yes","text":"Yes"}]','["yes"]',1);
       INSERT INTO enrollments(
         id,user_id,course_id,revision_id,required_lesson_ids_snapshot,quiz_ids_snapshot
       ) VALUES ('enrollment','user','course','revision','["lesson"]','["quiz"]');
@@ -87,7 +89,9 @@ it('validates enrollment completion snapshots and timestamps at the SQLite bound
       id,enrollment_id,quiz_id,revision_id,seed
     ) VALUES('passing-attempt','enrollment','quiz','revision','seed')`)
       .run();
-    db.prepare(`UPDATE attempts SET submitted_at=datetime('now'),score=100,pass=1
+    db.prepare(`INSERT INTO attempt_answers(attempt_id,question_id,selected_keys,awarded_points)
+      VALUES('passing-attempt','quiz-question','["yes"]',1)`).run();
+    db.prepare(`UPDATE attempts SET submitted_at=datetime('now'),score=1,pass=1
       WHERE id='passing-attempt'`).run();
     db.prepare(`UPDATE enrollments SET completed_at='2026-11-02T18:00:00.000Z'
       WHERE id='enrollment'`).run();
@@ -106,7 +110,9 @@ it('validates enrollment completion snapshots and timestamps at the SQLite bound
       id,enrollment_id,quiz_id,revision_id,seed
     ) VALUES('passing-quiz-attempt','quiz-enrollment','quiz','revision','seed')`)
       .run();
-    db.prepare(`UPDATE attempts SET submitted_at=datetime('now'),score=100,pass=1
+    db.prepare(`INSERT INTO attempt_answers(attempt_id,question_id,selected_keys,awarded_points)
+      VALUES('passing-quiz-attempt','quiz-question','["yes"]',1)`).run();
+    db.prepare(`UPDATE attempts SET submitted_at=datetime('now'),score=1,pass=1
       WHERE id='passing-quiz-attempt'`).run();
     expect(() => db.prepare(`UPDATE enrollments SET completed_at='2026-11-02T18:00:00.000Z'
       WHERE id='quiz-enrollment'`).run()).not.toThrow();

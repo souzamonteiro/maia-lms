@@ -24,7 +24,7 @@ it('keeps assessment attempts and answers within their enrollment, revision and 
         ('quiz-b','revision-b',NULL,2),
         ('quiz-b-transfer','revision-b','lesson-b',1);
       INSERT INTO questions(id,quiz_id,prompt,choices_json,correct_choice_keys)
-      VALUES ('question-a','quiz-a','Question A','[]','[]'),
+      VALUES ('question-a','quiz-a','Question A','[{"key":"A","text":"A"}]','["A"]'),
              ('question-b','quiz-b','Question B','[]','[]');
       UPDATE questions SET sort_order=1 WHERE id='question-b';
             UPDATE quizzes SET pass_percent=80 WHERE id='quiz-b';
@@ -189,6 +189,17 @@ it('keeps assessment attempts and answers within their enrollment, revision and 
     expect(() => db.prepare(`UPDATE attempts SET submitted_at='2000-01-01T00:00:00Z',score=0,pass=0
       WHERE id='attempt-a'`).run())
       .toThrow(/invalid assessment attempt submission time/);
+    expect(() => db.prepare(`UPDATE attempts SET submitted_at=datetime('now'),score=0,pass=0
+      WHERE id='attempt-a'`).run())
+      .toThrow(/assessment result does not match submitted answers/);
+    db.prepare('UPDATE attempt_answers SET awarded_points=0 WHERE attempt_id=?').run('attempt-a');
+    expect(() => db.prepare(`UPDATE attempts SET submitted_at=datetime('now'),score=0,pass=0
+      WHERE id='attempt-a'`).run())
+      .toThrow(/assessment result does not match submitted answers/);
+    db.prepare('UPDATE attempt_answers SET awarded_points=1 WHERE attempt_id=?').run('attempt-a');
+    expect(() => db.prepare(`UPDATE attempts SET submitted_at=datetime('now'),score=1,pass=0
+      WHERE id='attempt-a'`).run())
+      .toThrow(/assessment result does not match submitted answers/);
     expect(() =>
       db.prepare('UPDATE attempts SET submitted_at=?,score=?,pass=? WHERE id=?').run(
         new Date().toISOString(),
@@ -197,7 +208,7 @@ it('keeps assessment attempts and answers within their enrollment, revision and 
         'attempt-a',
       ),
     ).toThrow(/invalid assessment attempt result state/);
-    db.prepare('UPDATE attempts SET submitted_at=datetime(\'now\'),score=100,pass=1 WHERE id=?').run(
+    db.prepare('UPDATE attempts SET submitted_at=datetime(\'now\'),score=1,pass=1 WHERE id=?').run(
       'attempt-a',
     );
     expect(() =>
@@ -219,8 +230,8 @@ it('keeps assessment attempts and answers within their enrollment, revision and 
 
     db.prepare('INSERT INTO attempts(id,enrollment_id,quiz_id,revision_id,seed) VALUES(?,?,?,?,?)')
       .run('attempt-open-a','enrollment-a','quiz-a','revision-a','open-seed');
-    db.prepare('INSERT INTO attempt_answers(attempt_id,question_id,selected_keys) VALUES(?,?,?)')
-      .run('attempt-open-a','question-a','[]');
+    db.prepare('INSERT INTO attempt_answers(attempt_id,question_id,selected_keys,awarded_points) VALUES(?,?,?,?)')
+      .run('attempt-open-a','question-a','["A"]',1);
     db.prepare("UPDATE entitlements SET revoked_at=datetime('now') WHERE id='entitlement-a'").run();
     expect(() => addAttempt.run('attempt-after-revocation','enrollment-a','quiz-a','revision-a','seed-revoked'))
       .toThrow(/assessment attempt requires active enrollment/);
@@ -233,7 +244,7 @@ it('keeps assessment attempts and answers within their enrollment, revision and 
     expect(() => db.prepare('INSERT INTO attempt_answers(attempt_id,question_id,selected_keys) VALUES(?,?,?)')
       .run('attempt-b-1','question-b','[]'))
       .toThrow(/assessment attempt requires active enrollment/);
-    expect(() => db.prepare("UPDATE attempts SET submitted_at=datetime('now'),score=0,pass=0 WHERE id='attempt-open-a'")
+    expect(() => db.prepare("UPDATE attempts SET submitted_at=datetime('now'),score=1,pass=1 WHERE id='attempt-open-a'")
       .run())
       .toThrow(/assessment attempt requires active enrollment/);
   } finally {

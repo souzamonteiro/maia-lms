@@ -1013,6 +1013,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
     randomization seed after creation (migration 197).
   - [x] Require attempts to start open with a valid non-future start timestamp,
     and validate submission timestamps (migration 198).
+  - [x] Verify submitted selected keys, awarded points, aggregate score, and pass
+    status against the quiz definition (migration 199).
   Partial: migrations 017–018 prevent progress, enrollment-revision, and
   lesson-module changes from crossing the enrollment's assigned revision, and
   constrain progress positions to non-negative integers. Migration 019 ensures
