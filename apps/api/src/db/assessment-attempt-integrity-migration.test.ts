@@ -47,6 +47,30 @@ it('keeps assessment attempts and answers within their enrollment, revision and 
     const addQuestion = db.prepare(
       'INSERT INTO questions(id,quiz_id,prompt,choices_json,correct_choice_keys,sort_order) VALUES(?,?,?,?,?,?)',
     );
+    for (const invalidPrompt of ['', '   ', 'x'.repeat(5001)]) {
+      expect(() =>
+        addQuestion.run(
+          `invalid-prompt-${invalidPrompt.length}`,
+          'quiz-b',
+          invalidPrompt,
+          '[{"key":"A","text":"A"}]',
+          '["A"]',
+          99,
+        ),
+      ).toThrow(/invalid assessment question text/);
+    }
+    for (const invalidPrompt of ['', '   ', 'x'.repeat(5001)]) {
+      expect(() =>
+        db.prepare('UPDATE questions SET prompt=? WHERE id=?').run(invalidPrompt, 'question-b'),
+      ).toThrow(/invalid assessment question text/);
+    }
+    expect(() =>
+      db.prepare('UPDATE questions SET explanation=? WHERE id=?').run('x'.repeat(5001), 'question-b'),
+    ).toThrow(/invalid assessment question text/);
+    expect(() =>
+      db.prepare('UPDATE questions SET explanation=? WHERE id=?').run('A useful explanation.', 'question-b'),
+    ).not.toThrow();
+
     for (const [index, [choices, correctKeys]] of [
       ['{invalid-json', '[]'],
       ['[{"key":"A","text":"A"},{"key":"A","text":"Duplicate"}]', '["A"]'],

@@ -1024,6 +1024,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
     and correct-key membership on SQLite insert/update (migration 202).
   - [x] Enforce the API's 100-question quiz limit on SQLite insert and quiz reassignment
     (migration 203).
+  - [x] Validate nonblank bounded question prompts and bounded explanations on
+    SQLite insert/update (migration 204).
   Partial: migrations 017–018 prevent progress, enrollment-revision, and
   lesson-module changes from crossing the enrollment's assigned revision, and
   constrain progress positions to non-negative integers. Migration 019 ensures

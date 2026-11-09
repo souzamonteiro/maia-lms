@@ -3726,6 +3726,8 @@ fixtures; API validation and publication readiness continue to enforce the
 minimum required question content.
 Migration 203 enforces the API's 100-question maximum for direct SQLite inserts
 and reassignments, while allowing a quiz to reach exactly 100 questions.
+Migration 204 rejects blank/whitespace question prompts and prompts or
+explanations longer than 5,000 SQLite characters on insert/update.
 
 Earlier focused validation:
 - Database integrity and publication tests: 104/104 passed, including duplicate lesson and
@@ -3740,7 +3742,7 @@ Earlier focused validation:
   Corrected stale test fixtures to define the instructor profile input and align
   published course locale/access mode with each revision.
 
-Validation for migrations 189–203:
+Validation for migrations 189–204:
 - Focused enrollment completion integrity test: 1/1 passed. It verifies deletion
   of completed progress is rejected and deletion of incomplete progress remains
   allowed.
@@ -3761,6 +3763,8 @@ Validation for migrations 189–203:
   tests passed 64/64.
 - Focused assessment, completion, enrollment-completion, and API workflow tests:
   65/65 passed after migrations 200–202.
+- After migration 204, focused assessment, completion, enrollment-completion,
+  publication, API, and migration-version tests passed 75/75 across 13 files.
 - Focused assessment-attempt integrity test verifies starting attempts, changing
   answers, and submitting are blocked after entitlement revocation.
 - The same test rejects direct-SQL changes to an attempt ID, enrollment, quiz,
@@ -3776,11 +3780,13 @@ Validation for migrations 189–203:
   from the available choices on both insert and update.
 - Question-count tests allow exactly 100 questions and reject the 101st insert or
   reassignment of another question into a full quiz.
+- Question-text tests reject blank prompts and over-limit prompts/explanations on
+  insert/update while allowing empty or valid bounded explanations.
 - The assessment integrity fixture submits a correct answer worth 101 points,
   exercising totals above the legacy ceiling.
-- Full suite after migration 203: 316 passed, 0 failed, 3 skipped across 113
+- Full suite after migration 204: 316 passed, 0 failed, 3 skipped across 113
   test files (111 test files passed; 2 skipped).
-- `npm run build`, `npm run lint`, and `git diff --check` passed after migration 203.
+- `npm run build`, `npm run lint`, and `git diff --check` passed after migration 204.
 - After migrations 190–192, the full serial suite again passed: 316 passed,
   0 failed, 3 skipped across 113 test files.
 - After migrations 190–193, the full serial suite again passed: 316 passed,
