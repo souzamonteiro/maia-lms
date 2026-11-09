@@ -868,9 +868,7 @@ describe('publication checklist', () => {
       ).status,
     ).toBe(422);
 
-    db.prepare(
-      'INSERT INTO questions(id,quiz_id,prompt,choices_json,correct_choice_keys,points,sort_order) VALUES(?,?,?,?,?,?,?)',
-    ).run(
+    const invalidQuestion = [
       randomUUID(),
       quiz.data.id,
       'Select the correct answer.',
@@ -878,7 +876,16 @@ describe('publication checklist', () => {
       '["missing"]',
       1,
       0,
+    ];
+    const insertQuestion = db.prepare(
+      'INSERT INTO questions(id,quiz_id,prompt,choices_json,correct_choice_keys,points,sort_order) VALUES(?,?,?,?,?,?,?)',
     );
+    expect(() => insertQuestion.run(...invalidQuestion)).toThrow(
+      /invalid assessment question choices/,
+    );
+    // Simulate malformed data created before migration 202.
+    db.exec('DROP TRIGGER assessment_question_choices_insert');
+    insertQuestion.run(...invalidQuestion);
     const invalid = await request(quizUrl, 'GET', undefined, admin.cookie);
     expect(invalid.data.issues).toContainEqual({
       code: 'QUIZ_INVALID',

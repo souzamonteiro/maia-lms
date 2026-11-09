@@ -3719,6 +3719,11 @@ remains valid for unanswered questions.
 Migration 201 replaces the legacy 0–100 attempt score ceiling with the quiz's
 actual possible point total, matching the API's raw-points score while keeping
 pass/fail calculation percentage-based.
+Migration 202 validates question choices and correct keys as bounded JSON arrays
+of unique, correctly shaped choices; correct keys must be unique strings present
+in the choice list. Empty arrays remain permitted for legacy/incomplete draft
+fixtures; API validation and publication readiness continue to enforce the
+minimum required question content.
 
 Earlier focused validation:
 - Database integrity and publication tests: 104/104 passed, including duplicate lesson and
@@ -3733,7 +3738,7 @@ Earlier focused validation:
   Corrected stale test fixtures to define the instructor profile input and align
   published course locale/access mode with each revision.
 
-Validation for migrations 189–201:
+Validation for migrations 189–202:
 - Focused enrollment completion integrity test: 1/1 passed. It verifies deletion
   of completed progress is rejected and deletion of incomplete progress remains
   allowed.
@@ -3753,7 +3758,7 @@ Validation for migrations 189–201:
   active-enrollment progress remains valid. Progress integrity plus HTTP workflow
   tests passed 64/64.
 - Focused assessment, completion, enrollment-completion, and API workflow tests:
-  65/65 passed after migrations 200–201.
+  65/65 passed after migrations 200–202.
 - Focused assessment-attempt integrity test verifies starting attempts, changing
   answers, and submitting are blocked after entitlement revocation.
 - The same test rejects direct-SQL changes to an attempt ID, enrollment, quiz,
@@ -3764,12 +3769,14 @@ Validation for migrations 189–201:
   selected answers, while retaining normal quiz submission behavior.
 - Selection tests reject malformed/non-array JSON, non-string or unknown keys,
   and duplicates at the SQLite boundary while allowing empty selections.
+- Question-definition tests reject malformed/non-array choice and answer-key JSON,
+  invalid choice objects, duplicate choice/correct keys, and correct keys absent
+  from the available choices on both insert and update.
 - The assessment integrity fixture submits a correct answer worth 101 points,
   exercising totals above the legacy ceiling.
-- Full suite, run serially after migrations 200–201: 316 passed, 0 failed,
-  3 skipped across 113 test files (111 test files passed; 2 skipped).
-- `npm run build`, `npm run lint`, and `git diff --check` passed after migrations
-  200–201.
+- Full suite after migration 202: 316 passed, 0 failed, 3 skipped across 113
+  test files (111 test files passed; 2 skipped).
+- `npm run build`, `npm run lint`, and `git diff --check` passed after migration 202.
 - After migrations 190–192, the full serial suite again passed: 316 passed,
   0 failed, 3 skipped across 113 test files.
 - After migrations 190–193, the full serial suite again passed: 316 passed,

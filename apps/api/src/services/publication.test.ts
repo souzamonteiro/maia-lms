@@ -38,7 +38,7 @@ it('rejects unready media, cross-course references and invalid ordering', () => 
   }
 });
 
-it('blocks empty or inconsistent configured quizzes but does not require quizzes on every course', () => {
+it('blocks empty quizzes, validates legacy quiz definitions, and leaves unconfigured courses publishable', () => {
   const db = new Database(':memory:');
   try {
     runMigrations(db);
@@ -53,7 +53,17 @@ it('blocks empty or inconsistent configured quizzes but does not require quizzes
     db.prepare('INSERT INTO quizzes(id,revision_id,lesson_id) VALUES(?,?,NULL)').run('bad-final', 'r');
     db.prepare(
       'INSERT INTO questions(id,quiz_id,prompt,choices_json,correct_choice_keys,points,sort_order) VALUES(?,?,?,?,?,?,?)',
-    ).run('bad-question', 'bad-final', 'Choose', '[{"key":"a","text":"Alpha"},{"key":"b","text":"Beta"}]', '["missing"]', 1, 0);
+    ).run('bad-question', 'bad-final', 'Choose', '[{"key":"a","text":"Alpha"},{"key":"b","text":"Beta"}]', '["a"]', 1, 0);
+    expect(publicationIssues(db, 'c', 'r')).toEqual([
+      { code: 'QUIZ_EMPTY', moduleTitle: 'Module', lessonTitle: 'Lesson' },
+    ]);
+
+    expect(() =>
+      db.prepare('UPDATE questions SET correct_choice_keys=? WHERE id=?').run('["missing"]', 'bad-question'),
+    ).toThrow(/invalid assessment question choices/);
+    // Simulate malformed data created before migration 202.
+    db.exec('DROP TRIGGER assessment_question_choices_update');
+    db.prepare('UPDATE questions SET correct_choice_keys=? WHERE id=?').run('["missing"]', 'bad-question');
     expect(publicationIssues(db, 'c', 'r')).toEqual([
       { code: 'QUIZ_INVALID' },
       { code: 'QUIZ_EMPTY', moduleTitle: 'Module', lessonTitle: 'Lesson' },

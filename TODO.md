@@ -1020,6 +1020,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
     SQLite insert/update (migration 200).
   - [x] Allow submitted raw point totals up to the quiz's possible points,
     matching the API and question-point configuration (migration 201).
+  - [x] Validate question choice and correct-key JSON structure, key uniqueness,
+    and correct-key membership on SQLite insert/update (migration 202).
   Partial: migrations 017–018 prevent progress, enrollment-revision, and
   lesson-module changes from crossing the enrollment's assigned revision, and
   constrain progress positions to non-negative integers. Migration 019 ensures
@@ -1076,18 +1078,20 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   migration 042 freezes modules/lessons once their revision has enrolled learners.
   Quiz invariants now include one final quiz per revision, same-revision lesson
   ownership, immutable definitions after attempts start, bounded attempt/scoring
-  settings, and immutable submitted attempts/answers. Certificate invariants include
-  one active certificate per enrollment, long unique public codes, immutable payload
-  and consent snapshots, required consent data for new issuances, revocation rules,
-  and valid supersession lineage. Payment invariants cover order snapshots, provider
-  identifiers, refund bounds, and state transitions, while provider reconciliation
-  and refund policy remain open. Further audit/rollout safety still depends on
-  BASE-02 and the end-to-end QUIZ/PAY/CERT workflows; keep the parent open until those
-  dependencies and the full invariant matrix are validated. Migrations 092–093
+  settings, choice/key JSON integrity, and immutable submitted attempts/answers.
+  Certificate invariants include one active certificate per enrollment, long unique
+  public codes, immutable payload and consent snapshots, required consent data for
+  new issuances, revocation rules, and valid supersession lineage. Payment invariants
+  cover order snapshots, provider identifiers, refund bounds, and state transitions,
+  while provider reconciliation and refund policy remain open. Further audit/rollout
+  safety still depends on BASE-02 and the end-to-end QUIZ/PAY/CERT workflows; keep
+  the parent open until those dependencies and the full invariant matrix are validated.
+  Migrations 092–093
   record only daily aggregate resource/status counts and require a real calendar
   date plus integer status class/count values. Migration 056 requires
   an open attempt to have no score/pass and a submitted attempt to have an integer
-  score in 0–100 plus an integer pass flag; focused tests cover invalid direct-SQL
+  score in 0–100 plus an integer pass flag; migration 201 supersedes that ceiling
+  with each quiz's possible raw points. Focused tests cover invalid direct-SQL
   states while preserving the existing deadline and immutable-submission checks.
   Migration 097 makes CLOSED privacy requests terminal, preventing direct-SQL
   reactivation after closure while preserving OPEN/IN_REVIEW/CLOSED transitions

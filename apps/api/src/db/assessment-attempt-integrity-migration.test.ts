@@ -41,6 +41,58 @@ it('keeps assessment attempts and answers within their enrollment, revision and 
                   VALUES ('attempt-a','enrollment-a','quiz-a','revision-a','seed');
     `);
 
+    db.prepare(
+      'UPDATE questions SET choices_json=?,correct_choice_keys=? WHERE id=?',
+    ).run('[{"key":"A","text":"Choice A"},{"key":"B","text":"Choice B"}]', '["A"]', 'question-b');
+    const addQuestion = db.prepare(
+      'INSERT INTO questions(id,quiz_id,prompt,choices_json,correct_choice_keys,sort_order) VALUES(?,?,?,?,?,?)',
+    );
+    for (const [index, [choices, correctKeys]] of [
+      ['{invalid-json', '[]'],
+      ['[{"key":"A","text":"A"},{"key":"A","text":"Duplicate"}]', '["A"]'],
+      ['[{"key":"A","text":"A"}]', '["unknown"]'],
+      ['[{"key":"A","text":"A"}]', '["A","A"]'],
+    ].entries()) {
+      expect(() =>
+        addQuestion.run(
+          `invalid-question-${index}`,
+          'quiz-b',
+          'Invalid question',
+          choices,
+          correctKeys,
+          99,
+        ),
+      ).toThrow(/invalid assessment question choices/);
+    }
+    for (const invalidChoices of [
+      '{invalid-json',
+      '{"key":"A","text":"Choice A"}',
+      '[{"key":1,"text":"Choice A"}]',
+      '[{"key":"A","text":""}]',
+      '[{"key":"A","text":"Choice A"},{"key":"A","text":"Duplicate"}]',
+    ]) {
+      expect(() =>
+        db.prepare('UPDATE questions SET choices_json=? WHERE id=?').run(invalidChoices, 'question-b'),
+      ).toThrow(/invalid assessment question choices/);
+    }
+    for (const invalidCorrectKeys of [
+      '{invalid-json',
+      '{"key":"A"}',
+      '[1]',
+      '["unknown"]',
+      '["A","A"]',
+    ]) {
+      expect(() =>
+        db.prepare('UPDATE questions SET correct_choice_keys=? WHERE id=?').run(
+          invalidCorrectKeys,
+          'question-b',
+        ),
+      ).toThrow(/invalid assessment question choices/);
+    }
+    expect(() =>
+      db.prepare('UPDATE questions SET correct_choice_keys=? WHERE id=?').run('["B"]', 'question-b'),
+    ).not.toThrow();
+
     expect(() =>
       db
         .prepare('INSERT INTO attempts(id,enrollment_id,quiz_id,revision_id,seed) VALUES(?,?,?,?,?)')

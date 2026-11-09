@@ -7,8 +7,9 @@ it('keeps closed privacy requests terminal while allowing normal review transiti
   db.pragma('foreign_keys = ON');
   try {
     runMigrations(db);
-    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY rowid DESC LIMIT 7').all())
+    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY rowid DESC LIMIT 8').all())
       .toEqual([
+        { version: '202_assessment_question_choice_integrity' },
         { version: '201_assessment_score_points_range' },
         { version: '200_assessment_answer_selection_integrity' },
         { version: '199_assessment_result_answers_integrity' },
