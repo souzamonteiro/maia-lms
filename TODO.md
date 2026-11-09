@@ -1011,6 +1011,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
     writes/deletes, and submission at the SQLite boundary (migration 196).
   - [x] Freeze assessment attempt identity, enrollment, quiz, revision, and
     randomization seed after creation (migration 197).
+  - [x] Require attempts to start open with a valid non-future start timestamp,
+    and validate submission timestamps (migration 198).
   Partial: migrations 017–018 prevent progress, enrollment-revision, and
   lesson-module changes from crossing the enrollment's assigned revision, and
   constrain progress positions to non-negative integers. Migration 019 ensures

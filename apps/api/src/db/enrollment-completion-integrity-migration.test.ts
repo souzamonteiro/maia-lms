@@ -84,9 +84,11 @@ it('validates enrollment completion snapshots and timestamps at the SQLite bound
     db.prepare(`INSERT INTO lesson_progress(enrollment_id,lesson_id,completed_at)
       VALUES('enrollment','lesson',datetime('now'))`).run();
     db.prepare(`INSERT INTO attempts(
-      id,enrollment_id,quiz_id,revision_id,seed,submitted_at,score,pass
-    ) VALUES('passing-attempt','enrollment','quiz','revision','seed',datetime('now'),100,1)`)
+      id,enrollment_id,quiz_id,revision_id,seed
+    ) VALUES('passing-attempt','enrollment','quiz','revision','seed')`)
       .run();
+    db.prepare(`UPDATE attempts SET submitted_at=datetime('now'),score=100,pass=1
+      WHERE id='passing-attempt'`).run();
     db.prepare(`UPDATE enrollments SET completed_at='2026-11-02T18:00:00.000Z'
       WHERE id='enrollment'`).run();
     expect(() => db.prepare(`DELETE FROM lesson_progress
@@ -101,9 +103,11 @@ it('validates enrollment completion snapshots and timestamps at the SQLite bound
       WHERE id='quiz-enrollment'`).run())
       .toThrow(/enrollment completion requirements are not satisfied/);
     db.prepare(`INSERT INTO attempts(
-      id,enrollment_id,quiz_id,revision_id,seed,submitted_at,score,pass
-    ) VALUES('passing-quiz-attempt','quiz-enrollment','quiz','revision','seed',datetime('now'),100,1)`)
+      id,enrollment_id,quiz_id,revision_id,seed
+    ) VALUES('passing-quiz-attempt','quiz-enrollment','quiz','revision','seed')`)
       .run();
+    db.prepare(`UPDATE attempts SET submitted_at=datetime('now'),score=100,pass=1
+      WHERE id='passing-quiz-attempt'`).run();
     expect(() => db.prepare(`UPDATE enrollments SET completed_at='2026-11-02T18:00:00.000Z'
       WHERE id='quiz-enrollment'`).run()).not.toThrow();
 

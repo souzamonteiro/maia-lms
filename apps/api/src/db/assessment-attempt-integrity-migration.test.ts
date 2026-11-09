@@ -78,6 +78,21 @@ it('keeps assessment attempts and answers within their enrollment, revision and 
     const addAttempt = db.prepare(
       'INSERT INTO attempts(id,enrollment_id,quiz_id,revision_id,seed) VALUES(?,?,?,?,?)',
     );
+    expect(() => db.prepare(`INSERT INTO attempts(
+      id,enrollment_id,quiz_id,revision_id,seed,submitted_at,score,pass
+    ) VALUES(?,?,?,?,?,datetime('now'),100,1)`)
+      .run('submitted-on-insert','enrollment-a','quiz-a','revision-a','seed-insert'))
+      .toThrow(/assessment attempt must start open/);
+    for (const [id, startedAt] of [
+      ['future-start', "datetime('now','+1 minute')"],
+      ['invalid-start', "'not-a-timestamp'"],
+    ]) {
+      expect(() => db.prepare(`INSERT INTO attempts(
+        id,enrollment_id,quiz_id,revision_id,seed,started_at
+      ) VALUES(?,?,?,?,?,${startedAt})`)
+        .run(id,'enrollment-a','quiz-a','revision-a',id))
+        .toThrow(/invalid assessment attempt start time/);
+    }
     addAttempt.run('attempt-b-1', 'enrollment-b', 'quiz-b', 'revision-b', 'seed-1');
     db.prepare(
       "INSERT INTO attempts(id,enrollment_id,quiz_id,revision_id,seed,started_at) VALUES(?,?,?,?,?,'2000-01-01T00:00:00Z')",
@@ -165,6 +180,15 @@ it('keeps assessment attempts and answers within their enrollment, revision and 
         'attempt-a',
       ),
     ).toThrow(/invalid assessment attempt result state/);
+    expect(() => db.prepare(`UPDATE attempts SET submitted_at=datetime('now','+1 minute'),score=0,pass=0
+      WHERE id='attempt-a'`).run())
+      .toThrow(/invalid assessment attempt submission time/);
+    expect(() => db.prepare(`UPDATE attempts SET submitted_at='not-a-timestamp',score=0,pass=0
+      WHERE id='attempt-a'`).run())
+      .toThrow(/invalid assessment attempt submission time/);
+    expect(() => db.prepare(`UPDATE attempts SET submitted_at='2000-01-01T00:00:00Z',score=0,pass=0
+      WHERE id='attempt-a'`).run())
+      .toThrow(/invalid assessment attempt submission time/);
     expect(() =>
       db.prepare('UPDATE attempts SET submitted_at=?,score=?,pass=? WHERE id=?').run(
         new Date().toISOString(),

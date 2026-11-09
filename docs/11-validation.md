@@ -3706,6 +3706,9 @@ changing, removing, or completing quiz work after entitlement loss.
 Migration 197 makes assessment attempt IDs, enrollment/quiz/revision assignment,
 and randomization seeds immutable, preserving the identity and ownership of open
 attempt history before submission.
+Migration 198 requires newly created attempts to start open, rejects malformed or
+future start timestamps, and requires submissions to have a valid timestamp
+between attempt start and current time.
 
 Earlier focused validation:
 - Database integrity and publication tests: 104/104 passed, including duplicate lesson and
@@ -3720,7 +3723,7 @@ Earlier focused validation:
   Corrected stale test fixtures to define the instructor profile input and align
   published course locale/access mode with each revision.
 
-Validation for migrations 189–197:
+Validation for migrations 189–198:
 - Focused enrollment completion integrity test: 1/1 passed. It verifies deletion
   of completed progress is rejected and deletion of incomplete progress remains
   allowed.
@@ -3743,6 +3746,8 @@ Validation for migrations 189–197:
   answers, and submitting are blocked after entitlement revocation.
 - The same test rejects direct-SQL changes to an attempt ID, enrollment, quiz,
   revision, or seed while preserving all normal assessment flows.
+- It also rejects inserting already-submitted attempts and malformed/future start
+  or submission timestamps while preserving valid submissions.
 - Full suite, run serially after two tests exceeded the timeout in the parallel
   run before migration 190: 316 passed, 0 failed, 3 skipped across 113 test files.
 - After migrations 190–192, the full serial suite again passed: 316 passed,
@@ -3754,10 +3759,10 @@ Validation for migrations 189–197:
 - After migrations 190–195, the full serial suite passed: 316 passed,
   0 failed, 3 skipped across 113 test files; rerun after tightening entitlement
   checks also passed with the same counts.
-- After migrations 196–197, the focused assessment/enrollment/HTTP tests passed 65/65;
+- After migrations 196–198, focused assessment/enrollment/HTTP tests passed 65/65;
   the full serial suite passed 316 tests, 0 failed, 3 skipped across 113 files.
 - `npm run build`, `npm run lint`, and `git diff --check`: passed after migration
-  197.
+  198.
 
 This is a local schema and test change only. No deployment, host, or
 running-instance changes were performed. Firefox/WebKit and physical-device
