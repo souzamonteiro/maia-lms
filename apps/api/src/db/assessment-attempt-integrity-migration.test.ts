@@ -46,9 +46,16 @@ it('keeps assessment attempts and answers within their enrollment, revision and 
         .prepare('INSERT INTO attempts(id,enrollment_id,quiz_id,revision_id,seed) VALUES(?,?,?,?,?)')
         .run('cross-revision-attempt', 'enrollment-a', 'quiz-b', 'revision-a', 'seed'),
     ).toThrow(/assessment attempt revision mismatch/);
-    expect(() =>
-      db.prepare('UPDATE attempts SET revision_id=? WHERE id=?').run('revision-b', 'attempt-a'),
-    ).toThrow(/assessment attempt revision mismatch/);
+    for (const [field, value] of [
+      ['id', 'attempt-a-renamed'],
+      ['enrollment_id', 'enrollment-b'],
+      ['quiz_id', 'quiz-b'],
+      ['revision_id', 'revision-b'],
+      ['seed', 'tampered-seed'],
+    ]) {
+      expect(() => db.prepare(`UPDATE attempts SET ${field}=? WHERE id=?`).run(value, 'attempt-a'))
+        .toThrow(/assessment attempt identity is immutable/);
+    }
     expect(() =>
       db.prepare('UPDATE enrollments SET revision_id=? WHERE id=?').run('revision-b', 'enrollment-a'),
     ).toThrow(/enrollment assignment is immutable/);
@@ -81,7 +88,7 @@ it('keeps assessment attempts and answers within their enrollment, revision and 
     addAttempt.run('attempt-b-transfer', 'enrollment-b', 'quiz-b-transfer', 'revision-b', 'seed-transfer');
     expect(() =>
       db.prepare('UPDATE attempts SET quiz_id=? WHERE id=?').run('quiz-b', 'attempt-b-transfer'),
-    ).toThrow(/assessment attempt limit reached/);
+    ).toThrow(/assessment attempt identity is immutable/);
     expect(() => db.prepare('DELETE FROM attempts WHERE id=?').run('attempt-b-1')).toThrow(
       /assessment attempt history is retained/,
     );
@@ -143,7 +150,7 @@ it('keeps assessment attempts and answers within their enrollment, revision and 
     ).toThrow(/assessment definition is in use by attempts/);
     expect(() =>
       db.prepare('UPDATE attempts SET quiz_id=? WHERE id=?').run('quiz-b', 'attempt-a'),
-    ).toThrow(/assessment answer quiz mismatch/);
+    ).toThrow(/assessment attempt identity is immutable/);
     expect(() =>
       db.prepare('UPDATE attempt_answers SET selected_keys=? WHERE attempt_id=?').run('["A"]', 'attempt-a'),
     ).not.toThrow();

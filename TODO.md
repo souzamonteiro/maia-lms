@@ -1009,6 +1009,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
     195), matching the learner API's access gate.
   - [x] Require active, entitled enrollment for assessment attempts, answer
     writes/deletes, and submission at the SQLite boundary (migration 196).
+  - [x] Freeze assessment attempt identity, enrollment, quiz, revision, and
+    randomization seed after creation (migration 197).
   Partial: migrations 017–018 prevent progress, enrollment-revision, and
   lesson-module changes from crossing the enrollment's assigned revision, and
   constrain progress positions to non-negative integers. Migration 019 ensures

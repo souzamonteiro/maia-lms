@@ -6,8 +6,9 @@ it('requires lowercase SHA-256 digests for video chunks on insert', () => {
   const db = new Database(':memory:');
   try {
     runMigrations(db);
-    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY rowid DESC LIMIT 2').all())
+    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY rowid DESC LIMIT 3').all())
       .toEqual([
+        { version: '197_assessment_attempt_identity_immutable' },
         { version: '196_assessment_attempt_access_integrity' },
         { version: '195_lesson_progress_access_integrity' },
       ]);
