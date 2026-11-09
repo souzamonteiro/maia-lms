@@ -1002,6 +1002,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   - [x] Retain order history against direct SQL deletion (migration 193),
     including orders without entitlements or provider records, preserving the
     idempotency and checkout audit trail.
+  - [x] Retain webhook event identities against direct SQL deletion (migration
+    194), preserving replay deduplication and event-ID/content conflict checks.
   Partial: migrations 017–018 prevent progress, enrollment-revision, and
   lesson-module changes from crossing the enrollment's assigned revision, and
   constrain progress positions to non-negative integers. Migration 019 ensures

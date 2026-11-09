@@ -10,6 +10,8 @@ it('keeps webhook event identity immutable while allowing retry metadata updates
       INSERT INTO webhook_events(id,provider,external_event_id,payload_hash,status)
       VALUES(?,?,?,?,?)
     `).run('event-row', 'provider', 'external-event', 'a'.repeat(64), 'pending');
+    expect(() => db.prepare('DELETE FROM webhook_events WHERE id=?').run('event-row'))
+      .toThrow(/webhook event history is retained/);
 
     for (const [id, provider, eventId, hash] of [
       ['blank-provider', '  ', 'event', 'a'.repeat(64)],
