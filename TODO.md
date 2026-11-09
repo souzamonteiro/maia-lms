@@ -952,8 +952,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
 
 - [ ] **DATA-01 — Strengthen SQLite invariants.**
   - [x] Enforce assessment result-state consistency: open attempts have no result;
-    submitted attempts carry a 0–100 integer score and a binary pass flag
-    (migration 056, covered by focused direct-SQL integrity tests).
+    submitted attempts carry an integer raw-points score within the quiz's possible
+    points and a binary pass flag (migrations 056 and 201, covered by focused
+    direct-SQL integrity tests).
   - [x] Enforce outbox retry counters as non-negative integers and keep active
     lease, processed timestamp, and retry-count states consistent (migration 057;
     tested for valid claim/failure/success and invalid direct-SQL combinations).
@@ -1015,6 +1016,10 @@ does not satisfy a task. Preserve local internationalization changes and prototy
     and validate submission timestamps (migration 198).
   - [x] Verify submitted selected keys, awarded points, aggregate score, and pass
     status against the quiz definition (migration 199).
+  - [x] Validate answer selections as unique arrays of choice keys on every
+    SQLite insert/update (migration 200).
+  - [x] Allow submitted raw point totals up to the quiz's possible points,
+    matching the API and question-point configuration (migration 201).
   Partial: migrations 017–018 prevent progress, enrollment-revision, and
   lesson-module changes from crossing the enrollment's assigned revision, and
   constrain progress positions to non-negative integers. Migration 019 ensures

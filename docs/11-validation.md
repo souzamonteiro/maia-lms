@@ -3713,6 +3713,12 @@ Migration 199 checks selected answer keys against quiz choices/correct answers,
 per-answer awarded points against correctness, and aggregate score/pass status
 against the quiz threshold when an attempt is submitted. Omitted answers remain
 incorrect, matching the API scoring behavior.
+Migration 200 validates each answer selection at insertion/update time as a JSON
+array of unique string keys present in that question's choices; an empty array
+remains valid for unanswered questions.
+Migration 201 replaces the legacy 0–100 attempt score ceiling with the quiz's
+actual possible point total, matching the API's raw-points score while keeping
+pass/fail calculation percentage-based.
 
 Earlier focused validation:
 - Database integrity and publication tests: 104/104 passed, including duplicate lesson and
@@ -3727,7 +3733,7 @@ Earlier focused validation:
   Corrected stale test fixtures to define the instructor profile input and align
   published course locale/access mode with each revision.
 
-Validation for migrations 189–199:
+Validation for migrations 189–201:
 - Focused enrollment completion integrity test: 1/1 passed. It verifies deletion
   of completed progress is rejected and deletion of incomplete progress remains
   allowed.
@@ -3746,6 +3752,8 @@ Validation for migrations 189–199:
   enrollment revocation and entitlement revocation while normal
   active-enrollment progress remains valid. Progress integrity plus HTTP workflow
   tests passed 64/64.
+- Focused assessment, completion, enrollment-completion, and API workflow tests:
+  65/65 passed after migrations 200–201.
 - Focused assessment-attempt integrity test verifies starting attempts, changing
   answers, and submitting are blocked after entitlement revocation.
 - The same test rejects direct-SQL changes to an attempt ID, enrollment, quiz,
@@ -3754,8 +3762,14 @@ Validation for migrations 189–199:
   or submission timestamps while preserving valid submissions.
 - It rejects forged scores, pass flags, and awarded points that disagree with
   selected answers, while retaining normal quiz submission behavior.
-- Full suite, run serially after two tests exceeded the timeout in the parallel
-  run before migration 190: 316 passed, 0 failed, 3 skipped across 113 test files.
+- Selection tests reject malformed/non-array JSON, non-string or unknown keys,
+  and duplicates at the SQLite boundary while allowing empty selections.
+- The assessment integrity fixture submits a correct answer worth 101 points,
+  exercising totals above the legacy ceiling.
+- Full suite, run serially after migrations 200–201: 316 passed, 0 failed,
+  3 skipped across 113 test files (111 test files passed; 2 skipped).
+- `npm run build`, `npm run lint`, and `git diff --check` passed after migrations
+  200–201.
 - After migrations 190–192, the full serial suite again passed: 316 passed,
   0 failed, 3 skipped across 113 test files.
 - After migrations 190–193, the full serial suite again passed: 316 passed,
@@ -3765,11 +3779,6 @@ Validation for migrations 189–199:
 - After migrations 190–195, the full serial suite passed: 316 passed,
   0 failed, 3 skipped across 113 test files; rerun after tightening entitlement
   checks also passed with the same counts.
-- After migrations 196–199, focused assessment/enrollment/HTTP tests passed 65/65;
-  the full serial suite passed 316 tests, 0 failed, 3 skipped across 113 files.
-- `npm run build`, `npm run lint`, and `git diff --check`: passed after migration
-  199.
-
 This is a local schema and test change only. No deployment, host, or
 running-instance changes were performed. Firefox/WebKit and physical-device
 qualification remain external and pending. Migrations 190–195 preserve enrollment,

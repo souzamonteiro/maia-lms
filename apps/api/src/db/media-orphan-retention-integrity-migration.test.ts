@@ -7,8 +7,10 @@ it('keeps orphan-retention timestamps valid and restricted to ready media', () =
   db.pragma('foreign_keys = ON');
   try {
     runMigrations(db);
-    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY rowid DESC LIMIT 5').all())
+    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY rowid DESC LIMIT 7').all())
       .toEqual([
+        { version: '201_assessment_score_points_range' },
+        { version: '200_assessment_answer_selection_integrity' },
         { version: '199_assessment_result_answers_integrity' },
         { version: '198_assessment_attempt_timestamp_integrity' },
         { version: '197_assessment_attempt_identity_immutable' },
