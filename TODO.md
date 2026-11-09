@@ -978,6 +978,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   - [x] Require enrollment completion to be recorded only after its captured
     required lessons and quizzes are satisfied under active entitlement
     (migration 185; premature direct SQL inserts/updates are rejected).
+  - [x] Require completion snapshots to contain nonblank, unique text IDs before
+    marking an enrollment complete (migration 186; duplicate lessons/quizzes are
+    rejected at the SQLite boundary).
   Partial: migrations 017–018 prevent progress, enrollment-revision, and
   lesson-module changes from crossing the enrollment's assigned revision, and
   constrain progress positions to non-negative integers. Migration 019 ensures

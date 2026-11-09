@@ -3671,9 +3671,13 @@ valid entitlement, has at least one captured required lesson and has completed
 all captured required lessons and passed all captured quizzes. This mirrors the
 completion service's rules at the SQLite boundary. Existing completion history
 is preserved; the new checks apply to future inserts and completion transitions.
+Migration 186 additionally rejects completion when either captured requirements
+snapshot contains blank, non-text, or duplicate IDs, keeping the SQLite check
+consistent with the service's count-based completion evaluation.
 
 Validation:
-- All database integrity tests: 101/101 passed.
+- All database integrity tests: 101/101 passed, including duplicate lesson and
+  quiz snapshot rejection.
 - Focused completion, certificate eligibility, certificate lifecycle, payment,
   webhook, and PDF generation tests: 8/8 passed. The previously failing API app
   and payment reconciliation/settlement tests also pass (69/69).

@@ -10,7 +10,11 @@ it('validates enrollment completion timestamps without rewriting completion hist
     db.exec(`
       INSERT INTO users(id,email,email_normalized,password_hash)
       VALUES ('user','user@example.com','user@example.com','hash'),
-             ('user-b','user-b@example.com','user-b@example.com','hash');
+             ('user-b','user-b@example.com','user-b@example.com','hash'),
+             ('user-c','user-c@example.com','user-c@example.com','hash'),
+             ('user-d','user-d@example.com','user-d@example.com','hash'),
+             ('user-e','user-e@example.com','user-e@example.com','hash'),
+             ('user-f','user-f@example.com','user-f@example.com','hash');
       INSERT INTO courses(id,slug,author_id) VALUES ('course','course','user');
       INSERT INTO course_revisions(id,course_id,title,summary)
       VALUES ('revision','course','Course','Summary');
@@ -26,6 +30,18 @@ it('validates enrollment completion timestamps without rewriting completion hist
       INSERT INTO enrollments(
         id,user_id,course_id,revision_id,required_lesson_ids_snapshot,quiz_ids_snapshot
       ) VALUES ('quiz-enrollment','user-b','course','revision','["lesson"]','["quiz"]');
+      INSERT INTO enrollments(
+        id,user_id,course_id,revision_id,required_lesson_ids_snapshot,quiz_ids_snapshot
+      ) VALUES ('duplicate-lesson-enrollment','user-c','course','revision','["lesson","lesson"]','[]');
+      INSERT INTO enrollments(
+        id,user_id,course_id,revision_id,required_lesson_ids_snapshot,quiz_ids_snapshot
+      ) VALUES ('duplicate-quiz-enrollment','user-d','course','revision','["lesson"]','["quiz","quiz"]');
+      INSERT INTO enrollments(
+        id,user_id,course_id,revision_id,required_lesson_ids_snapshot,quiz_ids_snapshot
+      ) VALUES ('blank-snapshot-enrollment','user-e','course','revision','[""]','[]');
+      INSERT INTO enrollments(
+        id,user_id,course_id,revision_id,required_lesson_ids_snapshot,quiz_ids_snapshot
+      ) VALUES ('nontext-snapshot-enrollment','user-f','course','revision','["lesson"]','[4]');
     `);
 
     expect(() => db.prepare(`INSERT INTO enrollments(
@@ -62,6 +78,28 @@ it('validates enrollment completion timestamps without rewriting completion hist
       .run();
     expect(() => db.prepare(`UPDATE enrollments SET completed_at='2026-11-02T18:00:00.000Z'
       WHERE id='quiz-enrollment'`).run()).not.toThrow();
+    db.prepare(`INSERT INTO entitlements(id,enrollment_id,source_type,starts_at)
+      VALUES('duplicate-lesson-entitlement','duplicate-lesson-enrollment','admin',datetime('now','-1 day')),
+        ('duplicate-quiz-entitlement','duplicate-quiz-enrollment','admin',datetime('now','-1 day'))`).run();
+    db.prepare(`INSERT INTO lesson_progress(enrollment_id,lesson_id,completed_at)
+      VALUES('duplicate-lesson-enrollment','lesson',datetime('now')),
+        ('duplicate-quiz-enrollment','lesson',datetime('now'))`).run();
+    db.prepare(`INSERT INTO attempts(
+      id,enrollment_id,quiz_id,revision_id,seed,submitted_at,score,pass
+    ) VALUES('duplicate-quiz-attempt','duplicate-quiz-enrollment','quiz','revision','seed',datetime('now'),100,1)`)
+      .run();
+    expect(() => db.prepare(`UPDATE enrollments SET completed_at='2026-11-02T18:00:00.000Z'
+      WHERE id='duplicate-lesson-enrollment'`).run())
+      .toThrow(/completion snapshot values must be unique/);
+    expect(() => db.prepare(`UPDATE enrollments SET completed_at='2026-11-02T18:00:00.000Z'
+      WHERE id='duplicate-quiz-enrollment'`).run())
+      .toThrow(/completion snapshot values must be unique/);
+    expect(() => db.prepare(`UPDATE enrollments SET completed_at='2026-11-02T18:00:00.000Z'
+      WHERE id='blank-snapshot-enrollment'`).run())
+      .toThrow(/completion snapshot values are invalid/);
+    expect(() => db.prepare(`UPDATE enrollments SET completed_at='2026-11-02T18:00:00.000Z'
+      WHERE id='nontext-snapshot-enrollment'`).run())
+      .toThrow(/completion snapshot values are invalid/);
     expect(() => db.prepare(`UPDATE enrollments SET completed_at=NULL
       WHERE id='enrollment'`).run()).toThrow(/enrollment completion is immutable/);
     expect(() => db.prepare(`UPDATE enrollments SET completed_at='2026-11-03T18:00:00.000Z'
