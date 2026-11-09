@@ -128,6 +128,12 @@ it('enforces lesson progress revision and position invariants', () => {
     expect(() =>
       db.prepare('UPDATE enrollments SET state=? WHERE id=?').run('revoked', 'enrollment-a'),
     ).not.toThrow();
+    expect(() => db.prepare(`UPDATE lesson_progress SET position_seconds=8,
+      updated_at=datetime('now') WHERE enrollment_id='enrollment-a' AND lesson_id='lesson-a'`).run())
+      .toThrow(/lesson progress requires active enrollment/);
+    expect(() => db.prepare(`INSERT INTO lesson_progress(enrollment_id,lesson_id)
+      VALUES('enrollment-a','lesson-a2')`).run())
+      .toThrow(/lesson progress requires active enrollment/);
     expect(() =>
       db.prepare('UPDATE lessons SET module_id=? WHERE id=?').run('module-b', 'lesson-a'),
     ).toThrow(/enrolled revision structure is immutable/);
@@ -136,7 +142,8 @@ it('enforces lesson progress revision and position invariants', () => {
     ).toEqual([{ lesson_id: 'lesson-a', position_seconds: 5 }]);
     expect(() => db.prepare(`UPDATE lesson_progress
       SET position_seconds=7,updated_at=datetime('now')
-      WHERE enrollment_id='enrollment-a' AND lesson_id='lesson-a'`).run()).not.toThrow();
+      WHERE enrollment_id='enrollment-a' AND lesson_id='lesson-a'`).run())
+      .toThrow(/lesson progress requires active enrollment/);
   } finally {
     db.close();
   }

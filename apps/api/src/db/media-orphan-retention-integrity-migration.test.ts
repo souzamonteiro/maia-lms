@@ -9,8 +9,8 @@ it('keeps orphan-retention timestamps valid and restricted to ready media', () =
     runMigrations(db);
     expect(db.prepare('SELECT version FROM schema_migrations ORDER BY rowid DESC LIMIT 2').all())
       .toEqual([
+        { version: '195_lesson_progress_access_integrity' },
         { version: '194_webhook_event_history_retained' },
-        { version: '193_order_history_retained' },
       ]);
     db.exec(`
       INSERT INTO users(id,email,email_normalized,password_hash)

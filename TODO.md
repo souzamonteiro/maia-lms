@@ -1004,6 +1004,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
     idempotency and checkout audit trail.
   - [x] Retain webhook event identities against direct SQL deletion (migration
     194), preserving replay deduplication and event-ID/content conflict checks.
+  - [x] Reject lesson-progress inserts and updates for revoked enrollments or
+    withdrawn courses (migration 195), matching the learner API's access gate.
   Partial: migrations 017–018 prevent progress, enrollment-revision, and
   lesson-module changes from crossing the enrollment's assigned revision, and
   constrain progress positions to non-negative integers. Migration 019 ensures

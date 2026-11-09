@@ -3696,6 +3696,8 @@ Migration 193 prevents deleting orders even when no entitlement or provider
 payment/refund references exist, preserving idempotency and checkout history.
 Migration 194 prevents deleting webhook event rows, preserving replay
 deduplication and the ability to detect event-ID reuse with different content.
+Migration 195 rejects lesson-progress writes when an enrollment is revoked or
+its course is withdrawn, matching the learner-facing progress route's policy.
 
 Earlier focused validation:
 - Database integrity and publication tests: 104/104 passed, including duplicate lesson and
@@ -3710,7 +3712,7 @@ Earlier focused validation:
   Corrected stale test fixtures to define the instructor profile input and align
   published course locale/access mode with each revision.
 
-Validation for migrations 189–194:
+Validation for migrations 189–195:
 - Focused enrollment completion integrity test: 1/1 passed. It verifies deletion
   of completed progress is rejected and deletion of incomplete progress remains
   allowed.
@@ -3725,6 +3727,9 @@ Validation for migrations 189–194:
   referenced orders and for an order without dependent financial/access records.
 - Focused webhook identity/lifecycle tests verify deletion is rejected while
   retries and status transitions remain supported.
+- Focused lesson-progress integrity test verifies writes are rejected after
+  enrollment revocation while normal active-enrollment progress remains valid.
+  Progress integrity plus HTTP workflow tests passed 63/63.
 - Full suite, run serially after two tests exceeded the timeout in the parallel
   run before migration 190: 316 passed, 0 failed, 3 skipped across 113 test files.
 - After migrations 190–192, the full serial suite again passed: 316 passed,
@@ -3733,12 +3738,13 @@ Validation for migrations 189–194:
   0 failed, 3 skipped across 113 test files.
 - After migrations 190–194, the full serial suite passed: 316 passed,
   0 failed, 3 skipped across 113 test files.
-- `npm run build`, `npm run lint`, and `git diff --check`: passed after migration 194.
-- `npm run build`, `npm run lint`, and `git diff --check`: passed.
+- After migrations 190–195, the full serial suite passed: 316 passed,
+  0 failed, 3 skipped across 113 test files.
+- `npm run build`, `npm run lint`, and `git diff --check`: passed after migration 195.
 
 This is a local schema and test change only. No deployment, host, or
 running-instance changes were performed. Firefox/WebKit and physical-device
-qualification remain external and pending. Migrations 190–193 preserve enrollment,
+qualification remain external and pending. Migrations 190–195 preserve enrollment,
 entitlement, order, and payment history until a retention workflow is defined;
 they do not resolve the open privacy/legal policy or implement account
 deletion/anonymization.
