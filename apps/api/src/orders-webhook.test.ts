@@ -149,7 +149,8 @@ it('verifies and deduplicates authoritative order webhooks before granting acces
     expect(db.prepare('SELECT state FROM provider_payments WHERE order_id=?').get('local-order'))
       .toEqual({ state: 'approved' });
 
-    db.exec('DELETE FROM entitlements; DELETE FROM enrollments;');
+    db.exec(`UPDATE entitlements SET revoked_at=datetime('now');
+      UPDATE enrollments SET state='revoked' WHERE user_id='buyer' AND course_id='course';`);
     const refreshed = await fetch(`${base}/api/v1/me/orders/local-order/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Cookie: buyerCookie },
@@ -157,7 +158,7 @@ it('verifies and deduplicates authoritative order webhooks before granting acces
     });
     expect(refreshed.status).toBe(200);
     expect(await refreshed.json()).toMatchObject({ orderId: 'local-order', state: 'PAID' });
-    expect(db.prepare("SELECT count(*) AS total FROM entitlements WHERE source_type='order'").get())
+    expect(db.prepare("SELECT count(*) AS total FROM entitlements WHERE source_type='order' AND revoked_at IS NULL").get())
       .toEqual({ total: 1 });
 
     db.prepare(`INSERT INTO lesson_progress(enrollment_id,lesson_id,completed_at)
@@ -193,7 +194,8 @@ it('verifies and deduplicates authoritative order webhooks before granting acces
     expect(await partialRefund.json()).toMatchObject({ status: 'approved', orderState: 'PARTIALLY_REFUNDED' });
     expect(db.prepare('SELECT revoked_at FROM certificates WHERE id=?').get('certificate'))
       .toEqual({ revoked_at: null });
-    expect(db.prepare('SELECT revoked_at FROM entitlements WHERE source_id=?').get('local-order'))
+    expect(db.prepare('SELECT revoked_at FROM entitlements WHERE source_id=? AND revoked_at IS NULL')
+      .get('local-order'))
       .toEqual({ revoked_at: null });
 
     const chargeback = await fetch(`${base}/api/v1/admin/orders/local-order/chargeback`, {

@@ -61,8 +61,9 @@ it('reconciles aged pending orders and recovers paid orders missing access exact
     expect(db.prepare("SELECT count(*) AS total FROM outbox WHERE event_type='email.send'").get())
       .toEqual({ total: 1 });
 
-    db.exec('DELETE FROM entitlements; DELETE FROM enrollments;');
-  db.prepare("UPDATE orders SET updated_at=datetime('now','-10 minutes') WHERE id=?").run('order');
+    db.exec(`UPDATE entitlements SET revoked_at=datetime('now');
+      UPDATE enrollments SET state='revoked' WHERE user_id='buyer' AND course_id='course';`);
+    db.prepare("UPDATE orders SET updated_at=datetime('now','-10 minutes') WHERE id=?").run('order');
     expect(await reconcilePendingPayments(db, provider, 'seller-1', now)).toEqual({
       checked: 1,
       settled: 1,
@@ -70,7 +71,7 @@ it('reconciles aged pending orders and recovers paid orders missing access exact
     });
     expect(db.prepare('SELECT count(*) AS total FROM enrollments WHERE course_id=?').get('course'))
       .toEqual({ total: 1 });
-    expect(db.prepare("SELECT count(*) AS total FROM entitlements WHERE source_type='order'").get())
+    expect(db.prepare("SELECT count(*) AS total FROM entitlements WHERE source_type='order' AND revoked_at IS NULL").get())
       .toEqual({ total: 1 });
     expect(db.prepare("SELECT count(*) AS total FROM outbox WHERE event_type='email.send'").get())
       .toEqual({ total: 1 });

@@ -10,7 +10,8 @@ it('validates enrollment completion snapshots and timestamps at the SQLite bound
     db.exec(`
       INSERT INTO users(id,email,email_normalized,password_hash)
       VALUES ('user','user@example.com','user@example.com','hash'),
-             ('user-b','user-b@example.com','user-b@example.com','hash');
+             ('user-b','user-b@example.com','user-b@example.com','hash'),
+             ('user-c','user-c@example.com','user-c@example.com','hash');
       INSERT INTO courses(id,slug,author_id) VALUES ('course','course','user');
       INSERT INTO course_revisions(id,course_id,title,summary)
       VALUES ('revision','course','Course','Summary');
@@ -27,8 +28,13 @@ it('validates enrollment completion snapshots and timestamps at the SQLite bound
       INSERT INTO enrollments(
         id,user_id,course_id,revision_id,required_lesson_ids_snapshot,quiz_ids_snapshot
       ) VALUES ('quiz-enrollment','user-b','course','revision','["lesson"]','["quiz"]');
+      INSERT INTO enrollments(
+        id,user_id,course_id,revision_id,required_lesson_ids_snapshot,quiz_ids_snapshot
+      ) VALUES ('retained-enrollment','user-c','course','revision','["lesson"]','["quiz"]');
     `);
 
+    expect(() => db.prepare("DELETE FROM enrollments WHERE id='retained-enrollment'").run())
+      .toThrow(/enrollment history is retained/);
     expect(() => db.prepare(`INSERT INTO enrollments(
       id,user_id,course_id,revision_id,completed_at,required_lesson_ids_snapshot,quiz_ids_snapshot
     ) VALUES('invalid-time','user','course','revision','not-a-time','["lesson"]','["quiz"]')`).run())

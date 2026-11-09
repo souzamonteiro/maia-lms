@@ -990,6 +990,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   - [x] Prevent deletion of completed lesson progress records so recorded lesson
     completion evidence remains immutable (migration 189; direct SQL deletion is
     rejected while incomplete progress remains removable).
+  - [x] Retain enrollment history against direct SQL deletion (migration 190);
+    payment recovery tests now model revocation/reactivation without erasing rows.
+    This does not define the still-pending privacy retention/deletion policy.
   Partial: migrations 017–018 prevent progress, enrollment-revision, and
   lesson-module changes from crossing the enrollment's assigned revision, and
   constrain progress positions to non-negative integers. Migration 019 ensures

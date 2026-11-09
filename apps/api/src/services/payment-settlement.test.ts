@@ -43,11 +43,13 @@ it('matches the immutable provider order snapshot and grants an entitlement exac
     expect(db.prepare("SELECT payload FROM outbox WHERE event_type='email.send'").get())
       .toMatchObject({ payload: expect.stringContaining('Pagamento confirmado') });
 
-    db.exec('DELETE FROM entitlements; DELETE FROM enrollments;');
+    db.prepare("UPDATE entitlements SET revoked_at=datetime('now') WHERE source_type='order' AND source_id=?")
+      .run('order');
+    db.prepare("UPDATE enrollments SET state='revoked' WHERE user_id='buyer' AND course_id='course'").run();
     expect(applyProviderPayment(db, 'mercado_pago', payment).kind).toBe('paid');
     expect(db.prepare('SELECT count(*) AS total FROM enrollments WHERE course_id=?').get('course'))
       .toEqual({ total: 1 });
-    expect(db.prepare("SELECT count(*) AS total FROM entitlements WHERE source_type='order'").get())
+    expect(db.prepare("SELECT count(*) AS total FROM entitlements WHERE source_type='order' AND revoked_at IS NULL").get())
       .toEqual({ total: 1 });
     expect(db.prepare("SELECT count(*) AS total FROM outbox WHERE event_type='email.send'").get())
       .toEqual({ total: 1 });

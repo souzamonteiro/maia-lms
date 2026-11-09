@@ -8,8 +8,8 @@ it('keeps video upload timestamps parseable at the SQLite boundary', () => {
     runMigrations(db);
     expect(db.prepare('SELECT version FROM schema_migrations ORDER BY rowid DESC LIMIT 2').all())
       .toEqual([
+        { version: '190_enrollment_history_retained' },
         { version: '189_completed_lesson_progress_immutable' },
-        { version: '188_enrollment_snapshot_insert_integrity' },
       ]);
     db.prepare(`INSERT INTO users(id,email,email_normalized,password_hash)
       VALUES('owner','owner@example.com','owner@example.com','hash')`).run();
