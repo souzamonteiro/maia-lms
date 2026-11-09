@@ -30,9 +30,10 @@ it('keeps assessment attempts and answers within their enrollment, revision and 
             UPDATE quizzes SET pass_percent=80 WHERE id='quiz-b';
             UPDATE questions SET prompt='Edited before any attempt' WHERE id='question-b';
       UPDATE quizzes SET time_limit_seconds=300 WHERE id='quiz-b';
-                  INSERT INTO enrollments(id,user_id,course_id,revision_id)
-                  VALUES ('enrollment-a','user','course-a','revision-a'),
-                    ('enrollment-b','user','course-b','revision-b');
+                  INSERT INTO enrollments(
+                    id,user_id,course_id,revision_id,required_lesson_ids_snapshot,quiz_ids_snapshot
+                  ) VALUES ('enrollment-a','user','course-a','revision-a','[]','["quiz-a"]'),
+                    ('enrollment-b','user','course-b','revision-b','["lesson-b"]','["quiz-b","quiz-b-transfer"]');
       INSERT INTO attempts(id,enrollment_id,quiz_id,revision_id,seed)
       VALUES ('attempt-a','enrollment-a','quiz-a','revision-a','seed');
     `);

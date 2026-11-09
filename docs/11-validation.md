@@ -3677,16 +3677,20 @@ consistent with the service's count-based completion evaluation.
 Migration 187 also requires both snapshots to exactly match the mandatory lessons
 and quizzes in the enrollment's immutable revision, preventing a forged snapshot
 from omitting requirements or substituting an optional lesson.
+Migration 188 applies the same checks to new enrollment inserts, including
+non-text/blank and duplicate IDs, so callers cannot bypass the completion guard
+by supplying a forged snapshot when creating the row.
 
 Validation:
-- All database integrity tests: 101/101 passed, including duplicate lesson and
+- Database integrity and publication tests: 104/104 passed, including duplicate lesson and
   quiz snapshot rejection, omitted required lesson/quiz rejection, and optional
-  lesson substitution rejection.
+  lesson substitution rejection on both insert and completion.
 - Focused completion, certificate eligibility, certificate lifecycle, payment,
   webhook, and PDF generation tests: 8/8 passed. The previously failing API app
   and payment reconciliation/settlement tests also pass (69/69).
 - `npm run build`, `npm run lint`, and `git diff --check`: passed.
-- Latest full suite: 316 passed, 0 failed, 3 skipped across 113 test files.
+- Latest full suite: 316 passed, 0 failed, 3 skipped across 113 test files,
+  including migration 188 and updated fixture snapshots.
   Corrected stale test fixtures to define the instructor profile input and align
   published course locale/access mode with each revision.
 

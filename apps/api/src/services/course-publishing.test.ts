@@ -88,12 +88,14 @@ it('queues a localized update only for verified learners with active course acce
       UPDATE courses SET status='PUBLISHED',published_revision_id='old-revision',locale='en'
         WHERE id='course';
       UPDATE courses SET current_revision_id='new-revision' WHERE id='course';
-      INSERT INTO enrollments(id,user_id,course_id,revision_id) VALUES
-        ('active-enrollment','learner','course','old-revision'),
-        ('english-enrollment','english-learner','course','old-revision'),
-        ('portuguese-enrollment','portuguese-learner','course','old-revision'),
-        ('unverified-enrollment','unverified','course','old-revision'),
-        ('suspended-enrollment','suspended','course','old-revision');
+      INSERT INTO enrollments(
+        id,user_id,course_id,revision_id,required_lesson_ids_snapshot,quiz_ids_snapshot
+      ) VALUES
+        ('active-enrollment','learner','course','old-revision','["old-lesson"]','[]'),
+        ('english-enrollment','english-learner','course','old-revision','["old-lesson"]','[]'),
+        ('portuguese-enrollment','portuguese-learner','course','old-revision','["old-lesson"]','[]'),
+        ('unverified-enrollment','unverified','course','old-revision','["old-lesson"]','[]'),
+        ('suspended-enrollment','suspended','course','old-revision','["old-lesson"]','[]');
       INSERT INTO entitlements(id,enrollment_id,source_type,starts_at) VALUES
         ('active-entitlement','active-enrollment','free','2029-01-01T00:00:00.000Z'),
         ('english-entitlement','english-enrollment','free','2029-01-01T00:00:00.000Z'),

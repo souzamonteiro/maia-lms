@@ -24,16 +24,19 @@ it('enforces lesson progress revision and position invariants', () => {
       VALUES ('lesson-a','module-a',0,'Lesson A'),
              ('lesson-a2','module-a',1,'Lesson A2'),
              ('lesson-b','module-b',0,'Lesson B');
-      INSERT INTO enrollments(id,user_id,course_id,revision_id)
-      VALUES ('enrollment-a','user','course-a','revision-a'),
-             ('enrollment-a2','user-b','course-a','revision-a'),
-             ('enrollment-b','user','course-b','revision-b');
+      INSERT INTO enrollments(
+        id,user_id,course_id,revision_id,required_lesson_ids_snapshot,quiz_ids_snapshot
+      ) VALUES ('enrollment-a','user','course-a','revision-a','["lesson-a","lesson-a2"]','[]'),
+             ('enrollment-a2','user-b','course-a','revision-a','["lesson-a","lesson-a2"]','[]'),
+             ('enrollment-b','user','course-b','revision-b','["lesson-b"]','[]');
     `);
 
     expect(() =>
       db
-        .prepare('INSERT INTO enrollments(id,user_id,course_id,revision_id) VALUES(?,?,?,?)')
-        .run('invalid-enrollment', 'user', 'course-a', 'revision-b'),
+        .prepare(`INSERT INTO enrollments(
+          id,user_id,course_id,revision_id,required_lesson_ids_snapshot,quiz_ids_snapshot
+        ) VALUES(?,?,?,?,?,?)`)
+        .run('invalid-enrollment', 'user', 'course-a', 'revision-b', '["lesson-b"]', '[]'),
     ).toThrow(/enrollment course revision mismatch/);
     expect(() =>
       db.prepare('UPDATE enrollments SET course_id=? WHERE id=?').run('course-b', 'enrollment-a'),

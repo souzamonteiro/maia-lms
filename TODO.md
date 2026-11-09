@@ -984,6 +984,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   - [x] Require lesson and quiz completion snapshots to exactly match the
     enrollment's revision requirements before completion (migration 187; omitted
     mandatory lessons/quizzes and substituted optional lessons are rejected).
+  - [x] Enforce exact, valid revision requirement snapshots when inserting an
+    enrollment (migration 188; direct SQL cannot omit, duplicate, or substitute
+    captured lesson/quiz requirements).
   Partial: migrations 017–018 prevent progress, enrollment-revision, and
   lesson-module changes from crossing the enrollment's assigned revision, and
   constrain progress positions to non-negative integers. Migration 019 ensures
