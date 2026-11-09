@@ -3687,6 +3687,9 @@ Migration 190 prevents deleting enrollment records, including rows that have
 not yet accumulated dependent progress or entitlement records. Payment settlement,
 reconciliation, and webhook recovery tests now simulate revoked access and
 reactivation without deleting historical enrollment or entitlement rows.
+Migration 191 prevents deleting entitlement grants, preserving both active and
+revoked access records; revocation and replacement grants remain the supported
+history-preserving lifecycle.
 
 Earlier focused validation:
 - Database integrity and publication tests: 104/104 passed, including duplicate lesson and
@@ -3701,22 +3704,25 @@ Earlier focused validation:
   Corrected stale test fixtures to define the instructor profile input and align
   published course locale/access mode with each revision.
 
-Validation for migrations 189–190:
+Validation for migrations 189–191:
 - Focused enrollment completion integrity test: 1/1 passed. It verifies deletion
   of completed progress is rejected and deletion of incomplete progress remains
   allowed.
 - Focused payment settlement, reconciliation, webhook, and migration-version
-  tests: 10/10 passed. They verify enrollment deletion is rejected and paid access
-  recovery reactivates retained enrollment history with a new active entitlement.
+  tests: 11/11 passed. They verify enrollment and entitlement deletion are rejected
+  and paid access recovery reactivates retained enrollment history with a new
+  active entitlement.
 - Full suite, run serially after two tests exceeded the timeout in the parallel
-  run: 316 passed, 0 failed, 3 skipped across 113 test files.
+  run before migration 190: 316 passed, 0 failed, 3 skipped across 113 test files.
+- After migrations 190–191, the full serial suite again passed: 316 passed,
+  0 failed, 3 skipped across 113 test files.
 - `npm run build`, `npm run lint`, and `git diff --check`: passed.
 
 This is a local schema and test change only. No deployment, host, or
 running-instance changes were performed. Firefox/WebKit and physical-device
-qualification remain external and pending. Migration 190 preserves rows until a
-retention workflow is defined; it does not resolve the open privacy/legal policy
-or implement account deletion/anonymization.
+qualification remain external and pending. Migrations 190–191 preserve enrollment
+and entitlement rows until a retention workflow is defined; they do not resolve
+the open privacy/legal policy or implement account deletion/anonymization.
 
 ## HLS initialization and Firefox video follow-up — November 8, 2026
 

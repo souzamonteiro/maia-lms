@@ -993,6 +993,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   - [x] Retain enrollment history against direct SQL deletion (migration 190);
     payment recovery tests now model revocation/reactivation without erasing rows.
     This does not define the still-pending privacy retention/deletion policy.
+  - [x] Retain entitlement grant/revocation history against direct SQL deletion
+    (migration 191); access changes remain modeled through irreversible revocation
+    and new grant rows.
   Partial: migrations 017–018 prevent progress, enrollment-revision, and
   lesson-module changes from crossing the enrollment's assigned revision, and
   constrain progress positions to non-negative integers. Migration 019 ensures

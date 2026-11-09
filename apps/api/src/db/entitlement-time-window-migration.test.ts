@@ -16,12 +16,16 @@ it('requires parseable entitlement start times and strictly later optional end t
       INSERT INTO enrollments(id,user_id,course_id,revision_id)
       VALUES('enrollment','user','course','revision');
     `);
+    expect(() => db.prepare("DELETE FROM enrollments WHERE id='enrollment'").run())
+      .toThrow(/enrollment history is retained/);
 
     const insert = db.prepare(
       'INSERT INTO entitlements(id,enrollment_id,source_type,starts_at,ends_at) VALUES(?,?,?,?,?)',
     );
     insert.run('open-ended', 'enrollment', 'free', '2026-10-04T10:00:00.000Z', null);
     insert.run('bounded', 'enrollment', 'admin', '2026-10-04T10:00:00.000Z', '2026-10-04T11:00:00.000Z');
+    expect(() => db.prepare("DELETE FROM entitlements WHERE id='open-ended'").run())
+      .toThrow(/entitlement history is retained/);
     expect(() => db.prepare(`UPDATE entitlements SET revoked_at='not-a-date'
       WHERE id='bounded'`).run()).toThrow(/entitlement record timestamp is invalid/);
     expect(() => db.prepare(`UPDATE entitlements SET created_at='not-a-date'
