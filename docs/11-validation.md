@@ -3758,6 +3758,10 @@ with a clean scanner and verifies that it reaches READY. This exercises the
 worker's recoverable processing path, not the HTTP retry endpoint; the MEDIA-02
 host scanner/signature qualification remains pending.
 
+The HTTP retry route now performs a conditional FAILED-to-QUEUED update and
+returns a conflict if the row was concurrently changed. Its API test simulates
+the lost-update window and confirms the failed row is not reported as requeued.
+
 Earlier focused validation:
 - Database integrity and publication tests: 104/104 passed, including duplicate lesson and
   quiz snapshot rejection, omitted required lesson/quiz rejection, and optional

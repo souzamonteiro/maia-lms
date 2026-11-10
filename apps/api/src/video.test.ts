@@ -191,6 +191,44 @@ it('retries failed media jobs and resets persisted processing progress', async (
   expect((await request(`/api/v1/admin/videos/${id}/retry`, 'POST', {}, author.cookie)).data.code)
     .toBe('UPLOAD_RETRY_STATE_INVALID');
 });
+it('does not report a successful retry when the failed state changes during the update', async () => {
+  const author = await account('retry-race@video.test', 'author');
+  const course = (await request('/api/v1/admin/courses', 'POST', draft('retry-race'), author.cookie))
+    .data;
+  const upload = await request('/api/v1/admin/videos', 'POST', {
+    courseId: course.id,
+    filename: 'movie.mp4',
+    size: 3,
+  }, author.cookie);
+  const id = upload.data.id as string;
+  db.prepare(`INSERT INTO video_chunks(upload_id,offset,size,storage_key,sha256)
+    VALUES(?,0,?,?,?)`).run(id, 3, `uploads/${id}/chunk`, 'b'.repeat(64));
+  db.prepare("UPDATE video_uploads SET status='QUEUED' WHERE id=?").run(id);
+  db.prepare("UPDATE video_uploads SET status='PROCESSING' WHERE id=?").run(id);
+  db.prepare(
+    "UPDATE video_uploads SET status='FAILED',processing_progress=45,error='FILE_SCAN_FAILED' WHERE id=?",
+  ).run(id);
+  db.exec(`
+    CREATE TEMP TRIGGER simulate_retry_state_race
+    BEFORE UPDATE OF status ON video_uploads
+    WHEN OLD.error='FILE_SCAN_FAILED' AND NEW.status='QUEUED'
+    BEGIN
+      SELECT RAISE(IGNORE);
+    END
+  `);
+
+  try {
+    const response = await request(`/api/v1/admin/videos/${id}/retry`, 'POST', {}, author.cookie);
+    expect(response.status).toBe(409);
+    expect(response.data.code).toBe('UPLOAD_RETRY_STATE_INVALID');
+    expect(db.prepare('SELECT status,error FROM video_uploads WHERE id=?').get(id)).toEqual({
+      status: 'FAILED',
+      error: 'FILE_SCAN_FAILED',
+    });
+  } finally {
+    db.exec('DROP TRIGGER simulate_retry_state_race');
+  }
+});
 it('reports full storage as recoverable and leaves the upload offset unchanged', async () => {
   const author = await account('disk-full@video.test', 'author');
   const course = (await request('/api/v1/admin/courses', 'POST', draft('disk-full'), author.cookie))

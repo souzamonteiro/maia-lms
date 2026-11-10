@@ -470,6 +470,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   worker host has ClamAV enabled and its scan behavior is qualified.
   A local worker integration test also verifies that a scanner failure keeps the
   attachment unavailable and that retry after scanner recovery reaches READY.
+  The retry endpoint uses a conditional FAILED-to-QUEUED update and reports a
+  conflict if another worker/process changed the state first.
   The operator preparation/qualification sequence is documented in
   [the readiness checklist](docs/16-operator-readiness-checklists.md#1-clamav-attachment-scanning).
   The isolated E2E server now always starts its temporary worker so image/attachment

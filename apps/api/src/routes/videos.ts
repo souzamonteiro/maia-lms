@@ -205,8 +205,13 @@ export function videosRouter(
   router.post(`${endpoint}/:id/retry`, requireRole('author', 'admin'), (req, res) => {
     const v = owned(req.params.id, req.session.userId, req.session.role);
     if (v.status !== 'FAILED') throw new AppError(409, 'Video is not failed', 'UPLOAD_RETRY_STATE_INVALID');
-    db.prepare("UPDATE video_uploads SET status='QUEUED',processing_progress=0,error=NULL WHERE id=?")
-      .run(v.id);
+    const retried = db.prepare(
+      `UPDATE video_uploads
+       SET status='QUEUED',processing_progress=0,error=NULL
+       WHERE id=? AND status='FAILED'`,
+    ).run(v.id);
+    if (!retried.changes)
+      throw new AppError(409, 'Media job state changed', 'UPLOAD_RETRY_STATE_INVALID');
     res.json({ status: 'QUEUED' });
   });
   router.post(`${endpoint}/:id/cancel`, requireRole('author', 'admin'), (req, res, next) => {
