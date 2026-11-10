@@ -55,3 +55,74 @@ test('media library announces load failures and recovers with keyboard retry', a
   await expect(list.getByRole('alert')).toHaveCount(0);
   await expect(page.locator('#media-summary')).toContainText('0 media items');
 });
+
+test('media editor refreshes stale retry state and prevents duplicate retries', async ({ page }) => {
+  await page.goto('/auth/login');
+  const result = await page.evaluate(async () => {
+    const { mountVideoEditor } = await import('/static/video-editor.js');
+    const root = document.createElement('div');
+    document.body.append(root);
+    let status = 'FAILED';
+    let listCalls = 0;
+    let retryCalls = 0;
+    const notifications: string[] = [];
+    const api = async (path: string, method = 'GET') => {
+      if (path === '/admin/videos?courseId=course') {
+        listCalls += 1;
+        return [{
+          id: 'media-1',
+          filename: 'sample.mp4',
+          status,
+          error: status === 'FAILED' ? 'FILE_SCAN_FAILED' : null,
+        }];
+      }
+      if (path === '/admin/videos/media-1/retry' && method === 'POST') {
+        retryCalls += 1;
+        await new Promise(resolve => setTimeout(resolve, 50));
+        status = 'QUEUED';
+        const error = new Error('Only failed uploads can be retried.');
+        Object.assign(error, { code: 'UPLOAD_RETRY_STATE_INVALID', status: 409 });
+        throw error;
+      }
+      throw new Error(`Unexpected media request: ${method} ${path}`);
+    };
+    mountVideoEditor(root, {
+      courseId: 'course',
+      videoId: 'media-1',
+      api,
+      t: key => key,
+      e: value => value,
+      notify: error => notifications.push(error.message),
+      onChange: () => {},
+    });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const retry = root.querySelector<HTMLButtonElement>('.retry-video')!;
+    const enabledBeforeRequest = !retry.disabled;
+    retry.click();
+    const disabledDuringRequest = retry.disabled;
+    retry.click();
+    await new Promise(resolve => setTimeout(resolve, 100));
+    const refreshedStatus = root.querySelector('.video-status')?.textContent;
+    const disabledAfterRefresh = retry.disabled;
+    root.remove();
+    return {
+      enabledBeforeRequest,
+      disabledDuringRequest,
+      retryCalls,
+      listCalls,
+      refreshedStatus,
+      disabledAfterRefresh,
+      notifications,
+    };
+  });
+
+  expect(result).toEqual({
+    enabledBeforeRequest: true,
+    disabledDuringRequest: true,
+    retryCalls: 1,
+    listCalls: 2,
+    refreshedStatus: 'videoQUEUED',
+    disabledAfterRefresh: true,
+    notifications: ['Only failed uploads can be retried.'],
+  });
+});

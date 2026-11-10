@@ -31,11 +31,14 @@ export function mountVideoEditor(
   scanError.setAttribute('role', 'status');
   status.after(scanError);
   let videos = [];
+  let paused = false,
+    busy = false,
+    retrying = false;
   function updateDuration() {
     duration.hidden = !videoId;
     const selected = videos.find(video => video.id === videoId);
     const retry = root.querySelector('.retry-video');
-    if (retry) retry.disabled = selected?.status !== 'FAILED';
+    if (retry) retry.disabled = retrying || selected?.status !== 'FAILED';
     if (!busy && selected) {
       if (selected.status === 'PROCESSING') {
         progress.value = selected.processing_progress ?? 0;
@@ -56,8 +59,6 @@ export function mountVideoEditor(
     const value = selected?.status === 'READY' ? formatVideoDuration(selected.duration) : null;
     duration.textContent = value ? `${t('videoDuration')}: ${value}` : t('videoDurationPending');
   }
-  let paused = false,
-    busy = false;
   async function refresh() {
     const rows = await api(`${endpoint}?courseId=${courseId}`);
     videos = rows;
@@ -77,11 +78,24 @@ export function mountVideoEditor(
   };
   root.querySelector('.refresh-videos').onclick = () => refresh().catch(notify);
   root.querySelector('.retry-video').onclick = async () => {
+    if (!videoId || retrying) return;
+    retrying = true;
+    updateDuration();
     try {
-      if (videoId) await api(`${endpoint}/${videoId}/retry`, 'POST');
+      await api(`${endpoint}/${videoId}/retry`, 'POST');
       await refresh();
     } catch (error) {
+      if (error.code === 'UPLOAD_RETRY_STATE_INVALID') {
+        try {
+          await refresh();
+        } catch (refreshError) {
+          notify(refreshError);
+        }
+      }
       notify(error);
+    } finally {
+      retrying = false;
+      updateDuration();
     }
   };
   root.querySelector('.pause-video').onclick = () => {

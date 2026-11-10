@@ -3761,6 +3761,9 @@ host scanner/signature qualification remains pending.
 The HTTP retry route now performs a conditional FAILED-to-QUEUED update and
 returns a conflict if the row was concurrently changed. Its API test simulates
 the lost-update window and confirms the failed row is not reported as requeued.
+The media editor disables retry while a request is pending and refreshes its
+status after this conflict. The focused Chromium media-editor test verifies
+duplicate clicks are prevented and a stale FAILED display changes to QUEUED.
 
 ## ClamAV signature freshness enforcement — November 10, 2026
 
