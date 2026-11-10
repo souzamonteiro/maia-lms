@@ -22,6 +22,7 @@ const configKeys = [
   'MAIL_FROM',
   'PAYMENT_PROVIDER',
   'WORKER_CONCURRENCY',
+  'ATTACHMENT_SCAN_MODE',
 ];
 
 function fail(message: string): void {
@@ -55,6 +56,8 @@ if (!envFileArgument || args.length > 2) {
 
     const config = loadConfig();
     const issues = validatePilotProductionConfig(config, explicitlyConfigured);
+    if (process.env.ATTACHMENT_SCAN_MODE !== 'clamav')
+      issues.push('ATTACHMENT_SCAN_MODE must be explicitly set to clamav for production attachment uploads');
     if (issues.length) {
       fail(issues.join('\n  - '));
     } else {

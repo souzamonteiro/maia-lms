@@ -81,6 +81,9 @@ already READY.
    and confirm it is healthy and can scan a clean attachment. Do not switch a
    production worker to `disabled` as a workaround: production intentionally
    fails closed when scanning is disabled.
+   Run `npm run config:check -- --env-file /etc/maia-lms/app.env` before the
+   restart. This preflight rejects a missing or disabled scanner setting, but
+   does not qualify the installed scanner or its signatures.
 
 ### Completion evidence
 

@@ -527,7 +527,10 @@ directory based only on its age or current course pointer.
 Before enabling, install the scanner and current signatures in that same runtime
 and verify access as the service user. Production fails closed if scanning is
 disabled or if ClamAV is missing/failing; development/test may use `disabled` for
-local work. ClamAV also rejects virus databases older than seven days.
+local work. `npm run config:check` also requires the production environment file
+to explicitly set `ATTACHMENT_SCAN_MODE=clamav`. This is a static setting check;
+it does not verify the scanner binary, signature freshness, service-user access,
+or real scan outcomes. ClamAV also rejects virus databases older than seven days.
 Existing READY files are not rescanned automatically.
 Deployment steps and limits are in [materials](14-materials.md#optional-malware-inspection).
 Use the [operator readiness checklist](16-operator-readiness-checklists.md#1-clamav-attachment-scanning)

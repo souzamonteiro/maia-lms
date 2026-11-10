@@ -479,6 +479,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   The isolated E2E server now always starts its temporary worker so image/attachment
   workflows run even when real-video conversion tests are skipped; this does not
   change the production scanner policy or qualify host scanning.
+  The production configuration preflight now requires `ATTACHMENT_SCAN_MODE=clamav`;
+  this catches omitted/disabled production configuration locally, but does not
+  qualify the installed scanner, signatures, or host service account.
 - [x] **MEDIA-03 — FFprobe/FFmpeg processing (local implementation).**
   Validate containers/streams, generate compatible playback MP4 and adaptive HLS,
   poster, duration, and metadata; CPU/memory/time limits and subprocesses without

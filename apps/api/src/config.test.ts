@@ -121,6 +121,7 @@ describe('payment environment configuration', () => {
         'MAIL_TRANSPORT=smtps://mailer.example.test:465',
         'MAIL_FROM=noreply@example.test',
         'PAYMENTS_CHECKOUT_ENABLED=false',
+        'ATTACHMENT_SCAN_MODE=clamav',
       ];
       fs.writeFileSync(envFile, `${values.join('\n')}\n`, { mode: 0o600 });
       try {
@@ -131,6 +132,46 @@ describe('payment environment configuration', () => {
         );
         expect(output).toContain('passed static checks');
         expect(output).not.toContain(secret);
+      } finally {
+        fs.rmSync(directory, { recursive: true, force: true });
+      }
+    });
+
+    it('rejects a protected production configuration without attachment scanning enabled', () => {
+      const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'maia-config-preflight-'));
+      const envFile = path.join(directory, 'app.env');
+      const values = [
+        'NODE_ENV=production',
+        'HOST=10.77.0.2',
+        'TRUST_PROXY=10.77.0.1',
+        'PORT=3200',
+        'DATABASE_URL=/var/lib/maia-lms/maia-lms.db',
+        'SESSION_SECRET=preflight-session-secret-value-at-least-32-characters',
+        'PUBLIC_BASE_URL=https://learn.example.test',
+        'STORAGE_ROOT=/var/lib/maia-lms/storage',
+        'MEDIA_SIGNING_KEY=preflight-media-signing-key-at-least-32-characters',
+        'MAIL_TRANSPORT=smtps://mailer.example.test:465',
+        'MAIL_FROM=noreply@example.test',
+        'PAYMENTS_CHECKOUT_ENABLED=false',
+      ];
+      fs.writeFileSync(envFile, `${values.join('\n')}\n`, { mode: 0o600 });
+      try {
+        let output = '';
+        try {
+          execFileSync(
+            process.execPath,
+            ['--import', 'tsx', path.resolve('scripts/check-production-config.ts'), '--env-file', envFile],
+            { encoding: 'utf8', env: { PATH: process.env.PATH }, stdio: 'pipe' },
+          );
+        } catch (error) {
+          output = String(error);
+          if (error && typeof error === 'object' && 'stderr' in error)
+            output += String(error.stderr);
+        }
+        expect(output).toContain(
+          'ATTACHMENT_SCAN_MODE must be explicitly set to clamav for production attachment uploads',
+        );
+        expect(output).not.toContain('preflight-session-secret-value');
       } finally {
         fs.rmSync(directory, { recursive: true, force: true });
       }
@@ -178,6 +219,7 @@ describe('payment environment configuration', () => {
         'MAIL_FROM=noreply@example.test',
         'PAYMENT_PROVIDER=mercado_pago',
         'MP_ENVIRONMENT=production',
+        'ATTACHMENT_SCAN_MODE=disabled',
         'MP_ACCESS_TOKEN=APP_USR-production-token',
         'MP_WEBHOOK_SECRET=private-webhook-secret',
         'MP_SELLER_ID=private-seller-id',
@@ -198,6 +240,9 @@ describe('payment environment configuration', () => {
             output += String(error.stderr);
         }
         expect(output).toContain('PAYMENTS_CHECKOUT_ENABLED must be false for a free pilot');
+        expect(output).toContain(
+          'ATTACHMENT_SCAN_MODE must be explicitly set to clamav for production attachment uploads',
+        );
         expect(output).not.toContain(secret);
       } finally {
         fs.rmSync(directory, { recursive: true, force: true });

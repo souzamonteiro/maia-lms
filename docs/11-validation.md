@@ -1573,6 +1573,16 @@ ClamAV clean/malware/error results, Markdown sanitization, and webhook signature
 replay handling. The full SEC-01 hostile-input matrix and host qualification remain
 open; ClamAV was not installed or run against real signatures.
 
+## Attachment scanner production preflight — November 10, 2026
+
+The static production configuration check now requires
+`ATTACHMENT_SCAN_MODE=clamav`, rejecting a missing or disabled value before a
+production configuration is accepted. Focused API configuration tests cover a
+valid scanner-enabled environment and rejection when the setting is absent. This
+check does not verify ClamAV installation, signature freshness, service-account
+access, or real clean/EICAR/failure outcomes. MEDIA-02 remains open pending the
+operator's host and staging qualification; no host was accessed or changed.
+
 ## Privacy export and deletion requests — October 20, 2026
 
 Migration 091 stores minimal, idempotent account-deletion requests. Authenticated
