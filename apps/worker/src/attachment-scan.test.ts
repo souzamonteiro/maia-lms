@@ -48,6 +48,19 @@ it('publishes attachments only after a clean scanner exit and keeps rejected out
         expect(row.error).toBe(code === 1 ? 'FILE_MALWARE' : 'FILE_SCAN_FAILED');
         expect(row.output_key).toBeNull();
         expect(fs.existsSync(path.join(root, 'storage', 'videos', id))).toBe(false);
+        if (code === 2) {
+          fs.writeFileSync(path.join(bin, 'clamscan'), '#!/bin/sh\nexit 0\n', { mode: 0o700 });
+          db.prepare(
+            "UPDATE video_uploads SET status='QUEUED',processing_progress=0,error=NULL WHERE id=?",
+          ).run(id);
+          await processVideo(db, path.join(root, 'storage'));
+          const retried = db
+            .prepare('SELECT status,error,output_key FROM video_uploads WHERE id=?')
+            .get(id) as { status: string; error: string | null; output_key: string | null };
+          expect(retried.status).toBe('READY');
+          expect(retried.error).toBeNull();
+          expect((await store.readAuthorized(retried.output_key!)).toString()).toBe('text');
+        }
       }
     }
     fs.unlinkSync(path.join(bin, 'clamscan'));

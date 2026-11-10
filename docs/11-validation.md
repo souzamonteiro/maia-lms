@@ -3750,6 +3750,14 @@ Local validation for migration 206:
 No production migration, deployment, host change, or external qualification was
 performed.
 
+## Attachment scan retry recovery — November 10, 2026
+
+Local worker validation now simulates ClamAV failure, confirms the attachment
+remains FAILED without a published output, re-queues the job, then retries it
+with a clean scanner and verifies that it reaches READY. This exercises the
+worker's recoverable processing path, not the HTTP retry endpoint; the MEDIA-02
+host scanner/signature qualification remains pending.
+
 Earlier focused validation:
 - Database integrity and publication tests: 104/104 passed, including duplicate lesson and
   quiz snapshot rejection, omitted required lesson/quiz rejection, and optional

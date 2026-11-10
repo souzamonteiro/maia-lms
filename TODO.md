@@ -468,6 +468,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   ClamAV path is fail-closed when enabled and tested with scanner outcomes, but
   `ATTACHMENT_SCAN_MODE` defaults to `disabled`. Keep this item open until the real
   worker host has ClamAV enabled and its scan behavior is qualified.
+  A local worker integration test also verifies that a scanner failure keeps the
+  attachment unavailable and that retry after scanner recovery reaches READY.
   The operator preparation/qualification sequence is documented in
   [the readiness checklist](docs/16-operator-readiness-checklists.md#1-clamav-attachment-scanning).
   The isolated E2E server now always starts its temporary worker so image/attachment
