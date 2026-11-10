@@ -268,6 +268,9 @@ it('keeps assessment attempts and answers within their enrollment, revision and 
       db.prepare('UPDATE attempt_answers SET awarded_points=? WHERE attempt_id=?').run(102, 'attempt-a'),
     ).toThrow(/invalid awarded assessment points/);
     expect(() =>
+      db.prepare('UPDATE attempt_answers SET awarded_points=? WHERE attempt_id=?').run(2, 'attempt-a'),
+    ).toThrow(/invalid awarded assessment points/);
+    expect(() =>
       db.prepare('UPDATE attempt_answers SET awarded_points=? WHERE attempt_id=?').run(-1, 'attempt-a'),
     ).toThrow(/invalid awarded assessment points/);
     db.prepare('UPDATE attempt_answers SET awarded_points=? WHERE attempt_id=?').run(101, 'attempt-a');

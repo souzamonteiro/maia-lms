@@ -6,8 +6,9 @@ it('keeps upload cursors contiguous with stored chunks and permits terminal clea
   const db = new Database(':memory:');
   try {
     runMigrations(db);
-    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY rowid DESC LIMIT 10').all())
+    expect(db.prepare('SELECT version FROM schema_migrations ORDER BY rowid DESC LIMIT 11').all())
       .toEqual([
+        { version: '205_assessment_answer_points_integrity' },
         { version: '204_assessment_question_text_integrity' },
         { version: '203_assessment_question_count_limit' },
         { version: '202_assessment_question_choice_integrity' },
