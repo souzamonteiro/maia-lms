@@ -3730,6 +3730,25 @@ Migration 204 rejects blank/whitespace question prompts and prompts or
 explanations longer than 5,000 SQLite characters on insert/update.
 Migration 205 limits awarded points on each answer row to zero (ungraded/open
 answer) or the question's full point value, matching API scoring behavior.
+Migration 206 aligns the direct-SQL assessment text limits with the API's
+JavaScript UTF-16 code-unit counting and Unicode trimming for prompts,
+explanations, choice keys/text, and correct keys. This also counts text after
+embedded NUL characters instead of allowing SQLite's text-length behavior to
+hide a suffix. SQLite insert/update tests exercise supplementary-plane
+characters at and beyond limits, Unicode-only whitespace, and both write paths.
+
+## Assessment text limits — November 10, 2026
+
+Local validation for migration 206:
+
+- The focused assessment integrity and eight migration-version tests passed
+  (9/9), covering insert/update limits, exact UTF-16 boundaries, Unicode
+  whitespace, and text after embedded NUL.
+- `npm test -- --maxWorkers=2`: 316 passed, 3 skipped across 113 files.
+- `npm run build`, `npm run lint`, and `git diff --check` passed.
+
+No production migration, deployment, host change, or external qualification was
+performed.
 
 Earlier focused validation:
 - Database integrity and publication tests: 104/104 passed, including duplicate lesson and

@@ -47,7 +47,14 @@ it('keeps assessment attempts and answers within their enrollment, revision and 
     const addQuestion = db.prepare(
       'INSERT INTO questions(id,quiz_id,prompt,choices_json,correct_choice_keys,sort_order) VALUES(?,?,?,?,?,?)',
     );
-    for (const invalidPrompt of ['', '   ', 'x'.repeat(5001)]) {
+    for (const invalidPrompt of [
+      '',
+      '   ',
+      '\u2003',
+      ' Prompt ',
+      'x'.repeat(5001),
+      '😀'.repeat(2501),
+    ]) {
       expect(() =>
         addQuestion.run(
           `invalid-prompt-${invalidPrompt.length}`,
@@ -59,13 +66,40 @@ it('keeps assessment attempts and answers within their enrollment, revision and 
         ),
       ).toThrow(/invalid assessment question text/);
     }
-    for (const invalidPrompt of ['', '   ', 'x'.repeat(5001)]) {
+    expect(() =>
+      addQuestion.run('unicode-prompt-boundary', 'quiz-b', '😀'.repeat(2500), '[]', '[]', 99),
+    ).not.toThrow();
+    db.prepare('DELETE FROM questions WHERE id=?').run('unicode-prompt-boundary');
+    for (const invalidPrompt of ['', '   ', '\u2003', ' Prompt ', 'x'.repeat(5001)]) {
       expect(() =>
         db.prepare('UPDATE questions SET prompt=? WHERE id=?').run(invalidPrompt, 'question-b'),
       ).toThrow(/invalid assessment question text/);
     }
     expect(() =>
+      db.prepare('UPDATE questions SET prompt=? WHERE id=?').run('\u2003', 'question-b'),
+    ).toThrow(/invalid assessment question text/);
+    expect(() =>
+      db.prepare('UPDATE questions SET prompt=? WHERE id=?').run('😀'.repeat(2501), 'question-b'),
+    ).toThrow(/invalid assessment question text/);
+    expect(() =>
+      db.prepare('UPDATE questions SET prompt=? WHERE id=?').run('😀'.repeat(2500), 'question-b'),
+    ).not.toThrow();
+    db.prepare('UPDATE questions SET prompt=? WHERE id=?').run('A valid prompt', 'question-b');
+    expect(() =>
       db.prepare('UPDATE questions SET explanation=? WHERE id=?').run('x'.repeat(5001), 'question-b'),
+    ).toThrow(/invalid assessment question text/);
+    expect(() =>
+      db
+        .prepare('UPDATE questions SET explanation=? WHERE id=?')
+        .run(' Explanation ', 'question-b'),
+    ).toThrow(/invalid assessment question text/);
+    expect(() =>
+      db
+        .prepare('UPDATE questions SET explanation=? WHERE id=?')
+        .run(`${'😀'.repeat(2501)}\u0000`, 'question-b'),
+    ).toThrow(/invalid assessment question text/);
+    expect(() =>
+      db.prepare('UPDATE questions SET explanation=? WHERE id=?').run('😀'.repeat(2501), 'question-b'),
     ).toThrow(/invalid assessment question text/);
     expect(() =>
       db.prepare('UPDATE questions SET explanation=? WHERE id=?').run('A useful explanation.', 'question-b'),
@@ -93,18 +127,51 @@ it('keeps assessment attempts and answers within their enrollment, revision and 
       '{"key":"A","text":"Choice A"}',
       '[{"key":1,"text":"Choice A"}]',
       '[{"key":"A","text":""}]',
+      JSON.stringify([{ key: 'A', text: '😀'.repeat(251) }]),
+      JSON.stringify([{ key: 'A', text: '\u2003' }]),
+      JSON.stringify([{ key: ' A', text: 'Choice A' }]),
       '[{"key":"A","text":"Choice A"},{"key":"A","text":"Duplicate"}]',
     ]) {
       expect(() =>
         db.prepare('UPDATE questions SET choices_json=? WHERE id=?').run(invalidChoices, 'question-b'),
       ).toThrow(/invalid assessment question choices/);
     }
+    expect(() =>
+      addQuestion.run(
+        'unicode-choice-overflow',
+        'quiz-b',
+        'Valid prompt',
+        JSON.stringify([{ key: 'A', text: '😀'.repeat(251) }]),
+        '["A"]',
+        99,
+      ),
+    ).toThrow(/invalid assessment question choices/);
+    expect(() =>
+      db.prepare('UPDATE questions SET choices_json=?,correct_choice_keys=? WHERE id=?').run(
+        JSON.stringify([{ key: '😀'.repeat(11), text: 'Choice A' }]),
+        JSON.stringify(['😀'.repeat(11)]),
+        'question-b',
+      ),
+    ).toThrow(/invalid assessment question choices/);
+    expect(() =>
+      db.prepare('UPDATE questions SET choices_json=?,correct_choice_keys=? WHERE id=?').run(
+        JSON.stringify([{ key: '😀'.repeat(10), text: '😀'.repeat(250) }]),
+        JSON.stringify(['😀'.repeat(10)]),
+        'question-b',
+      ),
+    ).not.toThrow();
+    db.prepare('UPDATE questions SET choices_json=?,correct_choice_keys=? WHERE id=?').run(
+      '[{"key":"A","text":"Choice A"},{"key":"B","text":"Choice B"}]',
+      '["A"]',
+      'question-b',
+    );
     for (const invalidCorrectKeys of [
       '{invalid-json',
       '{"key":"A"}',
       '[1]',
       '["unknown"]',
       '["A","A"]',
+      JSON.stringify(['😀'.repeat(11)]),
     ]) {
       expect(() =>
         db.prepare('UPDATE questions SET correct_choice_keys=? WHERE id=?').run(

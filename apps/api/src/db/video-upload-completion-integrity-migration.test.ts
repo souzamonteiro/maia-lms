@@ -8,6 +8,7 @@ it('allows processing states only after an upload reaches its declared size', ()
     runMigrations(db);
     expect(db.prepare('SELECT version FROM schema_migrations ORDER BY rowid DESC LIMIT 11').all())
       .toEqual([
+        { version: '206_assessment_text_utf16_integrity' },
         { version: '205_assessment_answer_points_integrity' },
         { version: '204_assessment_question_text_integrity' },
         { version: '203_assessment_question_count_limit' },
@@ -18,7 +19,6 @@ it('allows processing states only after an upload reaches its declared size', ()
         { version: '198_assessment_attempt_timestamp_integrity' },
         { version: '197_assessment_attempt_identity_immutable' },
         { version: '196_assessment_attempt_access_integrity' },
-        { version: '195_lesson_progress_access_integrity' },
       ]);
     db.prepare(`INSERT INTO users(id,email,email_normalized,password_hash)
       VALUES('owner','owner@example.com','owner@example.com','hash')`).run();
