@@ -25,6 +25,7 @@ export async function scanAttachment(file: string, signal: AbortSignal): Promise
       [
         '--no-summary',
         '--infected',
+        '--fail-if-cvd-older-than=7',
         '--alert-exceeds-max=yes',
         '--max-filesize=128M',
         '--max-scansize=512M',

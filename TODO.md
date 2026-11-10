@@ -467,7 +467,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   publishing normalized artifacts, and expires/cleans incomplete uploads. The
   ClamAV path is fail-closed when enabled and tested with scanner outcomes, but
   `ATTACHMENT_SCAN_MODE` defaults to `disabled`. Keep this item open until the real
-  worker host has ClamAV enabled and its scan behavior is qualified.
+  worker host has ClamAV enabled and its scan behavior is qualified. Enabled scans
+  now reject signature databases older than seven days.
   A local worker integration test also verifies that a scanner failure keeps the
   attachment unavailable and that retry after scanner recovery reaches READY.
   The retry endpoint uses a conditional FAILED-to-QUEUED update and reports a

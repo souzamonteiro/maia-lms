@@ -17,7 +17,9 @@ it('publishes attachments only after a clean scanner exit and keeps rejected out
       INSERT INTO courses(id,slug,author_id) VALUES('c','course','u');`);
     const bin = path.join(root, 'bin');
     fs.mkdirSync(bin);
+    const scanArgsPath = path.join(root, 'scanner-args');
     vi.stubEnv('PATH', bin);
+    vi.stubEnv('CLAMSCAN_ARGS_PATH', scanArgsPath);
     vi.stubEnv('ATTACHMENT_SCAN_MODE', 'clamav');
     const store = new LocalStorageProvider(
       path.join(root, 'storage'),
@@ -25,7 +27,18 @@ it('publishes attachments only after a clean scanner exit and keeps rejected out
       'http://localhost',
     );
     for (const code of [0, 1, 2]) {
-      fs.writeFileSync(path.join(bin, 'clamscan'), `#!/bin/sh\nexit ${code}\n`, { mode: 0o700 });
+      fs.writeFileSync(
+        path.join(bin, 'clamscan'),
+        `#!/bin/sh
+printf '%s\\n' "$@" > "$CLAMSCAN_ARGS_PATH"
+for arg in "$@"; do
+  [ "$arg" = "--fail-if-cvd-older-than=7" ] && found=1
+done
+[ "$found" = 1 ] || exit 2
+exit ${code}
+`,
+        { mode: 0o700 },
+      );
       const id = `upload${code}`;
       db.prepare(
         "INSERT INTO video_uploads(id,owner_id,course_id,filename,size,status,media_kind) VALUES(?,'u','c','example.txt',4,'UPLOADING','attachment')",
@@ -37,6 +50,9 @@ it('publishes attachments only after a clean scanner exit and keeps rejected out
       ).run(id, key, 'a'.repeat(64));
       db.prepare("UPDATE video_uploads SET status='QUEUED' WHERE id=?").run(id);
       await processVideo(db, path.join(root, 'storage'));
+      expect(fs.readFileSync(scanArgsPath, 'utf8').split('\n')).toContain(
+        '--fail-if-cvd-older-than=7',
+      );
       const row = db
         .prepare('SELECT status,error,output_key FROM video_uploads WHERE id=?')
         .get(id) as { status: string; error: string | null; output_key: string | null };
@@ -63,6 +79,14 @@ it('publishes attachments only after a clean scanner exit and keeps rejected out
         }
       }
     }
+    fs.writeFileSync(
+      path.join(bin, 'clamscan'),
+      '#!/bin/sh\nfor arg in "$@"; do\n  [ "$arg" = "--fail-if-cvd-older-than=7" ] && exit 2\ndone\nexit 0\n',
+      { mode: 0o700 },
+    );
+    await expect(scanAttachment('test-file', new AbortController().signal)).rejects.toMatchObject({
+      code: 'FILE_SCAN_FAILED',
+    });
     fs.unlinkSync(path.join(bin, 'clamscan'));
     await expect(scanAttachment('missing', new AbortController().signal)).rejects.toMatchObject({
       code: 'FILE_SCAN_FAILED',

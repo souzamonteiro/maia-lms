@@ -79,10 +79,12 @@ and [command reference](https://github.com/Cisco-Talos/clamav/blob/main/docs/man
 
 The worker invokes the executable directly, without a shell, with a two-minute
 timeout, a 128 MiB file limit, a 512 MiB scan-size limit, and limit-exceeded alerts.
-Exit code 0 allows processing to continue. Exit code 1 blocks the attachment with
-FILE_MALWARE (including inspection-limit alerts); other failures use FILE_SCAN_FAILED.
-Private paths and scanner output are not returned to clients. Failed attachments
-remain unavailable; after repairing the scanner, use the existing validation retry.
+Virus databases older than seven days fail closed through ClamAV's
+`--fail-if-cvd-older-than=7` option. Exit code 0 allows processing to continue.
+Exit code 1 blocks the attachment with FILE_MALWARE (including inspection-limit
+alerts); other failures, including stale databases, use FILE_SCAN_FAILED. Private
+paths and scanner output are not returned to clients. Failed attachments remain
+unavailable; after repairing the scanner, use the existing validation retry.
 
 Enabling scanning does not rescan existing READY attachments. Originals remain in
 private storage according to the current lifecycle policy. Antivirus results are

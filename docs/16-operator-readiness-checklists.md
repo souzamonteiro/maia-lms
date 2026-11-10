@@ -18,9 +18,11 @@ read the signature database, and read the private upload being inspected.
 `ATTACHMENT_SCAN_MODE=clamav` makes the worker scan after format/signature checks
 and before an attachment can become READY. A clean scan exits 0; a detected
 test signature exits 1 and blocks the file; missing scanner, stale/unreadable
-signatures, timeout, or other scanner errors fail closed. Current scan limits
-are 128 MiB per file, 512 MiB total scan size and two minutes. Enabling scanning
-does not rescan attachments already READY.
+signatures, a virus database older than seven days, timeout, or other scanner
+errors fail closed. Staleness is enforced by
+`--fail-if-cvd-older-than=7`. Current scan limits are 128 MiB per file, 512 MiB
+total scan size and two minutes. Enabling scanning does not rescan attachments
+already READY.
 
 ### Host preparation
 
