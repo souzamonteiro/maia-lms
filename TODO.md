@@ -473,6 +473,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   upload is rejected, and confirms cancellation releases space for a new upload.
   A cancellation/storage-write race test confirms the rejected chunk leaves neither
   a database row nor an orphaned private-storage file.
+  Storage-provider tests simulate ENOSPC after partial stream output and verify the
+  partial `.part` file is removed so the same key can be retried after recovery.
   A Chromium E2E now interrupts after a 512 KiB chunk is persisted, resumes from
   the server offset, verifies the stored chunk hash, rejects a different same-size
   file before sending more data, and confirms that the saved chunk is not uploaded

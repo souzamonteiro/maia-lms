@@ -1612,6 +1612,15 @@ created. The focused API video suite passed 10 tests with one real-video test
 skipped. This verifies local quota accounting only; no deployment or host access
 was performed, and MEDIA-02 remains open for ClamAV host qualification.
 
+## Partial storage-write cleanup on ENOSPC — November 11, 2026
+
+The local storage-provider test now emits a partial stream and then simulates
+`ENOSPC`. The write rejects with the original storage error and leaves no object
+or `.part` file behind, preserving the target key for a retry after space is
+available. The focused storage and API video suites passed 16 tests with one
+real-video case skipped. This simulates the filesystem failure locally and does
+not qualify production disk behavior or ClamAV; no host access was performed.
+
 ## Upload cancellation during chunk storage — November 10, 2026
 
 The API integration test now simulates cancellation after a chunk is written to

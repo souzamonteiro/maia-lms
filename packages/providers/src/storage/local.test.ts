@@ -26,6 +26,16 @@ it('confines objects, rejects symlinks, preserves immutable objects and cleans f
     );
     await expect(store.putPrivate('video/broken', broken, '')).rejects.toThrow('source failed');
     expect(fs.readdirSync(path.join(temp, 'private', 'video'))).toEqual(['one']);
+    const diskFull = Readable.from(
+      (async function* () {
+        yield 'partial';
+        throw Object.assign(new Error('No space left on device'), { code: 'ENOSPC' });
+      })(),
+    );
+    await expect(store.putPrivate('video/disk-full', diskFull, '')).rejects.toMatchObject({
+      code: 'ENOSPC',
+    });
+    expect(fs.readdirSync(path.join(temp, 'private', 'video'))).toEqual(['one']);
     expect(store.verifyToken('video/one', 'anything', NaN)).toBe(false);
   } finally {
     fs.rmSync(temp, { recursive: true, force: true });
