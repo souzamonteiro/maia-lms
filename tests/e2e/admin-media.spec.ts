@@ -248,3 +248,70 @@ test('cancelling an active upload cancels it on the server after its in-flight c
   expect(result.apiCalls).not.toContain('POST /admin/videos/upload-1/complete');
   expect(result.changes).toEqual(['upload-1', null]);
 });
+
+test('cancelling during upload completion cancels the queued media job', async ({ page }) => {
+  await page.goto('/auth/login');
+  const result = await page.evaluate(async () => {
+    const { mountVideoEditor } = await import('/static/video-editor.js');
+    const root = document.createElement('div');
+    document.body.append(root);
+    let releaseCompletion: (() => void) | undefined;
+    let notifyCompletionStarted: (() => void) | undefined;
+    const completionStarted = new Promise<void>(resolve => {
+      notifyCompletionStarted = resolve;
+    });
+    const apiCalls: string[] = [];
+    const api = async (path: string, method = 'GET') => {
+      apiCalls.push(`${method} ${path}`);
+      if (path === '/admin/videos?courseId=course') return [];
+      if (path === '/admin/videos' && method === 'POST')
+        return { id: 'upload-2', offset: 0, size: 6, chunks: [] };
+      if (path === '/admin/videos/upload-2/complete' && method === 'POST') {
+        notifyCompletionStarted?.();
+        await new Promise<void>(resolve => {
+          releaseCompletion = resolve;
+        });
+        return { status: 'QUEUED' };
+      }
+      if (path === '/admin/videos/upload-2/cancel' && method === 'POST')
+        return { status: 'CANCELLED' };
+      throw new Error(`Unexpected media request: ${method} ${path}`);
+    };
+    window.fetch = async () =>
+      new Response(JSON.stringify({ offset: 6 }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    mountVideoEditor(root, {
+      courseId: 'course',
+      videoId: null,
+      api,
+      t: key => key,
+      e: value => value,
+      notify: () => {},
+      onChange: () => {},
+    });
+    const transfer = new DataTransfer();
+    transfer.items.add(new File(['123456'], 'sample.mp4', { type: 'video/mp4' }));
+    root.querySelector<HTMLInputElement>('.video-file')!.files = transfer.files;
+    root.querySelector<HTMLButtonElement>('.upload-video')!.click();
+    await completionStarted;
+    root.querySelector<HTMLButtonElement>('.cancel-video')!.click();
+    releaseCompletion?.();
+    const statusElement = root.querySelector('.video-status')!;
+    await new Promise<void>(resolve => {
+      const observer = new MutationObserver(() => {
+        if (statusElement.textContent === 'uploadCancelled') {
+          observer.disconnect();
+          resolve();
+        }
+      });
+      observer.observe(statusElement, { childList: true, characterData: true, subtree: true });
+    });
+    root.remove();
+    return apiCalls;
+  });
+
+  expect(result).toContain('POST /admin/videos/upload-2/complete');
+  expect(result).toContain('POST /admin/videos/upload-2/cancel');
+});

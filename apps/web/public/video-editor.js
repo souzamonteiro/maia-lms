@@ -186,9 +186,19 @@ export function mountVideoEditor(
         notify('');
       } else if (offset === file.size) {
         await api(`${endpoint}/${videoId}/complete`, 'POST');
-        status.textContent = t('videoQUEUED');
-        await refresh();
-        notify('');
+        if (cancelRequested) {
+          await cancelSelectedUpload();
+          status.textContent = t('uploadCancelled');
+          notify('');
+        } else {
+          status.textContent = t('videoQUEUED');
+          await refresh();
+          if (cancelRequested) {
+            await cancelSelectedUpload();
+            status.textContent = t('uploadCancelled');
+          }
+          notify('');
+        }
       } else {
         status.textContent = t('uploadPaused');
         await refresh();

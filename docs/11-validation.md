@@ -1596,9 +1596,9 @@ and host qualification remain outstanding under PLAY-02.
 The editor previously treated Cancel during an active upload as Pause, leaving
 the server-side upload resumable and reserving the author's quota. It now waits
 for the bounded in-flight chunk, calls the cancellation endpoint, clears the
-selected upload, and skips completion/queueing. The Chromium E2E test verifies
-cancellation after an in-flight final chunk and confirms that the completion
-endpoint is not called.
+selected upload, and skips completion/queueing when possible; a request arriving
+during completion cancels the newly queued job. Chromium E2E tests cover both
+cancellation after an in-flight final chunk and during the completion request.
 
 ## Playback position listener ordering — November 10, 2026
 

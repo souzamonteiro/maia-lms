@@ -465,8 +465,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   Local endpoints enforce author ownership, quotas, resumable chunk offsets, and
   cancellation; the worker validates signatures/content in private storage before
   publishing normalized artifacts, and expires/cleans incomplete uploads. The
-  editor now sends cancellation to the server after any in-flight chunk completes
-  and does not enqueue a fully uploaded job when cancellation was requested.
+  editor sends cancellation to the server after any in-flight chunk completes and
+  also cancels a job if a cancellation arrives during completion/queueing.
   ClamAV path is fail-closed when enabled and tested with scanner outcomes, but
   `ATTACHMENT_SCAN_MODE` defaults to `disabled`. Keep this item open until the real
   worker host has ClamAV enabled and its scan behavior is qualified. Enabled scans
