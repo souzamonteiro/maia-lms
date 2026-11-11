@@ -132,6 +132,52 @@ it('author upload is resumable, bounded, isolated and cancellable', async () => 
   expect((await chunk(id, a.cookie, 3, Buffer.from('def'))).status).toBe(409);
   expect(db.prepare('SELECT * FROM video_chunks WHERE upload_id=?').all(id)).toEqual([]);
 });
+it('releases the reserved upload quota when an upload is cancelled', async () => {
+  const author = await account('quota-release@video.test', 'author');
+  const course = (await request('/api/v1/admin/courses', 'POST', draft('quota-release'), author.cookie))
+    .data;
+  const maximumVideoSize = 2 * 1024 ** 3;
+  const uploads = await Promise.all(
+    Array.from({ length: 10 }, (_, index) =>
+      request(
+        '/api/v1/admin/videos',
+        'POST',
+        {
+          courseId: course.id,
+          filename: `movie-${index}.mp4`,
+          size: maximumVideoSize,
+        },
+        author.cookie,
+      ),
+    ),
+  );
+  expect(uploads.map(upload => upload.status)).toEqual(Array(10).fill(201));
+
+  const overQuota = await request(
+    '/api/v1/admin/videos',
+    'POST',
+    { courseId: course.id, filename: 'extra.mp4', size: 1 },
+    author.cookie,
+  );
+  expect(overQuota.status).toBe(422);
+  expect(overQuota.data.code).toBe('VIDEO_QUOTA');
+
+  const cancelled = await request(
+    `/api/v1/admin/videos/${uploads[0].data.id}/cancel`,
+    'POST',
+    {},
+    author.cookie,
+  );
+  expect(cancelled.status).toBe(200);
+
+  const afterCancellation = await request(
+    '/api/v1/admin/videos',
+    'POST',
+    { courseId: course.id, filename: 'extra.mp4', size: 1 },
+    author.cookie,
+  );
+  expect(afterCancellation.status).toBe(201);
+});
 it('cancels a queued upload and removes its stored chunks', async () => {
   const author = await account('queued-cancel@video.test', 'author');
   const course = (await request('/api/v1/admin/courses', 'POST', draft('queued-cancel'), author.cookie))

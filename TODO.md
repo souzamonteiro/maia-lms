@@ -469,6 +469,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   also cancels a job if a cancellation arrives during completion/queueing.
   The cancel control is enabled only for cancellable states and blocks duplicate
   cancellation requests while one is in flight.
+  An API integration test fills the author's 20 GiB reservation, verifies another
+  upload is rejected, and confirms cancellation releases space for a new upload.
   A Chromium E2E now interrupts after a 512 KiB chunk is persisted, resumes from
   the server offset, verifies the stored chunk hash, rejects a different same-size
   file before sending more data, and confirms that the saved chunk is not uploaded

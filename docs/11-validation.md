@@ -1603,6 +1603,15 @@ The API integration test also verifies that cancelling a queued upload removes
 its stored chunks and releases its upload reservation. The editor disables cancel
 for terminal states and duplicate cancellation while a request is pending.
 
+## Media upload quota release — November 10, 2026
+
+The API integration test now reserves the author's full 20 GiB upload quota using
+maximum-size video reservations, verifies an additional upload is rejected with
+`VIDEO_QUOTA`, cancels one pending upload, and confirms a new upload can then be
+created. The focused API video suite passed 10 tests with one real-video test
+skipped. This verifies local quota accounting only; no deployment or host access
+was performed, and MEDIA-02 remains open for ClamAV host qualification.
+
 ## Browser resume after partial upload — November 10, 2026
 
 The focused Chromium media E2E now interrupts after the server persists the first
