@@ -396,6 +396,11 @@ test('media editor resumes after a persisted chunk without uploading it twice', 
     let status = 'UPLOADING';
     let failedOnce = false;
     let completeCalls = 0;
+    let reportWrongFile: (() => void) | undefined;
+    const wrongFileReported = new Promise<void>(resolve => {
+      reportWrongFile = resolve;
+    });
+    let wrongFileNotification = '';
     const sentChunks: Array<{ offset: number; size: number }> = [];
     const persistedChunks: Array<{ offset: number; size: number; sha256: string }> = [];
     const api = async (path: string, method = 'GET') => {
@@ -451,7 +456,12 @@ test('media editor resumes after a persisted chunk without uploading it twice', 
       api,
       t: key => key,
       e: value => value,
-      notify: () => {},
+      notify: error => {
+        if (error.message === 'wrongVideoFile') {
+          wrongFileNotification = error.message;
+          reportWrongFile?.();
+        }
+      },
       onChange: () => {},
     });
     const transfer = new DataTransfer();
@@ -476,6 +486,18 @@ test('media editor resumes after a persisted chunk without uploading it twice', 
     uploadButton.click();
     await firstInterruption;
     const interruptedOffset = serverOffset;
+    const changedTransfer = new DataTransfer();
+    changedTransfer.items.add(new File([new Uint8Array(file.size).fill(98)], file.name, {
+      type: file.type,
+    }));
+    root.querySelector<HTMLInputElement>('.video-file')!.files = changedTransfer.files;
+    uploadButton.click();
+    await wrongFileReported;
+    const sentChunksAfterWrongFile = sentChunks.length;
+    const offsetAfterWrongFile = serverOffset;
+    const restoredTransfer = new DataTransfer();
+    restoredTransfer.items.add(file);
+    root.querySelector<HTMLInputElement>('.video-file')!.files = restoredTransfer.files;
     const queued = waitForStatus('videoQUEUED');
     uploadButton.click();
     await queued;
@@ -485,6 +507,9 @@ test('media editor resumes after a persisted chunk without uploading it twice', 
       fileSize: file.size,
       chunkHashMatches: chunkHash === persistedChunks[0]?.sha256,
       interruptedOffset,
+      wrongFileNotification,
+      sentChunksAfterWrongFile,
+      offsetAfterWrongFile,
       serverOffset,
       sentChunks,
       persistedChunks: persistedChunks.map(({ offset, size }) => ({ offset, size })),
@@ -497,6 +522,9 @@ test('media editor resumes after a persisted chunk without uploading it twice', 
     fileSize: 512 * 1024 + 4,
     chunkHashMatches: true,
     interruptedOffset: 512 * 1024,
+    wrongFileNotification: 'wrongVideoFile',
+    sentChunksAfterWrongFile: 2,
+    offsetAfterWrongFile: 512 * 1024,
     serverOffset: 512 * 1024 + 4,
     sentChunks: [
       { offset: 0, size: 512 * 1024 },

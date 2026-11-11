@@ -1607,10 +1607,12 @@ for terminal states and duplicate cancellation while a request is pending.
 
 The focused Chromium media E2E now interrupts after the server persists the first
 512 KiB chunk, then resumes from the server-reported offset. It verifies the
-previously stored chunk's SHA-256, sends only the remaining bytes, and queues the
-upload once without duplicating persisted chunks. All seven `admin-media.spec.ts`
-workflows passed. This is local browser coverage only; ClamAV host qualification
-remains open under MEDIA-02. No deployment or host access was performed.
+previously stored chunk's SHA-256, rejects a different same-size file before
+sending more bytes, then sends only the remaining bytes from the original file and
+queues the upload once without duplicating persisted chunks. All seven
+`admin-media.spec.ts` workflows passed. This is local browser coverage only;
+ClamAV host qualification remains open under MEDIA-02. No deployment or host access
+was performed.
 
 ## Playback position listener ordering — November 10, 2026
 

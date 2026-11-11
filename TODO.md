@@ -470,8 +470,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   The cancel control is enabled only for cancellable states and blocks duplicate
   cancellation requests while one is in flight.
   A Chromium E2E now interrupts after a 512 KiB chunk is persisted, resumes from
-  the server offset, verifies the stored chunk hash, and confirms that the saved
-  chunk is not uploaded a second time.
+  the server offset, verifies the stored chunk hash, rejects a different same-size
+  file before sending more data, and confirms that the saved chunk is not uploaded
+  a second time.
   ClamAV path is fail-closed when enabled and tested with scanner outcomes, but
   `ATTACHMENT_SCAN_MODE` defaults to `disabled`. Keep this item open until the real
   worker host has ClamAV enabled and its scan behavior is qualified. Enabled scans
