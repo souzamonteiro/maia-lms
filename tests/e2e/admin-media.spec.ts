@@ -378,3 +378,135 @@ test('media editor only enables cancel for cancellable states and prevents dupli
     cancelCalls: ['/admin/videos/media-3/cancel'],
   });
 });
+
+test('media editor resumes after a persisted chunk without uploading it twice', async ({ page }) => {
+  await page.goto('/auth/login');
+  const result = await page.evaluate(async () => {
+    const { mountVideoEditor } = await import('/static/video-editor.js');
+    const chunkSize = 512 * 1024;
+    const fileBytes = new Uint8Array(chunkSize + 4).fill(97);
+    const file = new File([fileBytes], 'sample.mp4', { type: 'video/mp4' });
+    const chunkDigest = await crypto.subtle.digest('SHA-256', fileBytes.slice(0, chunkSize));
+    const chunkHash = Array.from(new Uint8Array(chunkDigest), value =>
+      value.toString(16).padStart(2, '0'),
+    ).join('');
+    const root = document.createElement('div');
+    document.body.append(root);
+    let serverOffset = 0;
+    let status = 'UPLOADING';
+    let failedOnce = false;
+    let completeCalls = 0;
+    const sentChunks: Array<{ offset: number; size: number }> = [];
+    const persistedChunks: Array<{ offset: number; size: number; sha256: string }> = [];
+    const api = async (path: string, method = 'GET') => {
+      if (path === '/admin/videos?courseId=course')
+        return status === 'UPLOADING' ? [] : [{
+          id: 'upload-resume',
+          filename: file.name,
+          status,
+        }];
+      if (path === '/admin/videos' && method === 'POST')
+        return { id: 'upload-resume', offset: 0, size: file.size, chunks: [] };
+      if (path === '/admin/videos/upload-resume')
+        return {
+          id: 'upload-resume',
+          offset: serverOffset,
+          size: file.size,
+          status,
+          chunks: persistedChunks,
+        };
+      if (path === '/admin/videos/upload-resume/complete' && method === 'POST') {
+        completeCalls += 1;
+        status = 'QUEUED';
+        return { status };
+      }
+      throw new Error(`Unexpected media request: ${method} ${path}`);
+    };
+    window.fetch = async (_input, init) => {
+      const offset = Number(new Headers(init?.headers).get('Upload-Offset'));
+      const body = init?.body;
+      if (!(body instanceof Blob)) throw new Error('Expected an upload chunk');
+      sentChunks.push({ offset, size: body.size });
+      if (!failedOnce && offset === chunkSize) {
+        failedOnce = true;
+        return new Response(JSON.stringify({ code: 'UPLOAD_STORAGE_FULL' }), {
+          status: 507,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      const bytes = new Uint8Array(await body.arrayBuffer());
+      const digest = await crypto.subtle.digest('SHA-256', bytes);
+      const sha256 = Array.from(new Uint8Array(digest), value =>
+        value.toString(16).padStart(2, '0'),
+      ).join('');
+      persistedChunks.push({ offset, size: bytes.length, sha256 });
+      serverOffset = offset + bytes.length;
+      return new Response(JSON.stringify({ offset: serverOffset }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    };
+    mountVideoEditor(root, {
+      courseId: 'course',
+      api,
+      t: key => key,
+      e: value => value,
+      notify: () => {},
+      onChange: () => {},
+    });
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    root.querySelector<HTMLInputElement>('.video-file')!.files = transfer.files;
+    const uploadButton = root.querySelector<HTMLButtonElement>('.upload-video')!;
+    const statusElement = root.querySelector<HTMLElement>('.video-status')!;
+    const waitForStatus = (expected: string) => new Promise<void>(resolve => {
+      const observer = new MutationObserver(() => {
+        if (statusElement.textContent === expected) {
+          observer.disconnect();
+          resolve();
+        }
+      });
+      observer.observe(statusElement, { childList: true, characterData: true, subtree: true });
+      if (statusElement.textContent === expected) {
+        observer.disconnect();
+        resolve();
+      }
+    });
+    const firstInterruption = waitForStatus('uploadInterrupted');
+    uploadButton.click();
+    await firstInterruption;
+    const interruptedOffset = serverOffset;
+    const queued = waitForStatus('videoQUEUED');
+    uploadButton.click();
+    await queued;
+    root.remove();
+    return {
+      chunkSize,
+      fileSize: file.size,
+      chunkHashMatches: chunkHash === persistedChunks[0]?.sha256,
+      interruptedOffset,
+      serverOffset,
+      sentChunks,
+      persistedChunks: persistedChunks.map(({ offset, size }) => ({ offset, size })),
+      completeCalls,
+    };
+  });
+
+  expect(result).toEqual({
+    chunkSize: 512 * 1024,
+    fileSize: 512 * 1024 + 4,
+    chunkHashMatches: true,
+    interruptedOffset: 512 * 1024,
+    serverOffset: 512 * 1024 + 4,
+    sentChunks: [
+      { offset: 0, size: 512 * 1024 },
+      { offset: 512 * 1024, size: 4 },
+      { offset: 512 * 1024, size: 4 },
+    ],
+    persistedChunks: [
+      { offset: 0, size: 512 * 1024 },
+      { offset: 512 * 1024, size: 4 },
+    ],
+    completeCalls: 1,
+  });
+});

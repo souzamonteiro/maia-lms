@@ -1603,6 +1603,15 @@ The API integration test also verifies that cancelling a queued upload removes
 its stored chunks and releases its upload reservation. The editor disables cancel
 for terminal states and duplicate cancellation while a request is pending.
 
+## Browser resume after partial upload — November 10, 2026
+
+The focused Chromium media E2E now interrupts after the server persists the first
+512 KiB chunk, then resumes from the server-reported offset. It verifies the
+previously stored chunk's SHA-256, sends only the remaining bytes, and queues the
+upload once without duplicating persisted chunks. All seven `admin-media.spec.ts`
+workflows passed. This is local browser coverage only; ClamAV host qualification
+remains open under MEDIA-02. No deployment or host access was performed.
+
 ## Playback position listener ordering — November 10, 2026
 
 Lesson pages now install metadata, error, speed, and position-save handlers before
