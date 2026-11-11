@@ -132,6 +132,35 @@ it('author upload is resumable, bounded, isolated and cancellable', async () => 
   expect((await chunk(id, a.cookie, 3, Buffer.from('def'))).status).toBe(409);
   expect(db.prepare('SELECT * FROM video_chunks WHERE upload_id=?').all(id)).toEqual([]);
 });
+it('cancels a queued upload and removes its stored chunks', async () => {
+  const author = await account('queued-cancel@video.test', 'author');
+  const course = (await request('/api/v1/admin/courses', 'POST', draft('queued-cancel'), author.cookie))
+    .data;
+  const created = await request(
+    '/api/v1/admin/videos',
+    'POST',
+    { courseId: course.id, filename: 'movie.mp4', size: 3 },
+    author.cookie,
+  );
+  const id = created.data.id as string;
+  expect((await chunk(id, author.cookie, 0, Buffer.from('vid'))).status).toBe(200);
+  expect((await request(`/api/v1/admin/videos/${id}/complete`, 'POST', {}, author.cookie)).data)
+    .toEqual({ status: 'QUEUED' });
+  const storedChunk = db
+    .prepare('SELECT storage_key FROM video_chunks WHERE upload_id=?')
+    .get(id) as { storage_key: string };
+  expect(fs.existsSync(path.join(directory, storedChunk.storage_key))).toBe(true);
+
+  const cancelled = await request(`/api/v1/admin/videos/${id}/cancel`, 'POST', {}, author.cookie);
+
+  expect(cancelled.status).toBe(200);
+  expect(cancelled.data).toEqual({ status: 'CANCELLED', waitingForWorker: false });
+  expect(db.prepare('SELECT status FROM video_uploads WHERE id=?').get(id)).toEqual({
+    status: 'CANCELLED',
+  });
+  expect(db.prepare('SELECT * FROM video_chunks WHERE upload_id=?').all(id)).toEqual([]);
+  expect(fs.existsSync(path.join(directory, storedChunk.storage_key))).toBe(false);
+});
 it('cancels a processing upload without deleting chunks until its worker lease is released', async () => {
   const author = await account('processing-cancel@video.test', 'author');
   const course = (await request('/api/v1/admin/courses', 'POST', draft('processing-cancel'), author.cookie))
