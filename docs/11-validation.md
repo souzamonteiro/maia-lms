@@ -1600,6 +1600,16 @@ selected upload, and skips completion/queueing. The Chromium E2E test verifies
 cancellation after an in-flight final chunk and confirms that the completion
 endpoint is not called.
 
+## Playback position listener ordering — November 10, 2026
+
+Lesson pages now install metadata, error, speed, and position-save handlers before
+attaching the HLS/native source, and no longer eagerly load MP4 in parallel with
+adaptive playback. This removes a source race and the timing window where a fast
+`loadedmetadata` event could precede the saved-position restoration listener. The
+real-video Chromium workflow, including a mobile viewport and fresh-session
+restoration, passes. Mobile viewport emulation is not physical-device qualification;
+session renewal on the deployed host remains external.
+
 ## Privacy export and deletion requests — October 20, 2026
 
 Migration 091 stores minimal, idempotent account-deletion requests. Authenticated

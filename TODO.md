@@ -572,6 +572,9 @@ does not satisfy a task. Preserve local internationalization changes and prototy
     quality switching, and MP4 fallback after an HLS playlist failure.
   - [x] Retry loading the local HLS.js library on a later player after a transient
     script-load failure; the SPA no longer caches a rejected load promise.
+  - [x] Register saved-position and playback-error listeners before attaching the
+    HLS/native source; do not eagerly load a competing MP4 source in parallel.
+    This avoids missed metadata events and source races during restoration.
   - [x] Focused Firefox and WebKit desktop real-video workflows pass upload,
     publication, and browser playback with the local isolated E2E server.
   - [ ] Qualify seeking/quality switching on Android Chrome and Safari/iOS, and run
