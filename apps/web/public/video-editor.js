@@ -33,7 +33,9 @@ export function mountVideoEditor(
   let videos = [];
   let paused = false,
     busy = false,
-    retrying = false;
+    retrying = false,
+    cancelRequested = false,
+    cancellationAttempted = false;
   function updateDuration() {
     duration.hidden = !videoId;
     const selected = videos.find(video => video.id === videoId);
@@ -101,18 +103,28 @@ export function mountVideoEditor(
   root.querySelector('.pause-video').onclick = () => {
     paused = true;
   };
+  async function cancelSelectedUpload() {
+    if (!videoId) return;
+    cancellationAttempted = true;
+    await api(`${endpoint}/${videoId}/cancel`, 'POST');
+    videoId = null;
+    onChange(null);
+    try {
+      await refresh();
+    } catch (error) {
+      notify(error);
+    }
+  }
   root.querySelector('.cancel-video').onclick = async () => {
     if (busy) {
+      if (cancelRequested) return;
+      cancelRequested = true;
       paused = true;
+      status.textContent = t('uploadCancelling');
       return;
     }
     try {
-      if (videoId) {
-        await api(`${endpoint}/${videoId}/cancel`, 'POST');
-        videoId = null;
-        onChange(null);
-        await refresh();
-      }
+      await cancelSelectedUpload();
     } catch (error) {
       notify(error);
     }
@@ -122,6 +134,8 @@ export function mountVideoEditor(
     if (!file || busy) return;
     busy = true;
     paused = false;
+    cancelRequested = false;
+    cancellationAttempted = false;
     progress.value = 0;
     root.querySelector('.upload-video').disabled = true;
     root.querySelector('.pause-video').disabled = false;
@@ -166,17 +180,38 @@ export function mountVideoEditor(
         // Keep uploads below the shared 300 requests/minute budget.
         await new Promise(resolve => setTimeout(resolve, 250));
       }
-      if (offset === file.size) {
+      if (cancelRequested) {
+        await cancelSelectedUpload();
+        status.textContent = t('uploadCancelled');
+        notify('');
+      } else if (offset === file.size) {
         await api(`${endpoint}/${videoId}/complete`, 'POST');
         status.textContent = t('videoQUEUED');
-      } else status.textContent = t('uploadPaused');
-      await refresh();
-      notify('');
+        await refresh();
+        notify('');
+      } else {
+        status.textContent = t('uploadPaused');
+        await refresh();
+        notify('');
+      }
     } catch (error) {
-      notify(error);
-      status.textContent = t('uploadInterrupted');
+      if (cancelRequested && !cancellationAttempted) {
+        try {
+          await cancelSelectedUpload();
+          status.textContent = t('uploadCancelled');
+          notify('');
+        } catch (cancelError) {
+          notify(cancelError);
+          status.textContent = t('uploadInterrupted');
+        }
+      } else {
+        notify(error);
+        status.textContent = t('uploadInterrupted');
+      }
     } finally {
       busy = false;
+      cancelRequested = false;
+      cancellationAttempted = false;
       root.querySelector('.upload-video').disabled = false;
       root.querySelector('.pause-video').disabled = true;
       choice.disabled = false;

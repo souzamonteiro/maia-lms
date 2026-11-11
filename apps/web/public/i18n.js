@@ -828,6 +828,8 @@ Object.assign(translations['en'], {
   UPLOAD_STORAGE_FULL:
     'Storage is full. Free disk space, then select the same file and resume the upload.',
   uploadPaused: 'Paused. Select the same file to resume.',
+  uploadCancelling: 'Cancelling upload…',
+  uploadCancelled: 'Upload cancelled.',
   playbackSpeed: 'Playback speed',
   videoQuality: 'Video quality',
   videoQualityAuto: 'Automatic',
@@ -862,6 +864,8 @@ Object.assign(translations['pt-BR'], {
   UPLOAD_STORAGE_FULL:
     'O armazenamento está cheio. Libere espaço em disco e selecione o mesmo arquivo para retomar o envio.',
   uploadPaused: 'Pausado. Selecione o mesmo arquivo para retomar.',
+  uploadCancelling: 'Cancelando envio…',
+  uploadCancelled: 'Envio cancelado.',
   playbackSpeed: 'Velocidade de reprodução',
   videoQuality: 'Qualidade do vídeo',
   videoQualityAuto: 'Automática',
@@ -896,6 +900,8 @@ Object.assign(translations['es'], {
   UPLOAD_STORAGE_FULL:
     'El almacenamiento está lleno. Libera espacio en disco y selecciona el mismo archivo para reanudar la carga.',
   uploadPaused: 'En pausa. Selecciona el mismo archivo para reanudar.',
+  uploadCancelling: 'Cancelando carga…',
+  uploadCancelled: 'Carga cancelada.',
   playbackSpeed: 'Velocidad de reproducción',
   videoQuality: 'Calidad del vídeo',
   videoQualityAuto: 'Automática',

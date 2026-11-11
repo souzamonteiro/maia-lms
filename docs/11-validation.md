@@ -1591,6 +1591,15 @@ library request and verifies that the next player triggers a successful second
 request. This covers local script-loader recovery only; physical-device playback
 and host qualification remain outstanding under PLAY-02.
 
+## Active upload cancellation — November 10, 2026
+
+The editor previously treated Cancel during an active upload as Pause, leaving
+the server-side upload resumable and reserving the author's quota. It now waits
+for the bounded in-flight chunk, calls the cancellation endpoint, clears the
+selected upload, and skips completion/queueing. The Chromium E2E test verifies
+cancellation after an in-flight final chunk and confirms that the completion
+endpoint is not called.
+
 ## Privacy export and deletion requests — October 20, 2026
 
 Migration 091 stores minimal, idempotent account-deletion requests. Authenticated

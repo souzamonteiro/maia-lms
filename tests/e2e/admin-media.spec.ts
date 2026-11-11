@@ -167,3 +167,84 @@ test('HLS player retries loading its library after a transient failure', async (
   expect(result).toBe(true);
   expect(libraryRequests).toBe(2);
 });
+
+test('cancelling an active upload cancels it on the server after its in-flight chunk', async ({ page }) => {
+  await page.goto('/auth/login');
+  const result = await page.evaluate(async () => {
+    const { mountVideoEditor } = await import('/static/video-editor.js');
+    const root = document.createElement('div');
+    document.body.append(root);
+    let releaseChunk: ((response: Response) => void) | undefined;
+    let notifyChunkStarted: (() => void) | undefined;
+    let notifyCancellationFinished: (() => void) | undefined;
+    const chunkStarted = new Promise<void>(resolve => {
+      notifyChunkStarted = resolve;
+    });
+    const cancellationFinished = new Promise<void>(resolve => {
+      notifyCancellationFinished = resolve;
+    });
+    const apiCalls: string[] = [];
+    const changes: Array<string | null> = [];
+    window.fetch = async () => {
+      notifyChunkStarted?.();
+      return new Promise<Response>(resolve => {
+        releaseChunk = resolve;
+      });
+    };
+    const api = async (path: string, method = 'GET') => {
+      apiCalls.push(`${method} ${path}`);
+      if (path === '/admin/videos?courseId=course') return [];
+      if (path === '/admin/videos' && method === 'POST')
+        return { id: 'upload-1', offset: 0, size: 6, chunks: [] };
+      if (path === '/admin/videos/upload-1/cancel' && method === 'POST') {
+        notifyCancellationFinished?.();
+        return { status: 'CANCELLED' };
+      }
+      throw new Error(`Unexpected media request: ${method} ${path}`);
+    };
+    mountVideoEditor(root, {
+      courseId: 'course',
+      videoId: null,
+      api,
+      t: key => key,
+      e: value => value,
+      notify: () => {},
+      onChange: value => changes.push(value),
+    });
+    const file = new File(['123456'], 'sample.mp4', { type: 'video/mp4' });
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    root.querySelector<HTMLInputElement>('.video-file')!.files = transfer.files;
+    root.querySelector<HTMLButtonElement>('.upload-video')!.click();
+    await chunkStarted;
+    root.querySelector<HTMLButtonElement>('.cancel-video')!.click();
+    const statusWhileCancelling = root.querySelector('.video-status')?.textContent;
+    const statusElement = root.querySelector('.video-status')!;
+    const cancelledStatus = new Promise<string>(resolve => {
+      const observer = new MutationObserver(() => {
+        if (statusElement.textContent === 'uploadCancelled') {
+          observer.disconnect();
+          resolve(statusElement.textContent);
+        }
+      });
+      observer.observe(statusElement, { childList: true, characterData: true, subtree: true });
+    });
+    releaseChunk?.(
+      new Response(JSON.stringify({ offset: 6 }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    await cancellationFinished;
+    await cancelledStatus;
+    const finalStatus = root.querySelector('.video-status')?.textContent;
+    root.remove();
+    return { apiCalls, changes, statusWhileCancelling, finalStatus };
+  });
+
+  expect(result.statusWhileCancelling).toBe('uploadCancelling');
+  expect(result.finalStatus).toBe('uploadCancelled');
+  expect(result.apiCalls).toContain('POST /admin/videos/upload-1/cancel');
+  expect(result.apiCalls).not.toContain('POST /admin/videos/upload-1/complete');
+  expect(result.changes).toEqual(['upload-1', null]);
+});
