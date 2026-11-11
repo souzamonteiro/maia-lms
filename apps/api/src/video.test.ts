@@ -178,6 +178,38 @@ it('releases the reserved upload quota when an upload is cancelled', async () =>
   );
   expect(afterCancellation.status).toBe(201);
 });
+it('removes a stored chunk when cancellation wins during its storage write', async () => {
+  const author = await account('chunk-cancel-race@video.test', 'author');
+  const course = (await request('/api/v1/admin/courses', 'POST', draft('chunk-cancel-race'), author.cookie))
+    .data;
+  const created = await request(
+    '/api/v1/admin/videos',
+    'POST',
+    { courseId: course.id, filename: 'movie.mp4', size: 3 },
+    author.cookie,
+  );
+  const id = created.data.id as string;
+  const originalPut = LocalStorageProvider.prototype.putPrivate;
+  LocalStorageProvider.prototype.putPrivate = async function (key, data, contentType) {
+    await originalPut.call(this, key, data, contentType);
+    db.prepare("UPDATE video_uploads SET status='CANCELLED' WHERE id=?").run(id);
+  };
+  let response: Response;
+  try {
+    response = await chunk(id, author.cookie, 0, Buffer.from('vid'));
+  } finally {
+    LocalStorageProvider.prototype.putPrivate = originalPut;
+  }
+
+  expect(response.status).toBe(409);
+  expect(await response.json()).toMatchObject({ code: 'UPLOAD_CONFLICT' });
+  expect(db.prepare('SELECT status,offset FROM video_uploads WHERE id=?').get(id)).toEqual({
+    status: 'CANCELLED',
+    offset: 0,
+  });
+  expect(db.prepare('SELECT * FROM video_chunks WHERE upload_id=?').all(id)).toEqual([]);
+  expect(fs.readdirSync(path.join(directory, 'uploads', id))).toEqual([]);
+});
 it('cancels a queued upload and removes its stored chunks', async () => {
   const author = await account('queued-cancel@video.test', 'author');
   const course = (await request('/api/v1/admin/courses', 'POST', draft('queued-cancel'), author.cookie))

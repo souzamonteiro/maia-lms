@@ -1612,6 +1612,15 @@ created. The focused API video suite passed 10 tests with one real-video test
 skipped. This verifies local quota accounting only; no deployment or host access
 was performed, and MEDIA-02 remains open for ClamAV host qualification.
 
+## Upload cancellation during chunk storage — November 10, 2026
+
+The API integration test now simulates cancellation after a chunk is written to
+private storage but before its database transaction records the chunk. The request
+returns `UPLOAD_CONFLICT`; the upload cursor remains zero, no chunk row is stored,
+and the just-written file is removed. The focused API video suite passed 11 tests
+with one real-video test skipped. This is local race/cleanup coverage only; no
+deployment or host access was performed.
+
 ## Browser resume after partial upload — November 10, 2026
 
 The focused Chromium media E2E now interrupts after the server persists the first
