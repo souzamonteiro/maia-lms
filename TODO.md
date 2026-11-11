@@ -568,6 +568,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
     fullscreen controls; speed, loading, error, and fallback states are localized.
   - [x] Chromium real-video coverage verifies HLS master/variant/segment playback,
     quality switching, and MP4 fallback after an HLS playlist failure.
+  - [x] Retry loading the local HLS.js library on a later player after a transient
+    script-load failure; the SPA no longer caches a rejected load promise.
   - [x] Focused Firefox and WebKit desktop real-video workflows pass upload,
     publication, and browser playback with the local isolated E2E server.
   - [ ] Qualify seeking/quality switching on Android Chrome and Safari/iOS, and run

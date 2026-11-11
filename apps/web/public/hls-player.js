@@ -10,6 +10,9 @@ function loadHlsLibrary() {
     script.onload = () => window.Hls ? resolve(window.Hls) : reject(new Error('HLS library unavailable'));
     script.onerror = () => reject(new Error('HLS library failed to load'));
     document.head.append(script);
+  }).catch(error => {
+    libraryPromise = undefined;
+    throw error;
   });
   return libraryPromise;
 }

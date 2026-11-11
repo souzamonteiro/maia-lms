@@ -1583,6 +1583,14 @@ check does not verify ClamAV installation, signature freshness, service-account
 access, or real clean/EICAR/failure outcomes. MEDIA-02 remains open pending the
 operator's host and staging qualification; no host was accessed or changed.
 
+## HLS player library recovery — November 10, 2026
+
+The SPA clears a rejected HLS.js load promise so a later player can retry after a
+transient script request failure. The focused Chromium E2E test aborts the first
+library request and verifies that the next player triggers a successful second
+request. This covers local script-loader recovery only; physical-device playback
+and host qualification remain outstanding under PLAY-02.
+
 ## Privacy export and deletion requests — October 20, 2026
 
 Migration 091 stores minimal, idempotent account-deletion requests. Authenticated

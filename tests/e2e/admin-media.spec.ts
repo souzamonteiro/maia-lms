@@ -126,3 +126,44 @@ test('media editor refreshes stale retry state and prevents duplicate retries', 
     notifications: ['Only failed uploads can be retried.'],
   });
 });
+
+test('HLS player retries loading its library after a transient failure', async ({ page }) => {
+  let libraryRequests = 0;
+  await page.route('**/static/vendor/hls/hls.min.js', async route => {
+    libraryRequests += 1;
+    if (libraryRequests === 1) {
+      await route.abort();
+      return;
+    }
+    await route.fulfill({
+      contentType: 'application/javascript',
+      body: 'window.Hls = { isSupported: () => false };',
+    });
+  });
+  await page.goto('/auth/login');
+  const result = await page.evaluate(async () => {
+    const { attachHlsPlayer } = await import('/static/hls-player.js');
+    const options = {
+      hlsUrl: '/unused.m3u8',
+      mp4Url: 'data:video/mp4;base64,',
+      quality: null,
+      status: null,
+      t: (key: string) => key,
+    };
+    const firstVideo = document.createElement('video');
+    document.body.append(firstVideo);
+    const cleanupFirst = await attachHlsPlayer(firstVideo, options);
+    cleanupFirst();
+    firstVideo.remove();
+
+    const secondVideo = document.createElement('video');
+    document.body.append(secondVideo);
+    const cleanupSecond = await attachHlsPlayer(secondVideo, options);
+    cleanupSecond();
+    secondVideo.remove();
+    return Boolean((window as Window & { Hls?: unknown }).Hls);
+  });
+
+  expect(result).toBe(true);
+  expect(libraryRequests).toBe(2);
+});
