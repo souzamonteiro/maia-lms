@@ -1600,7 +1600,8 @@ selected upload, and skips completion/queueing when possible; a request arriving
 during completion cancels the newly queued job. Chromium E2E tests cover both
 cancellation after an in-flight final chunk and during the completion request.
 The API integration test also verifies that cancelling a queued upload removes
-its stored chunks and releases its upload reservation.
+its stored chunks and releases its upload reservation. The editor disables cancel
+for terminal states and duplicate cancellation while a request is pending.
 
 ## Playback position listener ordering — November 10, 2026
 

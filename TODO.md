@@ -467,6 +467,8 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   publishing normalized artifacts, and expires/cleans incomplete uploads. The
   editor sends cancellation to the server after any in-flight chunk completes and
   also cancels a job if a cancellation arrives during completion/queueing.
+  The cancel control is enabled only for cancellable states and blocks duplicate
+  cancellation requests while one is in flight.
   ClamAV path is fail-closed when enabled and tested with scanner outcomes, but
   `ATTACHMENT_SCAN_MODE` defaults to `disabled`. Keep this item open until the real
   worker host has ClamAV enabled and its scan behavior is qualified. Enabled scans

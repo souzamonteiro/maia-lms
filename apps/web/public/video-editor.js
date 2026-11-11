@@ -34,6 +34,7 @@ export function mountVideoEditor(
   let paused = false,
     busy = false,
     retrying = false,
+    canceling = false,
     cancelRequested = false,
     cancellationAttempted = false;
   function updateDuration() {
@@ -41,6 +42,11 @@ export function mountVideoEditor(
     const selected = videos.find(video => video.id === videoId);
     const retry = root.querySelector('.retry-video');
     if (retry) retry.disabled = retrying || selected?.status !== 'FAILED';
+    const cancel = root.querySelector('.cancel-video');
+    if (cancel)
+      cancel.disabled =
+        canceling ||
+        (!busy && !['UPLOADING', 'QUEUED', 'PROCESSING'].includes(selected?.status));
     if (!busy && selected) {
       if (selected.status === 'PROCESSING') {
         progress.value = selected.processing_progress ?? 0;
@@ -123,10 +129,16 @@ export function mountVideoEditor(
       status.textContent = t('uploadCancelling');
       return;
     }
+    if (canceling || !videoId) return;
+    canceling = true;
+    updateDuration();
     try {
       await cancelSelectedUpload();
     } catch (error) {
       notify(error);
+    } finally {
+      canceling = false;
+      updateDuration();
     }
   };
   root.querySelector('.upload-video').onclick = async () => {
@@ -136,6 +148,7 @@ export function mountVideoEditor(
     paused = false;
     cancelRequested = false;
     cancellationAttempted = false;
+    updateDuration();
     progress.value = 0;
     root.querySelector('.upload-video').disabled = true;
     root.querySelector('.pause-video').disabled = false;
@@ -222,6 +235,7 @@ export function mountVideoEditor(
       busy = false;
       cancelRequested = false;
       cancellationAttempted = false;
+      updateDuration();
       root.querySelector('.upload-video').disabled = false;
       root.querySelector('.pause-video').disabled = true;
       choice.disabled = false;

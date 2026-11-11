@@ -315,3 +315,66 @@ test('cancelling during upload completion cancels the queued media job', async (
   expect(result).toContain('POST /admin/videos/upload-2/complete');
   expect(result).toContain('POST /admin/videos/upload-2/cancel');
 });
+
+test('media editor only enables cancel for cancellable states and prevents duplicate requests', async ({
+  page,
+}) => {
+  await page.goto('/auth/login');
+  const result = await page.evaluate(async () => {
+    const { mountVideoEditor } = await import('/static/video-editor.js');
+    const root = document.createElement('div');
+    document.body.append(root);
+    let status = 'READY';
+    let releaseCancellation: (() => void) | undefined;
+    let notifyCancellationStarted: (() => void) | undefined;
+    const cancellationStarted = new Promise<void>(resolve => {
+      notifyCancellationStarted = resolve;
+    });
+    const cancelCalls: string[] = [];
+    const api = async (path: string, method = 'GET') => {
+      if (path === '/admin/videos?courseId=course')
+        return [{ id: 'media-3', filename: 'sample.mp4', status }];
+      if (path === '/admin/videos/media-3/cancel' && method === 'POST') {
+        cancelCalls.push(path);
+        notifyCancellationStarted?.();
+        await new Promise<void>(resolve => {
+          releaseCancellation = resolve;
+        });
+        status = 'CANCELLED';
+        return { status };
+      }
+      throw new Error(`Unexpected media request: ${method} ${path}`);
+    };
+    mountVideoEditor(root, {
+      courseId: 'course',
+      videoId: 'media-3',
+      api,
+      t: key => key,
+      e: value => value,
+      notify: () => {},
+      onChange: () => {},
+    });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const cancel = root.querySelector<HTMLButtonElement>('.cancel-video')!;
+    const disabledForReady = cancel.disabled;
+    status = 'QUEUED';
+    root.querySelector<HTMLButtonElement>('.refresh-videos')!.click();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const enabledForQueued = !cancel.disabled;
+    cancel.click();
+    await cancellationStarted;
+    const disabledWhileCancelling = cancel.disabled;
+    cancel.click();
+    releaseCancellation?.();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    root.remove();
+    return { disabledForReady, enabledForQueued, disabledWhileCancelling, cancelCalls };
+  });
+
+  expect(result).toEqual({
+    disabledForReady: true,
+    enabledForQueued: true,
+    disabledWhileCancelling: true,
+    cancelCalls: ['/admin/videos/media-3/cancel'],
+  });
+});
