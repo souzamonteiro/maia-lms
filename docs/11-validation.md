@@ -2428,6 +2428,7 @@ Validation:
 
 No deployment, host or running-instance changes were performed.
 
+
 ## Production pilot configuration preflight — October 31, 2026
 
 Added a read-only preflight for a named production environment file. It clears
@@ -2770,6 +2771,39 @@ Validation:
 - `E2E_PORT=4344 npm run test:e2e -- tests/e2e/learning.spec.ts --browser=webkit` (1/1).
 - `npm run lint` passed.
 - `git diff --check` passed.
+
+No deployment, host or running-instance changes were performed.
+
+## Integrated learner flow at 320 CSS pixels — November 11, 2026
+
+The existing learner E2E now uses a 320×780 CSS-pixel viewport rather than
+360×780 while creating and publishing a course, enrolling, navigating and
+completing lessons, and checking the learning-progress page. The covered course,
+lesson, and progress pages remain free of horizontal overflow. This is local
+browser viewport emulation, not physical-device qualification or a test of
+actual browser zoom.
+
+Validation:
+- `E2E_PORT=4419 npm run test:e2e -- tests/e2e/learning.spec.ts --browser=chromium` (1/1 passed).
+- `E2E_PORT=4420 npm run test:e2e -- tests/e2e/learning.spec.ts --browser=firefox` (1/1 passed).
+- `E2E_PORT=4421 npm run test:e2e -- tests/e2e/learning.spec.ts --browser=webkit` (1/1 passed).
+- `npm run lint` and `git diff --check`: passed.
+
+No deployment, host or running-instance changes were performed.
+
+## Learner progress localization at 320 CSS pixels — November 11, 2026
+
+The integrated learning E2E now verifies the localized learning heading,
+completion text, and continue link in English, Brazilian Portuguese, and Spanish
+while at a 320×780 CSS-pixel viewport, and checks for horizontal overflow after
+each locale rerender. This is local responsive-browser emulation, not physical
+device qualification or actual browser zoom.
+
+Validation:
+- `E2E_PORT=4422 npm run test:e2e -- tests/e2e/learning.spec.ts --browser=chromium` (1/1 passed).
+- `E2E_PORT=4423 npm run test:e2e -- tests/e2e/learning.spec.ts --browser=firefox` (1/1 passed).
+- `E2E_PORT=4424 npm run test:e2e -- tests/e2e/learning.spec.ts --browser=webkit` (1/1 passed).
+- `npm run lint` and `git diff --check`: passed.
 
 No deployment, host or running-instance changes were performed.
 
@@ -3714,6 +3748,17 @@ Validation:
 This is local browser automation only; no deployment, host, or running-instance
 changes were performed.
 
+November 11 follow-up: the certificate-history E2E now uses Tab from the
+focused alert to reach Retry, rather than moving focus programmatically. The
+focused revocation/reissue-and-history workflow passed in all three browser
+engines:
+- `E2E_PORT=4450 npm run test:e2e -- tests/e2e/admin-certificates.spec.ts --browser=chromium --grep "administrator revokes and reissues"` (1/1).
+- `E2E_PORT=4451 npm run test:e2e -- tests/e2e/admin-certificates.spec.ts --browser=firefox --grep "administrator revokes and reissues"` (1/1).
+- `E2E_PORT=4452 npm run test:e2e -- tests/e2e/admin-certificates.spec.ts --browser=webkit --grep "administrator revokes and reissues"` (1/1).
+
+These are focused local runs, not full-suite or physical-device qualification.
+No deployment, host, or running-instance changes were performed.
+
 ## SQLite video-upload chunk integrity
 
 Migration 183 rejects direct SQL inserts that pre-seed a video upload's byte
@@ -4066,21 +4111,18 @@ qualification. No deployment, host, or running-instance changes were performed.
 ## Administrator enrollment-list retry and announcements — November 6, 2026
 
 The administrator enrollment list now announces updates through a polite live
-region and moves focus to a load-failure alert. A focused Chromium E2E simulates
-a temporary API failure, verifies the focused alert and keyboard-operable retry,
-holds the retry response to assert `aria-busy="true"`, then verifies the empty
-state, cleared alert, and zero-enrollment count after recovery.
+region and moves focus to a load-failure alert. A focused E2E simulates a
+temporary API failure, uses Tab from the focused alert to reach the keyboard
+retry, holds the retry response to assert `aria-busy="true"`, then verifies the
+empty state, cleared alert, and zero-enrollment count after recovery.
 
 Validation:
-- `E2E_PORT=4432 npm run test:e2e -- tests/e2e/admin-enrollments.spec.ts --grep "enrollment list announces"`: 1/1 passed.
-- `E2E_PORT=4432 npm run test:e2e -- tests/e2e/admin-enrollments.spec.ts`: 2/2 passed, including the existing grant/revoke/history workflow.
-- `npm run lint`: passed.
-- `npm run build`: passed across all workspaces.
-- `git diff --check`: passed.
+- `E2E_PORT=4441 npm run test:e2e -- tests/e2e/admin-enrollments.spec.ts --browser=chromium --grep "enrollment list announces"`: 1/1 passed.
+- `E2E_PORT=4442 npm run test:e2e -- tests/e2e/admin-enrollments.spec.ts --browser=firefox --grep "enrollment list announces"`: 1/1 passed.
+- `E2E_PORT=4443 npm run test:e2e -- tests/e2e/admin-enrollments.spec.ts --browser=webkit --grep "enrollment list announces"`: 1/1 passed.
 
-This qualifies only the focused local Chromium workflow, not Firefox/WebKit,
-physical devices, the host, or a deployed instance. No deployment, host, or
-running-instance changes were performed.
+These are focused local workflows, not full-suite or physical-device
+qualification. No deployment, host, or running-instance changes were performed.
 
 ## E2E suite navigation follow-up — November 8, 2026
 
@@ -4142,21 +4184,18 @@ host. No production or host changes were made.
 ## Administrator certificate-list retry and announcements — November 6, 2026
 
 The administrator certificate list now announces updates through a polite live
-region and moves focus to a load-failure alert. A focused Chromium E2E simulates
-a temporary API failure, verifies the focused alert and keyboard-operable retry,
-holds the retry response to assert `aria-busy="true"`, then verifies the empty
-state, cleared alert, and zero-certificate count after recovery.
+region and moves focus to a load-failure alert. A focused E2E simulates a
+temporary API failure, uses Tab from the focused alert to reach the keyboard
+retry, holds the retry response to assert `aria-busy="true"`, then verifies the
+empty state, cleared alert, and zero-certificate count after recovery.
 
 Validation:
-- `E2E_PORT=4431 npm run test:e2e -- tests/e2e/admin-certificates.spec.ts --grep "certificate list announces"`: 1/1 passed.
-- `E2E_PORT=4431 npm run test:e2e -- tests/e2e/admin-certificates.spec.ts`: 2/2 passed, including the existing revoke/reissue/history workflow.
-- `npm run lint`: passed.
-- `npm run build`: passed across all workspaces.
-- `git diff --check`: passed.
+- `E2E_PORT=4438 npm run test:e2e -- tests/e2e/admin-certificates.spec.ts --browser=chromium --grep "certificate list announces"`: 1/1 passed.
+- `E2E_PORT=4439 npm run test:e2e -- tests/e2e/admin-certificates.spec.ts --browser=firefox --grep "certificate list announces"`: 1/1 passed.
+- `E2E_PORT=4440 npm run test:e2e -- tests/e2e/admin-certificates.spec.ts --browser=webkit --grep "certificate list announces"`: 1/1 passed.
 
-This qualifies only the focused local Chromium workflow, not Firefox/WebKit,
-physical devices, the host, or a deployed instance. No deployment, host, or
-running-instance changes were performed.
+These are focused local workflows, not full browser-suite or physical-device
+qualification. No deployment, host, or running-instance changes were performed.
 
 ## Administrator user-list retry and announcements — November 6, 2026
 
@@ -4193,6 +4232,16 @@ This qualifies only the focused local Chromium workflow, not Firefox/WebKit,
 physical devices, the host, or a deployed instance. No deployment, host, or
 running-instance changes were performed.
 
+November 11 follow-up: the order-list retry E2E now uses Tab from the focused
+alert to reach Retry, rather than moving focus programmatically. The focused
+flow passed in Chromium, Firefox, and WebKit:
+- `E2E_PORT=4444 npm run test:e2e -- tests/e2e/admin-orders.spec.ts --browser=chromium --grep "order list announces"` (1/1).
+- `E2E_PORT=4445 npm run test:e2e -- tests/e2e/admin-orders.spec.ts --browser=firefox --grep "order list announces"` (1/1).
+- `E2E_PORT=4446 npm run test:e2e -- tests/e2e/admin-orders.spec.ts --browser=webkit --grep "order list announces"` (1/1).
+
+These are focused local runs, not full-suite or physical-device qualification.
+No deployment, host, or running-instance changes were performed.
+
 ## Media library retry and loading accessibility — November 6, 2026
 
 The admin media list is now a polite live region. Failed loads focus an alert
@@ -4208,6 +4257,16 @@ Validation:
 
 This is local browser automation only; no deployment, host, or running-instance
 changes were performed.
+
+November 11 follow-up: the media-list retry E2E now uses Tab from the focused
+alert to reach Retry, rather than moving focus programmatically. The focused
+flow passed in Chromium, Firefox, and WebKit:
+- `E2E_PORT=4447 npm run test:e2e -- tests/e2e/admin-media.spec.ts --browser=chromium --grep "media library announces"` (1/1).
+- `E2E_PORT=4448 npm run test:e2e -- tests/e2e/admin-media.spec.ts --browser=firefox --grep "media library announces"` (1/1).
+- `E2E_PORT=4449 npm run test:e2e -- tests/e2e/admin-media.spec.ts --browser=webkit --grep "media library announces"` (1/1).
+
+These are focused local runs, not full-suite or physical-device qualification.
+No deployment, host, or running-instance changes were performed.
 
 ## Enrollment history retry and focus recovery — November 6, 2026
 
@@ -4228,3 +4287,311 @@ Validation:
 
 This is local browser automation only; no deployment, host, or running-instance
 changes were performed.
+
+## Privacy request resolution — November 11, 2026
+
+Administrators can now close a reviewed privacy request at `/admin/privacy` with
+a private resolution note (5–1000 trimmed characters). The new
+`POST /admin/privacy/requests/{id}/close` endpoint atomically moves IN_REVIEW to
+the terminal CLOSED state and appends an audited actor/previous-state event in
+the same transaction; audit failure rolls the closure back. Closing an unreviewed
+request returns the stable `PRIVACY_REQUEST_NOT_REVIEWED` code and an
+already-closed request returns `PRIVACY_REQUEST_CLOSED`, so every closure has at
+least one recorded review and cannot be repeated or undone. The dashboard shows
+the close form only for in-review requests, preserves unsaved resolution notes
+across language switches and failed saves in page memory, and labels review and
+closure entries in the private history. The requester sees the CLOSED state in
+their own language without notes and may submit a new deletion request
+afterwards. No account data is deleted, anonymized, or suspended; resolution is
+an administrative record, not deletion fulfillment.
+
+Validation:
+- `npx vitest run apps/api/src/privacy.test.ts`: 4/4 passed, including the new
+  close lifecycle (authorization, unreviewed/closed rejections, audit rollback,
+  trimmed note history, requester visibility, and post-closure re-request).
+- `VIDEO_TEST_REAL=1 npm test -- --reporter=dot --testTimeout=10000`: 325 tests
+  passed across 113 files.
+- `npm run build` and `npm run lint`: passed across all workspaces.
+- `E2E_PORT=4412 npx playwright test tests/e2e/admin-privacy.spec.ts`: 1/1 passed
+  in Chromium; the same workflow passed 1/1 in Firefox (port 4413) and WebKit
+  (port 4414). These are focused local workflows, not full-suite or
+  physical-device qualification.
+
+This is local implementation and browser automation only; no deployment, host,
+or running-instance changes were performed. Retention/legal policy, support
+contact, and actual data deletion/anonymization remain open under PRIV-01.
+
+## Privacy export includes own refund reasons — November 11, 2026
+
+The authenticated account export now includes the recorded `reason` for each
+refund attached to that user's orders. It continues to omit provider refund
+references and scopes records through the owning order. The API fixture covers
+both an owner refund and another account's refund, asserting that only the
+owner's reason is exported and neither provider reference is present.
+
+Validation:
+- `npx vitest run apps/api/src/privacy.test.ts --reporter=dot`: 4/4 passed.
+- `npm run build`: passed across all workspaces.
+- `npm run lint`: passed.
+- `git diff --check`: passed.
+
+This is a local export improvement; no deployment, host, or running-instance
+changes were performed. It does not define retention/legal policy or imply
+account deletion.
+
+## Export authored course content — November 11, 2026
+
+The self-service account export now includes courses authored by the requesting
+account, including draft and archived revisions, ordered modules/lessons, lesson
+bodies/captions, revision-specific category assignments, attachment associations,
+quiz settings, and question content including answer keys for those own courses.
+Legacy owned assets are represented by minimal metadata. Course revision storage
+keys, legacy asset storage keys and raw asset metadata are excluded. API queries
+scope course content by `author_id` within the export's existing deferred SQLite
+snapshot transaction.
+
+Validation:
+- `npx vitest run apps/api/src/privacy.test.ts --reporter=dot`: 4/4 passed.
+- `VIDEO_TEST_REAL=1 npm test -- --reporter=dot --testTimeout=10000`: 325 tests
+  passed across 113 files.
+- `npm run build` and `npm run lint`: passed across all workspaces.
+- `npx --yes js-yaml spec/openapi.yaml`: passed.
+- `git diff --check`: passed.
+- After adding revision-specific categories, `npx vitest run
+  apps/api/src/privacy.test.ts --reporter=dot`: 4/4 passed; workspace build,
+  lint, OpenAPI parse and `git diff --check` passed again.
+
+Cross-account API fixtures verify author-only course, lesson, quiz, question and
+asset export, including answer-key portability for the owner's quiz and exclusion
+of other authors' content, storage keys, raw asset metadata and provider references.
+This is local data portability, not a complete legal export inventory or policy
+review. No deployment, host, or running-instance changes were performed.
+
+## Privacy closure accessibility states — November 11, 2026
+
+The administrator privacy-request E2E now verifies the resolution-note form's
+labels and action in English, Brazilian Portuguese, and Spanish. It confirms an
+unsaved note survives language changes, a temporary close-request failure
+announces and focuses an assertive alert without discarding the note, and the
+administrator can retry and close using Enter. This extends only focused local
+desktop browser coverage; it is not a full-suite or physical-device audit.
+
+Validation:
+- `E2E_PORT=4421 npx playwright test tests/e2e/admin-privacy.spec.ts --browser=chromium`: 1/1 passed.
+- `E2E_PORT=4422 npx playwright test tests/e2e/admin-privacy.spec.ts --browser=firefox`: 1/1 passed.
+- `E2E_PORT=4423 npx playwright test tests/e2e/admin-privacy.spec.ts --browser=webkit`: 1/1 passed.
+- `npm run lint`: passed.
+- `git diff --check`: passed.
+
+No application behavior, deployment, host or running instance was changed.
+
+## Privacy request mobile-width overflow — November 11, 2026
+
+The focused administrator privacy workflow now checks the request-resolution
+form at 320 CSS pixels. It caught the requester email heading expanding the
+layout horizontally; `.privacy-request h2` now wraps long email addresses. The
+test confirms the document has no horizontal overflow and the resolution note
+and close action remain visible. This is browser viewport emulation, not
+physical-device qualification.
+
+Validation:
+- `E2E_PORT=4451 npx playwright test tests/e2e/admin-privacy.spec.ts --browser=chromium`: 1/1 passed.
+- `E2E_PORT=4452 npx playwright test tests/e2e/admin-privacy.spec.ts --browser=firefox`: 1/1 passed.
+- `E2E_PORT=4453 npx playwright test tests/e2e/admin-privacy.spec.ts --browser=webkit`: 1/1 passed.
+- `npm run lint`: passed.
+- `git diff --check`: passed.
+
+No deployment, host or running-instance changes were performed.
+
+## Learner privacy-request failure and retry states — November 11, 2026
+
+The learner account-security workflow now checks an unavailable privacy-history
+load, focusing the assertive alert and retry action, plus a failed deletion
+submission followed by a successful keyboard retry. It also verifies that a
+successful request remains reported as successful when refreshing its history
+fails, and that retrying the history restores the request list. These are
+targeted local desktop-browser checks, not a full accessibility audit or
+physical-device qualification.
+
+Validation:
+- `E2E_PORT=4392 npm run test:e2e -- tests/e2e/account-security.spec.ts --browser=chromium --grep "learner downloads an export"` (1/1 passed).
+- `E2E_PORT=4393 npm run test:e2e -- tests/e2e/account-security.spec.ts --browser=firefox --grep "learner downloads an export"` (1/1 passed).
+- `E2E_PORT=4394 npm run test:e2e -- tests/e2e/account-security.spec.ts --browser=webkit --grep "learner downloads an export"` (1/1 passed).
+- `npm run build` and `npm run lint`: passed.
+- `git diff --check`: passed.
+
+No deployment, host or running-instance changes were performed.
+
+## Quiz history empty state — November 11, 2026
+
+The lesson-player quiz history now renders its heading and a clear no-attempts
+message instead of an empty region. The E2E checks the localized empty state in
+English, Brazilian Portuguese, and Spanish, including the heading receiving
+focus after a successful history retry. This is targeted local desktop-browser
+coverage, not a full accessibility audit or physical-device qualification.
+
+Validation:
+- `E2E_PORT=4401 npm run test:e2e -- tests/e2e/quiz-attempts.spec.ts --browser=chromium` (1/1 passed).
+- `E2E_PORT=4402 npm run test:e2e -- tests/e2e/quiz-attempts.spec.ts --browser=firefox` (1/1 passed).
+- `E2E_PORT=4403 npm run test:e2e -- tests/e2e/quiz-attempts.spec.ts --browser=webkit` (1/1 passed).
+- `npm run build` and `npm run lint`: passed.
+- `git diff --check`: passed.
+
+No deployment, host or running-instance changes were performed.
+
+## Quiz attempt history failure and retry — November 11, 2026
+
+The lesson-player quiz history now exposes `aria-busy` during reads, places a
+focused alert and keyboard retry beside the affected history on failure, and
+restores focus to the quiz control after a successful retry. The focused quiz
+workflow injects an initial 503, verifies Tab/Enter retry and the held busy
+state, then continues through the normal attempt, submission, and result flow.
+This is targeted local desktop-browser coverage, not a full accessibility
+audit or physical-device qualification.
+
+Validation:
+- `E2E_PORT=4395 npm run test:e2e -- tests/e2e/quiz-attempts.spec.ts --browser=chromium` (1/1 passed).
+- `E2E_PORT=4396 npm run test:e2e -- tests/e2e/quiz-attempts.spec.ts --browser=firefox` (1/1 passed).
+- `E2E_PORT=4397 npm run test:e2e -- tests/e2e/quiz-attempts.spec.ts --browser=webkit` (1/1 passed).
+- `npm run build` and `npm run lint`: passed.
+- `git diff --check`: passed.
+
+No deployment, host or running-instance changes were performed.
+
+## Quiz attempt start failure and retry — November 11, 2026
+
+When creating a quiz attempt fails, the lesson player now clears the polite
+starting status, focuses an assertive error, and exposes the retry action for
+keyboard activation. The E2E injects a temporary 503, verifies alert focus and
+Tab/Enter retry, then continues the normal attempt and submission workflow.
+This is targeted local desktop-browser coverage, not a full accessibility
+audit or physical-device qualification.
+
+Validation:
+- `E2E_PORT=4404 npm run test:e2e -- tests/e2e/quiz-attempts.spec.ts --browser=chromium` (1/1 passed).
+- `E2E_PORT=4405 npm run test:e2e -- tests/e2e/quiz-attempts.spec.ts --browser=firefox` (1/1 passed).
+- `E2E_PORT=4406 npm run test:e2e -- tests/e2e/quiz-attempts.spec.ts --browser=webkit` (1/1 passed).
+- `npm run build` and `npm run lint`: passed.
+- `git diff --check`: passed.
+
+No deployment, host or running-instance changes were performed.
+
+## Quiz submission failure preserves answers — November 11, 2026
+
+The lesson-player E2E now injects a temporary submission 503 after an answer
+has been selected and saved. It verifies the assertive alert receives focus,
+the learner's answer remains selected, and the submit control is enabled for a
+keyboard retry that completes the attempt. This is targeted local desktop
+browser coverage, not a full accessibility audit or physical-device
+qualification.
+
+Validation:
+- `E2E_PORT=4407 npm run test:e2e -- tests/e2e/quiz-attempts.spec.ts --browser=chromium` (1/1 passed).
+- `E2E_PORT=4408 npm run test:e2e -- tests/e2e/quiz-attempts.spec.ts --browser=firefox` (1/1 passed).
+- `E2E_PORT=4409 npm run test:e2e -- tests/e2e/quiz-attempts.spec.ts --browser=webkit` (1/1 passed).
+- `npm run build` and `npm run lint`: passed.
+- `git diff --check`: passed.
+
+No deployment, host or running-instance changes were performed.
+
+## Quiz answer autosave failure and recovery — November 11, 2026
+
+The quiz-attempt E2E now injects a temporary autosave 503 after the learner
+selects the correct answer. It checks the focused assertive alert, the polite
+guidance that submission will send current selections, and preservation of the
+selected answer. Without an intervening successful autosave, the learner submits
+with Enter; the server grades the current selection and completes the quiz.
+This is targeted local desktop-browser coverage, not a full accessibility
+audit or physical-device qualification.
+
+Validation:
+- `E2E_PORT=4410 npm run test:e2e -- tests/e2e/quiz-attempts.spec.ts --browser=chromium` (1/1 passed).
+- `E2E_PORT=4411 npm run test:e2e -- tests/e2e/quiz-attempts.spec.ts --browser=firefox` (1/1 passed).
+- `E2E_PORT=4412 npm run test:e2e -- tests/e2e/quiz-attempts.spec.ts --browser=webkit` (1/1 passed).
+- `npm run build` and `npm run lint`: passed.
+- `git diff --check`: passed.
+
+No deployment, host or running-instance changes were performed.
+
+## Quiz deadline error focus and recovery — November 11, 2026
+
+When quiz submission reports an expired deadline, the lesson player now clears
+the stale in-progress status, focuses the contextual assertive alert, and leaves
+the start-another-attempt action next in keyboard order. The E2E injects the
+deadline response and verifies the alert and keyboard focus in Chromium,
+Firefox, and WebKit. This is a targeted local interaction check, not a full
+accessibility audit or production deadline qualification.
+
+Validation:
+- `E2E_PORT=4416 npm run test:e2e -- tests/e2e/quiz-attempts.spec.ts --browser=chromium` (1/1 passed).
+- `E2E_PORT=4417 npm run test:e2e -- tests/e2e/quiz-attempts.spec.ts --browser=firefox` (1/1 passed).
+- `E2E_PORT=4418 npm run test:e2e -- tests/e2e/quiz-attempts.spec.ts --browser=webkit` (1/1 passed).
+- `npm run build` and `npm run lint`: passed.
+- `git diff --check`: passed.
+
+No deployment, host or running-instance changes were performed.
+
+## Instructor profile HTML before hydration — November 11, 2026
+
+The author-management E2E now requests the opted-in instructor page directly
+after profile publication and checks its server-rendered biography, localized
+HTML language, canonical URL, indexability, profile Open Graph metadata, and
+published course link before hydration. This expands targeted local SEO
+coverage; it is not external crawler qualification.
+
+Validation:
+- `E2E_PORT=4429 npm run test:e2e -- tests/e2e/admin-users.spec.ts --browser=chromium` (2/2 passed).
+- `E2E_PORT=4430 npm run test:e2e -- tests/e2e/admin-users.spec.ts --browser=firefox` (2/2 passed).
+- `E2E_PORT=4431 npm run test:e2e -- tests/e2e/admin-users.spec.ts --browser=webkit` (2/2 passed).
+- `npm run lint` passed when rerun after the E2E process completed; the initial
+  concurrent run collided with Playwright's temporary results-directory cleanup.
+- `git diff --check` passed.
+
+No full Firefox/WebKit suite or device qualification, deployment, host or
+running-instance changes were performed.
+
+## Learner layout at a zoom-equivalent viewport — November 11, 2026
+
+The integrated learning workflow now checks the public catalog and course
+enrollment page at 640 CSS pixels and confirms both render without horizontal
+overflow in Chromium, Firefox, and WebKit. For a 1280 CSS-pixel desktop layout,
+640 CSS pixels is the effective layout width associated with 200% browser zoom;
+the test changes the viewport and does not apply or qualify actual browser zoom.
+The existing 320 CSS-pixel learner checks remain unchanged.
+
+Validation:
+- `E2E_PORT=4432 npm run test:e2e -- tests/e2e/learning.spec.ts --browser=chromium` (1/1 passed).
+- `E2E_PORT=4433 npm run test:e2e -- tests/e2e/learning.spec.ts --browser=firefox` (1/1 passed).
+- `E2E_PORT=4434 npm run test:e2e -- tests/e2e/learning.spec.ts --browser=webkit` (1/1 passed).
+
+No deployment, host or running-instance changes were performed.
+
+## Authoring validation restores focus to hidden invalid field — November 11, 2026
+
+The focused studio workflow now verifies that attempting to save with a
+required lesson title missing from a hidden section reveals the section and
+places native validation focus on that title. This extends targeted local
+keyboard/focus coverage; it is not a full accessibility audit.
+
+Validation:
+- `E2E_PORT=4435 npm run test:e2e -- tests/e2e/authoring.spec.ts --browser=chromium --grep "focused studio"` (1/1 passed).
+- `E2E_PORT=4436 npm run test:e2e -- tests/e2e/authoring.spec.ts --browser=firefox --grep "focused studio"` (1/1 passed).
+- `E2E_PORT=4437 npm run test:e2e -- tests/e2e/authoring.spec.ts --browser=webkit --grep "focused studio"` (1/1 passed).
+
+No deployment, host or running-instance changes were performed.
+
+## Private history retry uses keyboard tab order — November 11, 2026
+
+The administrator privacy-review workflow now reaches Retry with Tab after
+each focused private-history error, including a repeated failure, instead of
+moving focus programmatically. It then verifies the held busy state and focus
+restoration after successful recovery. The focused workflow passed in Chromium,
+Firefox, and WebKit.
+
+Validation:
+- `E2E_PORT=4453 npm run test:e2e -- tests/e2e/admin-privacy.spec.ts --browser=chromium` (1/1 passed).
+- `E2E_PORT=4454 npm run test:e2e -- tests/e2e/admin-privacy.spec.ts --browser=firefox` (1/1 passed).
+- `E2E_PORT=4455 npm run test:e2e -- tests/e2e/admin-privacy.spec.ts --browser=webkit` (1/1 passed).
+
+These are focused local runs, not full-suite, screen-reader or physical-device
+qualification. No deployment, host, or running-instance changes were performed.

@@ -139,7 +139,9 @@ test('order list announces load failures and recovers with keyboard retry', asyn
   const error = list.getByRole('alert');
   await expect(error).toHaveText('Orders temporarily unavailable');
   await expect(error).toBeFocused();
-  await list.getByRole('button', { name: 'Retry', exact: true }).focus();
+  const retry = list.getByRole('button', { name: 'Retry', exact: true });
+  await page.keyboard.press('Tab');
+  await expect(retry).toBeFocused();
   await page.keyboard.press('Enter');
   await retryStarted;
   await expect(list).toHaveAttribute('aria-busy', 'true');

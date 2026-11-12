@@ -17,6 +17,50 @@ export function privacyRouter(db: Database.Database): Router {
 
       const instructorProfile = db.prepare(`SELECT slug,display_name,bio,website_url,is_public,updated_at
         FROM instructor_profiles WHERE user_id=?`).get(userId) ?? null;
+      const authoredCourses = db.prepare(`SELECT id,slug,access_mode,status,locale,
+        current_revision_id,published_revision_id,created_at,updated_at
+        FROM courses WHERE author_id=? ORDER BY created_at,id`).all(userId);
+      const authoredRevisions = db.prepare(`SELECT r.id,r.course_id,r.title,r.summary,r.slug,
+        r.access_mode,r.locale,r.learning_outcomes,r.prerequisites,r.level,r.duration_minutes,
+        r.instructor_name,r.instructor_bio,r.access_terms,r.certificate_terms,
+        r.price_amount_minor,r.price_currency,r.translations_json,r.image_alt,r.cover_alt,
+        r.cover_file_id,r.trailer_video_id,r.published_at,r.created_at
+        FROM course_revisions r JOIN courses c ON c.id=r.course_id
+        WHERE c.author_id=? ORDER BY r.created_at,r.id`).all(userId);
+      const authoredCourseCategories = db.prepare(`SELECT rc.revision_id,c.id,c.slug,c.name,c.description
+        FROM course_revision_categories rc JOIN categories c ON c.id=rc.category_id
+        JOIN course_revisions r ON r.id=rc.revision_id
+        JOIN courses course ON course.id=r.course_id WHERE course.author_id=?
+        ORDER BY r.created_at,rc.revision_id,c.name COLLATE NOCASE,c.id`).all(userId);
+      const authoredModules = db.prepare(`SELECT m.id,m.revision_id,m.sort_order,m.title
+        FROM modules m JOIN course_revisions r ON r.id=m.revision_id
+        JOIN courses c ON c.id=r.course_id WHERE c.author_id=?
+        ORDER BY r.created_at,m.sort_order,m.id`).all(userId);
+      const authoredLessons = db.prepare(`SELECT l.id,m.revision_id,l.module_id,l.sort_order,
+        l.title,l.kind,l.media_id,l.video_id,l.body,l.content_format,l.render_policy_version,
+        l.is_required,l.is_preview,l.captions_json
+        FROM lessons l JOIN modules m ON m.id=l.module_id
+        JOIN course_revisions r ON r.id=m.revision_id
+        JOIN courses c ON c.id=r.course_id WHERE c.author_id=?
+        ORDER BY r.created_at,m.sort_order,l.sort_order,l.id`).all(userId);
+      const authoredAttachments = db.prepare(`SELECT a.id,a.revision_id,a.lesson_id,a.upload_id,
+        a.title,a.description,a.sort_order FROM course_attachments a
+        JOIN course_revisions r ON r.id=a.revision_id JOIN courses c ON c.id=r.course_id
+        WHERE c.author_id=? ORDER BY r.created_at,a.lesson_id,a.sort_order,a.id`).all(userId);
+      const authoredQuizzes = db.prepare(`SELECT q.id,q.revision_id,q.lesson_id,q.pass_percent,
+        q.max_attempts,q.randomize_questions,q.time_limit_seconds
+        FROM quizzes q JOIN course_revisions r ON r.id=q.revision_id
+        JOIN courses c ON c.id=r.course_id WHERE c.author_id=?
+        ORDER BY r.created_at,q.lesson_id,q.id`).all(userId);
+      const authoredQuestions = db.prepare(`SELECT question.id,question.quiz_id,question.prompt,
+        question.choices_json,question.correct_choice_keys,question.points,question.sort_order,
+        question.explanation FROM questions question
+        JOIN quizzes q ON q.id=question.quiz_id
+        JOIN course_revisions r ON r.id=q.revision_id
+        JOIN courses c ON c.id=r.course_id WHERE c.author_id=?
+        ORDER BY r.created_at,q.id,question.sort_order,question.id`).all(userId);
+      const legacyAssets = db.prepare(`SELECT id,kind,status,created_at,updated_at
+        FROM assets WHERE owner_id=? ORDER BY created_at,id`).all(userId);
       const emailChanges = db.prepare(`SELECT id,email,expires_at,used_at,created_at
         FROM account_email_changes WHERE user_id=? ORDER BY created_at,id`).all(userId);
       const enrollments = db.prepare(`SELECT e.id,e.course_id,e.revision_id,r.title AS course_title,
@@ -39,7 +83,7 @@ export function privacyRouter(db: Database.Database): Router {
       const orders = db.prepare(`SELECT id,course_id,course_revision_id,course_title_snapshot,
         access_terms_snapshot,price_snapshot,currency,provider,state,created_at,updated_at
         FROM orders WHERE user_id=? ORDER BY created_at`).all(userId);
-      const refunds = db.prepare(`SELECT r.id,r.order_id,r.amount_minor,r.status,r.created_at
+      const refunds = db.prepare(`SELECT r.id,r.order_id,r.amount_minor,r.status,r.reason,r.created_at
         FROM refunds r JOIN orders o ON o.id=r.order_id WHERE o.user_id=? ORDER BY r.created_at`).all(userId);
       const certificates = db.prepare(`SELECT c.id,c.enrollment_id,c.public_code,c.confirmed_name,
         c.payload_json,c.disclosure_consented_at,c.disclosure_version,c.issued_at,c.revoked_at,c.reason
@@ -62,6 +106,15 @@ export function privacyRouter(db: Database.Database): Router {
         generatedAt: new Date().toISOString(),
         account,
         instructorProfile,
+        authoredCourses,
+        authoredRevisions,
+        authoredCourseCategories,
+        authoredModules,
+        authoredLessons,
+        authoredAttachments,
+        authoredQuizzes,
+        authoredQuestions,
+        legacyAssets,
         emailChanges,
         enrollments,
         entitlements,

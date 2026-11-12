@@ -338,6 +338,9 @@ footer {
   min-height: 44px;
   margin-bottom: 0;
 }
+.privacy-request h2 {
+  overflow-wrap: anywhere;
+}
 .user-role-form {
   display: flex;
   align-items: end;

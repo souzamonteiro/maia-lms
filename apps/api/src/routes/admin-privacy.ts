@@ -11,7 +11,7 @@ const listQuery = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(25),
   offset: z.coerce.number().int().min(0).default(0),
 });
-const reviewBody = z.object({ note: z.string().trim().min(5).max(1000) });
+const noteBody = z.object({ note: z.string().trim().min(5).max(1000) });
 
 export function adminPrivacyRouter(db: Database.Database): Router {
   const router = Router();
@@ -57,7 +57,7 @@ export function adminPrivacyRouter(db: Database.Database): Router {
 
   router.post('/admin/privacy/requests/:id/review', (req, res) => {
     const id = z.string().uuid().parse(req.params.id);
-    const { note } = reviewBody.parse(req.body);
+    const { note } = noteBody.parse(req.body);
     const result = db.transaction(() => {
       const current = findRequest(id);
       if (current.status === 'CLOSED')
@@ -69,6 +69,26 @@ export function adminPrivacyRouter(db: Database.Database): Router {
         VALUES(?,?,'privacy_request.review','privacy_request',?,?,?)`)
         .run(randomUUID(), req.session.userId, id, JSON.stringify({ note, previousStatus: current.status }), now);
       return { id, status: 'IN_REVIEW', updatedAt: now };
+    }).immediate();
+    res.set('Cache-Control', 'private, no-store').json(result);
+  });
+
+  router.post('/admin/privacy/requests/:id/close', (req, res) => {
+    const id = z.string().uuid().parse(req.params.id);
+    const { note } = noteBody.parse(req.body);
+    const result = db.transaction(() => {
+      const current = findRequest(id);
+      if (current.status === 'CLOSED')
+        throw new AppError(409, 'Privacy request is closed', 'PRIVACY_REQUEST_CLOSED');
+      if (current.status !== 'IN_REVIEW')
+        throw new AppError(409, 'Privacy request has no recorded review', 'PRIVACY_REQUEST_NOT_REVIEWED');
+      const now = new Date().toISOString();
+      db.prepare(`UPDATE account_privacy_requests SET status='CLOSED',updated_at=? WHERE id=?`)
+        .run(now, id);
+      db.prepare(`INSERT INTO audit_events(id,actor_id,action,subject_type,subject_id,metadata,occurred_at)
+        VALUES(?,?,'privacy_request.close','privacy_request',?,?,?)`)
+        .run(randomUUID(), req.session.userId, id, JSON.stringify({ note, previousStatus: current.status }), now);
+      return { id, status: 'CLOSED', updatedAt: now };
     }).immediate();
     res.set('Cache-Control', 'private, no-store').json(result);
   });

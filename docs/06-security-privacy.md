@@ -20,29 +20,46 @@ idempotent deletion-request record. The export is scoped to the requesting accou
 and includes that account's past and pending requested email changes (target address,
 expiry and use timestamps), but omits their token hashes along with password hashes,
 sessions, verification/reset token hashes, provider references and storage keys.
+For courses authored by the requesting account, the export includes course and
+revision metadata, translated presentation fields, ordered modules/lessons,
+revision-specific category assignments and category display metadata, lesson
+content and captions, attachment associations, quiz settings, and question
+text/choices/answer keys/scoring/explanations. This includes drafts and archived
+courses, but excludes private media storage keys and revision policy internals.
+Legacy assets owned by the account are represented by minimal identity, kind,
+status and timestamps; storage keys and raw asset metadata are not exported.
 The export also includes titles, descriptions and revision/lesson associations for
 attachments made from uploads owned by the requester and used in courses they
 author; it does not expose attachment associations from another account's courses
 or uploads.
+Refund entries in the export include the recorded reason associated with the
+requester's own order, while provider refund references remain excluded.
 All exported account sections are read within one deferred SQLite transaction so
 concurrent account updates cannot produce a mixed-time export.
 A deletion request does not suspend, delete, or anonymize the account.
 Administrators can search and paginate the request queue at `/admin/privacy`,
 filter by state, and record a private review note (5–1000 trimmed characters).
 Review moves OPEN to IN_REVIEW or appends a note while keeping IN_REVIEW.
+A reviewed request can then be closed with a private resolution note; closing
+moves IN_REVIEW to the terminal CLOSED state and cannot be undone. Closing a
+request that was never reviewed is rejected, so every closure has at least one
+recorded review. A closed request does not delete, anonymize, or suspend the
+account, and the requester may submit a new deletion request afterwards.
 Each action records the actor and previous state in the append-only audit log
-within the same transaction. All queue/history/review APIs require an administrator
-and return private/no-store responses. Requesters see the actual state, not notes
-or administrator identities; exports likewise exclude private review notes.
+within the same transaction. All queue/history/review/close APIs require an
+administrator and return private/no-store responses. Requesters see the actual
+state, not notes or administrator identities; exports likewise exclude private
+review and resolution notes.
 Do not enter credentials or unnecessary personal information in review notes.
 
 The interface preserves unsaved notes in page memory during language changes and
 failed saves, not in local storage. Notes are intentionally private working records;
 their inclusion in any legally required disclosure remains a policy/legal-review
-question. No endpoint closes, fulfills, deletes, or anonymizes a request/account.
-Retention periods, legal basis, support contact, resolution, and the full export
-inventory remain to be defined. These endpoints are not, by themselves, proof of
-legal compliance.
+question. Closing a request records an administrative resolution; no endpoint
+fulfills a deletion by deleting or anonymizing the account or its data.
+Retention periods, legal basis, support contact, actual data deletion, and the
+full export inventory remain to be defined. These endpoints are not, by
+themselves, proof of legal compliance.
 
 Certificate public verification has explicit name-disclosure consent and a revocation/takedown procedure; explain that anyone with its code or QR may see limited details. AI assistant must enforce course access, document permissions and retention; generated answers cite source passages and remain clearly labeled.
 

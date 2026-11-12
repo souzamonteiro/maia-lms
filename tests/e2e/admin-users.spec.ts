@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures';
 
-test('administrator manages accounts and an author publishes a public profile', async ({ page, browser }) => {
+test('administrator manages accounts and an author publishes a public profile', async ({ page, browser, request }) => {
   const email = `managed-${Date.now()}@example.com`;
   const password = 'Managed-user-password-123';
 
@@ -72,6 +72,19 @@ test('administrator manages accounts and an author publishes a public profile', 
     'https://example.com/teacher',
   );
   await expect(learnerPage.locator('body')).not.toContainText(email);
+  const instructorResponse = await request.get('/instructors/managed-instructor?displayLocale=pt-BR');
+  expect(instructorResponse.status()).toBe(200);
+  const instructorHtml = await instructorResponse.text();
+  expect(instructorHtml).toContain('<article id="app" class="seo-instructor">');
+  expect(instructorHtml).toContain('<html lang="pt-BR">');
+  expect(instructorHtml).toContain('<h1>Managed Instructor</h1>');
+  expect(instructorHtml).toContain('<meta name="description" content="A public teaching biography.">');
+  expect(instructorHtml).toContain(
+    `<link rel="canonical" href="${new URL('/instructors/managed-instructor', instructorResponse.url()).href}">`,
+  );
+  expect(instructorHtml).toContain('<meta name="robots" content="index,follow">');
+  expect(instructorHtml).toContain('<meta property="og:type" content="profile">');
+  expect(instructorHtml).toContain('<meta property="og:locale" content="pt_BR">');
 
   const courseTitle = `Managed course ${Date.now()}`;
   const courseSlug = `managed-course-${Date.now()}`;
@@ -96,6 +109,10 @@ test('administrator manages accounts and an author publishes a public profile', 
   });
   await reviewCard.getByRole('button', { name: 'Publish', exact: true }).click();
   await expect(reviewCard).toContainText('PUBLISHED');
+  const instructorAfterPublish = await request.get('/instructors/managed-instructor?displayLocale=pt-BR');
+  const instructorHtmlAfterPublish = await instructorAfterPublish.text();
+  expect(instructorAfterPublish.status()).toBe(200);
+  expect(instructorHtmlAfterPublish).toContain(`<h3><a href="/courses/${courseSlug}">${courseTitle}</a></h3>`);
 
   const courses = await (await page.request.get('/api/v1/admin/courses')).json();
   const course = courses.find((item: { slug: string }) => item.slug === courseSlug);

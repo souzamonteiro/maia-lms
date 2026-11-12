@@ -57,7 +57,15 @@ test('administrator publishes; a learner enrolls and completes an article', asyn
   await page.getByLabel('Password', { exact: true }).fill('Learner-test-password-123');
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'My learning' })).toBeVisible();
-  await page.setViewportSize({ width: 360, height: 780 });
+  await page.setViewportSize({ width: 640, height: 900 });
+  await page.goto('/courses');
+  await expect(page.getByRole('heading', { name: 'Courses' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.goto('/courses/first-steps');
+  await expect(page.getByRole('heading', { name: 'First steps with Maia' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Enroll for free' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.setViewportSize({ width: 320, height: 780 });
   await page.goto('/courses/first-steps');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.getByRole('button', { name: 'Enroll for free' }).click();
@@ -92,11 +100,18 @@ test('administrator publishes; a learner enrolls and completes an article', asyn
   await expect(page.getByText('1 of 2 required lessons completed.')).toBeVisible();
   await expect(page.getByText('1 of 2 required lessons completed.')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-  await page.locator('#languageSelect').selectOption('pt-BR');
-  await expect(page.getByRole('link', { name: 'Continuar aprendendo', exact: true })).toBeVisible();
-  await page.locator('#languageSelect').selectOption('es');
-  await expect(page.getByRole('link', { name: 'Continuar aprendiendo', exact: true })).toBeVisible();
-  await page.locator('#languageSelect').selectOption('en');
+  for (const [locale, title, progress, continueLabel] of [
+    ['pt-BR', 'Meu aprendizado', '1 de 2 aulas obrigatórias concluídas', 'Continuar aprendendo'],
+    ['es', 'Mi aprendizaje', '1 de 2 lecciones obligatorias completadas', 'Continuar aprendiendo'],
+    ['en', 'My learning', '1 of 2 required lessons completed', 'Continue learning'],
+  ]) {
+    await page.locator('#languageSelect').selectOption(locale);
+    await expect(page.locator('html')).toHaveAttribute('lang', locale);
+    await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible();
+    await expect(page.getByText(progress, { exact: false })).toBeVisible();
+    await expect(page.getByRole('link', { name: continueLabel, exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  }
   await page.getByRole('link', { name: 'Continue learning', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Build your first project' })).toBeVisible();
   await page.goto('/courses');

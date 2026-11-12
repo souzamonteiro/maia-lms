@@ -29,6 +29,7 @@ test('administrator reviews a privacy request and the requester sees its actual 
   await expect(page.locator('#privacy-summary')).toBeFocused();
   const card = page.locator('.privacy-request').filter({ hasText: id });
   await expect(card).toContainText('Open');
+  await expect(card.getByRole('button', { name: 'Close request', exact: true })).toHaveCount(0);
   await card.getByLabel('Private review note (5–1000 characters)').fill('Review pending retention policy. <script>private</script>');
   await page.locator('#languageSelect').selectOption('pt-BR');
   await expect(page.getByRole('heading', { name: 'Pedidos de privacidade', exact: true })).toBeVisible();
@@ -90,12 +91,14 @@ test('administrator reviews a privacy request and the requester sees its actual 
   await expect(historyError).toBeFocused();
   await expect(history).toHaveAttribute('aria-busy', 'false');
   const historyRetry = history.getByRole('button', { name: 'Retry', exact: true });
-  await historyRetry.focus();
+  await page.keyboard.press('Tab');
+  await expect(historyRetry).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(historyError).toHaveText('History temporarily unavailable');
   await expect(historyError).toBeFocused();
   await expect(history).toHaveAttribute('aria-busy', 'false');
-  await history.getByRole('button', { name: 'Retry', exact: true }).focus();
+  await page.keyboard.press('Tab');
+  await expect(historyRetry).toBeFocused();
   await page.keyboard.press('Enter');
   await historyRetryStarted;
   await expect(history).toHaveAttribute('aria-busy', 'true');
@@ -114,15 +117,57 @@ test('administrator reviews a privacy request and the requester sees its actual 
     await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
     await expect(page.locator('.privacy-request').filter({ hasText: id })).toContainText(state);
   }
+  await page.unroute(`**/admin/privacy/requests/${id}/history`);
+  const resolutionNote = 'Resolution recorded; retention rules reviewed before any deletion.';
+  await card.getByLabel('Private resolution note (5–1000 characters)').fill(resolutionNote);
+  for (const [locale, heading, label, button] of [
+    ['pt-BR', 'Pedidos de privacidade', 'Observação privada de resolução (5–1000 caracteres)', 'Encerrar pedido'],
+    ['es', 'Solicitudes de privacidad', 'Nota privada de resolución (5–1000 caracteres)', 'Cerrar solicitud'],
+    ['en', 'Privacy requests', 'Private resolution note (5–1000 characters)', 'Close request'],
+  ]) {
+    await page.locator('#languageSelect').selectOption(locale);
+    await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
+    await expect(card.getByLabel(label)).toHaveValue(resolutionNote);
+    await expect(card.getByRole('button', { name: button, exact: true })).toBeVisible();
+  }
+  await page.setViewportSize({ width: 320, height: 780 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await expect(card.getByLabel('Private resolution note (5–1000 characters)')).toBeVisible();
+  await expect(card.getByRole('button', { name: 'Close request', exact: true })).toBeVisible();
+  await page.route(`**/admin/privacy/requests/${id}/close`, route => route.fulfill({
+    status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'Closure temporarily unavailable' }),
+  }), { times: 1 });
+  const closeRequest = card.getByRole('button', { name: 'Close request', exact: true });
+  await closeRequest.focus();
+  await expect(closeRequest).toBeFocused();
+  await page.keyboard.press('Enter');
+  const closeError = page.getByRole('alert');
+  await expect(closeError).toContainText('Closure temporarily unavailable');
+  await expect(closeError).toBeFocused();
+  await expect(card.getByLabel('Private resolution note (5–1000 characters)')).toHaveValue(resolutionNote);
+  await closeRequest.focus();
+  await expect(closeRequest).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(card).toContainText('Closed');
+  await expect(card.getByRole('heading', { level: 2 })).toBeFocused();
+  await expect(card.locator('form')).toHaveCount(0);
+  await card.getByText('Private review history', { exact: true }).click();
+  const closedHistory = card.locator('.privacy-history');
+  await expect(closedHistory).toContainText('Closure');
+  await expect(closedHistory).toContainText('Resolution recorded; retention rules reviewed before any deletion.');
   const learnerContext = await browser.newContext();
   try {
     expect((await learnerContext.request.post('/api/v1/auth/login', { data: { email, password } })).status()).toBe(200);
     const learner = await learnerContext.newPage();
     await learner.goto('/my-learning');
-    await expect(learner.locator('#privacy-request-list')).toContainText('In review');
+    await expect(learner.locator('#privacy-request-list')).toContainText('Closed');
     await expect(learner.locator('body')).not.toContainText('retention policy');
+    await expect(learner.locator('body')).not.toContainText('retention rules');
     await expect(learner.getByRole('link', { name: 'Privacy requests', exact: true })).toHaveCount(0);
     expect((await learnerContext.request.get(`/api/v1/admin/privacy/requests/${id}/history`)).status()).toBe(403);
+    await learner.locator('#privacy-deletion-request').click();
+    await expect(learner.locator('#privacy-request-list')).toContainText('Open');
+    await expect(learner.locator('#privacy-request-list')).toContainText('Closed');
   } finally {
     await learnerContext.close();
   }

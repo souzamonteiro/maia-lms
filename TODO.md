@@ -1578,7 +1578,15 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   actor-attributed append-only review history. Review atomically moves OPEN to
   IN_REVIEW, which the requester sees in their own language; notes remain admin-only.
   Failed saves and language switches preserve unsaved notes in page memory.
-  No account data is deleted, and review does not close or fulfill the request.
+  Administrators can now close a reviewed request with a private resolution note:
+  closing atomically moves IN_REVIEW to the terminal CLOSED state with an audited
+  actor/previous-state event, is rejected for unreviewed or already-closed requests,
+  and cannot be undone. The requester sees the CLOSED state in their own language
+  without notes and may submit a new deletion request afterwards. Closing records
+  an administrative resolution only: no account data is deleted, anonymized, or
+  suspended, and no endpoint fulfills a deletion by removing data. API, full-suite,
+  and Chromium/Firefox/WebKit focused browser tests cover authorization, lifecycle
+  rejections, audit rollback, note privacy, and post-closure re-request.
   The self-service export now includes the account's historical and pending email
   change requests with target address and lifecycle timestamps, while excluding
   token hashes and other accounts' requests. API/OpenAPI and privacy documentation
@@ -1586,10 +1594,26 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   The export also includes course/revision/lesson placement plus display metadata
   for the requester's own uploads attached to courses they author, excluding other
   accounts' attachment relationships.
+  Refund export records now include each own-order refund's recorded reason but
+  continue to exclude provider refund references; a cross-account fixture verifies
+  both owner scoping and provider-reference exclusion.
+  The export now also includes courses authored by the account and their revisions,
+  revision-specific category assignments, modules, lessons/content/captions,
+  attachment associations, quizzes, and question
+  definitions, including answer keys for the author's own course content. It includes
+  minimal metadata for legacy owned assets without storage keys or raw asset metadata.
+  Cross-account fixtures verify authored-content isolation and exclusion of media
+  storage keys. This extends local portability but is not a reviewed legal-compliance
+  inventory; PRIV-01 remains open for policy, support, actual deletion/anonymization,
+  and complete export review.
+  Validation on November 11, 2026: privacy API tests 4/4; full real-media suite
+  325 tests across 113 files; after adding revision category assignments, focused
+  privacy API tests passed 4/4 again, as did workspace build/lint, OpenAPI YAML
+  parse, and `git diff --check`.
   Export sections are read in one deferred SQLite transaction to provide a
   consistent snapshot while allowing concurrent account writes.
-  Keep PRIV-01 open for retention/legal policy, support contact, resolution and export
-  completeness review.
+  Keep PRIV-01 open for retention/legal policy, support contact, actual data
+  deletion/anonymization, and export completeness review.
 - [ ] **UX-01 — Accessibility and real usage states (form-error feedback improved; full audit open).**
   Keyboard/focus, screen readers, contrast, zoom/mobile, captions, error messages,
   skeleton/loading and empty states; test all three languages. Dependencies:
@@ -1609,38 +1633,80 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   also verifies initial dialog focus, Escape dismissal, and focus restoration
   across those engines. The authoring workflow now activates lesson reordering
   with Enter and checks resulting order and focus in all three browser engines.
+  It also verifies that submitting with an invalid required field in a hidden
+  editor section reveals that section and leaves focus on the invalid field in
+  Chromium, Firefox, and WebKit.
+  Quiz attempt history now reports its loading state, focuses a local error with
+  keyboard retry, and restores focus to the quiz control after recovery. The
+  focused lesson/quiz workflow verifies the held retry and recovery in Chromium,
+  Firefox, and WebKit.
+  When there are no earlier attempts, the history now shows a localized empty
+  state in English, Brazilian Portuguese, and Spanish; the focused quiz workflow
+  checks each language and the heading focus after retry recovery.
+  If starting an attempt fails, the error is now assertive and focused, with
+  keyboard retry; the quiz E2E injects a temporary service error and verifies
+  recovery with Enter in Chromium, Firefox, and WebKit.
+  The quiz E2E also injects a submission failure and verifies the selected
+  answer is retained, the focused error is announced, and keyboard resubmission
+  succeeds in Chromium, Firefox, and WebKit.
+  Answer-autosave failures are also covered: the alert receives focus, the
+  selected answer remains visible, and the learner can submit the current
+  selection successfully across Chromium, Firefox, and WebKit.
+  Expired-attempt submission now keeps the deadline error in the quiz context,
+  focuses its assertive alert, and exposes a keyboard-accessible new-attempt
+  action, covered by the focused workflow in all three browser engines.
   The catalog workflow also verifies keyboard activation and focus for pagination
   and search in all three engines.
   The account-security workflow verifies Enter submission and focus on translated
   password-mismatch alerts in en, pt-BR, and es across the three browser engines.
   The privacy-review workflow now verifies keyboard search and review submission,
   including focus restoration after saving, in all three browser engines.
+  The new privacy-request closure workflow now also verifies the resolution-note
+  field/button labels in en, pt-BR, and es, preserves the unsaved note across
+  language changes, focuses the assertive failure alert after a temporary save
+  error, preserves the note for retry, and closes the request using Enter in
+  Chromium, Firefox, and WebKit. This is focused local desktop automation, not
+  physical-device or full-suite qualification.
+  Learner privacy self-service now exposes focused assertive errors and
+  keyboard-operable retries for request-history loads and deletion submissions.
+  The request list reports its busy state, and a successful submission remains
+  reported as successful if refreshing the history fails. The account-security
+  workflow covers these failure/retry paths in Chromium, Firefox, and WebKit.
+  At a 320 CSS-pixel viewport, the workflow also exposed horizontal overflow
+  from long requester email headings; those headings now wrap without clipping.
+  The focused privacy workflow verifies no document overflow and visible
+  resolution controls at that width in Chromium, Firefox, and WebKit. This is
+  responsive emulation, not physical-device qualification.
   Certificate-history failures now announce through a live region, expose a
   focused alert and keyboard retry, and restore focus to the history summary
-  after a successful retry; the local Chromium E2E covers fail-then-recover.
+  after a successful retry; the focused workflow now verifies Tab from the
+  alert to Retry and recovery in Chromium, Firefox, and WebKit.
   The administrator certificate list now also announces updates, focuses load
-  errors, and supports keyboard retry; a focused Chromium workflow verifies the
-  pending busy state and successful empty result.
+  errors, and supports keyboard retry; the focused workflow verifies Tab from
+  the alert to Retry, the pending busy state, and successful empty result in
+  Chromium, Firefox, and WebKit.
   Enrollment-history failures now use the same live-region, focused-alert,
   keyboard-retry, and focus-restoration behavior, also covered by a local
   fail-then-recover E2E. That workflow also holds the retry response and
   verifies the history stays busy until results arrive.
   Privacy-request search results now announce list updates and focus the load
-  error before keyboard retry; the local Chromium workflow checks Tab navigation
-  from the alert to retry and focus recovery after successful results. Privacy
-  history failures focus the alert even when a retry also fails; keyboard retry
-  stays busy while loading and restores focus to the history disclosure after
-  recovery. The focused privacy-review workflow, including repeated history
-  failures and keyboard retry, passes locally in Chromium, Firefox, and WebKit.
+  error before keyboard retry; the focused privacy-review workflow checks Tab
+  navigation from the alert to retry and focus recovery after successful
+  results. Repeated private-history failures also verify Tab-to-retry each time,
+  busy state, and focus restoration after recovery in Chromium, Firefox, and
+  WebKit.
   The administrator enrollment list now also announces updates, focuses load
-  errors, and supports keyboard retry; a focused Chromium workflow verifies the
-  pending busy state and successful empty result.
+  errors, and supports keyboard retry; the focused workflow verifies Tab from
+  the alert to Retry, pending busy state, and successful empty result in
+  Chromium, Firefox, and WebKit.
   The administrator order list now announces updates, focuses load errors, and
-  supports keyboard retry; a focused Chromium workflow verifies the pending
-  busy state and successful empty result.
+  supports keyboard retry; the focused workflow verifies Tab from the alert to
+  Retry, pending busy state, and successful empty result in Chromium, Firefox,
+  and WebKit.
   The media library list is a polite live region; failed loads focus the alert,
-  and keyboard retry stays busy until results return. Focused Chromium coverage
-  verifies the error, retry, and empty result state. Focused failure/retry
+  and keyboard retry stays busy until results return. The focused workflow
+  verifies Tab from the alert to Retry, the error, and successful empty result
+  in Chromium, Firefox, and WebKit. Focused failure/retry
   workflows for user, order, certificate, enrollment, and media lists also pass
   in Firefox and WebKit; full browser-suite and physical-device qualification
   remain open.
@@ -1661,6 +1727,14 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   feedback, and code blocks. The operations-dashboard mobile-viewport workflow
   now checks for horizontal overflow at 320 CSS pixels and confirms translated
   headings/refresh controls in English, Brazilian Portuguese, and Spanish.
+  The integrated learner workflow now also checks enrollment, lesson navigation
+  and completion, and learning progress without horizontal overflow at 320 CSS
+  pixels across Chromium, Firefox, and WebKit. Learning-progress headings,
+  completion text, and continue links are also verified in en/pt-BR/es at that
+  width. Public catalog and course pages are also checked for overflow at 640
+  CSS pixels, the layout viewport corresponding to 200% zoom on a 1280 CSS-pixel
+  viewport; this remains viewport emulation, not actual browser zoom or
+  physical-device qualification.
   The local real-video workflow also checks the lesson at 320 CSS pixels,
   verifies captions track kind/label/language metadata and cues, and confirms the
   transcript remains visible without horizontal overflow. The transcript
@@ -1691,8 +1765,13 @@ does not satisfy a task. Preserve local internationalization changes and prototy
   appear in the sitemap only when opted in. Initial HTML now shares the browser
   translation catalog for navigation, language selection, footer, empty states,
   noscript instructions and fallback metadata in en/pt-BR/es. Focused HTTP tests
-  cover all four public page types; Chromium checks home/catalog without
-  JavaScript. Full local regression: 206 tests; build/lint and three focused
+  cover all four public page types; the public HTML E2E now also follows a
+  published catalog link and checks the course page's initial presentation,
+  localized noscript guidance, canonical URL, indexability and article metadata
+  without browser hydration in all three browser projects. The author-profile
+  publishing workflow also verifies opted-in instructor HTML, localized canonical
+  and profile metadata, and the published course link before hydration. Full local regression:
+  206 tests; build/lint and three focused
   Chromium workflows passed. The sitemap integration test now confirms that
   published courses and opted-in instructor profiles are included, drafts and
   private profiles are omitted, and disabling a profile removes it from the

@@ -44,7 +44,9 @@ test('media library announces load failures and recovers with keyboard retry', a
   const error = list.getByRole('alert');
   await expect(error).toHaveText('Media temporarily unavailable');
   await expect(error).toBeFocused();
-  await list.getByRole('button', { name: 'Retry', exact: true }).focus();
+  const retry = list.getByRole('button', { name: 'Retry', exact: true });
+  await page.keyboard.press('Tab');
+  await expect(retry).toBeFocused();
   await page.keyboard.press('Enter');
   await retryStarted;
   await expect(list).toHaveAttribute('aria-busy', 'true');

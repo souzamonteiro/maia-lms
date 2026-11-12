@@ -83,6 +83,21 @@ test('learner downloads an export and records a non-destructive deletion request
   await page.locator('#auth button[type=submit]').click();
   await expect(page.getByRole('heading', { name: 'My learning' })).toBeVisible();
 
+  await page.route('**/api/v1/auth/privacy/requests', route => route.fulfill({
+    status: 503,
+    contentType: 'application/json',
+    body: JSON.stringify({ error: 'Privacy history temporarily unavailable' }),
+  }), { times: 1 });
+  await page.reload();
+  const privacyError = page.locator('#privacy-request-error');
+  await expect(privacyError.getByRole('alert')).toHaveText('Privacy history temporarily unavailable');
+  await expect(privacyError.getByRole('alert')).toBeFocused();
+  await expect(page.locator('#privacy-request-list')).toHaveAttribute('aria-busy', 'false');
+  await page.keyboard.press('Tab');
+  await expect(privacyError.getByRole('button', { name: 'Retry', exact: true })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(privacyError).toBeEmpty();
+
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('link', { name: 'Download my data', exact: true }).click(),
@@ -90,9 +105,40 @@ test('learner downloads an export and records a non-destructive deletion request
   expect(download.suggestedFilename()).toBe('maia-account-export.json');
   await expect(page.getByText(/does not delete your account automatically/)).toBeVisible();
 
+  let failHistoryRefresh = true;
+  await page.route('**/api/v1/auth/privacy/requests', async route => {
+    if (route.request().method() === 'GET' && failHistoryRefresh) {
+      failHistoryRefresh = false;
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Privacy history refresh temporarily unavailable' }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+  await page.route('**/api/v1/auth/privacy/requests', route => route.fulfill({
+    status: 503,
+    contentType: 'application/json',
+    body: JSON.stringify({ error: 'Deletion request temporarily unavailable' }),
+  }), { times: 1 });
   await page.getByRole('button', { name: 'Request account deletion', exact: true }).click();
+  await expect(privacyError.getByRole('alert')).toHaveText('Deletion request temporarily unavailable');
+  await expect(privacyError.getByRole('alert')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(privacyError.getByRole('button', { name: 'Retry', exact: true })).toBeFocused();
+  await page.keyboard.press('Enter');
   await expect(page.locator('#privacy-request-status'))
     .toHaveText('Your deletion request was recorded for review.');
+  await expect(privacyError.getByRole('alert'))
+    .toHaveText('Privacy history refresh temporarily unavailable');
+  await expect(privacyError.getByRole('alert')).toBeFocused();
+  await expect(page.locator('#privacy-request-list')).toHaveAttribute('aria-busy', 'false');
+  await page.keyboard.press('Tab');
+  await expect(privacyError.getByRole('button', { name: 'Retry', exact: true })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(privacyError).toBeEmpty();
   await expect(page.locator('#privacy-request-list')).toContainText('Deletion request · Open');
   const account = await page.evaluate(async () => {
     const response = await fetch('/api/v1/auth/me');

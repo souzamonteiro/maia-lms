@@ -2125,12 +2125,48 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [schemaVersion, generatedAt, account, emailChanges, mediaAttachments]
+                required: [schemaVersion, generatedAt, account, authoredCourses, authoredRevisions, authoredCourseCategories, authoredModules, authoredLessons, authoredAttachments, authoredQuizzes, authoredQuestions, legacyAssets, emailChanges, mediaAttachments]
                 properties:
                   schemaVersion: {type: string, const: maia-account-export-v1}
                   generatedAt: {type: string, format: date-time}
                   account: {type: object, description: Own account fields only; no credential hashes}
                   instructorProfile: {type: [object, 'null']}
+                  authoredCourses:
+                    type: array
+                    description: Courses authored by the authenticated account, including draft and archived workflow metadata.
+                    items: {type: object}
+                  authoredRevisions:
+                    type: array
+                    description: Revision metadata and translated presentation fields for the account's authored courses; private storage keys and policy internals are excluded.
+                    items: {type: object}
+                  authoredCourseCategories:
+                    type: array
+                    description: Category assignments and category display metadata for the authenticated account's own course revisions.
+                    items: {type: object}
+                  authoredModules:
+                    type: array
+                    description: Ordered module records from the account's authored revisions.
+                    items: {type: object}
+                  authoredLessons:
+                    type: array
+                    description: Lesson content, captions, media references and rendering settings from the account's authored revisions.
+                    items: {type: object}
+                  authoredAttachments:
+                    type: array
+                    description: Attachment associations and presentation metadata from the account's authored revisions.
+                    items: {type: object}
+                  authoredQuizzes:
+                    type: array
+                    description: Assessment settings for quizzes in the account's authored revisions.
+                    items: {type: object}
+                  authoredQuestions:
+                    type: array
+                    description: Question text, choices, answer keys, scoring and explanations belonging to the account's own authored courses.
+                    items: {type: object}
+                  legacyAssets:
+                    type: array
+                    description: Minimal metadata for legacy assets owned by the account; storage keys and raw metadata are excluded.
+                    items: {type: object}
                   emailChanges:
                     type: array
                     description: The authenticated user's requested email changes; token hashes and email verification tokens are excluded.
@@ -2149,7 +2185,18 @@ paths:
                   quizAttempts: {type: array, items: {type: object}}
                   quizAnswers: {type: array, items: {type: object}}
                   orders: {type: array, items: {type: object}}
-                  refunds: {type: array, items: {type: object}}
+                  refunds:
+                    type: array
+                    description: Refund records for the authenticated user's orders, including the recorded reason; provider refund references are excluded.
+                    items:
+                      type: object
+                      properties:
+                        id: {type: string}
+                        order_id: {type: string}
+                        amount_minor: {type: integer, minimum: 1}
+                        status: {type: string, enum: [approved, pending, rejected]}
+                        reason: {type: [string, 'null']}
+                        created_at: {type: string, format: date-time}
                   certificates: {type: array, items: {type: object}}
                   mediaUploads: {type: array, items: {type: object}}
                   mediaAttachments:
@@ -2284,6 +2331,39 @@ paths:
         '404': {description: PRIVACY_REQUEST_NOT_FOUND}
         '409': {description: PRIVACY_REQUEST_CLOSED}
         '422': {description: Invalid ID or note}
+  /admin/privacy/requests/{id}/close:
+    post:
+      summary: Close a reviewed privacy request with a private resolution note
+      description: Administrator only. Atomically moves IN_REVIEW to the terminal CLOSED state and appends an audit event with actor, previous status and resolution note. Requires a recorded review first; closed requests cannot be reopened. Does not delete, anonymize, or suspend the account; the requester sees only the CLOSED state and may submit a new request afterwards.
+      security:
+        - cookieAuth: []
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [note]
+              properties:
+                note: {type: string, minLength: 5, maxLength: 1000}
+      responses:
+        '200':
+          description: Request closed, private no-store
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: {type: string, format: uuid}
+                  status: {type: string, const: CLOSED}
+                  updatedAt: {type: string, format: date-time}
+        '401': {description: Authentication required}
+        '403': {description: Administrator role required}
+        '404': {description: PRIVACY_REQUEST_NOT_FOUND}
+        '409': {description: PRIVACY_REQUEST_CLOSED or PRIVACY_REQUEST_NOT_REVIEWED}
+        '422': {description: Invalid ID or note}
   /admin/privacy/requests/{id}/history:
     get:
       summary: Read private review audit history
@@ -2307,7 +2387,7 @@ paths:
                       properties:
                         id: {type: string, format: uuid}
                         actor_id: {type: [string, 'null']}
-                        action: {type: string, const: privacy_request.review}
+                        action: {type: string, enum: [privacy_request.review, privacy_request.close]}
                         occurred_at: {type: string}
                         metadata: {type: string}
         '401': {description: Authentication required}

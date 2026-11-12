@@ -436,18 +436,33 @@ async function lesson(id) {
   const outline = `<nav class="lesson-outline" aria-label="${t('courseOutline')}">${l.navigation.modules.map(m => `<section><h2>${e(m.title)}</h2><ol>${m.lessons.map(item => `<li><a href="/lessons/${e(item.id)}"${item.id === id ? ' aria-current="page"' : ''}>${e(item.title)}</a></li>`).join('')}</ol></section>`).join('')}</nav>`;
   const lessonNavigation = `<nav class="lesson-navigation" aria-label="${t('lessonNavigation')}">${l.navigation.previous_lesson_id ? `<a rel="prev" href="/lessons/${e(l.navigation.previous_lesson_id)}">${t('previousLesson')}</a>` : '<span></span>'}${l.navigation.next_lesson_id ? `<a rel="next" href="/lessons/${e(l.navigation.next_lesson_id)}">${t('nextLesson')}</a>` : '<span></span>'}</nav>`;
   const quizPanel = l.quiz_id && l.can_track_progress
-    ? `<section class="lesson-quiz" id="lesson-quiz"><h2>${t('quizTitle')}</h2><p>${t('quizPrivacy')}</p><p id="quiz-status" role="status" aria-live="polite"></p><div id="quiz-content"><button type="button" id="quiz-start">${t('quizStart')}</button></div><section id="quiz-results" aria-live="polite"></section></section>`
+    ? `<section class="lesson-quiz" id="lesson-quiz"><h2>${t('quizTitle')}</h2><p>${t('quizPrivacy')}</p><p id="quiz-status" role="status" aria-live="polite"></p><div id="quiz-content"><button type="button" id="quiz-start">${t('quizStart')}</button></div><section id="quiz-results" aria-live="polite" aria-busy="false" tabindex="-1"></section></section>`
     : '';
   app.innerHTML = `<a href="/courses/${e(l.course_id)}">${t('backToCourse')}</a>${outline}<article class="lesson"><h1>${e(l.title)}</h1><div class="lesson-body prose">${l.video_id ? `<div class="lesson-video-player"><video id="lesson-video" controls playsinline preload="metadata" poster="/api/v1/lessons/${e(id)}/poster" data-mp4-url="/api/v1/lessons/${e(id)}/video" data-hls-url="/api/v1/lessons/${e(id)}/hls/master.m3u8">${(l.captions || []).map(c => `<track kind="captions" srclang="${e(c.language)}" label="${e(c.label)}" src="/api/v1/lessons/${e(id)}/captions/${e(c.language)}">`).join('')}</video><label class="video-quality-control" hidden>${t('videoQuality')}<select class="video-quality" aria-label="${t('videoQuality')}"><option value="-1">${t('videoQualityAuto')}</option></select></label><p class="video-status" role="status" aria-live="polite"></p></div><label>${t('playbackSpeed')}<select id="playback-speed"><option>0.75</option><option selected>1</option><option>1.25</option><option>1.5</option><option>2</option></select></label><p id="video-error" role="alert" tabindex="-1"></p>` : ''}${l.body_html}</div>${attachmentCards(l.attachments)}${(l.captions || []).map(c => `<details><summary>${t('transcript')} — ${e(c.label)}</summary><div class="plain-content">${e(c.transcript)}</div></details>`).join('')}</article>${quizPanel}${lessonNavigation}${me ? `<button id="complete">${l.progress?.completed_at ? t('lessonCompleted') : t('markComplete')}</button>` : `<p>${t('signInToTrackProgress')}</p>`}`;
   if (quizPanel) {
     const content = document.querySelector('#quiz-content');
     const status = document.querySelector('#quiz-status');
     const results = document.querySelector('#quiz-results');
-    const loadResults = async () => {
-      const history = await api(`/quizzes/${l.quiz_id}/results`);
-      results.innerHTML = history.items.length
-        ? `<h3>${t('quizResultHistory')}</h3><ol>${history.items.map((item, index) => `<li>${t('quizResultAttempt', { number: history.items.length - index })}: ${item.expired ? t('quizAttemptExpired') : `${item.pass ? t('quizPassed') : t('quizFailed')} · ${t('quizScore', { score: item.score, total: item.total_points })}`}${item.submitted_at ? ` · ${e(new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(item.submitted_at)))}` : ''}${feedbackMarkup(item.answers)}</li>`).join('')}</ol>`
-        : '';
+    const loadResults = async (focusAfterRetry = false) => {
+      results.setAttribute('aria-busy', 'true');
+      try {
+        const history = await api(`/quizzes/${l.quiz_id}/results`);
+        results.innerHTML = `<h3>${t('quizResultHistory')}</h3>${history.items.length
+          ? `<ol>${history.items.map((item, index) => `<li>${t('quizResultAttempt', { number: history.items.length - index })}: ${item.expired ? t('quizAttemptExpired') : `${item.pass ? t('quizPassed') : t('quizFailed')} · ${t('quizScore', { score: item.score, total: item.total_points })}`}${item.submitted_at ? ` · ${e(new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(item.submitted_at)))}` : ''}${feedbackMarkup(item.answers)}</li>`).join('')}</ol>`
+          : `<p>${t('quizNoPreviousAttempts')}</p>`}`;
+        if (focusAfterRetry) {
+          const heading = results.querySelector('h3');
+          const target = heading || content.querySelector('button');
+          if (heading) heading.tabIndex = -1;
+          (target || results).focus();
+        }
+      } catch (error) {
+        results.innerHTML = `<p role="alert" tabindex="-1">${e(error.message || t('genericError'))}</p><button type="button" id="quiz-results-retry">${t('retry')}</button>`;
+        results.querySelector('[role="alert"]').focus();
+        results.querySelector('#quiz-results-retry').addEventListener('click', () => loadResults(true));
+      } finally {
+        results.setAttribute('aria-busy', 'false');
+      }
     };
     const feedbackMarkup = answers => answers?.length
       ? `<details class="quiz-feedback"><summary>${t('quizReviewAnswers')}</summary><ol>${answers.map(answer => `<li><p>${e(answer.prompt)} · ${t('quizQuestionScore', { score: answer.awarded_points, total: answer.possible_points })}</p><ul>${answer.choices.map(choice => `<li>${e(choice.text)}${choice.selected ? ` · ${t('quizYourAnswer')}` : ''}${choice.correct ? ` · ${t('quizCorrectAnswer')}` : ''}</li>`).join('')}</ul>${answer.explanation ? `<p class="plain-content"><strong>${t('quizExplanation')}:</strong> ${e(answer.explanation)}</p>` : ''}</li>`).join('')}</ol></details>`
@@ -496,13 +511,17 @@ async function lesson(id) {
           showResult({ ...result, remaining_attempts: attempt.remaining_attempts }, totalPoints);
           await loadResults();
         } catch (error) {
-          notify(error);
           answerForm.querySelectorAll('input').forEach(input => { input.disabled = false; });
           if (error.code === 'QUIZ_DEADLINE_EXPIRED') {
-            content.innerHTML = `<p role="alert">${e(error.message)}</p><button type="button" id="quiz-start-next">${t('quizStart')}</button>`;
-            document.querySelector('#quiz-start-next').addEventListener('click', () => startAttempt().catch(notify));
+            status.textContent = '';
+            content.innerHTML = `<p role="alert" tabindex="-1">${e(error.message)}</p><button type="button" id="quiz-start-next">${t('quizStart')}</button>`;
+            content.querySelector('[role="alert"]').focus();
+            content.querySelector('#quiz-start-next').addEventListener('click', () => startAttempt().catch(notify));
             await loadResults();
-          } else submit.disabled = false;
+          } else {
+            notify(error);
+            submit.disabled = false;
+          }
         }
       });
     };
@@ -514,12 +533,14 @@ async function lesson(id) {
         const attempt = await api(`/quizzes/${l.quiz_id}/attempts`, 'POST');
         renderAttempt(attempt);
       } catch (error) {
-        status.textContent = error.message;
-        if (error.code === 'QUIZ_ATTEMPTS_EXHAUSTED') await loadResults();
-        content.innerHTML = error.code === 'QUIZ_ATTEMPTS_EXHAUSTED'
+        const attemptsExhausted = error.code === 'QUIZ_ATTEMPTS_EXHAUSTED';
+        status.textContent = attemptsExhausted ? error.message : '';
+        if (attemptsExhausted) await loadResults();
+        content.innerHTML = attemptsExhausted
           ? `<p role="status">${t('quizNoAttempts')}</p>`
-          : `<button type="button" id="quiz-start">${t('quizRetryStart')}</button>`;
-        document.querySelector('#quiz-start')?.addEventListener('click', () => startAttempt().catch(notify));
+          : `<p role="alert" tabindex="-1">${e(error.message || t('genericError'))}</p><button type="button" id="quiz-start">${t('quizRetryStart')}</button>`;
+        if (!attemptsExhausted) content.querySelector('[role="alert"]').focus();
+        content.querySelector('#quiz-start')?.addEventListener('click', () => startAttempt().catch(notify));
       }
     };
     loadResults().catch(notify);
@@ -637,35 +658,67 @@ async function learning() {
     me.display_name = result.displayName;
     notify(t('profileSaved'));
   });
-  app.insertAdjacentHTML('beforeend', `<section class="account-privacy"><h2>${t('privacySelfService')}</h2><p>${t('privacyRequestExplanation')}</p><p><a class="button" href="/api/v1/auth/privacy/export" download="maia-account-export.json">${t('privacyDownloadExport')}</a></p><button type="button" class="secondary" id="privacy-deletion-request">${t('privacyRequestDeletion')}</button><p id="privacy-request-status" aria-live="polite"></p><ul id="privacy-request-list"></ul></section>`);
+  app.insertAdjacentHTML('beforeend', `<section class="account-privacy"><h2>${t('privacySelfService')}</h2><p>${t('privacyRequestExplanation')}</p><p><a class="button" href="/api/v1/auth/privacy/export" download="maia-account-export.json">${t('privacyDownloadExport')}</a></p><button type="button" class="secondary" id="privacy-deletion-request">${t('privacyRequestDeletion')}</button><p id="privacy-request-status" role="status" aria-live="polite"></p><div id="privacy-request-error"></div><ul id="privacy-request-list" aria-live="polite" aria-busy="false"></ul></section>`);
   const privacyRequestStatus = app.querySelector('#privacy-request-status');
   const privacyRequestList = app.querySelector('#privacy-request-list');
+  const privacyRequestError = app.querySelector('#privacy-request-error');
+  function showPrivacyRequestError(error, retry) {
+    const alert = document.createElement('div');
+    alert.setAttribute('role', 'alert');
+    alert.tabIndex = -1;
+    alert.textContent = error.message || t('genericError');
+    const retryButton = document.createElement('button');
+    retryButton.type = 'button';
+    retryButton.className = 'secondary';
+    retryButton.textContent = t('retry');
+    retryButton.addEventListener('click', async () => {
+      privacyRequestError.replaceChildren();
+      try {
+        await retry();
+      } catch (retryError) {
+        showPrivacyRequestError(retryError, retry);
+      }
+    });
+    privacyRequestError.replaceChildren(alert, retryButton);
+    alert.focus();
+  }
   async function loadPrivacyRequests() {
-    const requests = await api('/auth/privacy/requests');
-    privacyRequestList.replaceChildren();
-    for (const request of requests) {
-      const item = document.createElement('li');
-      item.textContent = `${t('privacyRequestReceived')} · ${t(`privacyStatus${request.status}`)} · ${new Date(request.created_at).toLocaleDateString(locale)}`;
-      privacyRequestList.append(item);
+    privacyRequestList.setAttribute('aria-busy', 'true');
+    try {
+      const requests = await api('/auth/privacy/requests');
+      privacyRequestList.replaceChildren();
+      for (const request of requests) {
+        const item = document.createElement('li');
+        item.textContent = `${t('privacyRequestReceived')} · ${t(`privacyStatus${request.status}`)} · ${new Date(request.created_at).toLocaleDateString(locale)}`;
+        privacyRequestList.append(item);
+      }
+    } finally {
+      privacyRequestList.setAttribute('aria-busy', 'false');
     }
   }
-  app.querySelector('#privacy-deletion-request').addEventListener('click', async event => {
-    const button = event.currentTarget;
+  const deletionRequestButton = app.querySelector('#privacy-deletion-request');
+  async function submitDeletionRequest() {
+    const button = deletionRequestButton;
     button.disabled = true;
     try {
       await api('/auth/privacy/requests', 'POST', { requestType: 'deletion' });
       privacyRequestStatus.textContent = t('privacyRequestSubmitted');
-      await loadPrivacyRequests();
+      try {
+        await loadPrivacyRequests();
+      } catch (error) {
+        showPrivacyRequestError(error, loadPrivacyRequests);
+      }
     } catch (error) {
-      privacyRequestStatus.textContent = error.message || t('genericError');
+      showPrivacyRequestError(error, submitDeletionRequest);
     } finally {
       button.disabled = false;
     }
-  });
+  }
+  deletionRequestButton.addEventListener('click', submitDeletionRequest);
   try {
     await loadPrivacyRequests();
   } catch (error) {
-    privacyRequestStatus.textContent = error.message || t('genericError');
+    showPrivacyRequestError(error, loadPrivacyRequests);
   }
 }
 async function admin() {

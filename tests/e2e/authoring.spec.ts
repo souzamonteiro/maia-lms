@@ -249,6 +249,7 @@ test('focused studio preserves content across navigation and language changes, a
   await outline.getByRole('button', { name: 'Course settings', exact: true }).click();
   await page.getByRole('button', { name: 'Save draft', exact: true }).click();
   await expect(page.locator('.lesson-editor').nth(1)).toBeVisible();
+  await expect(page.locator('.lesson-title').nth(1)).toBeFocused();
   await page.locator('.lesson-title').nth(1).fill('Second lesson');
   await page.getByLabel('Edit one section at a time', { exact: true }).uncheck();
   const source = page.locator('.lesson-editor').nth(1).locator(':scope > .row-controls .drag-handle');

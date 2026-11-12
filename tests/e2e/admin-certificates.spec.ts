@@ -129,7 +129,8 @@ test('administrator revokes and reissues a certificate with private reasons and 
   await expect(historyError).toHaveText('History temporarily unavailable');
   await expect(historyError).toBeFocused();
   const historyRetry = history.getByRole('button', { name: 'Retry', exact: true });
-  await historyRetry.focus();
+  await page.keyboard.press('Tab');
+  await expect(historyRetry).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(history).toContainText('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
   await expect(historySummary).toBeFocused();
@@ -187,7 +188,9 @@ test('certificate list announces load failures and recovers with keyboard retry'
   const error = list.getByRole('alert');
   await expect(error).toHaveText('Certificates temporarily unavailable');
   await expect(error).toBeFocused();
-  await list.getByRole('button', { name: 'Retry', exact: true }).focus();
+  const retry = list.getByRole('button', { name: 'Retry', exact: true });
+  await page.keyboard.press('Tab');
+  await expect(retry).toBeFocused();
   await page.keyboard.press('Enter');
   await retryStarted;
   await expect(list).toHaveAttribute('aria-busy', 'true');

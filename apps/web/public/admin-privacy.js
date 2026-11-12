@@ -2,7 +2,8 @@ let state;
 
 export async function mountAdminPrivacy({ app, api, t, e, notify, locale, me }) {
   if (state?.userId !== me.id)
-    state = { userId: me.id, offset: 0, filters: { q: '', status: '' }, notes: new Map() };
+    state = { userId: me.id, offset: 0, filters: { q: '', status: '' }, notes: new Map(), closeNotes: new Map() };
+  state.closeNotes ??= new Map();
   app.innerHTML = `<a href="/admin">${t('administer')}</a><h1>${t('adminPrivacyTitle')}</h1><p>${t('adminPrivacyExplanation')}</p><form id="privacy-search" class="user-filters"><label>${t('adminPrivacySearch')}<input name="q" type="search" maxlength="100"></label><label>${t('adminUsersStatus')}<select name="status"><option value="">${t('adminPrivacyAll')}</option>${['OPEN', 'IN_REVIEW', 'CLOSED'].map(status => `<option value="${status}">${t(`privacyStatus${status}`)}</option>`).join('')}</select></label><button type="submit">${t('adminUsersSearchAction')}</button></form><p id="privacy-summary" role="status" aria-live="polite"></p><div id="privacy-list" aria-live="polite" aria-busy="true"></div><div class="actions"><button type="button" id="privacy-prev">${t('adminPrivacyPrevious')}</button><button type="button" id="privacy-next">${t('adminPrivacyNext')}</button></div>`;
   const search = app.querySelector('#privacy-search');
   const list = app.querySelector('#privacy-list');
@@ -33,7 +34,7 @@ export async function mountAdminPrivacy({ app, api, t, e, notify, locale, me }) 
       for (const request of result.items) {
         const card = document.createElement('article');
         card.className = 'card privacy-request';
-        card.innerHTML = `<h2>${e(request.email)}</h2><p>${e(request.id)}</p><p>${t('privacyRequestReceived')} · ${t(`privacyStatus${request.status}`)} · ${date(request.created_at)}</p><details><summary>${t('adminPrivacyHistory')}</summary><div class="privacy-history"></div></details>${request.status !== 'CLOSED' ? `<form class="privacy-review"><label>${t('adminPrivacyNote')}<textarea name="note" minlength="5" maxlength="1000" required></textarea></label><button type="submit">${t('adminPrivacyReview')}</button></form>` : ''}`;
+        card.innerHTML = `<h2>${e(request.email)}</h2><p>${e(request.id)}</p><p>${t('privacyRequestReceived')} · ${t(`privacyStatus${request.status}`)} · ${date(request.created_at)}</p><details><summary>${t('adminPrivacyHistory')}</summary><div class="privacy-history"></div></details>${request.status !== 'CLOSED' ? `<form class="privacy-review"><label>${t('adminPrivacyNote')}<textarea name="note" minlength="5" maxlength="1000" required></textarea></label><button type="submit">${t('adminPrivacyReview')}</button></form>` : ''}${request.status === 'IN_REVIEW' ? `<form class="privacy-close"><label>${t('adminPrivacyCloseNote')}<textarea name="note" minlength="5" maxlength="1000" required></textarea></label><button type="submit">${t('adminPrivacyClose')}</button></form>` : ''}`;
         const heading = card.querySelector('h2');
         heading.tabIndex = -1;
         const history = card.querySelector('details');
@@ -47,8 +48,12 @@ export async function mountAdminPrivacy({ app, api, t, e, notify, locale, me }) 
           content.textContent = t('adminPrivacyLoading');
           try {
             const result = await api(`/admin/privacy/requests/${request.id}/history`);
+            const actionLabels = {
+              'privacy_request.review': t('adminPrivacyActionReview'),
+              'privacy_request.close': t('adminPrivacyActionClose'),
+            };
             content.innerHTML = result.items.length
-              ? `<ol>${result.items.map(entry => `<li>${date(entry.occurred_at)} · ${e(entry.actor_id)}<p>${e(JSON.parse(entry.metadata).note)}</p></li>`).join('')}</ol>`
+              ? `<ol>${result.items.map(entry => `<li>${date(entry.occurred_at)} · ${e(entry.actor_id)} · ${actionLabels[entry.action] ?? e(entry.action)}<p>${e(JSON.parse(entry.metadata).note)}</p></li>`).join('')}</ol>`
               : `<p>${t('adminPrivacyNoHistory')}</p>`;
             history.dataset.loaded = 'true';
             if (focusAfterRetry) history.querySelector('summary').focus();
@@ -66,31 +71,33 @@ export async function mountAdminPrivacy({ app, api, t, e, notify, locale, me }) 
         history.addEventListener('toggle', () => {
           if (history.open && !history.dataset.loaded) void loadHistory();
         });
-        const reviewForm = card.querySelector('form');
-        if (reviewForm) {
-          reviewForm.elements.note.value = state.notes.get(request.id) ?? '';
-          reviewForm.elements.note.addEventListener('input', event => {
-            state.notes.set(request.id, event.currentTarget.value);
+        function bindActionForm(selector, drafts, action, savedMessage) {
+          const form = card.querySelector(selector);
+          if (!form) return;
+          form.elements.note.value = drafts.get(request.id) ?? '';
+          form.elements.note.addEventListener('input', event => {
+            drafts.set(request.id, event.currentTarget.value);
+          });
+          form.addEventListener('submit', async event => {
+            event.preventDefault();
+            const submit = form.querySelector('button');
+            const note = new FormData(form).get('note');
+            submit.disabled = true;
+            try {
+              await api(`/admin/privacy/requests/${request.id}/${action}`, 'POST',
+                { note });
+              if (drafts.get(request.id) === note) drafts.delete(request.id);
+              notify(savedMessage);
+              await load({ focusResults: true, focusRequestId: request.id });
+            } catch (error) {
+              notify(error);
+            } finally {
+              submit.disabled = false;
+            }
           });
         }
-        reviewForm?.addEventListener('submit', async event => {
-          event.preventDefault();
-          const form = event.currentTarget;
-          const submit = form.querySelector('button');
-          const note = new FormData(form).get('note');
-          submit.disabled = true;
-          try {
-            await api(`/admin/privacy/requests/${request.id}/review`, 'POST',
-              { note });
-            if (state.notes.get(request.id) === note) state.notes.delete(request.id);
-            notify(t('adminPrivacySaved'));
-            await load({ focusResults: true, focusRequestId: request.id });
-          } catch (error) {
-            notify(error);
-          } finally {
-            submit.disabled = false;
-          }
-        });
+        bindActionForm('.privacy-review', state.notes, 'review', t('adminPrivacySaved'));
+        bindActionForm('.privacy-close', state.closeNotes, 'close', t('adminPrivacyClosedSaved'));
         list.append(card);
         if (focusRequestId === request.id) heading.dataset.reviewFocus = 'true';
       }
